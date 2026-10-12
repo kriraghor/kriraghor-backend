@@ -1,0 +1,28 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: kriraghor-mysql
+    environment:
+      MYSQL_DATABASE: kriraghor
+      MYSQL_USER: kriraghor
+      MYSQL_PASSWORD: kriraghor
+      MYSQL_ROOT_PASSWORD: root
+      TZ: UTC
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci", "--default-time-zone=+00:00"]
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      retries: 20
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: kriraghor-mailpit
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI: http://localhost:8025
+volumes:
+  mysql-data:

@@ -1,0 +1,1626 @@
+{
+  "info": {
+    "name": "Kriraghor API: M01 Auth & RBAC",
+    "description": "Start the API with `npm run dev` in /backend. OTP codes are printed in the server console (SMS_DRIVER=console). Paste them into the `otp` variable, and authenticator codes into `totp`. Tokens are captured into collection variables automatically. The refresh token is an httpOnly cookie, which Postman keeps for you.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000/api/v1"
+    },
+    {
+      "key": "phone",
+      "value": "01812345678"
+    },
+    {
+      "key": "email",
+      "value": "fahim@example.com"
+    },
+    {
+      "key": "username",
+      "value": "fahim_r"
+    },
+    {
+      "key": "googleIdToken",
+      "value": ""
+    },
+    {
+      "key": "masterPhone",
+      "value": "01711000001"
+    },
+    {
+      "key": "otp",
+      "value": ""
+    },
+    {
+      "key": "totp",
+      "value": ""
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "signupToken",
+      "value": ""
+    },
+    {
+      "key": "challengeToken",
+      "value": ""
+    },
+    {
+      "key": "stepUpToken",
+      "value": ""
+    },
+    {
+      "key": "targetUserId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Member signup (OTP) and gate",
+      "item": [
+        {
+          "name": "Send OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"target\": \"{{phone}}\",\n  \"purpose\": \"signup\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/otp/send",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "otp",
+                "send"
+              ]
+            },
+            "description": "Copy the 6-digit code from the server console into the `otp` variable."
+          }
+        },
+        {
+          "name": "Verify OTP (gives signupToken)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Saves values from successful responses into collection variables (never throws).",
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, path) => path.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, '.accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
+                  "if (ok && j) { const v = get(j, '.challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
+                  "if (ok && j) { const v = get(j, '.signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"target\": \"{{phone}}\",\n  \"purpose\": \"signup\",\n  \"code\": \"{{otp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/otp/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "otp",
+                "verify"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sign up with a ground_owner application",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Saves values from successful responses into collection variables (never throws).",
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, path) => path.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, '.accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
+                  "if (ok && j) { const v = get(j, '.challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
+                  "if (ok && j) { const v = get(j, '.signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }",
+                  "if (ok && j) { const v = get(j, '.user.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('targetUserId', v); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"signupToken\": \"{{signupToken}}\",\n  \"displayName\": \"Fahim Rahman\",\n  \"password\": \"Turf-Booking-2026\",\n  \"role\": \"ground_owner\",\n  \"roleMeta\": {\n    \"businessName\": \"Mirpur Turf 10\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "signup"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Gate: book a ground (expect KYC_REQUIRED)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/gate?action=book_ground",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gate"
+              ],
+              "query": [
+                {
+                  "key": "action",
+                  "value": "book_ground"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Gate: list a ground (expect KYC_REQUIRED)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/gate?action=list_ground",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gate"
+              ],
+              "query": [
+                {
+                  "key": "action",
+                  "value": "list_ground"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "RBAC: member opens /admin (expect 403)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1b. Email OTP, username, Google",
+      "item": [
+        {
+          "name": "Send OTP by EMAIL",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"target\": \"{{email}}\",\n  \"purpose\": \"signup\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/otp/send",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "otp",
+                "send"
+              ]
+            },
+            "description": "Open Mailpit at http://localhost:8025 to read the code, then put it in the otp variable."
+          }
+        },
+        {
+          "name": "Verify email OTP (signupToken or signed in)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Saves values from successful responses into collection variables (never throws).",
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, path) => path.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, '.accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
+                  "if (ok && j) { const v = get(j, '.challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
+                  "if (ok && j) { const v = get(j, '.signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"target\": \"{{email}}\",\n  \"purpose\": \"signup\",\n  \"code\": \"{{otp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/otp/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "otp",
+                "verify"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sign up with email + username + password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Saves values from successful responses into collection variables (never throws).",
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, path) => path.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, '.accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
+                  "if (ok && j) { const v = get(j, '.challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
+                  "if (ok && j) { const v = get(j, '.signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"signupToken\": \"{{signupToken}}\",\n  \"displayName\": \"Fahim Rahman\",\n  \"username\": \"{{username}}\",\n  \"password\": \"Turf-Booking-2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "signup"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Is a username available?",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/username-available?username={{username}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "username-available"
+              ],
+              "query": [
+                {
+                  "key": "username",
+                  "value": "{{username}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Login with USERNAME + password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Saves values from successful responses into collection variables (never throws).",
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, path) => path.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, '.accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
+                  "if (ok && j) { const v = get(j, '.challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
+                  "if (ok && j) { const v = get(j, '.signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"{{username}}\",\n  \"password\": \"Turf-Booking-2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Login with EMAIL + password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Saves values from successful responses into collection variables (never throws).",
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, path) => path.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, '.accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
+                  "if (ok && j) { const v = get(j, '.challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
+                  "if (ok && j) { const v = get(j, '.signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"{{email}}\",\n  \"password\": \"Turf-Booking-2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Change my username",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"fahim.rahman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/username",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "username"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add/change email: send code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"fahim.new@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "email"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add/change email: confirm code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"fahim.new@example.com\",\n  \"code\": \"{{otp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/email/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "email",
+                "verify"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sign in with Google",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Saves values from successful responses into collection variables (never throws).",
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, path) => path.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, '.accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
+                  "if (ok && j) { const v = get(j, '.challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
+                  "if (ok && j) { const v = get(j, '.signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idToken\": \"{{googleIdToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/google",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "google"
+              ]
+            },
+            "description": "Needs GOOGLE_CLIENT_IDS in .env and a real Google ID token (the \"credential\" from the Google button on the frontend). Returns signed_in, or status signup + signupToken; then call Sign up with that token."
+          }
+        },
+        {
+          "name": "Connect Google to my account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idToken\": \"{{googleIdToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/identities/google",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "identities",
+                "google"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Disconnect Google",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/identities/google",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "identities",
+                "google"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Password, sessions, refresh",
+      "item": [
+        {
+          "name": "Login with password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Saves values from successful responses into collection variables (never throws).",
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, path) => path.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, '.accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
+                  "if (ok && j) { const v = get(j, '.challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
+                  "if (ok && j) { const v = get(j, '.signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"{{phone}}\",\n  \"password\": \"Turf-Booking-2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Refresh (rotates the cookie)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Saves values from successful responses into collection variables (never throws).",
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, path) => path.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, '.accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
+            }
+          }
+        },
+        {
+          "name": "List my sessions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "sessions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Apply for the organiser role",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"organiser\",\n  \"meta\": {\n    \"organisation\": \"Dhaka Corporate Sports Forum\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "roles"
+              ]
+            },
+            "description": "Afterwards the old access token returns AUTHZ_STALE. Run Refresh to get a new one."
+          }
+        },
+        {
+          "name": "Update profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Fahim R.\",\n  \"locale\": \"bn\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Logout (this device)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Master admin (TOTP, step-up, RBAC)",
+      "item": [
+        {
+          "name": "Send OTP to master",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"target\": \"{{masterPhone}}\",\n  \"purpose\": \"login\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/otp/send",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "otp",
+                "send"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Verify OTP (gives challengeToken)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Saves values from successful responses into collection variables (never throws).",
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, path) => path.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, '.accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
+                  "if (ok && j) { const v = get(j, '.challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
+                  "if (ok && j) { const v = get(j, '.signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"target\": \"{{masterPhone}}\",\n  \"purpose\": \"login\",\n  \"code\": \"{{otp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/otp/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "otp",
+                "verify"
+              ]
+            },
+            "description": "First time: status two_factor_setup_required. Later: two_factor_required."
+          }
+        },
+        {
+          "name": "TOTP setup (first time only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeToken\": \"{{challengeToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/2fa/totp/setup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "2fa",
+                "totp",
+                "setup"
+              ]
+            },
+            "description": "Add the returned secret / otpauthUrl to Google Authenticator, Authy or Microsoft Authenticator."
+          }
+        },
+        {
+          "name": "TOTP activate (first time), signs in",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Saves values from successful responses into collection variables (never throws).",
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, path) => path.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, '.accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
+                  "if (ok && j) { const v = get(j, '.challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
+                  "if (ok && j) { const v = get(j, '.signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeToken\": \"{{challengeToken}}\",\n  \"code\": \"{{totp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/2fa/totp/activate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "2fa",
+                "totp",
+                "activate"
+              ]
+            }
+          }
+        },
+        {
+          "name": "TOTP verify (later sign-ins), signs in",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Saves values from successful responses into collection variables (never throws).",
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, path) => path.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, '.accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
+                  "if (ok && j) { const v = get(j, '.challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
+                  "if (ok && j) { const v = get(j, '.signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeToken\": \"{{challengeToken}}\",\n  \"code\": \"{{totp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/2fa/totp/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "2fa",
+                "totp",
+                "verify"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Me (master holds every permission)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search users (masked phone)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users?q=Fahim",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "Fahim"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Approve member role (NID verified)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"active\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/{{targetUserId}}/roles/member/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                "{{targetUserId}}",
+                "roles",
+                "member",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Approve ground_owner role",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"active\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/{{targetUserId}}/roles/ground_owner/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                "{{targetUserId}}",
+                "roles",
+                "ground_owner",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Suspend user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reasonCode\": \"abuse\",\n  \"note\": \"Testing the suspension flow\",\n  \"until\": \"2026-12-31T00:00:00+06:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/{{targetUserId}}/suspend",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                "{{targetUserId}}",
+                "suspend"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Restore user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Test complete\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/{{targetUserId}}/restore",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                "{{targetUserId}}",
+                "restore"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ban WITHOUT step-up (expect 403 STEP_UP_REQUIRED)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reasonCode\": \"fraud\",\n  \"note\": \"Testing step-up guard\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/{{targetUserId}}/ban",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                "{{targetUserId}}",
+                "ban"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Step-up for staff.write",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Saves values from successful responses into collection variables (never throws).",
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, path) => path.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, '.stepUpToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('stepUpToken', v); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scope\": \"staff.write\",\n  \"code\": \"{{totp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/step-up",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "step-up"
+              ]
+            },
+            "description": "Use a NEW authenticator code each time: a code cannot be used twice."
+          }
+        },
+        {
+          "name": "Make the user staff (approve_documents, manage_users)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "X-Step-Up",
+                "value": "{{stepUpToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{targetUserId}}\",\n  \"employeeId\": \"KG-0101\",\n  \"team\": \"Verification\",\n  \"permissions\": [\n    \"approve_documents\",\n    \"manage_users\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/staff",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "staff"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff list and permission matrix",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/staff",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "staff"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Step-up for staff.write (again)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Saves values from successful responses into collection variables (never throws).",
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, path) => path.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, '.stepUpToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('stepUpToken', v); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scope\": \"staff.write\",\n  \"code\": \"{{totp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/step-up",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "step-up"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Save permission changes",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "X-Step-Up",
+                "value": "{{stepUpToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"changes\": [\n    {\n      \"userId\": \"{{targetUserId}}\",\n      \"grant\": [\n        \"resolve_reports\"\n      ],\n      \"revoke\": [\n        \"approve_documents\"\n      ]\n    }\n  ],\n  \"reason\": \"Moves to the support rota\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/staff/permissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "staff",
+                "permissions"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

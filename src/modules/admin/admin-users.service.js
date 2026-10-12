@@ -1,0 +1,228 @@
+'use strict';
+
+const { Op } = require('sequelize');
+const { User, UserRole, UserSanction, StaffMember, sequelize } = require('../../models');
+const { E } = require('../../common/errors');
+const { ROLES, ADMIN_ROLES, ROLE_TRANSITIONS } = require('../../common/enums');
+const { hmac } = require('../../common/crypto');
+const audit = require('../audit/audit.service');
+const sessions = require('../auth/session.service');
+const authz = require('../auth/authz.service');
+const { serializeUserForAdmin } = require('../users/users.serializer');
+
+const MAX_SUSPENSION_DAYS = 365;
+
+const encodeCursor = (u) => Buffer.from(`${u.createdAt.toISOString()}|${u.id}`).toString('base64url');
+function decodeCursor(c) {
+  try {
+    const [at, id] = Buffer.from(c, 'base64url').toString().split('|');
+    const d = new Date(at);
+    if (Number.isNaN(d.getTime()) || !id) throw new Error('bad');
+    return { at: d, id };
+  } catch {
+    throw E.badRequest('CURSOR_INVALID', 'Invalid cursor');
+  }
+}
+
+/** Search users (M01-FR-19). Results are masked; searches with a query are audited. */
+async function search(principal, { q, status, role, roleStatus, limit = 20, cursor }, req) {
+  const where = {};
+  if (status) where.status = status;
+  if (q) {
+    const digits = q.replace(/\D/g, '');
+    where[Op.or] = [
+      { displayName: { [Op.like]: `%${q}%` } },
+      { email: { [Op.like]: `%${q.toLowerCase()}%` } },
+      ...(digits.length >= 4 ? [{ phone: { [Op.like]: `%${digits.slice(-10)}%` } }] : []),
+    ];
+  }
+  if (cursor) {
+    const c = decodeCursor(cursor);
+    where[Op.and] = [{ [Op.or]: [{ createdAt: { [Op.lt]: c.at } }, { createdAt: c.at, id: { [Op.lt]: c.id } }] }];
+  }
+  const include = [];
+  if (role) include.push({ model: UserRole, as: 'roles', where: { role, ...(roleStatus ? { status: roleStatus } : {}) }, required: true });
+
+  const rows = await User.findAll({ where, include, order: [['createdAt', 'DESC'], ['id', 'DESC']], limit: limit + 1 });
+  const page = rows.slice(0, limit);
+  const ids = page.map((u) => u.id);
+  const roles = ids.length ? await UserRole.findAll({ where: { userId: ids } }) : [];
+
+  if (q) {
+    // An NID-looking query is stored hashed, never in clear text.
+    const looksLikeNid = /^\d{10}$|^\d{13}$|^\d{17}$/.test(q.replace(/\s/g, ''));
+    await audit.record({ action: 'user.searched', actor: principal, meta: { q: looksLikeNid ? `nid:${hmac(q).slice(0, 16)}` : q, filters: { status, role, roleStatus } }, req });
+  }
+
+  return {
+    data: page.map((u) => serializeUserForAdmin(u, { roles: roles.filter((r) => r.userId === u.id) })),
+    nextCursor: rows.length > limit ? encodeCursor(page[page.length - 1]) : null,
+  };
+}
+
+async function loadTarget(userId, { transaction, lock } = {}) {
+  const user = await User.findByPk(userId, { transaction, lock });
+  if (!user) throw E.notFound('User');
+  return user;
+}
+
+async function getOne(userId) {
+  const user = await loadTarget(userId);
+  const [roles, sanctions, staff] = await Promise.all([
+    UserRole.findAll({ where: { userId } }),
+    UserSanction.findAll({ where: { userId }, order: [['createdAt', 'DESC']], limit: 20 }),
+    StaffMember.findOne({ where: { userId } }),
+  ]);
+  return serializeUserForAdmin(user, { roles, sanctions, staff });
+}
+
+/** Staff may not act on themselves, and only a master may act on staff accounts. */
+async function guardTarget(principal, target, { transaction } = {}) {
+  if (target.id === principal.id) throw E.forbidden('SELF_ACTION_FORBIDDEN', 'You cannot do this to your own account');
+  const staff = await StaffMember.findOne({ where: { userId: target.id }, transaction });
+  if (staff && staff.status !== 'offboarded' && !principal.isMaster) {
+    throw E.forbidden('MASTER_REQUIRED', 'Only a master admin can act on staff accounts');
+  }
+}
+
+async function suspend(principal, userId, { reasonCode, note, until }, req) {
+  if (until) {
+    const ms = new Date(until).getTime() - Date.now();
+    if (ms <= 0) throw E.badRequest('UNTIL_IN_PAST', 'The end date must be in the future');
+    if (ms > MAX_SUSPENSION_DAYS * 24 * 3600 * 1000) throw E.badRequest('SUSPENSION_TOO_LONG', 'Suspensions longer than a year must be bans');
+  }
+  return sequelize.transaction(async (transaction) => {
+    const target = await loadTarget(userId, { transaction, lock: transaction.LOCK.UPDATE });
+    await guardTarget(principal, target, { transaction });
+    if (target.status !== 'active') throw E.conflict('USER_NOT_ACTIVE', `The account is already ${target.status}`);
+
+    const sanction = await UserSanction.create(
+      { userId, kind: 'suspension', reasonCode, note, endsAt: until ? new Date(until) : null, createdBy: principal.id, source: 'admin' },
+      { transaction }
+    );
+    await target.update({ status: 'suspended' }, { transaction });
+    await authz.bumpVersion(userId, { transaction });
+    const revoked = await sessions.revokeAllForUser(userId, 'sanction', { transaction });
+    await audit.record({ action: 'user.suspended', actor: principal, entityType: 'user', entityId: userId, before: { status: 'active' }, after: { status: 'suspended', until: until ?? null }, meta: { reasonCode, sanctionId: sanction.id }, req }, { transaction });
+    return { sanctionId: sanction.id, status: 'suspended', sessionsRevoked: revoked };
+  });
+}
+
+async function ban(principal, userId, { reasonCode, note }, req) {
+  return sequelize.transaction(async (transaction) => {
+    const target = await loadTarget(userId, { transaction, lock: transaction.LOCK.UPDATE });
+    await guardTarget(principal, target, { transaction });
+    if (target.status === 'banned') throw E.conflict('USER_ALREADY_BANNED', 'The account is already banned');
+
+    // Close any open suspension; the ban replaces it.
+    await UserSanction.update({ liftedAt: new Date(), liftedBy: principal.id, liftNote: 'Superseded by ban' }, { where: { userId, liftedAt: null, kind: 'suspension' }, transaction });
+    const sanction = await UserSanction.create({ userId, kind: 'ban', reasonCode, note, createdBy: principal.id, source: 'admin' }, { transaction });
+    const before = target.status;
+    await target.update({ status: 'banned' }, { transaction });
+    await authz.bumpVersion(userId, { transaction });
+    const revoked = await sessions.revokeAllForUser(userId, 'sanction', { transaction });
+    await audit.record({ action: 'user.banned', actor: principal, entityType: 'user', entityId: userId, before: { status: before }, after: { status: 'banned' }, meta: { reasonCode, sanctionId: sanction.id }, req }, { transaction });
+    return { sanctionId: sanction.id, status: 'banned', sessionsRevoked: revoked };
+  });
+}
+
+/** Lift the active suspension or ban. Restoring a ban requires a master (route-level). */
+async function restore(principal, userId, { note }, req, { allowBan = false } = {}) {
+  return sequelize.transaction(async (transaction) => {
+    const target = await loadTarget(userId, { transaction, lock: transaction.LOCK.UPDATE });
+    await guardTarget(principal, target, { transaction });
+    if (target.status === 'active') throw E.conflict('USER_ALREADY_ACTIVE', 'The account is already active');
+    if (target.status === 'banned' && !allowBan) throw E.forbidden('MASTER_REQUIRED', 'Only a master admin can lift a ban');
+    if (target.status === 'closed') throw E.conflict('USER_CLOSED', 'Closed accounts cannot be restored');
+
+    const before = target.status;
+    await UserSanction.update({ liftedAt: new Date(), liftedBy: principal.id, liftNote: note ?? null }, { where: { userId, liftedAt: null, kind: ['suspension', 'ban'] }, transaction });
+    await target.update({ status: 'active' }, { transaction });
+    await authz.bumpVersion(userId, { transaction });
+    await audit.record({ action: 'user.restored', actor: principal, entityType: 'user', entityId: userId, before: { status: before }, after: { status: 'active' }, meta: { note }, req }, { transaction });
+    return { status: 'active' };
+  });
+}
+
+async function signOutEverywhere(principal, userId, req) {
+  return sequelize.transaction(async (transaction) => {
+    const target = await loadTarget(userId, { transaction });
+    await guardTarget(principal, target, { transaction });
+    const n = await sessions.revokeAllForUser(userId, 'admin', { transaction });
+    await audit.record({ action: 'user.signed_out_by_admin', actor: principal, entityType: 'user', entityId: userId, meta: { sessionsRevoked: n }, req }, { transaction });
+    return { sessionsRevoked: n };
+  });
+}
+
+/**
+ * Change a role's status (admin path). Normal activation comes from M02 verification
+ * events; this endpoint covers manual decisions, role suspensions and reinstatements.
+ */
+async function setRoleStatus(principal, userId, role, { status, reasonCode, note }, req) {
+  if (ADMIN_ROLES.includes(role)) throw E.forbidden('ROLE_NOT_MANAGEABLE', 'Staff roles are managed in Staff and permissions');
+  return sequelize.transaction(async (transaction) => {
+    const target = await loadTarget(userId, { transaction });
+    await guardTarget(principal, target, { transaction });
+    const row = await UserRole.findOne({ where: { userId, role }, transaction, lock: transaction.LOCK.UPDATE });
+    if (!row) throw E.notFound('Role');
+    const allowed = ROLE_TRANSITIONS[row.status] || [];
+    const extra = row.status === 'documents_pending' ? ['in_review', 'rejected'] : [];
+    if (![...allowed, ...extra].includes(status)) {
+      throw E.conflict('ROLE_TRANSITION_INVALID', `Cannot move ${role} from ${row.status} to ${status}`);
+    }
+    if (status === 'active' && role !== ROLES.MEMBER) {
+      const member = await UserRole.findOne({ where: { userId, role: ROLES.MEMBER }, transaction });
+      if (member?.status !== 'active') throw E.conflict('MEMBER_NOT_ACTIVE', 'The member (NID) verification must be approved first');
+    }
+    if (['suspended', 'rejected', 'changes_requested'].includes(status) && !reasonCode) {
+      throw E.validation([{ field: 'reasonCode', message: 'A reason is required' }]);
+    }
+
+    const before = row.status;
+    await row.update(
+      {
+        status,
+        decidedBy: principal.id,
+        statusReasonCode: reasonCode ?? null,
+        statusNote: note ?? null,
+        activatedAt: status === 'active' ? new Date() : row.activatedAt,
+      },
+      { transaction }
+    );
+    if (role === ROLES.MEMBER) {
+      const kyc = { active: 'verified', in_review: 'pending', rejected: 'rejected', changes_requested: 'unverified' }[status];
+      if (kyc) await target.update({ kycStatus: kyc }, { transaction });
+    }
+    if (status === 'suspended') {
+      await UserSanction.create({ userId, kind: 'role_suspension', role, reasonCode, note, createdBy: principal.id, source: 'admin' }, { transaction });
+    }
+    if (before === 'suspended' && status === 'active') {
+      await UserSanction.update({ liftedAt: new Date(), liftedBy: principal.id }, { where: { userId, role, kind: 'role_suspension', liftedAt: null }, transaction });
+    }
+    await authz.bumpVersion(userId, { transaction });
+    await audit.record({ action: `user_role.${status}`, actor: principal, entityType: 'user_role', entityId: row.id, before: { status: before }, after: { status }, meta: { role, reasonCode }, req }, { transaction });
+    return row.toPublic();
+  });
+}
+
+/** Lift timed suspensions whose end has passed (M01-FR-23). Idempotent. */
+async function liftExpiredSuspensions() {
+  const due = await UserSanction.findAll({ where: { kind: 'suspension', liftedAt: null, endsAt: { [Op.lte]: new Date() } } });
+  let lifted = 0;
+  for (const s of due) {
+    await sequelize.transaction(async (transaction) => {
+      const [n] = await UserSanction.update({ liftedAt: new Date(), liftNote: 'Suspension period ended' }, { where: { id: s.id, liftedAt: null }, transaction });
+      if (!n) return;
+      const user = await User.findByPk(s.userId, { transaction, lock: transaction.LOCK.UPDATE });
+      if (user?.status === 'suspended') {
+        await user.update({ status: 'active' }, { transaction });
+        await authz.bumpVersion(user.id, { transaction });
+        await audit.record({ action: 'user.restored', actor: { id: null, role: 'system' }, entityType: 'user', entityId: user.id, after: { status: 'active' }, meta: { sanctionId: s.id, reason: 'expired' } }, { transaction });
+        lifted += 1;
+      }
+    });
+  }
+  return lifted;
+}
+
+module.exports = { search, getOne, suspend, ban, restore, signOutEverywhere, setRoleStatus, liftExpiredSuspensions };
