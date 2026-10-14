@@ -12,6 +12,7 @@ const tokens = require('./token.service');
 const sessions = require('./session.service');
 const totp = require('./totp.service');
 const authz = require('./authz.service');
+const { AUDIENCES } = require('./access.service');
 
 const findByIdentifier = (id) => User.findOne({ where: { [id.type]: id.value } });
 
@@ -22,35 +23,44 @@ function assertCanSignIn(user) {
 }
 
 /** Issue the session and access token for a fully authenticated user. */
-async function issueSession(user, req, { twoFactorAt = null, method } = {}) {
+async function issueSession(user, req, { twoFactorAt = null, method, audience = AUDIENCES.API } = {}) {
   const { session, refreshToken } = await sequelize.transaction(async (transaction) => {
-    const created = await sessions.create(user, req, { twoFactorAt, transaction });
+    const created = await sessions.create(user, req, { twoFactorAt, audience, transaction });
     await user.update({ lastLoginAt: new Date(), failedLoginCount: 0, lockedUntil: null }, { transaction });
     await audit.record(
-      { action: 'auth.signed_in', actor: { id: user.id }, entityType: 'session', entityId: created.session.id, meta: { method }, req },
+      { action: 'auth.signed_in', actor: { id: user.id }, entityType: 'session', entityId: created.session.id, meta: { method, audience }, req },
       { transaction }
     );
     return created;
   });
-  const access = tokens.signAccess({ userId: user.id, sessionId: session.id, authzVersion: user.authzVersion });
+  const access = tokens.signAccess({ userId: user.id, sessionId: session.id, authzVersion: user.authzVersion, audience });
   const principal = await authz.loadPrincipal(user.id);
-  return { status: 'signed_in', ...access, refreshToken, sessionId: session.id, principal };
+  return { status: 'signed_in', audience, ...access, refreshToken, sessionId: session.id, familyId: session.familyId, principal };
+}
+
+async function activeStaff(userId) {
+  const staff = await StaffMember.findOne({ where: { userId } });
+  return staff && staff.status !== 'offboarded' ? staff : null;
 }
 
 /**
- * After primary authentication: staff and masters must pass TOTP (M01-FR-10).
- * Returns either a signed-in result or a challenge.
+ * After primary authentication (ADR-004, Q33: staff use separate accounts):
+ *  - customer sign-in (audience "api") refuses staff accounts with STAFF_USE_ADMIN_PORTAL;
+ *  - admin sign-in (audience "admin") refuses non-staff with NOT_STAFF, and always continues
+ *    to the TOTP challenge (M01-FR-10). The challenge can only produce an admin session.
  */
-async function completePrimaryAuth(user, req, method) {
+async function completePrimaryAuth(user, req, method, audience = AUDIENCES.API) {
   assertCanSignIn(user);
-  const staff = await StaffMember.findOne({ where: { userId: user.id } });
-  if (staff && staff.status !== 'offboarded') {
-    if (staff.status === 'suspended') throw E.forbidden('ACCOUNT_SUSPENDED', 'Your staff access is suspended');
-    const next = staff.totpEnabledAt ? 'totp' : 'totp_setup';
-    const { token, expiresAt } = tokens.signSpecial('mfa_challenge', { m: method }, user.id);
-    return { status: next === 'totp' ? 'two_factor_required' : 'two_factor_setup_required', next, challengeToken: token, challengeExpiresAt: expiresAt };
+  const staff = await activeStaff(user.id);
+  if (audience === AUDIENCES.API) {
+    if (staff) throw E.forbidden('STAFF_USE_ADMIN_PORTAL', 'Staff accounts sign in at the admin portal');
+    return issueSession(user, req, { method });
   }
-  return issueSession(user, req, { method });
+  if (!staff) throw E.forbidden('NOT_STAFF', 'This sign-in is for Kriraghor staff only');
+  if (staff.status === 'suspended') throw E.forbidden('ACCOUNT_SUSPENDED', 'Your staff access is suspended');
+  const next = staff.totpEnabledAt ? 'totp' : 'totp_setup';
+  const { token, expiresAt } = tokens.signSpecial('mfa_challenge', { m: method }, user.id);
+  return { status: next === 'totp' ? 'two_factor_required' : 'two_factor_setup_required', next, challengeToken: token, challengeExpiresAt: expiresAt };
 }
 
 // ---------------------------------------------------------------------------
@@ -203,7 +213,7 @@ async function signInWithGoogle({ idToken }, req) {
 // Password sign-in (with lockout) and reset
 // ---------------------------------------------------------------------------
 
-async function loginWithPassword({ identifier, password }, req) {
+async function loginWithPassword({ identifier, password }, req, audience = AUDIENCES.API) {
   const user = await findByIdentifier(identifier);
   const generic = () => E.unauthorized('INVALID_CREDENTIALS', 'Wrong phone/email or password');
 
@@ -226,7 +236,20 @@ async function loginWithPassword({ identifier, password }, req) {
     await audit.record({ action: lock ? 'auth.locked' : 'auth.sign_in_failed', actor: { id: user.id }, entityType: 'user', entityId: user.id, req });
     throw generic();
   }
-  return completePrimaryAuth(user, req, 'password');
+  return completePrimaryAuth(user, req, 'password', audience);
+}
+
+/**
+ * Admin portal sign-in (ADR-004): password, or a login OTP sent with POST /auth/otp/send.
+ * Unknown accounts and non-staff both get NOT_STAFF, so the admin endpoint reveals nothing
+ * beyond what the customer endpoints already do.
+ */
+async function adminLogin(body, req) {
+  if (body.password) return loginWithPassword(body, req, AUDIENCES.ADMIN);
+  await otp.consume({ target: body.target, purpose: 'signup', code: body.code });
+  const user = await findByIdentifier(body.target);
+  if (!user) throw E.forbidden('NOT_STAFF', 'This sign-in is for Kriraghor staff only');
+  return completePrimaryAuth(user, req, 'otp', AUDIENCES.ADMIN);
 }
 
 async function resetPassword({ target, code, newPassword }, req) {
@@ -281,7 +304,7 @@ async function totpActivate({ challengeToken, code }, req) {
     await audit.record({ action: 'staff.totp_enabled', actor: { id: user.id }, entityType: 'staff_member', entityId: staff.id, req }, { transaction });
   });
   await user.reload();
-  return issueSession(user, req, { twoFactorAt: new Date(), method: `${method}+totp` });
+  return issueSession(user, req, { twoFactorAt: new Date(), method: `${method}+totp`, audience: AUDIENCES.ADMIN });
 }
 
 async function totpVerify({ challengeToken, code }, req) {
@@ -295,14 +318,15 @@ async function totpVerify({ challengeToken, code }, req) {
     throw err;
   }
   await staff.update({ totpLastStep: step });
-  return issueSession(user, req, { twoFactorAt: new Date(), method: `${method}+totp` });
+  return issueSession(user, req, { twoFactorAt: new Date(), method: `${method}+totp`, audience: AUDIENCES.ADMIN });
 }
 
 // ---------------------------------------------------------------------------
 // Step-up (single-use, scope-bound). WebAuthn replaces TOTP here in a later iteration.
 // ---------------------------------------------------------------------------
 
-const STEP_UP_SCOPES = ['settings.write', 'staff.write', 'payout.approve', 'refund.large', 'user.ban', 'audit.export', 'twofa.reset'];
+// esports.money (Q128): cancelling an esports tournament with refunds and finalising prizes (M21 §3).
+const STEP_UP_SCOPES = ['settings.write', 'staff.write', 'payout.approve', 'refund.large', 'user.ban', 'audit.export', 'twofa.reset', 'esports.money'];
 
 async function stepUp(principal, sessionId, { scope, code }, req) {
   if (!STEP_UP_SCOPES.includes(scope)) throw E.badRequest('STEP_UP_SCOPE_INVALID', 'Unknown step-up scope');
@@ -336,12 +360,22 @@ async function consumeStepUp(token, { principal, sessionId, scope }) {
 // Refresh / logout
 // ---------------------------------------------------------------------------
 
-async function refresh(refreshToken, req) {
-  const { session, refreshToken: next } = await sessions.rotate(refreshToken, req);
+async function refresh(refreshToken, req, audience = AUDIENCES.API) {
+  const { session, refreshToken: next } = await sessions.rotate(refreshToken, req, { audience });
   const user = await User.findByPk(session.userId);
   assertCanSignIn(user);
-  const access = tokens.signAccess({ userId: user.id, sessionId: session.id, authzVersion: user.authzVersion });
-  return { ...access, refreshToken: next };
+  // A member promoted to staff keeps no customer session (Q33); a removed staff member keeps no admin session.
+  const staff = await activeStaff(user.id);
+  if (audience === AUDIENCES.API && staff) {
+    await sessions.revokeFamilyOf(session.id, 'permission_change');
+    throw E.forbidden('STAFF_USE_ADMIN_PORTAL', 'Staff accounts sign in at the admin portal');
+  }
+  if (audience === AUDIENCES.ADMIN && !staff) {
+    await sessions.revokeFamilyOf(session.id, 'permission_change');
+    throw E.forbidden('NOT_STAFF', 'This sign-in is for Kriraghor staff only');
+  }
+  const access = tokens.signAccess({ userId: user.id, sessionId: session.id, authzVersion: user.authzVersion, audience });
+  return { ...access, refreshToken: next, familyId: session.familyId, audience };
 }
 
 async function logout(principal, sessionId, req, { all = false } = {}) {
@@ -359,6 +393,7 @@ module.exports = {
   verifyOtp,
   signup,
   loginWithPassword,
+  adminLogin,
   resetPassword,
   totpSetup,
   totpActivate,

@@ -79,19 +79,51 @@ async function allowResend(local) {
   });
 }
 
-/** OTP sign-in for a staff account, enrolling TOTP if needed. */
+// ADR-004 origins used by the tests (see tests/env.js).
+const ADMIN_ORIGIN = 'http://localhost:3002';
+const WEB_ORIGIN = 'http://localhost:3000';
+/** POST from the admin portal origin. */
+const adminPost = (path) => api().post(`${P}${path}`).set('Origin', ADMIN_ORIGIN);
+
+/** Admin portal sign-in for a staff account (login OTP, then TOTP), enrolling TOTP if needed. */
 async function signInStaff(phone, userId) {
   await allowResend(phone);
   await api().post(`${P}/auth/otp/send`).send({ target: phone, purpose: 'login' }).expect(202);
-  const v = await api().post(`${P}/auth/otp/verify`).send({ target: phone, purpose: 'login', code: lastCode(phone) }).expect(200);
+  const v = await adminPost('/auth/admin/login').send({ target: phone, code: lastCode(phone) }).expect(200);
   let res;
   if (v.body.status === 'two_factor_setup_required') {
-    await api().post(`${P}/auth/2fa/totp/setup`).send({ challengeToken: v.body.challengeToken }).expect(200);
-    res = await api().post(`${P}/auth/2fa/totp/activate`).send({ challengeToken: v.body.challengeToken, code: await totpFor(userId) }).expect(200);
+    await adminPost('/auth/2fa/totp/setup').send({ challengeToken: v.body.challengeToken }).expect(200);
+    res = await adminPost('/auth/2fa/totp/activate').send({ challengeToken: v.body.challengeToken, code: await totpFor(userId) }).expect(200);
   } else {
-    res = await api().post(`${P}/auth/2fa/totp/verify`).send({ challengeToken: v.body.challengeToken, code: await totpFor(userId) }).expect(200);
+    res = await adminPost('/auth/2fa/totp/verify').send({ challengeToken: v.body.challengeToken, code: await totpFor(userId) }).expect(200);
   }
   return { accessToken: res.body.accessToken, cookie: res.headers['set-cookie'], user: res.body.user, phone, userId };
+}
+
+/** Value of one cookie from Set-Cookie lines. */
+function cookieValue(setCookie, name) {
+  const line = (setCookie || []).find((c) => c.startsWith(`${name}=`));
+  return line ? decodeURIComponent(line.split(';')[0].slice(name.length + 1)) : undefined;
+}
+
+/** A Cookie request header built from Set-Cookie lines (cleared cookies are dropped). */
+const cookieHeader = (setCookie) =>
+  (setCookie || [])
+    .map((c) => c.split(';')[0])
+    .filter((c) => !c.endsWith('='))
+    .join('; ');
+
+/**
+ * Browser-style refresh (ADR-004): the cookies from an earlier response, an allowed Origin
+ * and X-CSRF-Token copied from the readable CSRF cookie. Pass admin: true for the admin portal.
+ */
+function refreshWeb(setCookie, { admin = false, origin } = {}) {
+  const csrfName = admin ? 'kg_acsrf' : 'kg_csrf';
+  return api()
+    .post(`${P}/auth/${admin ? 'admin/refresh' : 'refresh'}`)
+    .set('Origin', origin ?? (admin ? ADMIN_ORIGIN : WEB_ORIGIN))
+    .set('Cookie', cookieHeader(setCookie))
+    .set('X-CSRF-Token', cookieValue(setCookie, csrfName) ?? '');
 }
 
 async function stepUp(session, scope) {
@@ -105,4 +137,4 @@ async function stepUp(session, scope) {
 
 const bearer = (s) => ({ Authorization: `Bearer ${s.accessToken}` });
 
-module.exports = { api, P, models, resetDb, nextPhone, e164, lastCode, lastEmailCode, mail, allowResend, signupUser, verifyMember, totpFor, createSignedInMaster, signInStaff, stepUp, bearer, sms };
+module.exports = { ADMIN_ORIGIN, WEB_ORIGIN, adminPost, cookieValue, cookieHeader, refreshWeb, api, P, models, resetDb, nextPhone, e164, lastCode, lastEmailCode, mail, allowResend, signupUser, verifyMember, totpFor, createSignedInMaster, signInStaff, stepUp, bearer, sms };

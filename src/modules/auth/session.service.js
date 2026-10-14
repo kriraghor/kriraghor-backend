@@ -8,7 +8,9 @@ const { sha256, randomToken } = require('../../common/crypto');
 const { E } = require('../../common/errors');
 const audit = require('../audit/audit.service');
 
-const refreshTtlMs = () => config.auth.refreshTtlDays * 24 * 3600 * 1000;
+// Admin sessions (ADR-004) live ADMIN_REFRESH_TTL_HOURS; customer sessions REFRESH_TOKEN_TTL_DAYS.
+const refreshTtlMs = (audience = 'api') =>
+  audience === 'admin' ? config.auth.adminRefreshTtlHours * 3600 * 1000 : config.auth.refreshTtlDays * 24 * 3600 * 1000;
 
 function deviceLabel(ua = '') {
   if (/android/i.test(ua)) return 'Android';
@@ -20,7 +22,7 @@ function deviceLabel(ua = '') {
 }
 
 /** Create a new session (new token family). Returns the plain refresh token once. */
-async function create(user, req, { twoFactorAt = null, transaction } = {}) {
+async function create(user, req, { twoFactorAt = null, audience = 'api', transaction } = {}) {
   const refreshToken = randomToken();
   const ua = req?.get?.('user-agent') ?? '';
   const session = await Session.create(
@@ -32,7 +34,8 @@ async function create(user, req, { twoFactorAt = null, transaction } = {}) {
       ip: req?.ip ?? null,
       deviceLabel: deviceLabel(ua),
       twoFactorAt,
-      expiresAt: new Date(Date.now() + refreshTtlMs()),
+      audience,
+      expiresAt: new Date(Date.now() + refreshTtlMs(audience)),
     },
     { transaction }
   );
@@ -41,9 +44,10 @@ async function create(user, req, { twoFactorAt = null, transaction } = {}) {
 
 /**
  * Rotate a refresh token (M01-FR-07). Presenting an already-rotated token is treated
- * as theft: the whole family is revoked.
+ * as theft: the whole family is revoked. A token from the other audience (ADR-004: an admin
+ * cookie sent to the customer refresh, or the reverse) is rejected without touching the session.
  */
-async function rotate(refreshToken, req) {
+async function rotate(refreshToken, req, { audience = 'api' } = {}) {
   if (!refreshToken) throw E.unauthorized('SESSION_REVOKED', 'Your session has ended. Sign in again.');
   const hash = sha256(refreshToken);
 
@@ -51,7 +55,7 @@ async function rotate(refreshToken, req) {
   // transaction would roll back the family revocation on reuse detection.
   const result = await sequelize.transaction(async (transaction) => {
     const current = await Session.findOne({ where: { refreshTokenHash: hash }, transaction, lock: transaction.LOCK.UPDATE });
-    if (!current) return null;
+    if (!current || current.audience !== audience) return null;
 
     if (current.revokedAt) {
       if (current.revokeCause === 'rotation') {
@@ -84,8 +88,8 @@ async function rotate(refreshToken, req) {
         ip: req?.ip ?? current.ip,
         deviceLabel: current.deviceLabel,
         twoFactorAt: current.twoFactorAt,
-        // Sliding expiry is capped by the family start so a stolen token can't live forever.
-        expiresAt: new Date(Date.now() + refreshTtlMs()),
+        audience: current.audience,
+        expiresAt: new Date(Date.now() + refreshTtlMs(current.audience)),
       },
       { transaction }
     );
@@ -94,6 +98,17 @@ async function rotate(refreshToken, req) {
 
   if (!result) throw E.unauthorized('SESSION_REVOKED', 'Your session has ended. Sign in again.');
   return result;
+}
+
+/**
+ * Read-only lookup of a live session by refresh token, used to check the CSRF token binding
+ * (ADR-004) before rotating. Returns null for unknown, revoked or expired tokens.
+ */
+async function peek(refreshToken) {
+  if (!refreshToken) return null;
+  const s = await Session.findOne({ where: { refreshTokenHash: sha256(refreshToken) } });
+  if (!s || s.revokedAt || s.expiresAt < new Date()) return null;
+  return { sessionId: s.id, familyId: s.familyId, audience: s.audience, userId: s.userId };
 }
 
 /** Revoke one session and every later rotation of it (the whole family). */
@@ -121,4 +136,4 @@ async function listActive(userId) {
   });
 }
 
-module.exports = { create, rotate, revokeFamilyOf, revokeAllForUser, listActive };
+module.exports = { create, rotate, peek, revokeFamilyOf, revokeAllForUser, listActive };

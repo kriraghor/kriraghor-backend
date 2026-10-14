@@ -20,8 +20,11 @@ const base = {
   logging: config.db.logging ? console.log : false,
 };
 
+// Pool per process. With N pods x 3 processes, keep N x 3 x DB_POOL_MAX under MySQL's max_connections.
+const pool = { max: config.db.poolMax, min: 0, idle: 10000, acquire: 30000 };
+
 module.exports = {
-  development: base,
+  development: { ...base, pool },
   test: base,
-  production: { ...base, pool: { max: 20, min: 2, idle: 10000 } },
+  production: { ...base, pool },
 };

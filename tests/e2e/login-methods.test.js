@@ -123,12 +123,12 @@ describe('Sign in with Google', () => {
     expect(s.body.user).toMatchObject({ username: 'no_email_player', email: null, phone: null });
   });
 
-  it('still requires two-factor for staff', async () => {
+  it('sends staff to the admin portal instead of signing them in (ADR-004)', async () => {
     const master = await h.createSignedInMaster();
     await models.User.update({ email: 'ayesha@kriraghor.com', emailVerifiedAt: new Date() }, { where: { id: master.userId } });
     mockGoogle({ subject: 'google-master', email: 'ayesha@kriraghor.com' });
-    const r = await api().post(`${P}/auth/google`).send({ idToken: ID_TOKEN }).expect(200);
-    expect(r.body.status).toBe('two_factor_required');
+    const r = await api().post(`${P}/auth/google`).send({ idToken: ID_TOKEN }).expect(403);
+    expect(r.body.code).toBe('STAFF_USE_ADMIN_PORTAL');
     expect(r.body.accessToken).toBeUndefined();
   });
 

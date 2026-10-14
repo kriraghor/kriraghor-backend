@@ -7,34 +7,44 @@ const cookieParser = require('cookie-parser');
 const pinoHttp = require('pino-http');
 const config = require('./config');
 const logger = require('./common/logger');
+const { compile } = require('./common/origins');
+const { httpMetrics } = require('./common/metrics');
 const passport = require('./middlewares/passport');
 const { requestId, notFound, errorHandler } = require('./middlewares/errors');
 const { sequelize } = require('./models');
+const docs = require('./openapi/docs');
 
 const authRoutes = require('./modules/auth/auth.routes');
 const meRoutes = require('./modules/users/users.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
 
+// ADR-004: customer and admin origins (exact or one-label wildcard). Unknown origins get no CORS headers.
+const allowedOrigin = compile([...config.corsOrigins, ...config.adminOrigins]);
+
 function createApp() {
   const app = express();
   app.disable('x-powered-by');
-  if (config.trustProxy) app.set('trust proxy', 1);
+  // Number of proxy hops (Cloudflare + ingress-nginx) so req.ip is the real client for rate limits.
+  if (config.trustProxy) app.set('trust proxy', config.trustProxy);
 
   app.use(requestId);
   app.use(pinoHttp({ logger, genReqId: (req) => req.id, autoLogging: !config.isTest }));
+  app.use(httpMetrics);
   app.use(helmet());
   app.use(
     cors({
-      origin: config.webOrigin,
+      origin: (origin, done) => done(null, Boolean(origin) && allowedOrigin(origin)),
       credentials: true,
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Step-Up', 'X-Client-Type', 'X-Request-Id'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Step-Up', 'X-Client-Type', 'X-Request-Id', 'X-CSRF-Token', 'Idempotency-Key'],
       exposedHeaders: ['X-Request-Id', 'Retry-After'],
+      maxAge: 600,
     })
   );
   app.use(express.json({ limit: '100kb' }));
   app.use(cookieParser());
   app.use(passport.initialize());
 
+  // Kept for compatibility; Kubernetes probes use /health/live and /health/ready on OPS_PORT.
   app.get('/health', async (_req, res) => {
     try {
       await sequelize.authenticate();
@@ -43,6 +53,8 @@ function createApp() {
       res.status(503).json({ status: 'degraded', db: 'down' });
     }
   });
+
+  docs.mount(app);
 
   const api = express.Router();
   api.use('/auth', authRoutes);

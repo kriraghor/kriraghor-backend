@@ -5,7 +5,7 @@ const config = require('../config');
 
 // PII never goes to logs: phone numbers, OTPs, tokens and passwords are redacted.
 const logger = pino({
-  level: config.isTest ? 'silent' : config.isProd ? 'info' : 'debug',
+  level: config.logLevel ?? (config.isTest ? 'silent' : config.isProd ? 'info' : 'debug'),
   redact: {
     paths: [
       'req.headers.authorization',
