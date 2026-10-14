@@ -2,15 +2,13 @@
 
 const crypto = require('crypto');
 const { Op } = require('sequelize');
-const config = require('../../config');
 const { Session, sequelize } = require('../../models');
 const { sha256, randomToken } = require('../../common/crypto');
 const { E } = require('../../common/errors');
 const audit = require('../audit/audit.service');
 
-// Admin sessions (ADR-004) live ADMIN_REFRESH_TTL_HOURS; customer sessions REFRESH_TOKEN_TTL_DAYS.
-const refreshTtlMs = (audience = 'api') =>
-  audience === 'admin' ? config.auth.adminRefreshTtlHours * 3600 * 1000 : config.auth.refreshTtlDays * 24 * 3600 * 1000;
+// Admin sessions (ADR-004) live auth.admin_refresh_ttl_hours; customer sessions auth.refresh_ttl_days.
+const { refreshTtlMs } = require('./limits');
 
 function deviceLabel(ua = '') {
   if (/android/i.test(ua)) return 'Android';

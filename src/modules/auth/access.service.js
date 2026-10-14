@@ -5,6 +5,7 @@ const config = require('../../config');
 const { Session } = require('../../models');
 const { E } = require('../../common/errors');
 const authz = require('./authz.service');
+const limits = require('./limits');
 
 const LAST_SEEN_THROTTLE_MS = 60 * 1000;
 const AUDIENCES = Object.freeze({ API: 'api', ADMIN: 'admin' });
@@ -39,9 +40,9 @@ async function checkAccessPayload(payload, audience) {
   if (audience === AUDIENCES.ADMIN) {
     if (!principal.isStaff) throw E.forbidden('NOT_STAFF', 'This sign-in is for Kriraghor staff only');
     if (!session.twoFactorAt) throw E.forbidden('TWO_FACTOR_REQUIRED', 'Sign in again with two-factor authentication');
-    const idle = now - session.lastSeenAt.getTime() > config.staff.idleTimeoutMs;
+    const idle = now - session.lastSeenAt.getTime() > limits.staffIdleMs();
     // Absolute lifetime counts from the 2FA moment, which is carried across refresh rotations.
-    const tooOld = now - session.twoFactorAt.getTime() > config.staff.sessionMaxMs;
+    const tooOld = now - session.twoFactorAt.getTime() > limits.staffSessionMaxMs();
     if (idle || tooOld) {
       await session.update({ revokedAt: new Date(), revokeCause: idle ? 'idle' : 'expired' });
       throw E.unauthorized('SESSION_REVOKED', 'You were signed out for inactivity. Sign in again.');

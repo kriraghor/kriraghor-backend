@@ -1,12 +1,12 @@
 'use strict';
 
-const config = require('../../config');
 const { User, UserRole, StaffMember, StepUpToken, OAuthIdentity, sequelize } = require('../../models');
 const google = require('../../providers/google');
 const { E } = require('../../common/errors');
 const { ROLES, SELF_SERVICE_ROLES } = require('../../common/enums');
 const audit = require('../audit/audit.service');
 const otp = require('./otp.service');
+const limits = require('./limits');
 const passwords = require('./password');
 const tokens = require('./token.service');
 const sessions = require('./session.service');
@@ -228,10 +228,10 @@ async function loginWithPassword({ identifier, password }, req, audience = AUDIE
   const ok = await passwords.verify(user.passwordHash, password);
   if (!ok) {
     const count = user.failedLoginCount + 1;
-    const lock = count >= config.login.failLimit;
+    const lock = count >= limits.loginFailLimit();
     await user.update({
       failedLoginCount: lock ? 0 : count,
-      lockedUntil: lock ? new Date(Date.now() + config.login.lockMinutes * 60 * 1000) : user.lockedUntil,
+      lockedUntil: lock ? new Date(Date.now() + limits.loginLockMs()) : user.lockedUntil,
     });
     await audit.record({ action: lock ? 'auth.locked' : 'auth.sign_in_failed', actor: { id: user.id }, entityType: 'user', entityId: user.id, req });
     throw generic();

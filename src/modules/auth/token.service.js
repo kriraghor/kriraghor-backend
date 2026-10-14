@@ -5,7 +5,9 @@ const jwt = require('jsonwebtoken');
 const config = require('../../config');
 const { E } = require('../../common/errors');
 
-const { accessSecret, specialSecret, accessTtl, issuer } = config.auth;
+const limits = require('./limits');
+
+const { accessSecret, specialSecret, issuer } = config.auth;
 
 /**
  * Access token: short-lived, carries only identity + session + authz version.
@@ -16,7 +18,7 @@ function signAccess({ userId, sessionId, authzVersion, audience = 'api' }) {
     subject: userId,
     issuer,
     audience, // "api" (customer apps) or "admin" (admin portal), ADR-004
-    expiresIn: accessTtl,
+    expiresIn: limits.accessTtl(),
     algorithm: 'HS256',
   });
   const { exp } = jwt.decode(token);
@@ -27,7 +29,8 @@ function signAccess({ userId, sessionId, authzVersion, audience = 'api' }) {
  * Special-purpose tokens signed with a different secret so they can never be
  * confused with access tokens: signup, 2FA challenge, step-up.
  */
-const SPECIAL_TTL = { signup: '10m', mfa_challenge: '5m', step_up: '5m' };
+// Step-up lives auth.step_up_ttl_min (M01-FR-11). Signup and 2FA challenge windows are part of the flow, not policy.
+const SPECIAL_TTL = { signup: () => '10m', mfa_challenge: () => '5m', step_up: limits.stepUpTtl };
 
 function signSpecial(typ, claims, subject) {
   const jti = crypto.randomUUID();
@@ -35,7 +38,7 @@ function signSpecial(typ, claims, subject) {
     subject,
     issuer,
     audience: typ,
-    expiresIn: SPECIAL_TTL[typ],
+    expiresIn: SPECIAL_TTL[typ](),
     jwtid: jti,
     algorithm: 'HS256',
   });

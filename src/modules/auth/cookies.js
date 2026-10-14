@@ -2,6 +2,7 @@
 
 const crypto = require('crypto');
 const config = require('../../config');
+const limits = require('./limits');
 
 /**
  * Auth cookies (ADR-004). Names come from COOKIE_PREFIX so staging never collides with prod.
@@ -26,8 +27,7 @@ const names = (audience) =>
     ? { refresh: NAMES.adminRefresh, signedIn: NAMES.adminSignedIn, csrf: NAMES.adminCsrf }
     : { refresh: NAMES.refresh, signedIn: NAMES.signedIn, csrf: NAMES.csrf };
 
-const maxAgeMs = (audience) =>
-  isAdmin(audience) ? config.auth.adminRefreshTtlHours * 3600 * 1000 : config.auth.refreshTtlDays * 24 * 3600 * 1000;
+const maxAgeMs = (audience) => limits.refreshTtlMs(audience);
 
 const refreshOptions = (audience) => ({
   httpOnly: true,

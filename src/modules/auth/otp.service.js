@@ -7,18 +7,24 @@ const { hmac, randomDigits, timingSafeEqualHex } = require('../../common/crypto'
 const { E } = require('../../common/errors');
 const sms = require('../../providers/sms');
 const email = require('../../providers/email');
+const limits = require('./limits');
 
-const cfg = config.otp;
+// Limits come from platform_settings (auth.otp_*), read per call so a change applies at once.
+const CODE_LENGTH = config.otp.length;
+
+const BN_DIGITS = '০১২৩৪৫৬৭৮৯';
+const bnNumber = (n) => String(n).replace(/\d/g, (d) => BN_DIGITS[Number(d)]);
+const minutes = (seconds) => Math.max(1, Math.round(seconds / 60));
 
 const MESSAGES = {
-  en: (code) => `Your Kriraghor code is ${code}. It expires in 5 minutes. Never share it with anyone.`,
-  bn: (code) => `আপনার ক্রীড়াঘর কোড ${code}। ৫ মিনিটের মধ্যে মেয়াদ শেষ হবে। কাউকে কোডটি দেবেন না।`,
+  en: (code, ttl) => `Your Kriraghor code is ${code}. It expires in ${minutes(ttl)} minutes. Never share it with anyone.`,
+  bn: (code, ttl) => `আপনার ক্রীড়াঘর কোড ${code}। ${bnNumber(minutes(ttl))} মিনিটের মধ্যে মেয়াদ শেষ হবে। কাউকে কোডটি দেবেন না।`,
 };
 
 const EMAIL_SUBJECT = { en: 'Your Kriraghor code', bn: 'আপনার ক্রীড়াঘর কোড' };
 
-function emailBody(code, locale) {
-  const text = (MESSAGES[locale] || MESSAGES.en)(code);
+function emailBody(code, locale, ttl) {
+  const text = (MESSAGES[locale] || MESSAGES.en)(code, ttl);
   const html = `<!doctype html><html><body style="margin:0;background:#F4F3EF;font-family:Arial,Helvetica,sans-serif;color:#201E1D">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
     <table role="presentation" width="100%" style="max-width:480px;background:#ffffff;border-radius:8px" cellpadding="0" cellspacing="0">
@@ -26,7 +32,7 @@ function emailBody(code, locale) {
       <tr><td style="padding:24px">
         <p style="margin:0 0 12px">${locale === 'bn' ? 'আপনার যাচাই কোড' : 'Your verification code'}</p>
         <p style="margin:0 0 16px;font-size:32px;letter-spacing:6px;font-weight:bold">${code}</p>
-        <p style="margin:0;color:#5F5E5A;font-size:14px">${locale === 'bn' ? '৫ মিনিটের মধ্যে মেয়াদ শেষ হবে। কাউকে কোডটি দেবেন না।' : 'It expires in 5 minutes. Never share it with anyone, including Kriraghor staff.'}</p>
+        <p style="margin:0;color:#5F5E5A;font-size:14px">${locale === 'bn' ? `${bnNumber(minutes(ttl))} মিনিটের মধ্যে মেয়াদ শেষ হবে। কাউকে কোডটি দেবেন না।` : `It expires in ${minutes(ttl)} minutes. Never share it with anyone, including Kriraghor staff.`}</p>
       </td></tr>
     </table>
     <p style="color:#888780;font-size:12px;margin:16px 0 0">${locale === 'bn' ? 'আপনি অনুরোধ না করলে এই ইমেলটি উপেক্ষা করুন।' : "If you didn't ask for this code, you can ignore this email."}</p>
@@ -49,6 +55,7 @@ function rateLimited(retryAfterSeconds) {
  */
 async function issue({ target, purpose, ip, locale = 'en', deliver = true }) {
   const now = Date.now();
+  const cfg = limits.otp();
 
   const recent = await OtpCode.findAll({
     where: { target: target.value, purpose, createdAt: { [Op.gt]: new Date(now - cfg.windowSeconds * 1000) } },
@@ -67,7 +74,7 @@ async function issue({ target, purpose, ip, locale = 'en', deliver = true }) {
     if (perIp >= cfg.maxSendsPerIpHour) throw rateLimited(3600);
   }
 
-  const code = randomDigits(cfg.length);
+  const code = randomDigits(CODE_LENGTH);
   await sequelize.transaction(async (transaction) => {
     // Only the newest code for a target/purpose is valid.
     await OtpCode.update(
@@ -87,8 +94,8 @@ async function issue({ target, purpose, ip, locale = 'en', deliver = true }) {
   });
 
   if (deliver) {
-    if (target.type === 'phone') await sms.send({ to: target.value, text: (MESSAGES[locale] || MESSAGES.en)(code) });
-    else await email.send({ to: target.value, ...emailBody(code, locale) });
+    if (target.type === 'phone') await sms.send({ to: target.value, text: (MESSAGES[locale] || MESSAGES.en)(code, cfg.ttlSeconds) });
+    else await email.send({ to: target.value, ...emailBody(code, locale, cfg.ttlSeconds) });
   }
   return { expiresInSeconds: cfg.ttlSeconds, resendInSeconds: cfg.resendCooldownSeconds };
 }
@@ -98,6 +105,7 @@ async function issue({ target, purpose, ip, locale = 'en', deliver = true }) {
  * the code is burned when the limit is reached.
  */
 async function consume({ target, purpose, code }) {
+  const { maxAttempts } = limits.otp();
   // The transaction must COMMIT the attempt counter / expiry before we report failure;
   // throwing inside it would roll the counter back and allow unlimited guesses.
   const outcome = await sequelize.transaction(async (transaction) => {
@@ -114,8 +122,8 @@ async function consume({ target, purpose, code }) {
     }
     if (!timingSafeEqualHex(otp.codeHash, codeHash(target.value, purpose, String(code)))) {
       const attempts = otp.attempts + 1;
-      await otp.update({ attempts, consumedAt: attempts >= cfg.maxAttempts ? new Date() : null }, { transaction });
-      return { ok: false, code: 'OTP_INVALID', left: Math.max(0, cfg.maxAttempts - attempts) };
+      await otp.update({ attempts, consumedAt: attempts >= maxAttempts ? new Date() : null }, { transaction });
+      return { ok: false, code: 'OTP_INVALID', left: Math.max(0, maxAttempts - attempts) };
     }
     await otp.update({ consumedAt: new Date() }, { transaction });
     return { ok: true };

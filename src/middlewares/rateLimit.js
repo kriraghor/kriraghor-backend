@@ -5,6 +5,7 @@ const { RedisStore } = require('rate-limit-redis');
 const config = require('../config');
 const { E } = require('../common/errors');
 const { getRedis } = require('../common/redis');
+const settings = require('../modules/settings/settings.service');
 
 /**
  * Limits are shared by every API pod through Redis (CLAUDE.md: no in-memory rate limits).
@@ -19,10 +20,11 @@ function store(name) {
   });
 }
 
-function limiter(name, { windowMs, limit, code = 'RATE_LIMITED' }) {
+/** `settingKey` holds the limit per window (M03 ratelimit.*); read per request so a change applies at once. */
+function limiter(name, { windowMs, settingKey, code = 'RATE_LIMITED' }) {
   return rateLimit({
     windowMs,
-    limit: config.isTest ? limit * 100 : limit,
+    limit: () => settings.get(settingKey) * (config.isTest ? 100 : 1),
     standardHeaders: 'draft-7',
     legacyHeaders: false,
     store: store(name),
@@ -34,7 +36,7 @@ function limiter(name, { windowMs, limit, code = 'RATE_LIMITED' }) {
 }
 
 module.exports = {
-  authGeneral: limiter('auth', { windowMs: 15 * 60 * 1000, limit: 300 }),
-  otpSend: limiter('otp', { windowMs: 60 * 60 * 1000, limit: 20, code: 'OTP_RATE_LIMITED' }),
-  credential: limiter('cred', { windowMs: 15 * 60 * 1000, limit: 30 }), // login, OTP verify, TOTP, reset
+  authGeneral: limiter('auth', { windowMs: 15 * 60 * 1000, settingKey: 'ratelimit.global_per_15min' }),
+  otpSend: limiter('otp', { windowMs: 60 * 60 * 1000, settingKey: 'ratelimit.otp_per_hour', code: 'OTP_RATE_LIMITED' }),
+  credential: limiter('cred', { windowMs: 15 * 60 * 1000, settingKey: 'ratelimit.credential_per_15min' }), // login, OTP verify, TOTP, reset
 };

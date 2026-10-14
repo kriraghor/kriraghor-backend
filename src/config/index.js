@@ -38,15 +38,12 @@ const schema = z.object({
 
   JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 characters'),
   JWT_SPECIAL_SECRET: z.string().min(32, 'JWT_SPECIAL_SECRET must be at least 32 characters'),
-  ACCESS_TOKEN_TTL: z.string().default('15m'),
-  REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
   COOKIE_SECURE: bool.default(false),
   // Cookie names are "<prefix>_rt", "<prefix>_si", ... so staging ("kgstg") never collides with prod ("kg").
   COOKIE_PREFIX: z.string().regex(/^[a-z]{2,8}$/).default('kg'),
   // Domain for the readable hint and CSRF cookies, e.g. ".kriraghor.com". Empty = host-only (plain localhost ports).
   COOKIE_HINT_DOMAIN: z.string().default(''),
   CSRF_SECRET: z.string().min(32, 'CSRF_SECRET must be at least 32 characters'),
-  ADMIN_REFRESH_TTL_HOURS: z.coerce.number().int().positive().default(12),
   DATA_ENCRYPTION_KEY: z
     .string()
     .refine((v) => Buffer.from(v, 'base64').length === 32, 'DATA_ENCRYPTION_KEY must be 32 bytes, base64-encoded'),
@@ -54,9 +51,6 @@ const schema = z.object({
 
   SMS_DRIVER: z.enum(['console', 'memory']).default('console'),
   PASSWORD_BREACH_CHECK: bool.default(false),
-  OTP_SENDS_PER_IP_HOUR: z.coerce.number().int().positive().default(10),
-  STAFF_IDLE_TIMEOUT_MIN: z.coerce.number().int().positive().default(30),
-  STAFF_SESSION_MAX_HOURS: z.coerce.number().int().positive().default(12),
 
   EMAIL_DRIVER: z.enum(['console', 'memory', 'smtp']).default('console'),
   EMAIL_FROM: z.string().default('Kriraghor <no-reply@kriraghor.local>'),
@@ -115,10 +109,7 @@ module.exports = {
   auth: {
     accessSecret: env.JWT_ACCESS_SECRET,
     specialSecret: env.JWT_SPECIAL_SECRET,
-    accessTtl: env.ACCESS_TOKEN_TTL,
-    refreshTtlDays: env.REFRESH_TOKEN_TTL_DAYS,
     cookieSecure: env.COOKIE_SECURE,
-    adminRefreshTtlHours: env.ADMIN_REFRESH_TTL_HOURS,
     cookies: {
       refresh: `${env.COOKIE_PREFIX}_rt`,
       adminRefresh: `${env.COOKIE_PREFIX}_art`,
@@ -131,22 +122,9 @@ module.exports = {
     csrfSecret: env.CSRF_SECRET,
     issuer: 'kriraghor-api',
   },
-  otp: {
-    hashSecret: env.OTP_HASH_SECRET,
-    length: 6,
-    ttlSeconds: 300,
-    maxAttempts: 5,
-    resendCooldownSeconds: 60,
-    maxSendsPerWindow: 3,
-    windowSeconds: 600,
-    maxSendsPerIpHour: env.OTP_SENDS_PER_IP_HOUR,
-  },
+  // OTP, login, session and staff limits live in platform_settings (M03 auth.*), read via modules/auth/limits.js.
+  otp: { hashSecret: env.OTP_HASH_SECRET, length: 6 },
   passwordBreachCheck: env.PASSWORD_BREACH_CHECK,
-  staff: {
-    idleTimeoutMs: env.STAFF_IDLE_TIMEOUT_MIN * 60 * 1000,
-    sessionMaxMs: env.STAFF_SESSION_MAX_HOURS * 3600 * 1000,
-  },
-  login: { failLimit: 5, lockMinutes: 15 },
   crypto: {
     dataKey: Buffer.from(env.DATA_ENCRYPTION_KEY, 'base64'),
   },
