@@ -17,6 +17,8 @@ const docs = require('./openapi/docs');
 const authRoutes = require('./modules/auth/auth.routes');
 const meRoutes = require('./modules/users/users.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
+const settingsRoutes = require('./modules/settings/settings.routes');
+const catalogRoutes = require('./modules/catalog/catalog.routes');
 
 // ADR-004: customer and admin origins (exact or one-label wildcard). Unknown origins get no CORS headers.
 const allowedOrigin = compile([...config.corsOrigins, ...config.adminOrigins]);
@@ -59,6 +61,11 @@ function createApp() {
   const api = express.Router();
   api.use('/auth', authRoutes);
   api.use('/me', meRoutes);
+  api.use('/settings', settingsRoutes.publicRouter);
+  api.use('/catalog', catalogRoutes.publicRouter);
+  // Module admin routers first: each authenticates itself, so /admin does not run auth twice.
+  api.use('/admin/settings', settingsRoutes.adminRouter);
+  api.use('/admin/catalog', catalogRoutes.adminRouter);
   api.use('/admin', adminRoutes);
   app.use(config.apiPrefix, api);
 

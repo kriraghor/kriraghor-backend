@@ -11,7 +11,8 @@ services:
       MYSQL_PASSWORD: kriraghor
       MYSQL_ROOT_PASSWORD: root
       TZ: UTC
-    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci", "--default-time-zone=+00:00"]
+    # log-bin-trust-function-creators: migrations create the M03 append-only triggers as the app user.
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci", "--default-time-zone=+00:00", "--log-bin-trust-function-creators=1"]
     ports:
       - "3306:3306"
     volumes:

@@ -20,8 +20,9 @@
     "db:seed": "sequelize-cli db:seed:all",
     "create:master": "node scripts/create-master.js",
     "openapi": "node scripts/openapi.js",
-    "test": "jest --runInBand",
-    "lint": "eslint src tests scripts"
+    "test": "jest --runInBand --coverage",
+    "lint": "eslint src tests scripts",
+    "release": "node scripts/release.js"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^9.1.0",

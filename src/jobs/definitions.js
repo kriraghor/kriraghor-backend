@@ -2,6 +2,7 @@
 
 const { QUEUES } = require('./queues');
 const { liftExpiredSuspensions } = require('../modules/admin/admin-users.service');
+const settingsRequests = require('../modules/settings/change-request.service');
 
 /**
  * Job catalogue. Each job must be idempotent: BullMQ delivers at least once, and a
@@ -18,6 +19,14 @@ const JOBS = [
     queue: QUEUES.IDENTITY,
     every: 60 * 1000,
     run: async () => ({ lifted: await liftExpiredSuspensions() }),
+  },
+  {
+    // M03 §10 settings.apply-scheduled. One delayed job per request (data.requestId) plus this
+    // minutely sweep as the backstop. Idempotent: only approved, due requests apply, under a row lock.
+    name: settingsRequests.APPLY_JOB,
+    queue: QUEUES.SETTINGS,
+    every: 60 * 1000,
+    run: async (data) => settingsRequests.applyDue({ requestId: data.requestId }),
   },
 ];
 

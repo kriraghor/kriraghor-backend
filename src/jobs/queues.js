@@ -7,6 +7,7 @@ const { createRedis } = require('../common/redis');
 /** Every BullMQ queue in the system. Modules add their queue here when they add jobs. */
 const QUEUES = Object.freeze({
   IDENTITY: 'identity',
+  SETTINGS: 'settings',
 });
 
 const prefix = `${config.redis.prefix}:bull`;

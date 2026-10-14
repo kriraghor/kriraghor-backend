@@ -5,7 +5,7 @@ const { sequelize } = require('../db');
 const { ROLE_LIST } = require('../common/enums');
 
 const ROLE_STATUSES = ['applied', 'documents_pending', 'in_review', 'changes_requested', 'active', 'rejected', 'suspended', 'withdrawn'];
-const PERMS = ['approve_listings', 'approve_documents', 'resolve_reports', 'refund_small', 'view_payouts', 'release_payouts', 'edit_fees', 'manage_staff', 'manage_users', 'manage_catalog'];
+const PERMS = ['approve_listings', 'approve_documents', 'resolve_reports', 'refund_small', 'view_payouts', 'release_payouts', 'edit_fees', 'manage_staff', 'manage_users', 'manage_catalog', 'manage_esports'];
 
 const uuidPk = { type: DataTypes.UUID, primaryKey: true, defaultValue: DataTypes.UUIDV4 };
 
@@ -227,6 +227,133 @@ OAuthIdentity.init(
   { sequelize, modelName: 'OAuthIdentity', tableName: 'oauth_identities' }
 );
 
+// ---- M03 settings engine ----
+class PlatformSetting extends Model {}
+PlatformSetting.init(
+  {
+    key: { type: DataTypes.STRING(80), primaryKey: true },
+    category: { type: DataTypes.STRING(30), allowNull: false },
+    value: { type: DataTypes.JSON, allowNull: false },
+    valueType: { type: DataTypes.ENUM('int', 'decimal', 'money', 'bool', 'enum', 'time', 'json', 'int_list', 'string_list'), allowNull: false },
+    unit: DataTypes.STRING(12),
+    minValue: DataTypes.DECIMAL(18, 2),
+    maxValue: DataTypes.DECIMAL(18, 2),
+    enumOptions: DataTypes.JSON,
+    approval: { type: DataTypes.ENUM('single', 'four_eyes'), allowNull: false, defaultValue: 'single' },
+    isPublic: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    labelEn: { type: DataTypes.STRING(160), allowNull: false },
+    labelBn: { type: DataTypes.STRING(160), allowNull: false },
+    whyEn: DataTypes.TEXT,
+    whyBn: DataTypes.TEXT,
+    version: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 1 },
+    updatedBy: DataTypes.UUID,
+  },
+  { sequelize, modelName: 'PlatformSetting', tableName: 'platform_settings' }
+);
+
+const appendOnly = () => {
+  throw new Error('settings_history is append-only');
+};
+class SettingsHistory extends Model {}
+SettingsHistory.init(
+  {
+    id: uuidPk,
+    key: { type: DataTypes.STRING(80), allowNull: false },
+    version: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
+    oldValue: DataTypes.JSON,
+    newValue: { type: DataTypes.JSON, allowNull: false },
+    effectiveAt: { type: DataTypes.DATE(3), allowNull: false },
+    requestId: DataTypes.UUID,
+    changedBy: DataTypes.UUID,
+    approvedBy: DataTypes.UUID,
+    reason: DataTypes.TEXT,
+  },
+  {
+    sequelize,
+    modelName: 'SettingsHistory',
+    tableName: 'settings_history',
+    updatedAt: false,
+    // M03-FR-11: the DB triggers reject UPDATE/DELETE; the model refuses before reaching them.
+    hooks: { beforeUpdate: appendOnly, beforeBulkUpdate: appendOnly, beforeDestroy: appendOnly, beforeBulkDestroy: appendOnly },
+  }
+);
+
+class SettingsChangeRequest extends Model {}
+SettingsChangeRequest.init(
+  {
+    id: uuidPk,
+    status: { type: DataTypes.ENUM('proposed', 'approved', 'applied', 'rejected', 'withdrawn', 'superseded'), allowNull: false, defaultValue: 'proposed' },
+    source: { type: DataTypes.ENUM('fees_screen', 'simulator', 'risk_desk', 'api'), allowNull: false, defaultValue: 'fees_screen' },
+    changes: { type: DataTypes.JSON, allowNull: false },
+    projection: DataTypes.JSON,
+    reason: { type: DataTypes.TEXT, allowNull: false },
+    effectiveAt: { type: DataTypes.DATE(3), allowNull: false },
+    needsFourEyes: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    proposedBy: { type: DataTypes.UUID, allowNull: false },
+    approvedBy: DataTypes.UUID,
+    decidedBy: DataTypes.UUID,
+    decidedAt: DataTypes.DATE(3),
+    decisionNote: DataTypes.TEXT,
+    appliedAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'SettingsChangeRequest', tableName: 'settings_change_requests' }
+);
+
+// ---- M03 esports catalogue ----
+const catalogBase = () => ({
+  id: uuidPk,
+  key: { type: DataTypes.STRING(40), allowNull: false },
+  nameEn: { type: DataTypes.STRING(80), allowNull: false },
+  nameBn: { type: DataTypes.STRING(80), allowNull: false },
+  sort: { type: DataTypes.SMALLINT, allowNull: false, defaultValue: 0 },
+  isActive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+  createdBy: DataTypes.UUID,
+  updatedBy: DataTypes.UUID,
+});
+
+class EsportsGame extends Model {}
+EsportsGame.init(
+  {
+    ...catalogBase(),
+    publisher: DataTypes.STRING(80),
+    platform: { type: DataTypes.ENUM('mobile', 'pc', 'console'), allowNull: false, defaultValue: 'mobile' },
+    uidLabelEn: { type: DataTypes.STRING(40), allowNull: false },
+    uidLabelBn: { type: DataTypes.STRING(40), allowNull: false },
+    uidRegex: { type: DataTypes.STRING(120), allowNull: false },
+    ignMaxLen: { type: DataTypes.SMALLINT.UNSIGNED, allowNull: false },
+    icon: DataTypes.STRING(255),
+  },
+  { sequelize, modelName: 'EsportsGame', tableName: 'esports_games' }
+);
+
+class EsportsMode extends Model {}
+EsportsMode.init(
+  {
+    ...catalogBase(),
+    gameId: { type: DataTypes.UUID, allowNull: false },
+    teamSize: { type: DataTypes.SMALLINT.UNSIGNED, allowNull: false },
+    maxTeams: { type: DataTypes.SMALLINT.UNSIGNED, allowNull: false },
+    maxPlayers: { type: DataTypes.SMALLINT.UNSIGNED, allowNull: false },
+    maxSubs: { type: DataTypes.SMALLINT.UNSIGNED, allowNull: false, defaultValue: 0 },
+  },
+  { sequelize, modelName: 'EsportsMode', tableName: 'esports_modes' }
+);
+
+class EsportsMap extends Model {}
+EsportsMap.init({ ...catalogBase(), gameId: { type: DataTypes.UUID, allowNull: false } }, { sequelize, modelName: 'EsportsMap', tableName: 'esports_maps' });
+
+class EsportsPointsPreset extends Model {}
+EsportsPointsPreset.init(
+  {
+    ...catalogBase(),
+    gameId: { type: DataTypes.UUID, allowNull: false },
+    placementPoints: { type: DataTypes.JSON, allowNull: false },
+    killPoints: { type: DataTypes.SMALLINT.UNSIGNED, allowNull: false, defaultValue: 0 },
+    version: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 1 },
+  },
+  { sequelize, modelName: 'EsportsPointsPreset', tableName: 'esports_points_presets' }
+);
+
 // ---- Associations ----
 User.hasMany(UserRole, { as: 'roles', foreignKey: 'userId' });
 UserRole.belongsTo(User, { as: 'user', foreignKey: 'userId' });
@@ -238,5 +365,30 @@ User.hasMany(StaffPermission, { as: 'staffPermissions', foreignKey: 'userId' });
 User.hasMany(UserSanction, { as: 'sanctions', foreignKey: 'userId' });
 User.hasMany(OAuthIdentity, { as: 'identities', foreignKey: 'userId' });
 OAuthIdentity.belongsTo(User, { as: 'user', foreignKey: 'userId' });
+for (const Child of [EsportsMode, EsportsMap, EsportsPointsPreset]) {
+  Child.belongsTo(EsportsGame, { as: 'game', foreignKey: 'gameId' });
+}
+EsportsGame.hasMany(EsportsMode, { as: 'modes', foreignKey: 'gameId' });
+EsportsGame.hasMany(EsportsMap, { as: 'maps', foreignKey: 'gameId' });
+EsportsGame.hasMany(EsportsPointsPreset, { as: 'presets', foreignKey: 'gameId' });
 
-module.exports = { sequelize, User, UserRole, Session, OtpCode, StaffMember, StaffPermission, UserSanction, StepUpToken, AuditLog, OAuthIdentity };
+module.exports = {
+  sequelize,
+  User,
+  UserRole,
+  Session,
+  OtpCode,
+  StaffMember,
+  StaffPermission,
+  UserSanction,
+  StepUpToken,
+  AuditLog,
+  OAuthIdentity,
+  PlatformSetting,
+  SettingsHistory,
+  SettingsChangeRequest,
+  EsportsGame,
+  EsportsMode,
+  EsportsMap,
+  EsportsPointsPreset,
+};

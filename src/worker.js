@@ -7,6 +7,7 @@ const { initMetrics } = require('./common/metrics');
 const { startOpsServer } = require('./common/ops-server');
 const { closeAllRedis } = require('./common/redis');
 const { sequelize } = require('./models');
+const settings = require('./modules/settings/settings.service');
 const { closeQueues } = require('./jobs/queues');
 const { registerSchedules, startWorkers } = require('./jobs/runtime');
 
@@ -17,6 +18,9 @@ async function main() {
   lifecycle.onShutdown('queues', closeQueues);
 
   await sequelize.authenticate();
+  // M03 boot check: refuse to start before the release step has seeded every setting.
+  await settings.bootCheck();
+  await settings.subscribe();
   const schedules = await registerSchedules();
   const workers = startWorkers();
   // Closing a worker waits for its running jobs to finish.

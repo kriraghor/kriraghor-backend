@@ -1,0 +1,63 @@
+{
+  "seedVersion": 1,
+  "source": "M03 §7.1 [v3] and M21 §6.3. UID regex, IGN length and the non-squad modes are [PROPOSED]; staff can edit them.",
+  "games": [
+    {
+      "key": "pubg_mobile",
+      "nameEn": "PUBG Mobile",
+      "nameBn": "পাবজি মোবাইল",
+      "sort": 1,
+      "publisher": "Krafton / Level Infinite",
+      "platform": "mobile",
+      "uidLabelEn": "Character ID",
+      "uidLabelBn": "ক্যারেক্টার আইডি",
+      "uidRegex": "^[0-9]{5,12}$",
+      "ignMaxLen": 14,
+      "modes": [
+        { "key": "solo", "nameEn": "Solo", "nameBn": "সোলো", "sort": 1, "teamSize": 1, "maxTeams": 100, "maxPlayers": 100, "maxSubs": 0 },
+        { "key": "duo", "nameEn": "Duo", "nameBn": "ডুও", "sort": 2, "teamSize": 2, "maxTeams": 50, "maxPlayers": 100, "maxSubs": 0 },
+        { "key": "squad", "nameEn": "Squad", "nameBn": "স্কোয়াড", "sort": 3, "teamSize": 4, "maxTeams": 25, "maxPlayers": 100, "maxSubs": 1 },
+        { "key": "tdm", "nameEn": "Team Deathmatch", "nameBn": "টিম ডেথম্যাচ", "sort": 4, "teamSize": 4, "maxTeams": 2, "maxPlayers": 8, "maxSubs": 1 }
+      ],
+      "maps": [
+        { "key": "erangel", "nameEn": "Erangel", "nameBn": "এরাঙ্গেল", "sort": 1 },
+        { "key": "miramar", "nameEn": "Miramar", "nameBn": "মিরামার", "sort": 2 },
+        { "key": "sanhok", "nameEn": "Sanhok", "nameBn": "সানহক", "sort": 3 },
+        { "key": "vikendi", "nameEn": "Vikendi", "nameBn": "ভিকেন্ডি", "sort": 4 },
+        { "key": "livik", "nameEn": "Livik", "nameBn": "লিভিক", "sort": 5 }
+      ],
+      "presets": [
+        { "key": "pubgm_squad_standard", "nameEn": "Squad standard (25 teams)", "nameBn": "স্কোয়াড স্ট্যান্ডার্ড (২৫ দল)", "sort": 1, "placementPoints": [15, 12, 10, 8, 6, 4, 2, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "killPoints": 1 }
+      ]
+    },
+    {
+      "key": "free_fire",
+      "nameEn": "Free Fire",
+      "nameBn": "ফ্রি ফায়ার",
+      "sort": 2,
+      "publisher": "Garena",
+      "platform": "mobile",
+      "uidLabelEn": "Player UID",
+      "uidLabelBn": "প্লেয়ার UID",
+      "uidRegex": "^[0-9]{6,12}$",
+      "ignMaxLen": 12,
+      "modes": [
+        { "key": "solo", "nameEn": "BR Solo", "nameBn": "বিআর সোলো", "sort": 1, "teamSize": 1, "maxTeams": 48, "maxPlayers": 50, "maxSubs": 0 },
+        { "key": "duo", "nameEn": "BR Duo", "nameBn": "বিআর ডুও", "sort": 2, "teamSize": 2, "maxTeams": 24, "maxPlayers": 50, "maxSubs": 0 },
+        { "key": "squad", "nameEn": "BR Squad", "nameBn": "বিআর স্কোয়াড", "sort": 3, "teamSize": 4, "maxTeams": 12, "maxPlayers": 50, "maxSubs": 1 },
+        { "key": "clash_squad", "nameEn": "Clash Squad", "nameBn": "ক্ল্যাশ স্কোয়াড", "sort": 4, "teamSize": 4, "maxTeams": 2, "maxPlayers": 8, "maxSubs": 1 }
+      ],
+      "maps": [
+        { "key": "bermuda", "nameEn": "Bermuda", "nameBn": "বারমুডা", "sort": 1 },
+        { "key": "purgatory", "nameEn": "Purgatory", "nameBn": "পারগেটরি", "sort": 2 },
+        { "key": "kalahari", "nameEn": "Kalahari", "nameBn": "কালাহারি", "sort": 3 },
+        { "key": "alpine", "nameEn": "Alpine", "nameBn": "আলপাইন", "sort": 4 },
+        { "key": "nexterra", "nameEn": "NeXTerra", "nameBn": "নেক্সটেরা", "sort": 5 }
+      ],
+      "presets": [
+        { "key": "ff_br_standard", "nameEn": "BR standard (12 squads)", "nameBn": "বিআর স্ট্যান্ডার্ড (১২ স্কোয়াড)", "sort": 1, "placementPoints": [12, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 0], "killPoints": 1 },
+        { "key": "ff_cs_win", "nameEn": "Clash Squad win/loss", "nameBn": "ক্ল্যাশ স্কোয়াড জয়/পরাজয়", "sort": 2, "placementPoints": [1, 0], "killPoints": 0 }
+      ]
+    }
+  ]
+}

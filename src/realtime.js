@@ -11,6 +11,7 @@ const { initMetrics } = require('./common/metrics');
 const { startOpsServer } = require('./common/ops-server');
 const { createRedis, closeAllRedis } = require('./common/redis');
 const { sequelize } = require('./models');
+const settings = require('./modules/settings/settings.service');
 const { createRealtimeServer } = require('./realtime/server');
 
 async function main() {
@@ -19,6 +20,9 @@ async function main() {
   lifecycle.onShutdown('redis', closeAllRedis);
 
   await sequelize.authenticate();
+  // M03 boot check: refuse to start before the release step has seeded every setting.
+  await settings.bootCheck();
+  await settings.subscribe();
   const pub = createRedis('socket-pub');
   const sub = pub.duplicate();
   const adapter = createAdapter(pub, sub, { key: `${config.redis.prefix}:socket.io` });

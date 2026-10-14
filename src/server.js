@@ -8,6 +8,7 @@ const { initMetrics } = require('./common/metrics');
 const { startOpsServer } = require('./common/ops-server');
 const { closeAllRedis } = require('./common/redis');
 const { sequelize } = require('./models');
+const settings = require('./modules/settings/settings.service');
 const { createApp } = require('./app');
 
 async function main() {
@@ -16,6 +17,9 @@ async function main() {
   lifecycle.onShutdown('redis', closeAllRedis);
 
   await sequelize.authenticate();
+  // M03 boot check: refuse to start before the release step has seeded every setting.
+  await settings.bootCheck();
+  await settings.subscribe();
   logger.info({ db: config.db.name }, 'database connected');
 
   const app = createApp();

@@ -55,6 +55,16 @@ function requirePermission(...permissions) {
   };
 }
 
+/** Staff holding at least one of the given permissions (masters hold every permission). */
+function requireAnyPermission(...permissions) {
+  return (req, _res, next) => {
+    if (!req.user) return next(E.unauthorized());
+    if (!req.user.isStaff) return next(E.forbidden('PERMISSION_REQUIRED', 'Staff access is required'));
+    if (permissions.some((p) => authz.hasPermission(req.user, p))) return next();
+    return next(E.forbidden('PERMISSION_REQUIRED', 'You do not have permission to do this', undefined, { anyOf: permissions }));
+  };
+}
+
 /** Staff only. Use after authenticateAdmin (an admin-audience token already implies staff). */
 function requireStaff(req, _res, next) {
   if (!req.user) return next(E.unauthorized());
@@ -92,4 +102,4 @@ function requireGate(action) {
   };
 }
 
-module.exports = { authenticate, authenticateAdmin, optionalAuth, requireRoles, requirePermission, requireStaff, requireMaster, requireStepUp, requireGate };
+module.exports = { authenticate, authenticateAdmin, optionalAuth, requireRoles, requirePermission, requireAnyPermission, requireStaff, requireMaster, requireStepUp, requireGate };

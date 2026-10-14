@@ -37,6 +37,8 @@ function buildOpenApi() {
       { name: 'auth-admin', description: 'Admin portal sign-in, two-factor and step-up (ADR-004)' },
       { name: 'me', description: "The signed-in user's account" },
       { name: 'admin', description: 'Staff desks' },
+      { name: 'settings', description: 'Platform settings, history and four-eyes change requests (M03)' },
+      { name: 'catalog', description: 'Reference catalogues: esports games, modes, maps and points presets (M03)' },
     ],
   });
 }

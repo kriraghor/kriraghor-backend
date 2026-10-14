@@ -48,6 +48,7 @@ const PERMISSIONS = Object.freeze({
   RELEASE_PAYOUTS: 'release_payouts',
   MANAGE_USERS: 'manage_users',
   MANAGE_CATALOG: 'manage_catalog',
+  MANAGE_ESPORTS: 'manage_esports', // M03 esports catalogue, M21 tournaments
   EDIT_FEES: 'edit_fees', // master only
   MANAGE_STAFF: 'manage_staff', // master only
 });
