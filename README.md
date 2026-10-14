@@ -2,7 +2,7 @@
 
 Node.js · Express 5 · Sequelize 6 · MySQL 8 · Passport JWT
 
-The specification for every module is in [`../docs/modules`](../docs/modules/README.md). Modules are built one at a time, in dependency order.
+The specification for every module is in [`../kriraghor-docs/modules`](../kriraghor-docs/modules/README.md). Modules are built one at a time, in dependency order.
 
 | Module | Status |
 |---|---|

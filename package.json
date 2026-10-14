@@ -1,5 +1,5 @@
 {
-  "name": "kriraghor-api",
+  "name": "kriraghor-backend",
   "version": "0.1.0",
   "private": true,
   "description": "Kriraghor backend API (Express + Sequelize + MySQL)",
