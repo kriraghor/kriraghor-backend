@@ -1,36 +1,20 @@
 'use strict';
 
-const config = require('../../config');
 const service = require('./auth.service');
+const cookies = require('./cookies');
 const { User } = require('../../models');
 const { serializePrincipal } = require('../users/users.serializer');
 
-const COOKIE = config.auth.refreshCookieName;
-const cookiePath = `${config.apiPrefix}/auth`;
-
 const isMobileClient = (req) => req.get('x-client-type') === 'mobile';
-
-function setRefreshCookie(res, token) {
-  res.cookie(COOKIE, token, {
-    httpOnly: true,
-    secure: config.auth.cookieSecure,
-    sameSite: 'strict',
-    path: cookiePath,
-    maxAge: config.auth.refreshTtlDays * 24 * 3600 * 1000,
-  });
-}
-
-function clearRefreshCookie(res) {
-  res.clearCookie(COOKIE, { httpOnly: true, secure: config.auth.cookieSecure, sameSite: 'strict', path: cookiePath });
-}
 
 /**
  * Shape the response for any flow that may end signed in.
- * Web: refresh token only in an httpOnly cookie. Mobile (X-Client-Type: mobile): also in the body.
+ * Web: the refresh token goes only in an httpOnly cookie, plus the hint and CSRF cookies (ADR-004).
+ * Mobile (X-Client-Type: mobile): the refresh token is also in the body; no cookies are needed.
  */
 function sendAuthResult(req, res, result, status = 200) {
   if (result.status !== 'signed_in') return res.status(status).json(result);
-  setRefreshCookie(res, result.refreshToken);
+  if (!isMobileClient(req)) cookies.setSessionCookies(res, result);
   const body = {
     status: 'signed_in',
     accessToken: result.accessToken,
@@ -39,6 +23,33 @@ function sendAuthResult(req, res, result, status = 200) {
   };
   if (isMobileClient(req)) body.refreshToken = result.refreshToken;
   return res.status(status).json(body);
+}
+
+/** Refresh for one audience: customer ("api") or admin. */
+function refreshFor(audience) {
+  const { refresh: cookieName } = cookies.names(audience);
+  return async (req, res) => {
+    const fromBody = audience === 'api' && isMobileClient(req) ? req.body?.refreshToken : undefined;
+    const token = req.cookies?.[cookieName] || fromBody;
+    try {
+      const result = await service.refresh(token, req, audience);
+      if (!isMobileClient(req)) cookies.setSessionCookies(res, result);
+      const body = { accessToken: result.accessToken, accessTokenExpiresAt: result.accessTokenExpiresAt };
+      if (isMobileClient(req)) body.refreshToken = result.refreshToken;
+      res.json(body);
+    } catch (err) {
+      cookies.clearSessionCookies(res, audience);
+      throw err;
+    }
+  };
+}
+
+function logoutFor(audience) {
+  return async (req, res) => {
+    await service.logout(req.user, req.auth.sessionId, req, { all: req.query.all === 'true' });
+    cookies.clearSessionCookies(res, audience);
+    res.status(204).end();
+  };
 }
 
 module.exports = {
@@ -62,8 +73,11 @@ module.exports = {
   async login(req, res) {
     sendAuthResult(req, res, await service.loginWithPassword(req.body, req));
   },
+  async adminLogin(req, res) {
+    sendAuthResult(req, res, await service.adminLogin(req.body, req));
+  },
   async passwordReset(req, res) {
-    clearRefreshCookie(res);
+    cookies.clearSessionCookies(res, 'api');
     res.json(await service.resetPassword(req.body, req));
   },
   async totpSetup(req, res) {
@@ -78,22 +92,8 @@ module.exports = {
   async stepUp(req, res) {
     res.json(await service.stepUp(req.user, req.auth.sessionId, req.body, req));
   },
-  async refresh(req, res) {
-    const token = req.cookies?.[COOKIE] || (isMobileClient(req) ? req.body?.refreshToken : undefined);
-    try {
-      const result = await service.refresh(token, req);
-      setRefreshCookie(res, result.refreshToken);
-      const body = { accessToken: result.accessToken, accessTokenExpiresAt: result.accessTokenExpiresAt };
-      if (isMobileClient(req)) body.refreshToken = result.refreshToken;
-      res.json(body);
-    } catch (err) {
-      clearRefreshCookie(res);
-      throw err;
-    }
-  },
-  async logout(req, res) {
-    await service.logout(req.user, req.auth.sessionId, req, { all: req.query.all === 'true' });
-    clearRefreshCookie(res);
-    res.status(204).end();
-  },
+  refresh: refreshFor('api'),
+  adminRefresh: refreshFor('admin'),
+  logout: logoutFor('api'),
+  adminLogout: logoutFor('admin'),
 };

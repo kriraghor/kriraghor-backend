@@ -41,8 +41,14 @@ module.exports = {
   challenge: z.object({ challengeToken: z.string().min(20) }),
   challengeCode: z.object({ challengeToken: z.string().min(20), code: code6 }),
   stepUp: z.object({
-    scope: z.enum(['settings.write', 'staff.write', 'payout.approve', 'refund.large', 'user.ban', 'audit.export', 'twofa.reset']),
+    scope: z.enum(['settings.write', 'staff.write', 'payout.approve', 'refund.large', 'user.ban', 'audit.export', 'twofa.reset', 'esports.money']),
     code: code6,
   }),
-  refresh: z.object({ refreshToken: z.string().min(20).optional() }),
+  // Browsers send no body; mobile sends { refreshToken }.
+  refresh: z.preprocess((v) => v ?? {}, z.object({ refreshToken: z.string().min(20).optional() })),
+  // ADR-004 admin sign-in: password, or a login OTP requested with POST /auth/otp/send.
+  adminLogin: z.union([
+    z.object({ identifier: loginIdentifierSchema, password: z.string().min(1).max(128) }),
+    z.object({ target: identifierSchema, code: code6 }),
+  ]),
 };

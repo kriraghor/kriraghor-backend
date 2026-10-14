@@ -1,34 +1,33 @@
 'use strict';
 
+// API entrypoint (ADR-003 backend-api). Scheduled jobs run in src/worker.js, never here.
 const config = require('./config');
 const logger = require('./common/logger');
+const lifecycle = require('./common/lifecycle');
+const { initMetrics } = require('./common/metrics');
+const { startOpsServer } = require('./common/ops-server');
+const { closeAllRedis } = require('./common/redis');
 const { sequelize } = require('./models');
 const { createApp } = require('./app');
-const { liftExpiredSuspensions } = require('./modules/admin/admin-users.service');
 
 async function main() {
+  initMetrics('api');
+  lifecycle.onShutdown('database', () => sequelize.close());
+  lifecycle.onShutdown('redis', closeAllRedis);
+
   await sequelize.authenticate();
   logger.info({ db: config.db.name }, 'database connected');
 
   const app = createApp();
   const server = app.listen(config.port, () => logger.info(`Kriraghor API listening on :${config.port}${config.apiPrefix}`));
+  // Keep-alive longer than the ingress idle timeout, so the proxy never reuses a closed socket.
+  server.keepAliveTimeout = 65000;
+  server.headersTimeout = 66000;
+  lifecycle.onShutdown('http', () => new Promise((resolve) => server.close(() => resolve())));
 
-  // Lightweight scheduler until BullMQ arrives (M01 §10 identity.sanction-expire).
-  const timer = setInterval(() => {
-    liftExpiredSuspensions().catch((err) => logger.error({ err }, 'sanction-expire job failed'));
-  }, 60 * 1000);
-
-  const shutdown = (signal) => {
-    logger.info({ signal }, 'shutting down');
-    clearInterval(timer);
-    server.close(async () => {
-      await sequelize.close();
-      process.exit(0);
-    });
-    setTimeout(() => process.exit(1), 10000).unref();
-  };
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
+  startOpsServer();
+  lifecycle.handleSignals();
+  lifecycle.setReady(true);
 }
 
 main().catch((err) => {

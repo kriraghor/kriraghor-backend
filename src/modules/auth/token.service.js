@@ -11,11 +11,11 @@ const { accessSecret, specialSecret, accessTtl, issuer } = config.auth;
  * Access token: short-lived, carries only identity + session + authz version.
  * Roles/permissions are always re-read server-side (M01-FR-08).
  */
-function signAccess({ userId, sessionId, authzVersion }) {
+function signAccess({ userId, sessionId, authzVersion, audience = 'api' }) {
   const token = jwt.sign({ sid: sessionId, av: authzVersion, typ: 'access' }, accessSecret, {
     subject: userId,
     issuer,
-    audience: 'api',
+    audience, // "api" (customer apps) or "admin" (admin portal), ADR-004
     expiresIn: accessTtl,
     algorithm: 'HS256',
   });

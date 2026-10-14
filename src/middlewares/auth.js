@@ -6,18 +6,25 @@ const authz = require('../modules/auth/authz.service');
 const gate = require('../modules/auth/gate.service');
 const authService = require('../modules/auth/auth.service');
 
-/** Require a valid access token. Sets req.user (principal). */
-function authenticate(req, res, next) {
-  passport.authenticate('jwt', { session: false }, (err, principal, info) => {
-    if (err) return next(err);
-    if (!principal) {
-      const expired = info?.name === 'TokenExpiredError';
-      return next(E.unauthorized(expired ? 'TOKEN_EXPIRED' : 'AUTH_REQUIRED', expired ? 'Your session needs a refresh' : 'Sign in to continue'));
-    }
-    req.user = principal;
-    return next();
-  })(req, res, next);
+function authenticateWith(strategyName) {
+  return (req, res, next) => {
+    passport.authenticate(strategyName, { session: false }, (err, principal, info) => {
+      if (err) return next(err);
+      if (!principal) {
+        const expired = info?.name === 'TokenExpiredError';
+        return next(E.unauthorized(expired ? 'TOKEN_EXPIRED' : 'AUTH_REQUIRED', expired ? 'Your session needs a refresh' : 'Sign in to continue'));
+      }
+      req.user = principal;
+      return next();
+    })(req, res, next);
+  };
 }
+
+/** Require a valid customer access token (aud "api"). Sets req.user (principal). */
+const authenticate = authenticateWith('jwt');
+
+/** Require a valid staff access token (aud "admin", ADR-004). Used by /admin/* and /auth/step-up. */
+const authenticateAdmin = authenticateWith('jwt-admin');
 
 /** Like authenticate, but anonymous requests continue with req.user = null. */
 function optionalAuth(req, res, next) {
@@ -48,6 +55,7 @@ function requirePermission(...permissions) {
   };
 }
 
+/** Staff only. Use after authenticateAdmin (an admin-audience token already implies staff). */
 function requireStaff(req, _res, next) {
   if (!req.user) return next(E.unauthorized());
   if (!req.user.isStaff) return next(E.forbidden('PERMISSION_REQUIRED', 'Staff access is required'));
@@ -84,4 +92,4 @@ function requireGate(action) {
   };
 }
 
-module.exports = { authenticate, optionalAuth, requireRoles, requirePermission, requireStaff, requireMaster, requireStepUp, requireGate };
+module.exports = { authenticate, authenticateAdmin, optionalAuth, requireRoles, requirePermission, requireStaff, requireMaster, requireStepUp, requireGate };

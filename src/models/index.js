@@ -98,6 +98,7 @@ Session.init(
     ip: DataTypes.STRING(45),
     deviceLabel: DataTypes.STRING(80),
     twoFactorAt: DataTypes.DATE(3),
+    audience: { type: DataTypes.ENUM('api', 'admin'), allowNull: false, defaultValue: 'api' },
     lastSeenAt: { type: DataTypes.DATE(3), allowNull: false, defaultValue: DataTypes.NOW },
     expiresAt: { type: DataTypes.DATE(3), allowNull: false },
     revokedAt: DataTypes.DATE(3),

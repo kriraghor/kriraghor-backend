@@ -11,17 +11,20 @@ describe('staff two-factor', () => {
     const master = await h.createSignedInMaster();
     expect(master.user.isMaster).toBe(true);
     expect(master.user.twoFactor).toEqual({ required: true, enabled: true });
-    const me = await api().get(`${P}/me`).set(h.bearer(master)).expect(200);
+    const me = await api().get(`${P}/admin/me`).set(h.bearer(master)).expect(200);
     expect(me.body.permissions).toEqual(expect.arrayContaining(['edit_fees', 'manage_staff', 'manage_users']));
+    // ADR-004: an admin token is not valid on customer endpoints.
+    const customer = await api().get(`${P}/me`).set(h.bearer(master)).expect(401);
+    expect(customer.body.code).toBe('TOKEN_AUDIENCE_INVALID');
   });
 
   it('rejects a wrong TOTP code', async () => {
     const master = await h.createSignedInMaster();
     await h.allowResend(master.phone);
     await api().post(`${P}/auth/otp/send`).send({ target: master.phone, purpose: 'login' }).expect(202);
-    const v = await api().post(`${P}/auth/otp/verify`).send({ target: master.phone, purpose: 'login', code: h.lastCode(master.phone) }).expect(200);
+    const v = await h.adminPost('/auth/admin/login').send({ target: master.phone, code: h.lastCode(master.phone) }).expect(200);
     expect(v.body.status).toBe('two_factor_required');
-    const r = await api().post(`${P}/auth/2fa/totp/verify`).send({ challengeToken: v.body.challengeToken, code: '000000' }).expect(400);
+    const r = await h.adminPost('/auth/2fa/totp/verify').send({ challengeToken: v.body.challengeToken, code: '000000' }).expect(400);
     expect(['TOTP_INVALID', 'TOTP_REPLAYED']).toContain(r.body.code);
   });
 });
@@ -88,8 +91,9 @@ describe('staff permissions', () => {
 
   it('keeps non-staff out of /admin', async () => {
     const member = await h.signupUser();
-    const r = await api().get(`${P}/admin/users`).set(h.bearer(member)).expect(403);
-    expect(r.body.code).toBe('PERMISSION_REQUIRED');
+    // ADR-004: a customer token has the wrong audience for the admin API.
+    const r = await api().get(`${P}/admin/users`).set(h.bearer(member)).expect(401);
+    expect(r.body.code).toBe('TOKEN_AUDIENCE_INVALID');
   });
 
   it('lets only masters see the staff list', async () => {

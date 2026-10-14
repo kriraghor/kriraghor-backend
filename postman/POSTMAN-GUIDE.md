@@ -30,13 +30,14 @@ npm run dev
 2. **Delete any old copies** of "Kriraghor API: M01 Auth & RBAC" in the left sidebar under **Collections**: right-click → **Delete**.
 3. Click **Import**. It's the icon next to the **+** at the top of the left sidebar. You can also use **Ctrl + O**, or **File → Import**.
 4. Drag in this file, or click *files* and choose it:
-   `D:\kriraghor\backend\postman\kriraghor-auth.postman_collection.json`
+   `D:\kriraghor\kriraghor-backend\postman\kriraghor-auth.postman_collection.json`
 5. If Postman asks to "connect a local project / folder", choose **Skip / Cancel**. Only import the file.
 6. You now see the collection with these folders:
+   - `0. Smoke (no codes needed)`: run it first; every request has a pass/fail test
    - `1. Member signup (OTP) and gate`
    - `1b. Email OTP, username, Google`
    - `2. Password, sessions, refresh`
-   - `3. Master admin (TOTP, step-up, RBAC)`
+   - `3. Admin portal: master (TOTP, step-up, RBAC)`
 
 ---
 
@@ -94,7 +95,7 @@ Folder: **1. Member signup (OTP) and gate**
 | 5 | **Sign up with a ground_owner application** → Send | `201`, `"status": "signed_in"`, `accessToken`; roles `ground_owner: applied` and `member: applied` |
 | 6 | **Me** → Send | `200`, your profile |
 | 7 | **Gate: book a ground** → Send | `"allowed": false, "code": "KYC_REQUIRED"`: the NID isn't verified yet (correct) |
-| 8 | **RBAC: member opens /admin** → Send | `403`, `"code": "PERMISSION_REQUIRED"`: members can't enter admin (correct) |
+| 8 | **RBAC: member token on /admin** → Send | `401`, `"code": "TOKEN_AUDIENCE_INVALID"`: customer tokens never work on the admin API (correct) |
 
 If step 4 shows `"status": "signed_in"` instead, this phone already has an account and you were simply logged in. Use a new `phone` value to test sign-up again.
 
@@ -127,7 +128,7 @@ Folder: **2. Password, sessions, refresh**. Run it after Part D, with the same `
 | Step | Request | You should see |
 |---|---|---|
 | 1 | **Login with password** | `200`, `"status": "signed_in"`. The Part D signup already set the password `Turf-Booking-2026` |
-| 2 | **Refresh (rotates the cookie)** | `200`, a new `accessToken`. Click **Cookies** (under Send) → `localhost` → `kg_rt` changes each time |
+| 2 | **Refresh (rotates the cookie)** | `200`, a new `accessToken`. Click **Cookies** (under Send) → `localhost` → `kg_rt` changes each time. The request sends `Origin` and `X-CSRF-Token` for you (ADR-004); without them you get `403` |
 | 3 | **List my sessions** | A list with one session marked `"current": true` |
 | 4 | **Apply for the organiser role** | `201` |
 | 5 | **Update profile** | `401 AUTHZ_STALE`: your role changed, so the old token is stale (correct). Run **Refresh**, then **Update profile** again → `200` |
@@ -137,7 +138,7 @@ Folder: **2. Password, sessions, refresh**. Run it after Part D, with the same `
 ---
 
 ## Part G: Test 4, master admin (2FA, approvals, staff)
-Folder: **3. Master admin (TOTP, step-up, RBAC)**
+Folder: **3. Admin portal: master (TOTP, step-up, RBAC)**
 
 ### G1. Install an authenticator app (once)
 On your phone, install **Google Authenticator** (or Microsoft Authenticator or Authy).
@@ -146,13 +147,13 @@ On your phone, install **Google Authenticator** (or Microsoft Authenticator or A
 | Step | Request | What to do / see |
 |---|---|---|
 | 1 | **Send OTP to master** | `202`. Copy the code for `+8801711000001` from the terminal into `otp` → **Ctrl + S** |
-| 2 | **Verify OTP (gives challengeToken)** | `"status": "two_factor_setup_required"` (first time). There's no access token yet: 2FA is required |
+| 2 | **Admin login with OTP (gives challengeToken)** | `"status": "two_factor_setup_required"` (first time). There's no access token yet: 2FA is required. Staff can only sign in here; the customer **Verify OTP** answers `403 STAFF_USE_ADMIN_PORTAL` |
 | 3 | **TOTP setup (first time only)** | The response has a `"secret"` like `JBSWY3DPEHPK3PXP` |
 | 4 | In the app: **+** → **Enter a setup key** → Account name: `Kriraghor`, Key: the secret, Type: **Time based** → Add | The app shows a 6-digit code that changes every 30 s |
 | 5 | Put the current app code in `totp` → **Ctrl + S** → **TOTP activate (first time), signs in** | `200`, `"status": "signed_in"` |
-| 6 | **Me (master holds every permission)** | `"isMaster": true` and the full permissions list |
+| 6 | **Admin me (master holds every permission)** | `"isMaster": true` and the full permissions list. The token is saved as `adminAccessToken`, separate from the member's `accessToken` |
 
-Next time the master signs in: **Send OTP to master** → **Verify OTP** (now `"two_factor_required"`) → put the app code in `totp` → **TOTP verify (later sign-ins)**.
+Next time the master signs in: **Send OTP to master** → **Admin login with OTP** (now `"two_factor_required"`) → put the app code in `totp` → **TOTP verify (later sign-ins)**.
 
 ### G3. Admin actions (the member from Part D is the target)
 `targetUserId` was saved automatically when you signed up the member. Run these in order:

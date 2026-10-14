@@ -1,0 +1,9 @@
+{
+  "identities": [
+    {
+      "name": "kriraghor-dev",
+      "credentials": [{ "accessKey": "kriraghor", "secretKey": "kriraghor-dev-s3-secret" }],
+      "actions": ["Admin", "Read", "List", "Tagging", "Write"]
+    }
+  ]
+}

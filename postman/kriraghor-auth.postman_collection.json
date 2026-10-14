@@ -1,13 +1,25 @@
 {
   "info": {
     "name": "Kriraghor API: M01 Auth & RBAC",
-    "description": "Start the API with `npm run dev` in /backend. OTP codes are printed in the server console (SMS_DRIVER=console). Paste them into the `otp` variable, and authenticator codes into `totp`. Tokens are captured into collection variables automatically. The refresh token is an httpOnly cookie, which Postman keeps for you.",
+    "description": "Start the stack: `docker compose up -d`, then `npm run dev` in kriraghor-backend.\n\nOTP codes print in the API console (SMS_DRIVER=console); email codes are in Mailpit at http://localhost:8025. Paste them into the `otp` variable, and authenticator codes into `totp`.\n\nCustomer and staff sign-in are separate (ADR-004): staff use folder 3 (admin login with Origin = adminOrigin) and get `adminAccessToken`.\n\nRefresh needs the Origin header and X-CSRF-Token; both are filled from variables captured after sign-in. Postman keeps the httpOnly refresh cookies for you.\n\nRebuild this file with: node postman/build-collection.js",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
+      "key": "apiRoot",
+      "value": "http://localhost:4000"
+    },
+    {
       "key": "baseUrl",
       "value": "http://localhost:4000/api/v1"
+    },
+    {
+      "key": "webOrigin",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "adminOrigin",
+      "value": "http://localhost:3002"
     },
     {
       "key": "phone",
@@ -42,6 +54,18 @@
       "value": ""
     },
     {
+      "key": "adminAccessToken",
+      "value": ""
+    },
+    {
+      "key": "csrfToken",
+      "value": ""
+    },
+    {
+      "key": "adminCsrfToken",
+      "value": ""
+    },
+    {
       "key": "signupToken",
       "value": ""
     },
@@ -60,10 +84,347 @@
   ],
   "item": [
     {
+      "name": "0. Smoke (no codes needed)",
+      "description": "Runs unattended: contract, CORS and ADR-004 guards. Use it in CI with the Postman CLI.",
+      "item": [
+        {
+          "name": "OpenAPI document",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiRoot}}/api/docs/openapi.json",
+              "host": [
+                "{{apiRoot}}"
+              ],
+              "path": [
+                "api",
+                "docs",
+                "openapi.json"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiRoot}}/health",
+              "host": [
+                "{{apiRoot}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Username availability",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/username-available?username=postman_smoke",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "username-available"
+              ],
+              "query": [
+                {
+                  "key": "username",
+                  "value": "postman_smoke"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Refresh without CSRF token (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 CSRF_TOKEN_INVALID', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('CSRF_TOKEN_INVALID');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Refresh from an unknown origin (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 CSRF_ORIGIN_REJECTED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('CSRF_ORIGIN_REJECTED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "https://evil.example"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin login from the customer origin (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 CSRF_ORIGIN_REJECTED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('CSRF_ORIGIN_REJECTED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"{{masterPhone}}\",\n  \"password\": \"wrong-password\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/admin/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "admin",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin API without a token (expect 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 401 AUTH_REQUIRED', () => {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(j && j.code).to.eql('AUTH_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send OTP is non-enumerating (202)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 202', () => {",
+                  "  pm.response.to.have.status(202);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"target\": \"01999999999\",\n  \"purpose\": \"login\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/otp/send",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "otp",
+                "send"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "1. Member signup (OTP) and gate",
       "item": [
         {
           "name": "Send OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -92,7 +453,7 @@
                 "send"
               ]
             },
-            "description": "Copy the 6-digit code from the server console into the `otp` variable."
+            "description": "Copy the 6-digit code from the API console into the `otp` variable."
           }
         },
         {
@@ -103,13 +464,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Saves values from successful responses into collection variables (never throws).",
                   "let j = null; try { j = pm.response.json(); } catch (e) {}",
-                  "const get = (o, path) => path.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
                   "const ok = pm.response.code >= 200 && pm.response.code < 300;",
-                  "if (ok && j) { const v = get(j, '.accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
-                  "if (ok && j) { const v = get(j, '.challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
-                  "if (ok && j) { const v = get(j, '.signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }"
+                  "if (ok && j) { const v = get(j, 'accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
+                  "if (ok && j) { const v = get(j, 'challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
+                  "if (ok && j) { const v = get(j, 'signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }",
+                  "if (ok && pm.cookies.has('kg_csrf')) pm.collectionVariables.set('csrfToken', pm.cookies.get('kg_csrf'));"
                 ]
               }
             }
@@ -152,14 +513,17 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Saves values from successful responses into collection variables (never throws).",
                   "let j = null; try { j = pm.response.json(); } catch (e) {}",
-                  "const get = (o, path) => path.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
                   "const ok = pm.response.code >= 200 && pm.response.code < 300;",
-                  "if (ok && j) { const v = get(j, '.accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
-                  "if (ok && j) { const v = get(j, '.challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
-                  "if (ok && j) { const v = get(j, '.signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }",
-                  "if (ok && j) { const v = get(j, '.user.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('targetUserId', v); }"
+                  "if (ok && j) { const v = get(j, 'accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
+                  "if (ok && j) { const v = get(j, 'challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
+                  "if (ok && j) { const v = get(j, 'signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }",
+                  "if (ok && j) { const v = get(j, 'user.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('targetUserId', v); }",
+                  "if (ok && pm.cookies.has('kg_csrf')) pm.collectionVariables.set('csrfToken', pm.cookies.get('kg_csrf'));",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
                 ]
               }
             }
@@ -195,6 +559,22 @@
         },
         {
           "name": "Me",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [
@@ -216,6 +596,22 @@
         },
         {
           "name": "Gate: book a ground (expect KYC_REQUIRED)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [
@@ -244,6 +640,22 @@
         },
         {
           "name": "Gate: list a ground (expect KYC_REQUIRED)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [
@@ -271,7 +683,24 @@
           }
         },
         {
-          "name": "RBAC: member opens /admin (expect 403)",
+          "name": "RBAC: member token on /admin (expect 401 TOKEN_AUDIENCE_INVALID)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 401 TOKEN_AUDIENCE_INVALID', () => {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(j && j.code).to.eql('TOKEN_AUDIENCE_INVALID');",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [
@@ -299,6 +728,19 @@
       "item": [
         {
           "name": "Send OTP by EMAIL",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -338,13 +780,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Saves values from successful responses into collection variables (never throws).",
                   "let j = null; try { j = pm.response.json(); } catch (e) {}",
-                  "const get = (o, path) => path.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
                   "const ok = pm.response.code >= 200 && pm.response.code < 300;",
-                  "if (ok && j) { const v = get(j, '.accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
-                  "if (ok && j) { const v = get(j, '.challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
-                  "if (ok && j) { const v = get(j, '.signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }"
+                  "if (ok && j) { const v = get(j, 'accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
+                  "if (ok && j) { const v = get(j, 'challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
+                  "if (ok && j) { const v = get(j, 'signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }",
+                  "if (ok && pm.cookies.has('kg_csrf')) pm.collectionVariables.set('csrfToken', pm.cookies.get('kg_csrf'));"
                 ]
               }
             }
@@ -387,13 +829,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Saves values from successful responses into collection variables (never throws).",
                   "let j = null; try { j = pm.response.json(); } catch (e) {}",
-                  "const get = (o, path) => path.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
                   "const ok = pm.response.code >= 200 && pm.response.code < 300;",
-                  "if (ok && j) { const v = get(j, '.accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
-                  "if (ok && j) { const v = get(j, '.challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
-                  "if (ok && j) { const v = get(j, '.signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }"
+                  "if (ok && j) { const v = get(j, 'accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
+                  "if (ok && j) { const v = get(j, 'challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
+                  "if (ok && j) { const v = get(j, 'signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }",
+                  "if (ok && pm.cookies.has('kg_csrf')) pm.collectionVariables.set('csrfToken', pm.cookies.get('kg_csrf'));"
                 ]
               }
             }
@@ -429,6 +871,19 @@
         },
         {
           "name": "Is a username available?",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -458,13 +913,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Saves values from successful responses into collection variables (never throws).",
                   "let j = null; try { j = pm.response.json(); } catch (e) {}",
-                  "const get = (o, path) => path.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
                   "const ok = pm.response.code >= 200 && pm.response.code < 300;",
-                  "if (ok && j) { const v = get(j, '.accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
-                  "if (ok && j) { const v = get(j, '.challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
-                  "if (ok && j) { const v = get(j, '.signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }"
+                  "if (ok && j) { const v = get(j, 'accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
+                  "if (ok && j) { const v = get(j, 'challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
+                  "if (ok && j) { const v = get(j, 'signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }",
+                  "if (ok && pm.cookies.has('kg_csrf')) pm.collectionVariables.set('csrfToken', pm.cookies.get('kg_csrf'));"
                 ]
               }
             }
@@ -506,13 +961,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Saves values from successful responses into collection variables (never throws).",
                   "let j = null; try { j = pm.response.json(); } catch (e) {}",
-                  "const get = (o, path) => path.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
                   "const ok = pm.response.code >= 200 && pm.response.code < 300;",
-                  "if (ok && j) { const v = get(j, '.accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
-                  "if (ok && j) { const v = get(j, '.challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
-                  "if (ok && j) { const v = get(j, '.signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }"
+                  "if (ok && j) { const v = get(j, 'accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
+                  "if (ok && j) { const v = get(j, 'challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
+                  "if (ok && j) { const v = get(j, 'signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }",
+                  "if (ok && pm.cookies.has('kg_csrf')) pm.collectionVariables.set('csrfToken', pm.cookies.get('kg_csrf'));"
                 ]
               }
             }
@@ -548,6 +1003,19 @@
         },
         {
           "name": "Change my username",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "PUT",
             "header": [
@@ -583,6 +1051,19 @@
         },
         {
           "name": "Add/change email: send code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -618,6 +1099,19 @@
         },
         {
           "name": "Add/change email: confirm code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -660,13 +1154,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Saves values from successful responses into collection variables (never throws).",
                   "let j = null; try { j = pm.response.json(); } catch (e) {}",
-                  "const get = (o, path) => path.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
                   "const ok = pm.response.code >= 200 && pm.response.code < 300;",
-                  "if (ok && j) { const v = get(j, '.accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
-                  "if (ok && j) { const v = get(j, '.challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
-                  "if (ok && j) { const v = get(j, '.signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }"
+                  "if (ok && j) { const v = get(j, 'accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
+                  "if (ok && j) { const v = get(j, 'challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
+                  "if (ok && j) { const v = get(j, 'signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }",
+                  "if (ok && pm.cookies.has('kg_csrf')) pm.collectionVariables.set('csrfToken', pm.cookies.get('kg_csrf'));"
                 ]
               }
             }
@@ -703,6 +1197,19 @@
         },
         {
           "name": "Connect Google to my account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -739,6 +1246,19 @@
         },
         {
           "name": "Disconnect Google",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "DELETE",
             "header": [
@@ -773,13 +1293,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Saves values from successful responses into collection variables (never throws).",
                   "let j = null; try { j = pm.response.json(); } catch (e) {}",
-                  "const get = (o, path) => path.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
                   "const ok = pm.response.code >= 200 && pm.response.code < 300;",
-                  "if (ok && j) { const v = get(j, '.accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
-                  "if (ok && j) { const v = get(j, '.challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
-                  "if (ok && j) { const v = get(j, '.signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }"
+                  "if (ok && j) { const v = get(j, 'accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
+                  "if (ok && j) { const v = get(j, 'challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
+                  "if (ok && j) { const v = get(j, 'signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }",
+                  "if (ok && pm.cookies.has('kg_csrf')) pm.collectionVariables.set('csrfToken', pm.cookies.get('kg_csrf'));"
                 ]
               }
             }
@@ -821,18 +1341,30 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Saves values from successful responses into collection variables (never throws).",
                   "let j = null; try { j = pm.response.json(); } catch (e) {}",
-                  "const get = (o, path) => path.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
                   "const ok = pm.response.code >= 200 && pm.response.code < 300;",
-                  "if (ok && j) { const v = get(j, '.accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }"
+                  "if (ok && j) { const v = get(j, 'accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
+                  "if (ok && pm.cookies.has('kg_csrf')) pm.collectionVariables.set('csrfToken', pm.cookies.get('kg_csrf'));",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
                 ]
               }
             }
           ],
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{webOrigin}}"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/auth/refresh",
               "host": [
@@ -842,11 +1374,25 @@
                 "auth",
                 "refresh"
               ]
-            }
+            },
+            "description": "ADR-004: Origin must be an allowed app origin and X-CSRF-Token must equal the kg_csrf cookie."
           }
         },
         {
           "name": "List my sessions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [
@@ -869,6 +1415,19 @@
         },
         {
           "name": "Apply for the organiser role",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -905,6 +1464,19 @@
         },
         {
           "name": "Update profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "PATCH",
             "header": [
@@ -939,6 +1511,22 @@
         },
         {
           "name": "Logout (this device)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 204', () => {",
+                  "  pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -962,10 +1550,24 @@
       ]
     },
     {
-      "name": "3. Master admin (TOTP, step-up, RBAC)",
+      "name": "3. Admin portal: master (TOTP, step-up, RBAC)",
+      "description": "Staff sign in only here (ADR-004). Every admin auth request sends Origin = adminOrigin.",
       "item": [
         {
           "name": "Send OTP to master",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -997,20 +1599,18 @@
           }
         },
         {
-          "name": "Verify OTP (gives challengeToken)",
+          "name": "Admin login with OTP (gives challengeToken)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Saves values from successful responses into collection variables (never throws).",
                   "let j = null; try { j = pm.response.json(); } catch (e) {}",
-                  "const get = (o, path) => path.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
                   "const ok = pm.response.code >= 200 && pm.response.code < 300;",
-                  "if (ok && j) { const v = get(j, '.accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
-                  "if (ok && j) { const v = get(j, '.challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
-                  "if (ok && j) { const v = get(j, '.signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }"
+                  "if (ok && j) { const v = get(j, 'accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('adminAccessToken', v); }",
+                  "if (ok && j) { const v = get(j, 'challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }"
                 ]
               }
             }
@@ -1021,11 +1621,15 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{adminOrigin}}"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"target\": \"{{masterPhone}}\",\n  \"purpose\": \"login\",\n  \"code\": \"{{otp}}\"\n}",
+              "raw": "{\n  \"target\": \"{{masterPhone}}\",\n  \"code\": \"{{otp}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1033,27 +1637,44 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/auth/otp/verify",
+              "raw": "{{baseUrl}}/auth/admin/login",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "auth",
-                "otp",
-                "verify"
+                "admin",
+                "login"
               ]
             },
-            "description": "First time: status two_factor_setup_required. Later: two_factor_required."
+            "description": "First time: status two_factor_setup_required. Later: two_factor_required. Staff with a password can send { identifier, password } instead."
           }
         },
         {
           "name": "TOTP setup (first time only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{adminOrigin}}"
               }
             ],
             "body": {
@@ -1088,13 +1709,12 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Saves values from successful responses into collection variables (never throws).",
                   "let j = null; try { j = pm.response.json(); } catch (e) {}",
-                  "const get = (o, path) => path.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
                   "const ok = pm.response.code >= 200 && pm.response.code < 300;",
-                  "if (ok && j) { const v = get(j, '.accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
-                  "if (ok && j) { const v = get(j, '.challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
-                  "if (ok && j) { const v = get(j, '.signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }"
+                  "if (ok && j) { const v = get(j, 'accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('adminAccessToken', v); }",
+                  "if (ok && j) { const v = get(j, 'challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
+                  "if (ok && pm.cookies.has('kg_acsrf')) pm.collectionVariables.set('adminCsrfToken', pm.cookies.get('kg_acsrf'));"
                 ]
               }
             }
@@ -1105,6 +1725,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{adminOrigin}}"
               }
             ],
             "body": {
@@ -1138,13 +1762,12 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Saves values from successful responses into collection variables (never throws).",
                   "let j = null; try { j = pm.response.json(); } catch (e) {}",
-                  "const get = (o, path) => path.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
                   "const ok = pm.response.code >= 200 && pm.response.code < 300;",
-                  "if (ok && j) { const v = get(j, '.accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('accessToken', v); }",
-                  "if (ok && j) { const v = get(j, '.challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
-                  "if (ok && j) { const v = get(j, '.signupToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('signupToken', v); }"
+                  "if (ok && j) { const v = get(j, 'accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('adminAccessToken', v); }",
+                  "if (ok && j) { const v = get(j, 'challengeToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('challengeToken', v); }",
+                  "if (ok && pm.cookies.has('kg_acsrf')) pm.collectionVariables.set('adminCsrfToken', pm.cookies.get('kg_acsrf'));"
                 ]
               }
             }
@@ -1155,6 +1778,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{adminOrigin}}"
               }
             ],
             "body": {
@@ -1181,13 +1808,68 @@
           }
         },
         {
-          "name": "Me (master holds every permission)",
+          "name": "Admin me (master holds every permission)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin token on a customer endpoint (expect 401 TOKEN_AUDIENCE_INVALID)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 401 TOKEN_AUDIENCE_INVALID', () => {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(j && j.code).to.eql('TOKEN_AUDIENCE_INVALID');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
               }
             ],
             "url": {
@@ -1202,13 +1884,71 @@
           }
         },
         {
+          "name": "Admin refresh (admin cookie only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('adminAccessToken', v); }",
+                  "if (ok && pm.cookies.has('kg_acsrf')) pm.collectionVariables.set('adminCsrfToken', pm.cookies.get('kg_acsrf'));",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{adminOrigin}}"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{adminCsrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/admin/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "admin",
+                "refresh"
+              ]
+            }
+          }
+        },
+        {
           "name": "Search users (masked phone)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{adminAccessToken}}"
               }
             ],
             "url": {
@@ -1231,6 +1971,19 @@
         },
         {
           "name": "Approve member role (NID verified)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -1240,7 +1993,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{adminAccessToken}}"
               }
             ],
             "body": {
@@ -1270,6 +2023,19 @@
         },
         {
           "name": "Approve ground_owner role",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -1279,7 +2045,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{adminAccessToken}}"
               }
             ],
             "body": {
@@ -1309,6 +2075,19 @@
         },
         {
           "name": "Suspend user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -1318,7 +2097,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{adminAccessToken}}"
               }
             ],
             "body": {
@@ -1346,6 +2125,19 @@
         },
         {
           "name": "Restore user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -1355,7 +2147,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{adminAccessToken}}"
               }
             ],
             "body": {
@@ -1383,6 +2175,23 @@
         },
         {
           "name": "Ban WITHOUT step-up (expect 403 STEP_UP_REQUIRED)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 STEP_UP_REQUIRED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('STEP_UP_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -1392,7 +2201,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{adminAccessToken}}"
               }
             ],
             "body": {
@@ -1426,11 +2235,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Saves values from successful responses into collection variables (never throws).",
                   "let j = null; try { j = pm.response.json(); } catch (e) {}",
-                  "const get = (o, path) => path.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
                   "const ok = pm.response.code >= 200 && pm.response.code < 300;",
-                  "if (ok && j) { const v = get(j, '.stepUpToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('stepUpToken', v); }"
+                  "if (ok && j) { const v = get(j, 'stepUpToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('stepUpToken', v); }"
                 ]
               }
             }
@@ -1444,7 +2252,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{adminAccessToken}}"
               }
             ],
             "body": {
@@ -1471,6 +2279,19 @@
         },
         {
           "name": "Make the user staff (approve_documents, manage_users)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -1480,7 +2301,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{adminAccessToken}}"
               },
               {
                 "key": "X-Step-Up",
@@ -1505,17 +2326,31 @@
                 "admin",
                 "staff"
               ]
-            }
+            },
+            "description": "This signs the user out everywhere: from now on they sign in at the admin portal only."
           }
         },
         {
           "name": "Staff list and permission matrix",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{adminAccessToken}}"
               }
             ],
             "url": {
@@ -1538,11 +2373,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Saves values from successful responses into collection variables (never throws).",
                   "let j = null; try { j = pm.response.json(); } catch (e) {}",
-                  "const get = (o, path) => path.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
                   "const ok = pm.response.code >= 200 && pm.response.code < 300;",
-                  "if (ok && j) { const v = get(j, '.stepUpToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('stepUpToken', v); }"
+                  "if (ok && j) { const v = get(j, 'stepUpToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('stepUpToken', v); }"
                 ]
               }
             }
@@ -1556,7 +2390,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{adminAccessToken}}"
               }
             ],
             "body": {
@@ -1582,6 +2416,19 @@
         },
         {
           "name": "Save permission changes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "PUT",
             "header": [
@@ -1591,7 +2438,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
+                "value": "Bearer {{adminAccessToken}}"
               },
               {
                 "key": "X-Step-Up",
@@ -1616,6 +2463,49 @@
                 "admin",
                 "staff",
                 "permissions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 204', () => {",
+                  "  pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Origin",
+                "value": "{{adminOrigin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/admin/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "admin",
+                "logout"
               ]
             }
           }

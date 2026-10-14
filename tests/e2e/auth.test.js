@@ -105,22 +105,22 @@ describe('sessions and refresh rotation', () => {
     const s = await h.signupUser();
     const first = refreshCookie(s.cookie);
 
-    const r1 = await api().post(`${P}/auth/refresh`).set('Cookie', first).expect(200);
+    const r1 = await h.refreshWeb(s.cookie).expect(200);
     const second = refreshCookie(r1.headers['set-cookie']);
     expect(second).not.toBe(first);
     await api().get(`${P}/me`).set('Authorization', `Bearer ${r1.body.accessToken}`).expect(200);
 
     // Replaying the old token revokes the whole family, including the new session.
-    const replay = await api().post(`${P}/auth/refresh`).set('Cookie', first).expect(401);
+    const replay = await h.refreshWeb(s.cookie).expect(401);
     expect(replay.body.code).toBe('SESSION_REVOKED');
-    await api().post(`${P}/auth/refresh`).set('Cookie', second).expect(401);
+    await h.refreshWeb(r1.headers['set-cookie']).expect(401);
     await api().get(`${P}/me`).set('Authorization', `Bearer ${r1.body.accessToken}`).expect(401);
     expect(await models.AuditLog.count({ where: { action: 'session.reuse_detected' } })).toBe(1);
   });
 
   it('returns the refresh token in the body only for mobile clients', async () => {
     const s = await h.signupUser();
-    const web = await api().post(`${P}/auth/refresh`).set('Cookie', refreshCookie(s.cookie)).expect(200);
+    const web = await h.refreshWeb(s.cookie).expect(200);
     expect(web.body.refreshToken).toBeUndefined();
     const mobile = await api().post(`${P}/auth/refresh`).set('X-Client-Type', 'mobile').send({ refreshToken: refreshCookie(web.headers['set-cookie']).slice(6) }).expect(200);
     expect(mobile.body.refreshToken).toBeDefined();
@@ -155,7 +155,7 @@ describe('roles and the gate', () => {
     const stale = await api().get(`${P}/me`).set(h.bearer(s)).expect(401);
     expect(stale.body.code).toBe('AUTHZ_STALE');
 
-    const refreshed = await api().post(`${P}/auth/refresh`).set('Cookie', s.cookie.find((c) => c.startsWith('kg_rt=')).split(';')[0]).expect(200);
+    const refreshed = await h.refreshWeb(s.cookie).expect(200);
     const me = await api().get(`${P}/me`).set('Authorization', `Bearer ${refreshed.body.accessToken}`).expect(200);
     expect(me.body.roles.find((r) => r.role === 'shop_owner').status).toBe('applied');
 
@@ -173,7 +173,7 @@ describe('roles and the gate', () => {
     expect(before.body).toMatchObject({ allowed: false, code: 'KYC_REQUIRED', next: '/account/verification' });
 
     await h.verifyMember(s.user.id);
-    const login = await api().post(`${P}/auth/refresh`).set('Cookie', s.cookie.find((c) => c.startsWith('kg_rt=')).split(';')[0]).expect(200);
+    const login = await h.refreshWeb(s.cookie).expect(200);
     const after = await api().get(`${P}/me/gate?action=book_ground`).set('Authorization', `Bearer ${login.body.accessToken}`).expect(200);
     expect(after.body.allowed).toBe(true);
   });
