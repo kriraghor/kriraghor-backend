@@ -7,19 +7,37 @@ const models = require('../src/models');
 const sms = require('../src/providers/sms');
 const mail = require('../src/providers/email');
 const { decrypt } = require('../src/common/crypto');
+const settings = require('../src/modules/settings/settings.service');
+const { seedReference } = require('../src/db/seed');
+const events = require('../src/modules/events/events.service');
 
 const app = createApp();
 const api = () => request(app);
 const P = '/api/v1';
 
-const TABLES = ['oauth_identities', 'audit_logs', 'step_up_tokens', 'user_sanctions', 'staff_permissions', 'staff_members', 'otp_codes', 'sessions', 'user_roles', 'users'];
+// M03 tables are reseeded after the truncate, so every test starts from the seeded settings and catalogue.
+const TABLES = ['settings_history', 'settings_change_requests', 'platform_settings', 'esports_points_presets', 'esports_maps', 'esports_modes', 'esports_games', 'oauth_identities', 'audit_logs', 'step_up_tokens', 'user_sanctions', 'staff_permissions', 'staff_members', 'otp_codes', 'sessions', 'user_roles', 'users'];
 
 async function resetDb() {
   await models.sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
   for (const t of TABLES) await models.sequelize.query(`TRUNCATE TABLE \`${t}\``);
   await models.sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
+  await seedReference();
+  await settings.load();
+  // All tests run from one IP; the per-IP OTP cap (auth.otp_sends_per_ip_hour) is tested on its own.
+  await setSettingForTest('auth.otp_sends_per_ip_hour', 100000);
   sms.clear();
   mail.clear();
+  events.clearRecorded();
+}
+
+/**
+ * Test-only: write a setting directly (no change request, no history) and reload the cache.
+ * Production changes always go through POST /admin/settings/change-requests.
+ */
+async function setSettingForTest(key, value) {
+  await models.PlatformSetting.update({ value }, { where: { key } });
+  await settings.load();
 }
 
 const lastEmailCode = (address) => mail.lastTo(address)?.text.match(/\b(\d{6})\b/)?.[1];
@@ -71,6 +89,9 @@ async function createSignedInMaster() {
   await models.StaffMember.create({ userId: user.id, employeeId: `KG-M-${phoneSeq}`, team: 'Platform', isMaster: true });
   return signInStaff(phone, user.id);
 }
+
+/** A second master (four-eyes approver), signed in to the admin portal. */
+const createSecondMaster = () => createSignedInMaster();
 
 /** Move earlier OTPs for a number out of the resend-cooldown window (the 60 s rule itself is tested separately). */
 async function allowResend(local) {
@@ -137,4 +158,4 @@ async function stepUp(session, scope) {
 
 const bearer = (s) => ({ Authorization: `Bearer ${s.accessToken}` });
 
-module.exports = { ADMIN_ORIGIN, WEB_ORIGIN, adminPost, cookieValue, cookieHeader, refreshWeb, api, P, models, resetDb, nextPhone, e164, lastCode, lastEmailCode, mail, allowResend, signupUser, verifyMember, totpFor, createSignedInMaster, signInStaff, stepUp, bearer, sms };
+module.exports = { ADMIN_ORIGIN, WEB_ORIGIN, adminPost, cookieValue, cookieHeader, refreshWeb, api, P, models, resetDb, nextPhone, e164, lastCode, lastEmailCode, mail, allowResend, signupUser, verifyMember, totpFor, createSignedInMaster, createSecondMaster, signInStaff, stepUp, bearer, sms, settings, setSettingForTest, events };

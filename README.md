@@ -8,7 +8,8 @@ The specification for every module is in [`../kriraghor-docs/modules`](../krirag
 |---|---|
 | **M01 Identity and Access**: authentication and authorisation | ✅ Implemented: [`src/modules/auth`](src/modules/auth), [`src/modules/users`](src/modules/users), [`src/modules/admin`](src/modules/admin). Separate admin sessions per [ADR-004](../kriraghor-docs/decisions/ADR-004-cross-subdomain-auth.md) |
 | **Platform (0B)**: Kubernetes readiness | ✅ Three entrypoints, Redis, BullMQ, Socket.IO, probes, metrics, OpenAPI, Docker image ([ADR-002](../kriraghor-docs/decisions/ADR-002-polyrepo-api-contracts.md), [ADR-003](../kriraghor-docs/decisions/ADR-003-kubernetes-deployment.md)) |
-| M04 Audit log | Minimal append-only `audit_logs` table and service (enough for M01). Domain events and the outbox come later |
+| **M03 Settings and esports catalogue** | ✅ Step 1: [`src/modules/settings`](src/modules/settings) (130 platform settings, history, four-eyes change requests, scheduled changes, SettingsService with Redis cache bust) and [`src/modules/catalog`](src/modules/catalog) (esports games, modes, maps, versioned points presets). Sports, locations, hire and item catalogues come with their modules |
+| M04 Audit log | Minimal append-only `audit_logs` table and service, plus the `events.publish` facade (logs only until the outbox lands) |
 | Everything else | Not started |
 
 ## Quick start
@@ -17,7 +18,7 @@ The specification for every module is in [`../kriraghor-docs/modules`](../krirag
 cp .env.example .env              # then set real secrets (see the comments in the file)
 docker compose up -d              # MySQL 8.4, Redis 7.4, Mailpit, SeaweedFS (S3); also creates kriraghor_test
 npm install
-npm run db:migrate
+npm run release                   # migrations, then the M03 reference seed (settings + esports catalogue)
 npm run create:master -- --phone 01XXXXXXXXX --name "Your Name" --employee-id KG-0001
 npm run dev                       # API       http://localhost:4000/api/v1  (docs: /api/docs)
 npm run dev:realtime              # Socket.IO http://localhost:4001/socket.io
@@ -63,7 +64,7 @@ npm run openapi                   # regenerate openapi.json after changing a rou
 docker compose up -d
 npm test
 ```
-Expected result: `Tests: 110 passed, 110 total` (unit tests plus end-to-end tests against a real MySQL test database and Redis). The tests cover:
+Expected result: `Tests: 199 passed, 199 total` and the coverage gate (100% on the settings and catalogue validators, which handle money and points) (unit tests plus end-to-end tests against a real MySQL test database and Redis). The tests cover:
 - OTP signup and sign-in; non-enumeration, cooldowns and code burning
 - Password lockout and reset
 - Refresh rotation and reuse detection; session revocation; `AUTHZ_STALE`
@@ -71,6 +72,8 @@ Expected result: `Tests: 110 passed, 110 total` (unit tests plus end-to-end test
 - Staff permission enforcement; masked search; suspend, ban and restore; role activation rules
 - Email OTP (Mailpit), username sign-up and login; Google sign-in, linking and unlinking (Google is stubbed)
 - **ADR-004**: CORS allowlist (exact and one-label wildcards), cookie flags, CSRF origin and token checks (including a token from another session), SSO across two app origins, mobile refresh without cookies, separate admin sessions (`STAFF_USE_ADMIN_PORTAL`, `NOT_STAFF`, `TOKEN_AUDIENCE_INVALID`)
+- **M03 settings**: every value type, range and cross-key rule; public vs admin views; step-up; single-approval apply; four-eyes (proposer cannot approve, DB check); reject, withdraw, supersede; scheduled apply and rejection when a rule now fails; `getAt` and snapshots; append-only history (DB triggers); cache bust across processes; boot check; seed idempotency; M01 reading its limits from settings
+- **M03 esports catalogue**: public list with ETag, permissions (`manage_esports` or `manage_catalog`), immutable keys, mode capacity, UID patterns, preset versions, deactivate and reactivate
 - **Platform**: the suspension-expiry job (idempotent), job scheduler registration, readiness and draining, shutdown order, metrics, the Socket.IO handshake (valid, missing, forged, expired, wrong audience, staff room), and the OpenAPI contract (served, committed file up to date, every route documented, real responses match the schemas)
 
 ### 2. Manual testing with Postman
@@ -90,6 +93,8 @@ Expected result: `Tests: 110 passed, 110 total` (unit tests plus end-to-end test
      - Step up, make the member staff, then edit the permission matrix.
 
 See [`postman/M01-acceptance-checklist.md`](postman/M01-acceptance-checklist.md) for the full sign-off list.
+
+**M03 (settings and esports catalogue)** runs unattended: `node postman/run-m03.js` resets the test database, signs in two masters, pre-mints step-up tokens and runs [`postman/kriraghor-settings.postman_collection.json`](postman/kriraghor-settings.postman_collection.json) with the Postman CLI (22 requests, 37 assertions). Checklist: [`postman/M03-acceptance-checklist.md`](postman/M03-acceptance-checklist.md).
 
 ### 3. Inspect the database
 ```bash
@@ -142,8 +147,12 @@ src/
    ├─ auth/               OTP, signup, password login and lockout, admin login, sessions and refresh rotation, cookies, TOTP 2FA, step-up, gate
    ├─ users/              /me: profile, gate preview, role applications, password, sessions, sign-in methods
    ├─ admin/              /admin: me, user search, suspend, ban, restore, role decisions, staff and permission matrix
+   ├─ settings/           M03 platform settings: SettingsService, validators, change requests (four-eyes), history
+   ├─ catalog/            M03 esports catalogue: games, modes, maps, points presets
+   ├─ events/             domain event facade (M04 outbox later)
    └─ audit/              append-only audit writer
-scripts/                  create-master.js (first master, CLI only), openapi.js (writes openapi.json)
+scripts/                  release.js (migrate + reference seed), create-master.js (first master, CLI only), openapi.js (writes openapi.json)
+src/db/seed/              M03 reference seed (versioned JSON: settings, esports catalogue)
 postman/                  collection builder, collection, guide and acceptance checklist
 tests/                    Jest unit and Supertest e2e (real MySQL test database and Redis)
 ```
@@ -205,13 +214,29 @@ The full contract, with request and response schemas and error codes per route, 
 
 Errors are `application/problem+json` with a stable `code`: `AUTH_REQUIRED`, `TOKEN_EXPIRED`, `TOKEN_AUDIENCE_INVALID`, `AUTHZ_STALE`, `SESSION_REVOKED`, `CSRF_ORIGIN_REJECTED`, `CSRF_TOKEN_INVALID`, `STAFF_USE_ADMIN_PORTAL`, `NOT_STAFF`, `OTP_INVALID`, `OTP_EXPIRED`, `OTP_RATE_LIMITED`, `AUTH_LOCKED`, `INVALID_CREDENTIALS`, `TWO_FACTOR_REQUIRED`, `TOTP_INVALID`, `TOTP_REPLAYED`, `STEP_UP_REQUIRED`, `PERMISSION_REQUIRED`, `PERMISSION_NOT_GRANTABLE`, `MASTER_REQUIRED`, `ROLE_REQUIRED`, `KYC_REQUIRED`, `KYC_PENDING`, `ACCOUNT_SUSPENDED`, `ACCOUNT_BANNED`, `VALIDATION_FAILED`, …
 
+## API (M03)
+
+| Endpoint | Access | Notes |
+|---|---|---|
+| `GET /settings/public` | public | Public keys only, nested camelCase; money as `{ amount, currency }`; `Cache-Control: max-age=300` + ETag |
+| `GET /catalog/esports/games` | public | Active games with modes, maps and the current preset versions; cached + ETag |
+| `GET /admin/settings` · `/admin/settings/:key/history` · `/admin/settings/change-requests[/:id]` | master, or `manage_catalog` read-only | |
+| `POST /admin/settings/change-requests` | master + step-up `settings.write` | Applies at once, schedules, or waits for a second master (four-eyes keys) |
+| `POST /admin/settings/change-requests/:id/approve` · `/reject` · `/withdraw` | master + step-up `settings.write` | Approve and reject by another master; withdraw by the proposer |
+| `GET/POST /admin/catalog/:table` · `PATCH /admin/catalog/:table/:id` · `POST …/:id/deactivate` · `/reactivate` | `manage_esports` or `manage_catalog` | Tables: esports-games, esports-modes, esports-maps, esports-points-presets |
+
+New error codes: `SETTING_UNKNOWN`, `SETTING_TYPE_INVALID`, `SETTING_OUT_OF_RANGE`, `SETTING_CROSS_RULE`, `SETTING_UNCHANGED`, `EFFECTIVE_AT_PAST`, `FOUR_EYES_REQUIRED`, `NOT_PROPOSER`, `CHANGE_REQUEST_CLOSED`, `CATALOG_KEY_TAKEN`, `CATALOG_KEY_IMMUTABLE`.
+
+Every process (api, realtime, worker) refuses to start until every seeded setting exists, so run `npm run release` (or the Helm migrate Job) first. Code reads values with `settings.get(key)`; store `settings.snapshot(keys)` with anything that charges a fee.
+
 ## Differences from the M01 spec
 
 | Spec | Now | Plan |
 |---|---|---|
 | WebAuthn security key for master step-up | TOTP-based step-up (same single-use, scoped token) | Add `@simplewebauthn/server` and make it mandatory for masters |
 | One sign-in flow for everyone, staff add TOTP | Separate admin sign-in, sessions, cookies and token audience (ADR-004); staff accounts can't use customer apps (Q33) | Done in 0B |
-| Redis authz cache | DB lookup per request (Redis is now available) | Add with M03 settings caching |
+| Redis authz cache | DB lookup per request (Redis is now available) | Later; settings use a per-process cache with a Redis bust channel |
+| OTP, lockout, session and staff limits as env vars | Platform settings (`auth.*`, `ratelimit.*`), changed on the Fees and rules screen with history (M03) | Done in M03 |
 | `identity.sanction-expire` job | BullMQ job scheduler in the worker, every 60 s | Done in 0B |
 | Phone change, account closure | Not yet | Next M01 iteration |
 | Admin login with Google | Not offered; staff use password or OTP, then TOTP | Revisit with WebAuthn |

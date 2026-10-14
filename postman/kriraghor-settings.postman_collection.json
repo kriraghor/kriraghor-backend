@@ -1,0 +1,1300 @@
+{
+  "info": {
+    "name": "Kriraghor API: M03 Settings & esports catalogue",
+    "description": "Fees and rules (platform_settings), history, four-eyes change requests and the esports catalogue.\n\nUnattended: `node postman/run-m03.js` (uses the kriraghor_test database, two test masters and pre-minted step-up tokens).\n\nBy hand: sign in two masters with the M01 collection (folder 3), copy their admin access tokens into adminAccessToken and adminAccessToken2, then run each \"Step-up\" request before a write.\n\nRebuild this file with: node postman/build-collection-m03.js",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000/api/v1"
+    },
+    {
+      "key": "adminAccessToken",
+      "value": ""
+    },
+    {
+      "key": "adminAccessToken2",
+      "value": ""
+    },
+    {
+      "key": "totp",
+      "value": ""
+    },
+    {
+      "key": "totpB",
+      "value": ""
+    },
+    {
+      "key": "stepUpToken",
+      "value": ""
+    },
+    {
+      "key": "stepUpTokenB",
+      "value": ""
+    },
+    {
+      "key": "singleRequestId",
+      "value": ""
+    },
+    {
+      "key": "feeRequestId",
+      "value": ""
+    },
+    {
+      "key": "pubgGameId",
+      "value": ""
+    },
+    {
+      "key": "mapId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Public (no sign-in)",
+      "item": [
+        {
+          "name": "Public settings",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"ground fee is public, shop commission is not\", () => { pm.expect(j.fees.groundBookingPct === 5 && j.fees.shopCommissionPct === undefined).to.eql(true); });",
+                  "pm.test(\"money as amount + currency\", () => { pm.expect(j.market.deliveryFeeDhaka.amount === 8000 && j.market.deliveryFeeDhaka.currency === 'BDT').to.eql(true); });",
+                  "pm.test(\"cache header\", () => { pm.expect(pm.response.headers.get('Cache-Control') === 'public, max-age=300').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/settings/public",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "settings",
+                "public"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Esports games catalogue",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'items.0.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('pubgGameId', v); }",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"PUBG Mobile then Free Fire\", () => { pm.expect(j.items.map((g) => g.key).join() === 'pubg_mobile,free_fire').to.eql(true); });",
+                  "pm.test(\"PUBG squad is 25 × 4\", () => { pm.expect(j.items[0].modes.some((m) => m.key === 'squad' && m.maxTeams === 25 && m.teamSize === 4)).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/catalog/esports/games",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "catalog",
+                "esports",
+                "games"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Admin reads (master A)",
+      "item": [
+        {
+          "name": "All settings",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"130 settings\", () => { pm.expect(j.items.length === 130).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "settings"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Fees only",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"fees are four-eyes\", () => { pm.expect(j.items.every((s) => s.approval === 'four_eyes')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/settings?category=fees",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "settings"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "fees"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "History of the shop commission",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"seeded as v1\", () => { pm.expect(j.items[0].version >= 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/settings/fees.shop_commission_pct/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "settings",
+                "fees.shop_commission_pct",
+                "history"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Unknown key history (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 SETTING_UNKNOWN', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('SETTING_UNKNOWN');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/settings/fees.nope_pct/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "settings",
+                "fees.nope_pct",
+                "history"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Guards",
+      "item": [
+        {
+          "name": "Propose WITHOUT step-up (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 STEP_UP_REQUIRED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('STEP_UP_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"changes\": [\n    {\n      \"key\": \"esports.room_reveal_minutes\",\n      \"to\": 10\n    }\n  ],\n  \"reason\": \"No step-up\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/settings/change-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "settings",
+                "change-requests"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Empty change list (expect 422, step-up not spent)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 VALIDATION_FAILED', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('VALIDATION_FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"changes\": [],\n  \"reason\": \"x\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/settings/change-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "settings",
+                "change-requests"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3a. Manual step-up (skip when unattended)",
+      "item": [
+        {
+          "name": "Step-up A (manual runs only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'stepUpToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('stepUpToken', v); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scope\": \"settings.write\",\n  \"code\": \"{{totp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/step-up",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "step-up"
+              ]
+            },
+            "description": "Put a fresh authenticator code in the totp (A) or totpB (B) variable first. Unattended runs skip this folder."
+          }
+        },
+        {
+          "name": "Step-up B (manual runs only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'stepUpToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('stepUpTokenB', v); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken2}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scope\": \"settings.write\",\n  \"code\": \"{{totpB}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/step-up",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "step-up"
+              ]
+            },
+            "description": "Put a fresh authenticator code in the totp (A) or totpB (B) variable first. Unattended runs skip this folder."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Single-approval change (applies at once)",
+      "item": [
+        {
+          "name": "Room reveal 15 → 10 min",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const q = String(pm.variables.get('stepUpQueueA') || '').split(',').filter(Boolean);",
+                  "if (q.length) { pm.variables.set('stepUpToken', q.shift()); pm.environment.set('stepUpQueueA', q.join(',')); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('singleRequestId', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"applied\", () => { pm.expect(j.status === 'applied' && j.needsFourEyes === false).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "X-Step-Up",
+                "value": "{{stepUpToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"changes\": [\n    {\n      \"key\": \"esports.room_reveal_minutes\",\n      \"to\": 10\n    }\n  ],\n  \"reason\": \"Postman acceptance run\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/settings/change-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "settings",
+                "change-requests"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cross-key rule: check-in close below room reveal (expect 422)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const q = String(pm.variables.get('stepUpQueueA') || '').split(',').filter(Boolean);",
+                  "if (q.length) { pm.variables.set('stepUpToken', q.shift()); pm.environment.set('stepUpQueueA', q.join(',')); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 SETTING_CROSS_RULE', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('SETTING_CROSS_RULE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "X-Step-Up",
+                "value": "{{stepUpToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"changes\": [\n    {\n      \"key\": \"esports.checkin_close_minutes\",\n      \"to\": 5\n    }\n  ],\n  \"reason\": \"Postman acceptance run\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/settings/change-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "settings",
+                "change-requests"
+              ]
+            }
+          }
+        },
+        {
+          "name": "History shows v2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"v2 is 10\", () => { pm.expect(j.items[0].newValue === 10 && j.items[0].oldValue === 15).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/settings/esports.room_reveal_minutes/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "settings",
+                "esports.room_reveal_minutes",
+                "history"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Four-eyes fee change (A proposes, B approves)",
+      "item": [
+        {
+          "name": "A proposes shop commission 5 → 6%",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const q = String(pm.variables.get('stepUpQueueA') || '').split(',').filter(Boolean);",
+                  "if (q.length) { pm.variables.set('stepUpToken', q.shift()); pm.environment.set('stepUpQueueA', q.join(',')); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('feeRequestId', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"waiting for a second master\", () => { pm.expect(j.status === 'proposed' && j.needsSecondApprover === true).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "X-Step-Up",
+                "value": "{{stepUpToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"changes\": [\n    {\n      \"key\": \"fees.shop_commission_pct\",\n      \"to\": 6\n    }\n  ],\n  \"reason\": \"Postman acceptance run\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/settings/change-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "settings",
+                "change-requests"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A approves own proposal (expect 403)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const q = String(pm.variables.get('stepUpQueueA') || '').split(',').filter(Boolean);",
+                  "if (q.length) { pm.variables.set('stepUpToken', q.shift()); pm.environment.set('stepUpQueueA', q.join(',')); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 FOUR_EYES_REQUIRED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('FOUR_EYES_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "X-Step-Up",
+                "value": "{{stepUpToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/settings/change-requests/{{feeRequestId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "settings",
+                "change-requests",
+                "{{feeRequestId}}",
+                "approve"
+              ]
+            }
+          }
+        },
+        {
+          "name": "B approves",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const q = String(pm.variables.get('stepUpQueueB') || '').split(',').filter(Boolean);",
+                  "if (q.length) { pm.variables.set('stepUpTokenB', q.shift()); pm.environment.set('stepUpQueueB', q.join(',')); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"applied by B\", () => { pm.expect(j.status === 'applied' && j.approvedBy !== null).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken2}}"
+              },
+              {
+                "key": "X-Step-Up",
+                "value": "{{stepUpTokenB}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Agreed in the Postman run\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/settings/change-requests/{{feeRequestId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "settings",
+                "change-requests",
+                "{{feeRequestId}}",
+                "approve"
+              ]
+            }
+          }
+        },
+        {
+          "name": "B approves again (expect 409)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const q = String(pm.variables.get('stepUpQueueB') || '').split(',').filter(Boolean);",
+                  "if (q.length) { pm.variables.set('stepUpTokenB', q.shift()); pm.environment.set('stepUpQueueB', q.join(',')); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 CHANGE_REQUEST_CLOSED', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('CHANGE_REQUEST_CLOSED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken2}}"
+              },
+              {
+                "key": "X-Step-Up",
+                "value": "{{stepUpTokenB}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/settings/change-requests/{{feeRequestId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "settings",
+                "change-requests",
+                "{{feeRequestId}}",
+                "approve"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Shop commission is now 6% (v2)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"6% v2\", () => { pm.expect(j.items.some((s) => s.key === 'fees.shop_commission_pct' && s.value === 6 && s.version === 2)).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/settings?category=fees",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "settings"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "fees"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Change requests list",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/settings/change-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "settings",
+                "change-requests"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Esports catalogue (master A)",
+      "item": [
+        {
+          "name": "All modes (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/catalog/esports-modes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "catalog",
+                "esports-modes"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add a map",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('mapId', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gameId\": \"{{pubgGameId}}\",\n  \"key\": \"karakin\",\n  \"nameEn\": \"Karakin\",\n  \"nameBn\": \"কারাকিন\",\n  \"sort\": 6\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/catalog/esports-maps",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "catalog",
+                "esports-maps"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Change its key (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 CATALOG_KEY_IMMUTABLE', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('CATALOG_KEY_IMMUTABLE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"karakin_2\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/catalog/esports-maps/{{mapId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "catalog",
+                "esports-maps",
+                "{{mapId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Deactivate it",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"inactive\", () => { pm.expect(j.isActive === false).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/catalog/esports-maps/{{mapId}}/deactivate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "catalog",
+                "esports-maps",
+                "{{mapId}}",
+                "deactivate"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reactivate it",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"active\", () => { pm.expect(j.isActive === true).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/catalog/esports-maps/{{mapId}}/reactivate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "catalog",
+                "esports-maps",
+                "{{mapId}}",
+                "reactivate"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
