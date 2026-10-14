@@ -1,0 +1,19 @@
+# Lint, tests against MySQL + Redis, OpenAPI drift check, then image build, Trivy, GHCR and the
+# staging image-tag PR, all from the reusable workflow in kriraghor-infra (ADR-003).
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  ci:
+    uses: kriraghor/kriraghor-infra/.github/workflows/node-service.yml@main
+    with:
+      image: kriraghor-backend
+      values-files: values/backend/staging.yaml
+    secrets: inherit

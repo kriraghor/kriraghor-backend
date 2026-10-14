@@ -31,12 +31,14 @@ In development:
 
 ### Processes (one image, three entrypoints)
 
-| Process | Command | Port | What it does |
-|---|---|---|---|
-| api | `node src/server.js` | `PORT` (4000) | REST `/api/v1`, OpenAPI |
-| realtime | `node src/realtime.js` | `REALTIME_PORT` (4001) | Socket.IO with the Redis adapter. Handshake `auth: { token, audience }`; joins `user:{id}`, staff also join `staff` |
-| worker | `node src/worker.js` | – | BullMQ workers and job schedulers ([`src/jobs/definitions.js`](src/jobs/definitions.js)) |
-| migrate | `node node_modules/.bin/sequelize db:migrate` | – | Kubernetes pre-upgrade Job. Never runs on boot |
+| Process | Locally | In the image (container `args`) | Port | What it does |
+|---|---|---|---|---|
+| api | `npm run dev` | `src/server.js` (default) | `PORT` (4000) | REST `/api/v1`, OpenAPI |
+| realtime | `npm run dev:realtime` | `src/realtime.js` | `REALTIME_PORT` (4001) | Socket.IO with the Redis adapter. Handshake `auth: { token, audience }`; joins `user:{id}`, staff also join `staff` |
+| worker | `npm run dev:worker` | `src/worker.js` | – | BullMQ workers and job schedulers ([`src/jobs/definitions.js`](src/jobs/definitions.js)) |
+| migrate | `npm run db:migrate` | `node_modules/sequelize-cli/lib/sequelize db:migrate` | – | Kubernetes pre-upgrade Job. Never runs on boot |
+
+The image's entrypoint is Node itself (distroless), so Kubernetes passes only the script as `args`. For a one-off command inside a pod, call Node by its path: `kubectl exec deploy/backend-api -- /nodejs/bin/node scripts/create-master.js ...`.
 
 Every process also serves `/health/live`, `/health/ready` (DB + Redis, 503 while draining) and `/metrics` (Prometheus) on `OPS_PORT` (9464). That port is never exposed through the ingress. On SIGTERM a process fails readiness, waits `SHUTDOWN_DRAIN_MS`, then closes its servers, queues, Redis and DB in order.
 
@@ -101,7 +103,7 @@ SELECT id, audience, device_label, revoked_at, revoke_cause FROM sessions;
 
 ## Running in Kubernetes
 
-The image is built from the [`Dockerfile`](Dockerfile): multi-stage, `node:24.16.0-bookworm-slim`, production dependencies only, runs as the non-root `node` user, and needs no writable filesystem.
+The image is built from the [`Dockerfile`](Dockerfile): production dependencies are installed on `node:24.16.0-bookworm-slim`, and the runtime is **distroless Node 24 (Debian 13)**, pinned by digest: no shell, no npm, no package manager. It runs as uid 1000 and needs no writable filesystem. CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs lint, the tests against MySQL and Redis, the OpenAPI drift check, the image build and a Trivy scan that fails on fixable HIGH or CRITICAL findings.
 
 ```bash
 docker build -t kriraghor-backend:dev .
