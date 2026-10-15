@@ -1,12 +1,5 @@
 'use strict';
 
-/**
- * M01 Identity & Access + minimal M04 audit log.
- * MySQL 8 notes vs the Postgres-oriented spec:
- *  - UUIDs are CHAR(36); JSON instead of jsonb; DATETIME(3) stored in UTC.
- *  - No partial unique indexes: staff_permissions keeps one row per (user, permission)
- *    and uses revoked_at for soft revocation (history lives in audit_logs).
- */
 const ROLES = ['member', 'player', 'pro', 'ground_owner', 'shop_owner', 'organiser', 'gym_owner', 'staff', 'master_admin'];
 const ROLE_STATUS = ['applied', 'documents_pending', 'in_review', 'changes_requested', 'active', 'rejected', 'suspended', 'withdrawn'];
 const PERMS = ['approve_listings', 'approve_documents', 'resolve_reports', 'refund_small', 'view_payouts', 'release_payouts', 'edit_fees', 'manage_staff', 'manage_users', 'manage_catalog'];
@@ -14,7 +7,7 @@ const PERMS = ['approve_listings', 'approve_documents', 'resolve_reports', 'refu
 module.exports = {
   async up(queryInterface, Sequelize) {
     const { DataTypes } = Sequelize;
-    const now = { type: DataTypes.DATE(3), allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP(3)') };
+    const now = { type: DataTypes.DATE(3), allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP') };
     const uuid = { type: DataTypes.CHAR(36), allowNull: false };
 
     await queryInterface.createTable('users', {
@@ -32,16 +25,16 @@ module.exports = {
       locale: { type: DataTypes.ENUM('en', 'bn'), allowNull: false, defaultValue: 'en' },
       kyc_status: { type: DataTypes.ENUM('unverified', 'pending', 'verified', 'rejected'), allowNull: false, defaultValue: 'unverified' },
       status: { type: DataTypes.ENUM('active', 'suspended', 'banned', 'closed'), allowNull: false, defaultValue: 'active' },
-      authz_version: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 1 },
+      authz_version: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
       last_panel_role: { type: DataTypes.ENUM(...ROLES), allowNull: true },
-      failed_login_count: { type: DataTypes.SMALLINT.UNSIGNED, allowNull: false, defaultValue: 0 },
+      failed_login_count: { type: DataTypes.SMALLINT, allowNull: false, defaultValue: 0 },
       locked_until: { type: DataTypes.DATE(3), allowNull: true },
       last_login_at: { type: DataTypes.DATE(3), allowNull: true },
       closed_at: { type: DataTypes.DATE(3), allowNull: true },
       created_at: now,
       updated_at: now,
     });
-    // MySQL 8.0.16+ enforces CHECK constraints.
+    
     await queryInterface.sequelize.query(
       'ALTER TABLE users ADD CONSTRAINT chk_users_identifier CHECK (phone IS NOT NULL OR email IS NOT NULL)'
     );
@@ -52,7 +45,7 @@ module.exports = {
       role: { type: DataTypes.ENUM(...ROLES), allowNull: false },
       status: { type: DataTypes.ENUM(...ROLE_STATUS), allowNull: false, defaultValue: 'applied' },
       meta: { type: DataTypes.JSON, allowNull: true },
-      attempt: { type: DataTypes.SMALLINT.UNSIGNED, allowNull: false, defaultValue: 1 },
+      attempt: { type: DataTypes.SMALLINT, allowNull: false, defaultValue: 1 },
       applied_at: now,
       activated_at: { type: DataTypes.DATE(3), allowNull: true },
       decided_by: { type: DataTypes.CHAR(36), allowNull: true },
@@ -93,7 +86,7 @@ module.exports = {
       purpose: { type: DataTypes.ENUM('signup', 'login', 'reset', 'phone_change_old', 'phone_change_new', 'email_verify'), allowNull: false },
       code_hash: { type: DataTypes.CHAR(64), allowNull: false },
       expires_at: { type: DataTypes.DATE(3), allowNull: false },
-      attempts: { type: DataTypes.SMALLINT.UNSIGNED, allowNull: false, defaultValue: 0 },
+      attempts: { type: DataTypes.SMALLINT, allowNull: false, defaultValue: 0 },
       consumed_at: { type: DataTypes.DATE(3), allowNull: true },
       ip: { type: DataTypes.STRING(45), allowNull: true },
       created_at: now,
@@ -153,7 +146,6 @@ module.exports = {
     });
     await queryInterface.addIndex('user_sanctions', ['user_id', 'lifted_at'], { name: 'ix_sanctions_user_open' });
 
-    // Single-use step-up tokens (scope-bound). Stored by jti so reuse is rejected.
     await queryInterface.createTable('step_up_tokens', {
       jti: { ...uuid, primaryKey: true },
       user_id: { ...uuid, references: { model: 'users', key: 'id' }, onDelete: 'RESTRICT' },
@@ -164,9 +156,8 @@ module.exports = {
       created_at: now,
     });
 
-    // Minimal M04 audit log (append-only; the app DB user should have INSERT/SELECT only in production).
     await queryInterface.createTable('audit_logs', {
-      id: { type: DataTypes.BIGINT.UNSIGNED, autoIncrement: true, primaryKey: true },
+      id: { type: DataTypes.BIGINT, autoIncrement: true, primaryKey: true },
       actor_id: { type: DataTypes.CHAR(36), allowNull: true },
       actor_role: { type: DataTypes.STRING(32), allowNull: true },
       action: { type: DataTypes.STRING(80), allowNull: false },

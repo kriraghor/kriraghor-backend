@@ -47,9 +47,9 @@ User.init(
     locale: { type: DataTypes.ENUM('en', 'bn'), allowNull: false, defaultValue: 'en' },
     kycStatus: { type: DataTypes.ENUM('unverified', 'pending', 'verified', 'rejected'), allowNull: false, defaultValue: 'unverified' },
     status: { type: DataTypes.ENUM('active', 'suspended', 'banned', 'closed'), allowNull: false, defaultValue: 'active' },
-    authzVersion: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 1 },
+    authzVersion: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
     lastPanelRole: DataTypes.ENUM(...ROLE_LIST),
-    failedLoginCount: { type: DataTypes.SMALLINT.UNSIGNED, allowNull: false, defaultValue: 0 },
+    failedLoginCount: { type: DataTypes.SMALLINT, allowNull: false, defaultValue: 0 },
     lockedUntil: DataTypes.DATE(3),
     lastLoginAt: DataTypes.DATE(3),
     closedAt: DataTypes.DATE(3),
@@ -76,7 +76,7 @@ UserRole.init(
     role: { type: DataTypes.ENUM(...ROLE_LIST), allowNull: false },
     status: { type: DataTypes.ENUM(...ROLE_STATUSES), allowNull: false, defaultValue: 'applied' },
     meta: DataTypes.JSON,
-    attempt: { type: DataTypes.SMALLINT.UNSIGNED, allowNull: false, defaultValue: 1 },
+    attempt: { type: DataTypes.SMALLINT, allowNull: false, defaultValue: 1 },
     appliedAt: { type: DataTypes.DATE(3), allowNull: false, defaultValue: DataTypes.NOW },
     activatedAt: DataTypes.DATE(3),
     decidedBy: DataTypes.UUID,
@@ -115,7 +115,7 @@ OtpCode.init(
     purpose: { type: DataTypes.ENUM('signup', 'login', 'reset', 'phone_change_old', 'phone_change_new', 'email_verify'), allowNull: false },
     codeHash: { type: DataTypes.CHAR(64), allowNull: false },
     expiresAt: { type: DataTypes.DATE(3), allowNull: false },
-    attempts: { type: DataTypes.SMALLINT.UNSIGNED, allowNull: false, defaultValue: 0 },
+    attempts: { type: DataTypes.SMALLINT, allowNull: false, defaultValue: 0 },
     consumedAt: DataTypes.DATE(3),
     ip: DataTypes.STRING(45),
   },
@@ -191,7 +191,7 @@ StepUpToken.init(
 class AuditLog extends Model {}
 AuditLog.init(
   {
-    id: { type: DataTypes.BIGINT.UNSIGNED, autoIncrement: true, primaryKey: true },
+    id: { type: DataTypes.BIGINT, autoIncrement: true, primaryKey: true },
     actorId: DataTypes.UUID,
     actorRole: DataTypes.STRING(32),
     action: { type: DataTypes.STRING(80), allowNull: false },

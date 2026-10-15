@@ -9,10 +9,14 @@ const base = {
   database: config.db.name,
   host: config.db.host,
   port: config.db.port,
-  dialect: 'mysql',
-  timezone: '+00:00', // store UTC; business logic converts to Asia/Dhaka
-  dialectOptions: { dateStrings: false, supportBigNumbers: true, bigNumberStrings: true },
-  define: { underscored: true, charset: 'utf8mb4', collate: 'utf8mb4_0900_ai_ci' },
+  dialect: 'postgres',
+  dialectOptions: {
+    ssl: {
+      require: true,
+      rejectUnauthorized: false, // Supabase SSL Connection এর জন্য
+    },
+  },
+  define: { underscored: true },
   migrationStorageTableName: 'sequelize_meta',
   seederStorage: 'sequelize',
   seederStorageTableName: 'sequelize_seeds',
@@ -20,7 +24,7 @@ const base = {
   logging: config.db.logging ? console.log : false,
 };
 
-// Pool per process. With N pods x 3 processes, keep N x 3 x DB_POOL_MAX under MySQL's max_connections.
+// Pool per process.
 const pool = { max: config.db.poolMax, min: 0, idle: 10000, acquire: 30000 };
 
 module.exports = {

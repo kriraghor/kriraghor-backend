@@ -28,10 +28,11 @@ const schema = z.object({
   REDIS_URL: z.string().default('redis://127.0.0.1:6379'),
   REDIS_KEY_PREFIX: z.string().default('kg'),
 
+  DATABASE_URL: z.string().optional(),
   DB_HOST: z.string().default('127.0.0.1'),
-  DB_PORT: z.coerce.number().int().default(3306),
-  DB_NAME: z.string().default('kriraghor'),
-  DB_USER: z.string().default('kriraghor'),
+  DB_PORT: z.coerce.number().int().default(5432),
+  DB_NAME: z.string().default('postgres'),
+  DB_USER: z.string().default('postgres'),
   DB_PASSWORD: z.string().default(''),
   DB_LOGGING: bool.default(false),
   DB_POOL_MAX: z.coerce.number().int().positive().default(10),
@@ -104,6 +105,7 @@ module.exports = {
   shutdownDrainMs: env.NODE_ENV === 'test' ? 0 : env.SHUTDOWN_DRAIN_MS,
   redis: { url: env.REDIS_URL, prefix: env.REDIS_KEY_PREFIX },
   db: {
+    url: env.DATABASE_URL,
     host: env.DB_HOST,
     port: env.DB_PORT,
     name: env.NODE_ENV === 'test' && !/_test$/.test(env.DB_NAME) ? `${env.DB_NAME}_test` : env.DB_NAME,

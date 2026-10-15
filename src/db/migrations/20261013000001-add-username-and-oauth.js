@@ -1,19 +1,14 @@
 'use strict';
 
-/**
- * Adds username sign-in and external identity providers (Google).
- *  - users.username: optional, unique, stored lower-case.
- *  - oauth_identities: one row per (provider, provider subject); a user may link several providers.
- */
 module.exports = {
   async up(queryInterface, Sequelize) {
     const { DataTypes } = Sequelize;
-    const now = { type: DataTypes.DATE(3), allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP(3)') };
+    const now = { type: DataTypes.DATE(3), allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP') };
 
-    await queryInterface.addColumn('users', 'username', { type: DataTypes.STRING(30), allowNull: true, after: 'email_verified_at' });
+    await queryInterface.addColumn('users', 'username', { type: DataTypes.STRING(30), allowNull: true });
     await queryInterface.addIndex('users', ['username'], { unique: true, name: 'uq_users_username' });
-    // Every account needs at least one identifier; a Google account without email may use a username.
-    await queryInterface.sequelize.query('ALTER TABLE users DROP CHECK chk_users_identifier');
+    
+    await queryInterface.sequelize.query('ALTER TABLE users DROP CONSTRAINT chk_users_identifier');
     await queryInterface.sequelize.query(
       'ALTER TABLE users ADD CONSTRAINT chk_users_identifier CHECK (phone IS NOT NULL OR email IS NOT NULL OR username IS NOT NULL)'
     );
@@ -37,7 +32,7 @@ module.exports = {
 
   async down(queryInterface) {
     await queryInterface.dropTable('oauth_identities');
-    await queryInterface.sequelize.query('ALTER TABLE users DROP CHECK chk_users_identifier');
+    await queryInterface.sequelize.query('ALTER TABLE users DROP CONSTRAINT chk_users_identifier');
     await queryInterface.sequelize.query('ALTER TABLE users ADD CONSTRAINT chk_users_identifier CHECK (phone IS NOT NULL OR email IS NOT NULL)');
     await queryInterface.removeIndex('users', 'uq_users_username');
     await queryInterface.removeColumn('users', 'username');
