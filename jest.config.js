@@ -19,5 +19,10 @@ module.exports = {
     './src/modules/events/catalog.js': { branches: 100 },
     // M08 SMS encoding, quiet hours, channel resolution, templates, dedupe and masking.
     './src/modules/notifications/notify.rules.js': FULL,
+    // M06 money: helpers, ledger postings, escrow holds and refund authority.
+    './src/common/money.js': FULL,
+    './src/modules/payments/ledger.rules.js': FULL,
+    './src/modules/payments/escrow.rules.js': FULL,
+    './src/modules/payments/refunds.rules.js': FULL,
   },
 };

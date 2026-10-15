@@ -12,6 +12,7 @@ const QUEUES = Object.freeze({
   EVENTS: 'events', // events.consume (one job per event and consumer)
   AUDIT: 'audit', // chain seal and verify, exports
   NOTIFY: 'notify', // M08 deliveries and their schedules
+  PAYMENTS: 'payments', // M06 polls, refunds, expiry, escrow releases, invariants, reconciliation
 });
 
 const prefix = `${config.redis.prefix}:bull`;

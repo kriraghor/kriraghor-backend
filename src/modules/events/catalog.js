@@ -6,7 +6,7 @@
  * invalid payloads before commit. Payloads carry IDs, codes, amounts, statuses and timestamps only:
  * no phone, NID, DOB, email or names (consumers read details through the producer's service).
  *
- * Built so far: M01, M03, M04. Each later module adds its events here when it is built.
+ * Built so far: M01, M03, M04, M06. Each later module adds its events here when it is built.
  */
 const { z } = require('zod');
 
@@ -15,6 +15,9 @@ const uuid = z.uuid();
 const role = z.string().max(32);
 const iso = z.string().max(40);
 const json = z.unknown();
+const poisha = z.number().int().nonnegative();
+const paymentClosed = z.object({ paymentId: uuid, purpose: z.string(), purposeId: uuid, amount: poisha, payerId: uuid, reason: z.string().max(60) });
+const refundEvent = z.object({ refundId: uuid, paymentId: uuid, amount: poisha, purpose: z.string(), purposeId: uuid, payerId: uuid });
 const catalogItem = z.object({ table: z.string(), id: uuid, key: z.string(), version: z.number().int().optional(), isActive: z.boolean().optional() });
 
 const EVENTS = {
@@ -62,6 +65,49 @@ const EVENTS = {
   'audit_log.exported': { module: 'M04', version: 1, schema: z.object({ exportId: uuid, requestedBy: uuid, rowCount: z.number().int() }) },
   'audit.chain_mismatch_detected': { module: 'M04', version: 1, schema: z.object({ seq: z.number().int(), auditLogId: id }) },
   'outbox.event_dead_lettered': { module: 'M04', version: 1, schema: z.object({ eventId: uuid, eventType: z.string(), consumer: z.string(), attempts: z.number().int() }) },
+
+  // ---------------- M06 Payments, ledger and escrow (amounts in poisha) ----------------
+  'payment.succeeded': {
+    module: 'M06',
+    version: 1,
+    schema: z.object({ paymentId: uuid, code: z.string(), purpose: z.string(), purposeId: uuid, amount: poisha, method: z.string().nullable(), payerId: uuid, late: z.boolean(), accepted: z.boolean() }),
+  },
+  'payment.failed': { module: 'M06', version: 1, schema: paymentClosed },
+  'payment.expired': { module: 'M06', version: 1, schema: paymentClosed },
+  'refund.escalated': { module: 'M06', version: 1, schema: refundEvent },
+  'refund.approved': { module: 'M06', version: 1, schema: refundEvent },
+  'refund.succeeded': { module: 'M06', version: 1, schema: refundEvent },
+  'refund.failed': { module: 'M06', version: 1, schema: refundEvent },
+  'refund.manual_required': { module: 'M06', version: 1, schema: refundEvent },
+  'escrow.held': {
+    module: 'M06',
+    version: 1,
+    schema: z.object({ holdId: uuid, paymentId: uuid, purpose: z.string(), purposeId: uuid, amount: poisha, payeeId: uuid.nullable(), groupRef: uuid.nullable() }),
+  },
+  'escrow.released': {
+    module: 'M06',
+    version: 1,
+    schema: z.object({ holdId: uuid, purpose: z.string(), purposeId: uuid, gross: poisha, fee: poisha, net: poisha, payeeId: uuid, transactionId: uuid }),
+  },
+  'escrow.pool_settled': {
+    module: 'M06',
+    version: 1,
+    schema: z.object({ groupRef: uuid, purpose: z.string(), collected: poisha, paid: poisha, subsidy: poisha, fee: poisha, transactionId: uuid }),
+  },
+  'escrow.frozen': { module: 'M06', version: 1, schema: z.object({ holdId: uuid, reason: z.string().max(200), payeeId: uuid.nullable() }) },
+  'escrow.unfrozen': { module: 'M06', version: 1, schema: z.object({ holdId: uuid, reason: z.string().max(200), payeeId: uuid.nullable() }) },
+  'ledger.transaction_posted': {
+    module: 'M06',
+    version: 1,
+    schema: z.object({ transactionId: uuid, kind: z.string(), refType: z.string(), refId: id, total: poisha }),
+  },
+  'ledger.invariant_failed': { module: 'M06', version: 1, schema: z.object({ failed: z.array(z.string()), checkedAt: iso }) },
+  'reconciliation.exception_raised': { module: 'M06', version: 1, schema: z.object({ runId: uuid, itemId: uuid, type: z.string(), amount: poisha }) },
+  'reconciliation.run_completed': {
+    module: 'M06',
+    version: 1,
+    schema: z.object({ runId: uuid, provider: z.string(), businessDate: z.string(), matched: z.number().int(), exceptions: z.number().int(), autoHealed: z.number().int() }),
+  },
 };
 
 /** FR-19: `<aggregate>.<past_tense_verb>`, snake_case. Irregular past tenses are listed. */

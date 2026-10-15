@@ -23,6 +23,7 @@ const auditRoutes = require('./modules/audit/audit.routes');
 const eventsRoutes = require('./modules/events/events.routes');
 const subscriptions = require('./modules/events/subscriptions');
 const notifyRoutes = require('./modules/notifications/notify.routes');
+const paymentRoutes = require('./modules/payments/payments.routes');
 
 // ADR-004: customer and admin origins (exact or one-label wildcard). Unknown origins get no CORS headers.
 const allowedOrigin = compile([...config.corsOrigins, ...config.adminOrigins]);
@@ -64,10 +65,16 @@ function createApp() {
 
   docs.mount(app);
 
+  // M06: SSLCommerz-compatible simulator for dev, tests and k3d (config refuses it in production).
+  if (config.payments.simulator) app.use('/dev/sslcommerz', require('./providers/payments/sslcommerz.simulator').router());
+
   const api = express.Router();
   api.use('/auth', authRoutes);
   api.use('/me/notifications', notifyRoutes.meRouter);
   api.use('/me/notification-prefs', notifyRoutes.prefsRouter);
+  api.use('/me/payments', paymentRoutes.meRouter);
+  api.use('/payments', paymentRoutes.payerRouter);
+  api.use('/webhooks', paymentRoutes.webhookRouter);
   api.use('/me', meRoutes);
   api.use('/settings', settingsRoutes.publicRouter);
   api.use('/catalog', catalogRoutes.publicRouter);
@@ -79,6 +86,11 @@ function createApp() {
   api.use('/admin/events', eventsRoutes.router);
   api.use('/admin/me/notifications', notifyRoutes.adminMeRouter);
   api.use('/admin/notifications', notifyRoutes.adminRouter);
+  api.use('/admin/payments', paymentRoutes.adminPayments);
+  api.use('/admin/refunds', paymentRoutes.adminRefunds);
+  api.use('/admin/ledger', paymentRoutes.adminLedger);
+  api.use('/admin/escrow', paymentRoutes.adminEscrow);
+  api.use('/admin/reconciliation', paymentRoutes.adminRecon);
   api.use('/admin', adminRoutes);
   app.use(config.apiPrefix, api);
 

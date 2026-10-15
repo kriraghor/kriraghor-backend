@@ -5,6 +5,7 @@
  * categories (FR-06, §6.3), template rendering with typed variables (FR-07) and dedupe keys (FR-02).
  * No I/O; 100% branch coverage.
  */
+const moneyHelpers = require('../../common/money');
 
 // ---------------------------------------------------------------- categories (§6.3)
 const CATEGORIES = {
@@ -84,19 +85,13 @@ function deliverAt({ now = new Date(), urgent = false, channel, quietStart = '22
 }
 
 // ---------------------------------------------------------------- templates (FR-07, §6.2)
-const BN_DIGITS = '০১২৩৪৫৬৭৮৯';
-const bnDigits = (s) => String(s).replace(/\d/g, (d) => BN_DIGITS[Number(d)]);
+const bnDigits = (s) => moneyHelpers.bnDigits(String(s));
 
 function formatValue(type, value, locale) {
   switch (type) {
-    case 'money': {
-      // Poisha in, "৳2,100" or "৳২,১০০" out (no floats: integer taka and two-digit poisha).
-      const poisha = Number(value);
-      const taka = Math.trunc(poisha / 100).toLocaleString('en-IN');
-      const rest = Math.abs(poisha % 100);
-      const text = `৳${taka}${rest ? `.${String(rest).padStart(2, '0')}` : ''}`;
-      return locale === 'bn' ? bnDigits(text) : text;
-    }
+    case 'money':
+      // Poisha in, "৳2,100" or "৳২,১০০" out (common/money: integer taka and two-digit poisha).
+      return moneyHelpers.format(Number(value), locale);
     case 'datetime': {
       const text = new Intl.DateTimeFormat(locale === 'bn' ? 'bn-BD' : 'en-GB', {
         weekday: 'short',

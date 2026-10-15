@@ -64,6 +64,17 @@ const schema = z.object({
   WEB_APP_URL: z.string().default('http://localhost:3000'),
   ADMIN_APP_URL: z.string().default('http://localhost:3002'),
 
+  // M06 payments. The API's public origin builds the gateway's IPN and return URLs.
+  API_PUBLIC_URL: z.string().default('http://localhost:4000'),
+  PAYMENT_PROVIDER: z.enum(['sslcommerz']).default('sslcommerz'),
+  SSLCOMMERZ_BASE_URL: z.string().optional(),
+  SSLCOMMERZ_STORE_ID: z.string().optional(),
+  SSLCOMMERZ_STORE_PASSWORD: z.string().optional(),
+  // Built-in SSLCommerz-compatible simulator at /dev/sslcommerz (dev, tests and k3d only; refused in production).
+  PAYMENTS_SIMULATOR: bool.default(false),
+  // Master test charges (dev and staging only): the Phase 2 exit check without a purpose module.
+  PAYMENTS_TEST_CHARGES: bool.default(false),
+
   // Comma-separated OAuth client IDs allowed as the ID-token audience (web, Android, iOS).
   GOOGLE_CLIENT_IDS: z.string().default(''),
 
@@ -87,6 +98,13 @@ if (!parsed.success) {
 
 const env = parsed.data;
 const list = (v) => v.split(',').map((x) => x.trim()).filter(Boolean);
+
+if (env.NODE_ENV === 'production' && env.PAYMENTS_SIMULATOR) {
+  throw new Error('Refusing to start in production with the payment simulator enabled (PAYMENTS_SIMULATOR).');
+}
+
+const apiPublic = env.API_PUBLIC_URL.replace(/\/$/, '');
+const simulator = env.PAYMENTS_SIMULATOR;
 
 if (env.NODE_ENV === 'production' && /change-me/.test(env.JWT_ACCESS_SECRET + env.JWT_SPECIAL_SECRET + env.OTP_HASH_SECRET + env.CSRF_SECRET)) {
   throw new Error('Refusing to start in production with placeholder secrets.');
@@ -159,6 +177,20 @@ module.exports = {
   },
   storage: { driver: env.NODE_ENV === 'test' ? 'memory' : env.STORAGE_DRIVER },
   apps: { web: env.WEB_APP_URL.replace(/\/$/, ''), admin: env.ADMIN_APP_URL.replace(/\/$/, '') },
+  apiPublicUrl: apiPublic,
+  payments: {
+    provider: env.PAYMENT_PROVIDER,
+    simulator,
+    testCharges: env.PAYMENTS_TEST_CHARGES,
+    sslcommerz: {
+      // The simulator plays SSLCommerz when no real sandbox store is configured. It then runs in the same
+      // process as the adapter (no network: inside a pod the public API host is not reachable as itself).
+      inProcess: simulator && !env.SSLCOMMERZ_BASE_URL,
+      baseUrl: (env.SSLCOMMERZ_BASE_URL || (simulator ? `${apiPublic}/dev/sslcommerz` : '')).replace(/\/$/, ''),
+      storeId: env.SSLCOMMERZ_STORE_ID || (simulator ? 'kriraghor-sim' : ''),
+      storePassword: env.SSLCOMMERZ_STORE_PASSWORD || (simulator ? 'kriraghor-sim-pass' : ''),
+    },
+  },
   google: {
     clientIds: env.GOOGLE_CLIENT_IDS.split(',').map((s) => s.trim()).filter(Boolean),
   },

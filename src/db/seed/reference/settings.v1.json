@@ -1,6 +1,6 @@
 {
-  "seedVersion": 3,
-  "source": "M03 §6.4 with the v3 business rules (Oct 2026), M21 §6.1 and M01 §6.4; v2 adds the M04 events.* and audit.* operations keys; v3 the M08 notify.* keys. Money in poisha, percentages as numbers.",
+  "seedVersion": 4,
+  "source": "M03 §6.4 with the v3 business rules (Oct 2026), M21 §6.1 and M01 §6.4; v2 adds the M04 events.* and audit.* operations keys; v3 the M08 notify.* keys; v4 the M06 payments.* and refunds.retry_max keys. Money in poisha, percentages as numbers.",
   "settings": [
     { "key": "fees.ground_booking_pct", "category": "fees", "type": "decimal", "value": 5, "unit": "%", "min": 0, "max": 20, "approval": "four_eyes", "public": true, "en": "Ground booking fee", "bn": "মাঠ বুকিং ফি", "why": "Charged on the full booking value and deducted from the online money at release." },
     { "key": "fees.shop_commission_pct", "category": "fees", "type": "decimal", "value": 5, "unit": "%", "min": 0, "max": 25, "approval": "four_eyes", "en": "Shop commission on new gear", "bn": "নতুন পণ্যে দোকানের কমিশন" },
@@ -159,6 +159,13 @@
     { "key": "notify.quiet_hours_start", "category": "notifications", "type": "time", "value": "22:00", "public": true, "en": "Quiet hours start (non-urgent texts and emails wait)", "bn": "নীরব সময় শুরু (জরুরি নয় এমন বার্তা অপেক্ষা করে)" },
     { "key": "notify.quiet_hours_end", "category": "notifications", "type": "time", "value": "08:00", "public": true, "en": "Quiet hours end", "bn": "নীরব সময় শেষ" },
     { "key": "notify.sms_max_segments", "category": "notifications", "type": "int", "value": 3, "min": 1, "max": 6, "en": "Longest transactional text (SMS parts)", "bn": "সবচেয়ে দীর্ঘ লেনদেন এসএমএস (অংশ)" },
-    { "key": "notify.retention_days", "category": "notifications", "type": "int", "value": 180, "unit": "days", "min": 30, "max": 3650, "en": "Notifications stay in the bell for", "bn": "নোটিফিকেশন বেলে থাকে" }
+    { "key": "notify.retention_days", "category": "notifications", "type": "int", "value": 180, "unit": "days", "min": 30, "max": 3650, "en": "Notifications stay in the bell for", "bn": "নোটিফিকেশন বেলে থাকে" },
+    { "key": "payments.intent_ttl_minutes", "category": "payments", "type": "int", "value": 10, "unit": "min", "min": 2, "max": 120, "en": "A payment request stays open for", "bn": "পেমেন্ট অনুরোধ খোলা থাকে" },
+    { "key": "payments.unknown_grace_minutes", "category": "payments", "type": "int", "value": 5, "unit": "min", "min": 0, "max": 60, "en": "Extra wait when the gateway has not answered", "bn": "গেটওয়ে উত্তর না দিলে বাড়তি অপেক্ষা" },
+    { "key": "payments.poll_unknown_minutes", "category": "payments", "type": "int_list", "value": [1, 5, 15], "unit": "min", "en": "Ask the gateway again after", "bn": "গেটওয়েকে আবার জিজ্ঞেস করা হয়" },
+    { "key": "refunds.retry_max", "category": "payments", "type": "int", "value": 3, "min": 1, "max": 10, "en": "Gateway refund tries before manual handling", "bn": "হাতে দেখার আগে গেটওয়েতে রিফান্ডের চেষ্টা" },
+    { "key": "payments.clearing_alert_days", "category": "payments", "type": "int", "value": 0, "unit": "days", "min": 0, "max": 30, "en": "Alert when gateway money is unsettled for (0 = off)", "bn": "গেটওয়ের টাকা জমা না হলে সতর্কতা (০ = বন্ধ)", "why": "Off until settlement import exists (M06 open question)" },
+    { "key": "payments.test_charge_max_poisha", "category": "payments", "type": "money", "value": 10000, "unit": "poisha", "min": 100, "max": 100000, "en": "Largest test charge", "bn": "সর্বোচ্চ টেস্ট চার্জ" },
+    { "key": "payments.test_charge_fee_pct", "category": "payments", "type": "decimal", "value": 5, "unit": "%", "min": 0, "max": 20, "en": "Fee on test charges", "bn": "টেস্ট চার্জে ফি" }
   ]
 }

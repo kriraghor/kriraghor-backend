@@ -34,4 +34,17 @@ async function withPermission(permission) {
   return [...new Set([...active.map((r) => r.userId), ...(await masters())])];
 }
 
-module.exports = { contactFor, masters, withPermission };
+/**
+ * Map userId → { status, isStaff, displayName } (M06: who may pay or be paid). Staff accounts are
+ * separate users that cannot use the customer apps (ADR-004), so they cannot be payers.
+ */
+async function accounts(userIds) {
+  const ids = [...new Set(userIds.filter(Boolean))];
+  if (!ids.length) return new Map();
+  const users = await User.findAll({ where: { id: ids }, attributes: ['id', 'status', 'displayName'] });
+  const staff = await StaffMember.findAll({ where: { userId: ids, status: { [Op.ne]: 'offboarded' } }, attributes: ['userId'] });
+  const staffIds = new Set(staff.map((s) => s.userId));
+  return new Map(users.map((u) => [u.id, { status: u.status, isStaff: staffIds.has(u.id), displayName: u.displayName }]));
+}
+
+module.exports = { contactFor, masters, withPermission, accounts };

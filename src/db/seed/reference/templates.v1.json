@@ -1,6 +1,6 @@
 {
   "seedVersion": 1,
-  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built in Phase 1. in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments.",
+  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments.",
   "templates": [
     {
       "code": "AUDIT_CRITICAL",
@@ -799,6 +799,846 @@
         },
         {
           "name": "removed",
+          "type": "text",
+          "maxLen": 200
+        },
+        {
+          "name": "url",
+          "type": "link"
+        }
+      ]
+    },
+    {
+      "code": "PAY_SUCCEEDED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Payment received",
+      "body": "{{amount}} paid for {{title}}. Ref {{code}}.",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        }
+      ]
+    },
+    {
+      "code": "PAY_SUCCEEDED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পেমেন্ট সম্পন্ন",
+      "body": "{{title}}-এর জন্য {{amount}} পরিশোধ হয়েছে। রেফ {{code}}।",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        }
+      ]
+    },
+    {
+      "code": "PAY_SUCCEEDED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{amount}} paid for {{title}}. Ref {{code}}.",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        }
+      ]
+    },
+    {
+      "code": "PAY_SUCCEEDED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{title}}-এর জন্য {{amount}} পরিশোধ হয়েছে। রেফ {{code}}",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        }
+      ]
+    },
+    {
+      "code": "PAY_FAILED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Payment not completed",
+      "body": "Your payment of {{amount}} for {{title}} did not go through. You can try again.",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "PAY_FAILED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পেমেন্ট সম্পন্ন হয়নি",
+      "body": "{{title}}-এর জন্য {{amount}} পেমেন্ট সম্পন্ন হয়নি। আবার চেষ্টা করতে পারেন।",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "REFUND_INITIATED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Refund started",
+      "body": "We are refunding {{amount}} for {{title}} to {{method}}.",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "method",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "REFUND_INITIATED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "রিফান্ড শুরু",
+      "body": "{{title}}-এর {{amount}} {{method}}-এ ফেরত পাঠানো হচ্ছে।",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "method",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "REFUND_INITIATED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: refund of {{amount}} for {{title}} started. It goes back to {{method}}.",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "method",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "REFUND_INITIATED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{title}}-এর {{amount}} {{method}}-এ ফেরত পাঠানো হচ্ছে।",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "method",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "REFUND_SUCCEEDED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Refund complete",
+      "body": "{{amount}} refunded to {{method}}.",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "method",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "REFUND_SUCCEEDED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "রিফান্ড সম্পন্ন",
+      "body": "{{amount}} {{method}}-এ ফেরত দেওয়া হয়েছে।",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "method",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "REFUND_SUCCEEDED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{amount}} refunded to {{method}}.",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "method",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "REFUND_SUCCEEDED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{amount}} {{method}}-এ ফেরত দেওয়া হয়েছে।",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "method",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "REFUND_MANUAL",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Your refund needs our help",
+      "body": "We could not refund {{amount}} to {{method}} automatically. Our team will contact you to pay it another way.",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "method",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "REFUND_MANUAL",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "রিফান্ডে আমাদের সাহায্য দরকার",
+      "body": "{{amount}} স্বয়ংক্রিয়ভাবে {{method}}-এ ফেরত দেওয়া যায়নি। অন্যভাবে দিতে আমাদের টিম যোগাযোগ করবে।",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "method",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "REFUND_MANUAL",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: we could not refund {{amount}} to {{method}}. Our team will contact you to pay it another way.",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "method",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "REFUND_MANUAL",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{amount}} {{method}}-এ ফেরত দেওয়া যায়নি। আমাদের টিম যোগাযোগ করবে।",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "method",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ESCROW_RELEASED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Money released",
+      "body": "{{net}} from {{title}} is in your balance and goes out with your next payout (fee {{fee}}).",
+      "variables": [
+        {
+          "name": "net",
+          "type": "money"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "fee",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ESCROW_RELEASED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "টাকা ছাড় হয়েছে",
+      "body": "{{title}} থেকে {{net}} আপনার ব্যালান্সে জমা হয়েছে, পরের পেআউটে পাবেন (ফি {{fee}})।",
+      "variables": [
+        {
+          "name": "net",
+          "type": "money"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "fee",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ESCROW_FROZEN",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Payment on hold",
+      "body": "{{amount}} for {{title}} is on hold: {{reason}}.",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "ESCROW_FROZEN",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পেমেন্ট আটকে আছে",
+      "body": "{{title}}-এর {{amount}} আটকে আছে: {{reason}}।",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "ESCROW_FROZEN",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{amount}} for {{title}} is on hold. Open the app to see why.",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "ESCROW_FROZEN",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{title}}-এর {{amount}} আটকে আছে। কারণ অ্যাপে দেখুন।",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "REFUND_ESCALATED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Refund waiting for approval",
+      "body": "{{actor}} asks to refund {{amount}} on {{code}} ({{reason}}).",
+      "variables": [
+        {
+          "name": "actor",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "REFUND_ESCALATED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "রিফান্ড অনুমোদনের অপেক্ষায়",
+      "body": "{{actor}} {{code}}-এ {{amount}} রিফান্ড চাইছেন ({{reason}})।",
+      "variables": [
+        {
+          "name": "actor",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "REFUND_ESCALATED",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Kriraghor: approve a refund of {{amount}}",
+      "body": "{{actor}} asks to refund {{amount}} on {{code}}.\n\nReason: {{reason}}\n\nIt is above the staff limit, so a master must approve it: {{url}}",
+      "variables": [
+        {
+          "name": "actor",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "url",
+          "type": "link"
+        }
+      ]
+    },
+    {
+      "code": "REFUND_ESCALATED",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "ক্রীড়াঘর: {{amount}} রিফান্ড অনুমোদন করুন",
+      "body": "{{actor}} {{code}}-এ {{amount}} রিফান্ড চাইছেন।\n\nকারণ: {{reason}}\n\nএটি স্টাফের সীমার বেশি, তাই একজন মাস্টারকে অনুমোদন করতে হবে: {{url}}",
+      "variables": [
+        {
+          "name": "actor",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "url",
+          "type": "link"
+        }
+      ]
+    },
+    {
+      "code": "REFUND_MANUAL_STAFF",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Refund needs manual payment",
+      "body": "The gateway refused the refund of {{amount}} on {{code}} {{attempts}} times. Pay it to the payer another way.",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "attempts",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "REFUND_MANUAL_STAFF",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "রিফান্ড হাতে দিতে হবে",
+      "body": "গেটওয়ে {{code}}-এর {{amount}} রিফান্ড {{attempts}} বার নেয়নি। অন্যভাবে পরিশোধ করুন।",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "attempts",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "REFUND_MANUAL_STAFF",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Kriraghor: a refund needs manual payment",
+      "body": "The gateway refused the refund of {{amount}} on {{code}} {{attempts}} times.\n\nPay it to the payer another way and record it: {{url}}",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "attempts",
+          "type": "number"
+        },
+        {
+          "name": "url",
+          "type": "link"
+        }
+      ]
+    },
+    {
+      "code": "REFUND_MANUAL_STAFF",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "ক্রীড়াঘর: একটি রিফান্ড হাতে দিতে হবে",
+      "body": "গেটওয়ে {{code}}-এর {{amount}} রিফান্ড {{attempts}} বার নেয়নি।\n\nঅন্যভাবে পরিশোধ করে লিখে রাখুন: {{url}}",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "attempts",
+          "type": "number"
+        },
+        {
+          "name": "url",
+          "type": "link"
+        }
+      ]
+    },
+    {
+      "code": "RECON_EXCEPTION",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Reconciliation needs a look",
+      "body": "{{exceptions}} exception(s) in the reconciliation for {{date}}.",
+      "variables": [
+        {
+          "name": "exceptions",
+          "type": "number"
+        },
+        {
+          "name": "date",
+          "type": "text",
+          "maxLen": 10
+        }
+      ]
+    },
+    {
+      "code": "RECON_EXCEPTION",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "হিসাব মেলানোয় সমস্যা",
+      "body": "{{date}}-এর হিসাব মেলানোয় {{exceptions}}টি ব্যতিক্রম।",
+      "variables": [
+        {
+          "name": "exceptions",
+          "type": "number"
+        },
+        {
+          "name": "date",
+          "type": "text",
+          "maxLen": 10
+        }
+      ]
+    },
+    {
+      "code": "RECON_EXCEPTION",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Kriraghor: reconciliation exceptions for {{date}}",
+      "body": "The reconciliation for {{date}} found {{exceptions}} exception(s).\n\nResolve them on the Finance desk: {{url}}",
+      "variables": [
+        {
+          "name": "exceptions",
+          "type": "number"
+        },
+        {
+          "name": "date",
+          "type": "text",
+          "maxLen": 10
+        },
+        {
+          "name": "url",
+          "type": "link"
+        }
+      ]
+    },
+    {
+      "code": "RECON_EXCEPTION",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "ক্রীড়াঘর: {{date}}-এর হিসাবে ব্যতিক্রম",
+      "body": "{{date}}-এর হিসাব মেলানোয় {{exceptions}}টি ব্যতিক্রম পাওয়া গেছে।\n\nফিনান্স ডেস্কে সমাধান করুন: {{url}}",
+      "variables": [
+        {
+          "name": "exceptions",
+          "type": "number"
+        },
+        {
+          "name": "date",
+          "type": "text",
+          "maxLen": 10
+        },
+        {
+          "name": "url",
+          "type": "link"
+        }
+      ]
+    },
+    {
+      "code": "LEDGER_INVARIANT_FAILED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Ledger check failed",
+      "body": "Failed checks: {{checks}}. Look at the Finance desk now.",
+      "variables": [
+        {
+          "name": "checks",
+          "type": "text",
+          "maxLen": 200
+        }
+      ]
+    },
+    {
+      "code": "LEDGER_INVARIANT_FAILED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "লেজার যাচাই ব্যর্থ",
+      "body": "ব্যর্থ যাচাই: {{checks}}। এখনই ফিনান্স ডেস্ক দেখুন।",
+      "variables": [
+        {
+          "name": "checks",
+          "type": "text",
+          "maxLen": 200
+        }
+      ]
+    },
+    {
+      "code": "LEDGER_INVARIANT_FAILED",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Kriraghor: ledger check failed",
+      "body": "The nightly ledger check failed: {{checks}}.\n\nLook at the Finance desk now: {{url}}",
+      "variables": [
+        {
+          "name": "checks",
+          "type": "text",
+          "maxLen": 200
+        },
+        {
+          "name": "url",
+          "type": "link"
+        }
+      ]
+    },
+    {
+      "code": "LEDGER_INVARIANT_FAILED",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "ক্রীড়াঘর: লেজার যাচাই ব্যর্থ",
+      "body": "রাতের লেজার যাচাই ব্যর্থ হয়েছে: {{checks}}।\n\nএখনই ফিনান্স ডেস্ক দেখুন: {{url}}",
+      "variables": [
+        {
+          "name": "checks",
           "type": "text",
           "maxLen": 200
         },

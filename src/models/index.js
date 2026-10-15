@@ -4,6 +4,7 @@ const { DataTypes, Model } = require('sequelize');
 const { sequelize } = require('../db');
 const { ROLE_LIST } = require('../common/enums');
 const { uuid7 } = require('../common/uuid7');
+const { toPoisha } = require('../common/money');
 
 const ROLE_STATUSES = ['applied', 'documents_pending', 'in_review', 'changes_requested', 'active', 'rejected', 'suspended', 'withdrawn'];
 const PERMS = ['approve_listings', 'approve_documents', 'resolve_reports', 'refund_small', 'view_payouts', 'release_payouts', 'edit_fees', 'manage_staff', 'manage_users', 'manage_catalog', 'manage_esports'];
@@ -534,6 +535,257 @@ SmsLog.init(
   { sequelize, modelName: 'SmsLog', tableName: 'sms_log', timestamps: false }
 );
 
+// ---- M06 payments, ledger and escrow ----
+// BIGINT columns come back from mysql2 as strings (bigNumberStrings); money getters return checked numbers.
+const poisha = (field, extra = {}) => ({
+  type: DataTypes.BIGINT,
+  allowNull: false,
+  defaultValue: 0,
+  ...extra,
+  get() {
+    const v = this.getDataValue(field);
+    return v === null || v === undefined ? v : toPoisha(v);
+  },
+});
+const PROVIDERS = ['sslcommerz', 'bkash', 'nagad'];
+const METHODS = ['bkash', 'nagad', 'card', 'other'];
+
+class IdSequence extends Model {}
+IdSequence.init(
+  { name: { type: DataTypes.STRING(40), primaryKey: true }, next: { type: DataTypes.BIGINT, allowNull: false, defaultValue: 0 } },
+  { sequelize, modelName: 'IdSequence', tableName: 'id_sequences', timestamps: false }
+);
+
+class IdempotencyKey extends Model {}
+IdempotencyKey.init(
+  {
+    scope: { type: DataTypes.STRING(60), primaryKey: true },
+    userId: { type: DataTypes.UUID, primaryKey: true },
+    key: { type: DataTypes.STRING(80), primaryKey: true },
+    requestHash: { type: DataTypes.CHAR(64), allowNull: false },
+    statusCode: DataTypes.SMALLINT.UNSIGNED,
+    response: DataTypes.JSON,
+    createdAt: DataTypes.DATE(3),
+    expiresAt: { type: DataTypes.DATE(3), allowNull: false },
+  },
+  { sequelize, modelName: 'IdempotencyKey', tableName: 'idempotency_keys', updatedAt: false }
+);
+
+class Payment extends Model {}
+Payment.init(
+  {
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
+    code: { type: DataTypes.STRING(20), allowNull: false },
+    purpose: { type: DataTypes.STRING(30), allowNull: false },
+    purposeId: { type: DataTypes.UUID, allowNull: false },
+    splitGroupId: DataTypes.UUID,
+    payerId: { type: DataTypes.UUID, allowNull: false },
+    payeeHintId: DataTypes.UUID,
+    amountPoisha: poisha('amountPoisha', { defaultValue: undefined }),
+    capturedPoisha: poisha('capturedPoisha'),
+    refundedPoisha: poisha('refundedPoisha'),
+    status: {
+      type: DataTypes.ENUM('initiated', 'pending', 'succeeded', 'failed', 'cancelled', 'expired', 'partially_refunded', 'refunded'),
+      allowNull: false,
+      defaultValue: 'initiated',
+    },
+    provider: DataTypes.ENUM(...PROVIDERS),
+    method: DataTypes.ENUM(...METHODS),
+    methodDisplay: DataTypes.STRING(40),
+    providerTrxId: DataTypes.STRING(80),
+    title: { type: DataTypes.STRING(120), allowNull: false },
+    escrow: { type: DataTypes.JSON, allowNull: false },
+    expiresAt: { type: DataTypes.DATE(3), allowNull: false },
+    idempotencyKey: { type: DataTypes.STRING(120), allowNull: false },
+    succeededAt: DataTypes.DATE(3),
+    createdAt: DataTypes.DATE(3),
+    updatedAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'Payment', tableName: 'payments' }
+);
+
+class PaymentAttempt extends Model {}
+PaymentAttempt.init(
+  {
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
+    paymentId: { type: DataTypes.UUID, allowNull: false },
+    provider: { type: DataTypes.ENUM(...PROVIDERS), allowNull: false },
+    method: DataTypes.ENUM(...METHODS),
+    providerSessionId: DataTypes.STRING(120),
+    status: { type: DataTypes.ENUM('in_flight', 'succeeded', 'failed', 'cancelled', 'unknown'), allowNull: false, defaultValue: 'in_flight' },
+    request: DataTypes.JSON,
+    response: DataTypes.JSON,
+    failureCode: DataTypes.STRING(60),
+    startedAt: { type: DataTypes.DATE(3), allowNull: false, defaultValue: DataTypes.NOW },
+    finishedAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'PaymentAttempt', tableName: 'payment_attempts', timestamps: false }
+);
+
+class ProviderWebhookEvent extends Model {}
+ProviderWebhookEvent.init(
+  {
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
+    provider: { type: DataTypes.ENUM(...PROVIDERS), allowNull: false },
+    providerEventId: { type: DataTypes.STRING(120), allowNull: false },
+    paymentId: DataTypes.UUID,
+    signatureOk: { type: DataTypes.BOOLEAN, allowNull: false },
+    raw: { type: DataTypes.JSON, allowNull: false },
+    receivedAt: { type: DataTypes.DATE(3), allowNull: false, defaultValue: DataTypes.NOW },
+    processedAt: DataTypes.DATE(3),
+    result: DataTypes.STRING(30),
+  },
+  { sequelize, modelName: 'ProviderWebhookEvent', tableName: 'provider_webhook_events', timestamps: false }
+);
+
+class Refund extends Model {}
+Refund.init(
+  {
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
+    paymentId: { type: DataTypes.UUID, allowNull: false },
+    amountPoisha: poisha('amountPoisha', { defaultValue: undefined }),
+    reasonCode: { type: DataTypes.STRING(40), allowNull: false },
+    reasonText: DataTypes.STRING(500),
+    kind: { type: DataTypes.ENUM('policy', 'manual', 'dispute', 'late_capture', 'amount_mismatch', 'goodwill'), allowNull: false },
+    source: { type: DataTypes.ENUM('escrow', 'goodwill', 'suspense'), allowNull: false, defaultValue: 'escrow' },
+    status: {
+      type: DataTypes.ENUM('pending_master', 'approved', 'processing', 'succeeded', 'failed', 'manual_required', 'rejected'),
+      allowNull: false,
+    },
+    initiatedBy: DataTypes.UUID,
+    initiatorKind: { type: DataTypes.ENUM('system', 'staff', 'master'), allowNull: false },
+    recommendedPoisha: poisha('recommendedPoisha', { allowNull: true, defaultValue: null }),
+    approvedBy: DataTypes.UUID,
+    decisionNote: DataTypes.STRING(500),
+    providerRefundId: DataTypes.STRING(120),
+    attempts: { type: DataTypes.SMALLINT.UNSIGNED, allowNull: false, defaultValue: 0 },
+    lastError: DataTypes.STRING(120),
+    idempotencyKey: { type: DataTypes.STRING(120), allowNull: false },
+    createdAt: DataTypes.DATE(3),
+    updatedAt: DataTypes.DATE(3),
+    completedAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'Refund', tableName: 'refunds' }
+);
+
+class LedgerAccount extends Model {}
+LedgerAccount.init(
+  {
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
+    code: { type: DataTypes.STRING(120), allowNull: false },
+    type: { type: DataTypes.ENUM('asset', 'liability', 'revenue', 'expense', 'equity'), allowNull: false },
+    ownerUserId: DataTypes.UUID,
+    vertical: DataTypes.STRING(20),
+    createdAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'LedgerAccount', tableName: 'ledger_accounts', updatedAt: false, hooks: appendOnlyGuard('ledger_accounts') }
+);
+
+class LedgerTransaction extends Model {}
+LedgerTransaction.init(
+  {
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
+    kind: { type: DataTypes.STRING(40), allowNull: false },
+    refType: { type: DataTypes.STRING(30), allowNull: false },
+    refId: { type: DataTypes.UUID, allowNull: false },
+    idempotencyKey: { type: DataTypes.STRING(160), allowNull: false },
+    reversesTxnId: DataTypes.UUID,
+    memo: DataTypes.STRING(300),
+    totalPoisha: poisha('totalPoisha', { defaultValue: undefined }),
+    entryCount: { type: DataTypes.SMALLINT.UNSIGNED, allowNull: false },
+    postedBy: DataTypes.UUID,
+    postedAt: { type: DataTypes.DATE(3), allowNull: false, defaultValue: DataTypes.NOW },
+  },
+  { sequelize, modelName: 'LedgerTransaction', tableName: 'ledger_transactions', timestamps: false, hooks: appendOnlyGuard('ledger_transactions') }
+);
+
+class LedgerEntry extends Model {}
+LedgerEntry.init(
+  {
+    id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
+    txnId: { type: DataTypes.UUID, allowNull: false },
+    accountId: { type: DataTypes.UUID, allowNull: false },
+    escrowHoldId: DataTypes.UUID,
+    debitPoisha: poisha('debitPoisha'),
+    creditPoisha: poisha('creditPoisha'),
+  },
+  { sequelize, modelName: 'LedgerEntry', tableName: 'ledger_entries', timestamps: false, hooks: appendOnlyGuard('ledger_entries') }
+);
+
+class EscrowHold extends Model {}
+EscrowHold.init(
+  {
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
+    purpose: { type: DataTypes.STRING(30), allowNull: false },
+    purposeId: { type: DataTypes.UUID, allowNull: false },
+    paymentId: { type: DataTypes.UUID, allowNull: false },
+    groupRef: DataTypes.UUID,
+    payeeId: DataTypes.UUID,
+    vertical: { type: DataTypes.STRING(20), allowNull: false },
+    feeBps: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
+    feeSettingKey: { type: DataTypes.STRING(80), allowNull: false },
+    feeSettingVersion: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
+    heldPoisha: poisha('heldPoisha'),
+    releasedPoisha: poisha('releasedPoisha'),
+    refundedPoisha: poisha('refundedPoisha'),
+    feeTakenPoisha: poisha('feeTakenPoisha'),
+    releaseRule: { type: DataTypes.JSON, allowNull: false },
+    releaseAt: DataTypes.DATE(3),
+    releaseCount: { type: DataTypes.SMALLINT.UNSIGNED, allowNull: false, defaultValue: 0 },
+    status: {
+      type: DataTypes.ENUM('holding', 'partially_released', 'released', 'refunded', 'frozen', 'closed'),
+      allowNull: false,
+      defaultValue: 'holding',
+    },
+    statusBeforeFreeze: DataTypes.STRING(20),
+    frozenReason: DataTypes.STRING(40),
+    frozenRef: DataTypes.UUID,
+    createdAt: DataTypes.DATE(3),
+    updatedAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'EscrowHold', tableName: 'escrow_holds' }
+);
+
+class ReconciliationRun extends Model {}
+ReconciliationRun.init(
+  {
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
+    provider: { type: DataTypes.ENUM(...PROVIDERS), allowNull: false },
+    businessDate: { type: DataTypes.DATEONLY, allowNull: false },
+    status: { type: DataTypes.ENUM('running', 'completed', 'failed'), allowNull: false, defaultValue: 'running' },
+    totals: DataTypes.JSON,
+    startedBy: DataTypes.UUID,
+    error: DataTypes.STRING(300),
+    startedAt: { type: DataTypes.DATE(3), allowNull: false, defaultValue: DataTypes.NOW },
+    finishedAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'ReconciliationRun', tableName: 'reconciliation_runs', timestamps: false }
+);
+
+class ReconciliationItem extends Model {}
+ReconciliationItem.init(
+  {
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
+    runId: { type: DataTypes.UUID, allowNull: false },
+    type: {
+      type: DataTypes.ENUM('matched', 'missing_internal', 'missing_provider', 'amount_mismatch', 'status_mismatch', 'refund_mismatch', 'fee_mismatch'),
+      allowNull: false,
+    },
+    paymentId: DataTypes.UUID,
+    refundId: DataTypes.UUID,
+    providerRef: DataTypes.STRING(120),
+    internalPoisha: poisha('internalPoisha', { allowNull: true, defaultValue: null }),
+    providerPoisha: poisha('providerPoisha', { allowNull: true, defaultValue: null }),
+    detail: DataTypes.STRING(300),
+    resolution: DataTypes.ENUM('auto_healed', 'resolved', 'ignored'),
+    resolvedBy: DataTypes.UUID,
+    resolvedAt: DataTypes.DATE(3),
+    note: DataTypes.STRING(500),
+    createdAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'ReconciliationItem', tableName: 'reconciliation_items', updatedAt: false }
+);
+
 // ---- Associations ----
 User.hasMany(UserRole, { as: 'roles', foreignKey: 'userId' });
 UserRole.belongsTo(User, { as: 'user', foreignKey: 'userId' });
@@ -553,6 +805,16 @@ for (const Child of [EsportsMode, EsportsMap, EsportsPointsPreset]) {
 EsportsGame.hasMany(EsportsMode, { as: 'modes', foreignKey: 'gameId' });
 EsportsGame.hasMany(EsportsMap, { as: 'maps', foreignKey: 'gameId' });
 EsportsGame.hasMany(EsportsPointsPreset, { as: 'presets', foreignKey: 'gameId' });
+Payment.hasMany(PaymentAttempt, { as: 'attempts', foreignKey: 'paymentId' });
+PaymentAttempt.belongsTo(Payment, { as: 'payment', foreignKey: 'paymentId' });
+Payment.hasMany(Refund, { as: 'refunds', foreignKey: 'paymentId' });
+Refund.belongsTo(Payment, { as: 'payment', foreignKey: 'paymentId' });
+Payment.hasOne(EscrowHold, { as: 'hold', foreignKey: 'paymentId' });
+EscrowHold.belongsTo(Payment, { as: 'payment', foreignKey: 'paymentId' });
+LedgerTransaction.hasMany(LedgerEntry, { as: 'entries', foreignKey: 'txnId', constraints: false });
+LedgerEntry.belongsTo(LedgerTransaction, { as: 'txn', foreignKey: 'txnId', constraints: false });
+LedgerEntry.belongsTo(LedgerAccount, { as: 'account', foreignKey: 'accountId' });
+ReconciliationRun.hasMany(ReconciliationItem, { as: 'items', foreignKey: 'runId' });
 
 module.exports = {
   sequelize,
@@ -582,4 +844,16 @@ module.exports = {
   EsportsMode,
   EsportsMap,
   EsportsPointsPreset,
+  IdSequence,
+  IdempotencyKey,
+  Payment,
+  PaymentAttempt,
+  ProviderWebhookEvent,
+  Refund,
+  LedgerAccount,
+  LedgerTransaction,
+  LedgerEntry,
+  EscrowHold,
+  ReconciliationRun,
+  ReconciliationItem,
 };

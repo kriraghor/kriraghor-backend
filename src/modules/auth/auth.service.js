@@ -330,7 +330,8 @@ async function totpVerify({ challengeToken, code }, req) {
 // ---------------------------------------------------------------------------
 
 // esports.money (Q128): cancelling an esports tournament with refunds and finalising prizes (M21 §3).
-const STEP_UP_SCOPES = ['settings.write', 'staff.write', 'payout.approve', 'refund.large', 'user.ban', 'audit.export', 'twofa.reset', 'esports.money', 'events.replay'];
+// escrow.manage (M06): manual escrow release, freeze and unfreeze.
+const STEP_UP_SCOPES = ['settings.write', 'staff.write', 'payout.approve', 'refund.large', 'user.ban', 'audit.export', 'twofa.reset', 'esports.money', 'events.replay', 'escrow.manage'];
 
 async function stepUp(principal, sessionId, { scope, code }, req) {
   if (!STEP_UP_SCOPES.includes(scope)) throw E.badRequest('STEP_UP_SCOPE_INVALID', 'Unknown step-up scope');

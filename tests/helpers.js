@@ -14,13 +14,20 @@ const consumers = require('../src/modules/events/events.consumers');
 const notify = require('../src/modules/notifications/notify.service');
 const notifyTemplates = require('../src/modules/notifications/notify.templates');
 const realtime = require('../src/modules/notifications/notify.realtime');
+const paymentJobs = require('../src/modules/payments/payments.jobs');
+const simulator = require('../src/providers/payments/sslcommerz.simulator');
+const { createRedis } = require('../src/common/redis');
+const config = require('../src/config');
 
 const app = createApp();
 const api = () => request(app);
 const P = '/api/v1';
 
+// The simulator's IPN goes straight into the app (no network in tests).
+simulator.setIpnSender((_url, body) => request(app).post(`${P}/webhooks/sslcommerz`).type('form').send(body).then((r) => r.status));
+
 // M03 tables are reseeded after the truncate, so every test starts from the seeded settings and catalogue.
-const TABLES = ['sms_log', 'notification_deliveries', 'notifications', 'notification_prefs', 'message_templates', 'consumed_events', 'outbox_events', 'audit_chain', 'audit_exports', 'settings_history', 'settings_change_requests', 'platform_settings', 'esports_points_presets', 'esports_maps', 'esports_modes', 'esports_games', 'oauth_identities', 'audit_logs', 'step_up_tokens', 'user_sanctions', 'staff_permissions', 'staff_members', 'otp_codes', 'sessions', 'user_roles', 'users'];
+const TABLES = ['reconciliation_items', 'reconciliation_runs', 'ledger_entries', 'ledger_transactions', 'ledger_accounts', 'escrow_holds', 'refunds', 'provider_webhook_events', 'payment_attempts', 'payments', 'idempotency_keys', 'id_sequences', 'sms_log', 'notification_deliveries', 'notifications', 'notification_prefs', 'message_templates', 'consumed_events', 'outbox_events', 'audit_chain', 'audit_exports', 'settings_history', 'settings_change_requests', 'platform_settings', 'esports_points_presets', 'esports_maps', 'esports_modes', 'esports_games', 'oauth_identities', 'audit_logs', 'step_up_tokens', 'user_sanctions', 'staff_permissions', 'staff_members', 'otp_codes', 'sessions', 'user_roles', 'users'];
 
 async function resetDb() {
   await models.sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
@@ -37,6 +44,56 @@ async function resetDb() {
   notify.takeTestJobs();
   notifyTemplates.reset();
   realtime.clearEmitted();
+  paymentJobs.takeTestJobs();
+  await clearSimulator();
+}
+
+/**
+ * Drop the simulator's Redis state (sessions, refunds, controls). Uses its own short-lived connection,
+ * so test files that never touch Redis do not keep the shared one open (Jest would not exit).
+ */
+async function clearSimulator() {
+  const redis = createRedis('test-sim-clear');
+  try {
+    let cursor = '0';
+    do {
+      const [next, keys] = await redis.scan(cursor, 'MATCH', `${config.redis.prefix}:sslsim:*`, 'COUNT', 500);
+      if (keys.length) await redis.del(...keys);
+      cursor = next;
+    } while (cursor !== '0');
+  } finally {
+    await redis.quit();
+  }
+}
+
+/**
+ * Pay a payment as its payer through the simulator: start an attempt (Idempotency-Key), choose the
+ * outcome on the gateway page (the IPN is delivered unless the outcome loses it), then follow the
+ * browser back through the return URL. Returns { attempt, returnTo }.
+ */
+async function payWithSimulator(member, paymentId, { method = 'bkash', outcome = 'success', key } = {}) {
+  const attempt = await api()
+    .post(`${P}/payments/${paymentId}/attempts`)
+    .set(bearer(member))
+    .set('Idempotency-Key', key ?? `att-${paymentId.slice(0, 8)}-${Math.random().toString(36).slice(2, 10)}`)
+    .send({ method })
+    .expect(201);
+  const sessionkey = attempt.body.redirectUrl.split('/').pop();
+  const back = new URL(await simulator.pay(sessionkey, outcome));
+  const ret = await api().get(`${P}/payments/return/sslcommerz${back.search}`).expect(303);
+  return { attempt: attempt.body, returnTo: ret.headers.location };
+}
+
+/** Run collected payments jobs (polls, refund processing) until none are left. */
+async function drainPaymentJobs({ rounds = 10 } = {}) {
+  const { byName } = require('../src/jobs/definitions');
+  const ran = [];
+  for (let i = 0; i < rounds; i += 1) {
+    const jobs = paymentJobs.takeTestJobs();
+    if (!jobs.length) break;
+    for (const j of jobs) ran.push({ name: j.name, result: await byName.get(j.name).run(j.data).catch((err) => ({ error: err.message })) });
+  }
+  return ran;
 }
 
 /**
@@ -184,4 +241,4 @@ async function stepUp(session, scope) {
 
 const bearer = (s) => ({ Authorization: `Bearer ${s.accessToken}` });
 
-module.exports = { ADMIN_ORIGIN, WEB_ORIGIN, adminPost, cookieValue, cookieHeader, refreshWeb, api, P, models, resetDb, nextPhone, e164, lastCode, lastEmailCode, mail, allowResend, signupUser, verifyMember, totpFor, createSignedInMaster, createSecondMaster, signInStaff, stepUp, bearer, sms, settings, setSettingForTest, events, consumers, notify, realtime, drainEvents };
+module.exports = { ADMIN_ORIGIN, WEB_ORIGIN, adminPost, cookieValue, cookieHeader, refreshWeb, api, P, models, resetDb, nextPhone, e164, lastCode, lastEmailCode, mail, allowResend, signupUser, verifyMember, totpFor, createSignedInMaster, createSecondMaster, signInStaff, stepUp, bearer, sms, settings, setSettingForTest, events, consumers, notify, realtime, drainEvents, simulator, paymentJobs, payWithSimulator, drainPaymentJobs, clearSimulator };

@@ -3,7 +3,7 @@
 /**
  * Notification catalogue (M08 §6.6), as code. Each entry maps a domain event to recipients, channels
  * and template variables. Template texts are versioned rows in message_templates (EN and BN for
- * every default channel; a contract test checks it). Built so far: the M01, M03 and M04 events.
+ * every default channel; a contract test checks it). Built so far: the M01, M03, M04 and M06 events.
  *
  * Entry: { code, events[], category, channels[], urgent, roleContext?(e), recipients(e) → userIds,
  *          values(e, { locale, userId }) → template values, link(e) → in-app link }
@@ -32,6 +32,12 @@ async function nameOf(userId) {
 // Lazy requires: these services sit above M08 in the dependency order.
 const settingsRequest = (id) => require('../settings/change-request.service').getOne(id);
 const auditEntry = (id) => require('../audit/audit.admin.service').getOne(id);
+const paymentFacts = (id) => require('../payments/payments.service').facts(id);
+const refundFacts = (id) => require('../payments/refunds.service').facts(id);
+async function holdFacts(holdId) {
+  const hold = await require('../payments/escrow.service').getOne(holdId);
+  return { ...hold, title: (await paymentFacts(hold.paymentId)).title };
+}
 
 const CATALOGUE = [
   // ---------------- M04: critical audit actions → every other master (FR-11)
@@ -174,6 +180,128 @@ const CATALOGUE = [
       url: adminUrl('/admin/sign-in'),
     }),
     link: () => '/admin',
+  },
+
+  // ---------------- M06: payer receipts and refunds (category money: in-app and SMS mandatory)
+  {
+    code: 'PAY_SUCCEEDED',
+    events: ['payment.succeeded'],
+    category: 'money',
+    channels: ['in_app', 'sms'],
+    // A capture the purpose rejected is refunded at once; the payer hears about the refund instead.
+    recipients: (e) => (e.payload.accepted ? [e.payload.payerId] : []),
+    values: async (e) => {
+      const p = await paymentFacts(e.payload.paymentId);
+      return { amount: e.payload.amount, title: p.title, code: p.code };
+    },
+    link: () => '/me/payments',
+  },
+  {
+    code: 'PAY_FAILED',
+    events: ['payment.failed'],
+    category: 'money',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.payerId],
+    values: async (e) => ({ amount: e.payload.amount, title: (await paymentFacts(e.payload.paymentId)).title }),
+    link: (e) => `/pay/${e.payload.paymentId}`,
+  },
+  {
+    code: 'REFUND_INITIATED',
+    events: ['refund.approved'],
+    category: 'money',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.payerId],
+    values: async (e) => {
+      const p = await paymentFacts(e.payload.paymentId);
+      return { amount: e.payload.amount, title: p.title, method: p.methodDisplay };
+    },
+    link: () => '/me/payments',
+  },
+  {
+    code: 'REFUND_SUCCEEDED',
+    events: ['refund.succeeded'],
+    category: 'money',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.payerId],
+    values: async (e) => ({ amount: e.payload.amount, method: (await paymentFacts(e.payload.paymentId)).methodDisplay }),
+    link: () => '/me/payments',
+  },
+  {
+    code: 'REFUND_MANUAL',
+    events: ['refund.manual_required'],
+    category: 'money',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.payerId],
+    values: async (e) => ({ amount: e.payload.amount, method: (await paymentFacts(e.payload.paymentId)).methodDisplay }),
+    link: () => '/me/payments',
+  },
+  // ---------------- M06: payees
+  {
+    code: 'ESCROW_RELEASED',
+    events: ['escrow.released'],
+    category: 'money',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.payeeId],
+    values: async (e) => ({ net: e.payload.net, fee: e.payload.fee, title: (await holdFacts(e.payload.holdId)).title }),
+    link: () => '/me',
+  },
+  {
+    code: 'ESCROW_FROZEN',
+    events: ['escrow.frozen'],
+    category: 'money',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.payeeId].filter(Boolean),
+    values: async (e) => {
+      const h = await holdFacts(e.payload.holdId);
+      return { amount: h.available, title: h.title, reason: e.payload.reason };
+    },
+    link: () => '/me',
+  },
+  // ---------------- M06: finance staff and masters
+  {
+    code: 'REFUND_ESCALATED',
+    events: ['refund.escalated'],
+    category: 'staff_ops',
+    channels: ['in_app', 'email'],
+    recipients: () => directory.masters(),
+    values: async (e) => {
+      const r = await refundFacts(e.payload.refundId);
+      return { actor: await nameOf(r.initiatedBy), amount: e.payload.amount, code: (await paymentFacts(e.payload.paymentId)).code, reason: r.reasonText ?? r.reasonCode, url: adminUrl('/admin/finance?tab=refunds') };
+    },
+    link: () => '/admin/finance?tab=refunds',
+  },
+  {
+    code: 'REFUND_MANUAL_STAFF',
+    events: ['refund.manual_required'],
+    category: 'staff_ops',
+    channels: ['in_app', 'email'],
+    recipients: () => directory.withPermission('view_payouts'),
+    values: async (e) => ({
+      amount: e.payload.amount,
+      code: (await paymentFacts(e.payload.paymentId)).code,
+      attempts: (await refundFacts(e.payload.refundId)).attempts,
+      url: adminUrl('/admin/finance?tab=refunds'),
+    }),
+    link: () => '/admin/finance?tab=refunds',
+  },
+  {
+    code: 'RECON_EXCEPTION',
+    events: ['reconciliation.run_completed'],
+    category: 'staff_ops',
+    channels: ['in_app', 'email'],
+    recipients: async (e) => (e.payload.exceptions > 0 ? directory.withPermission('view_payouts') : []),
+    values: async (e) => ({ exceptions: e.payload.exceptions, date: e.payload.businessDate, url: adminUrl('/admin/finance?tab=reconciliation') }),
+    link: () => '/admin/finance?tab=reconciliation',
+  },
+  {
+    code: 'LEDGER_INVARIANT_FAILED',
+    events: ['ledger.invariant_failed'],
+    category: 'staff_ops',
+    channels: ['in_app', 'email'],
+    urgent: true,
+    recipients: () => directory.withPermission('view_payouts'),
+    values: async (e) => ({ checks: e.payload.failed.join(', '), url: adminUrl('/admin/finance?tab=ledger') }),
+    link: () => '/admin/finance?tab=ledger',
   },
 ];
 

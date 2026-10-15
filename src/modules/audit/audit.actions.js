@@ -65,6 +65,17 @@ const ACTIONS = {
   // ---------------- M04 Audit and events ----------------
   'audit_log.exported': A('M04', 'critical', 'Exported {after.rowCount} audit rows', '{after.rowCount}টি অডিট সারি এক্সপোর্ট'),
   'outbox.event_replayed': A('M04', 'notice', 'Replayed {meta.name} for {meta.consumer}', '{meta.consumer}-এর জন্য {meta.name} আবার চালানো'),
+
+  // ---------------- M06 Payments, ledger and escrow ----------------
+  'payment.test_charge_created': A('M06', 'notice', 'Created test charge {entityCode} of {after.amount} poisha', 'টেস্ট চার্জ {entityCode} তৈরি ({after.amount} পয়সা)'),
+  'refund.requested': A('M06', 'notice', 'Requested a refund of {after.amount} poisha on {entityCode} ({after.status})', '{entityCode}-এ {after.amount} পয়সা রিফান্ডের অনুরোধ ({after.status})'),
+  'refund.approved': A('M06', 'critical', 'Approved a refund of {after.amount} poisha on {entityCode}', '{entityCode}-এ {after.amount} পয়সা রিফান্ড অনুমোদিত'),
+  'refund.rejected': A('M06', 'notice', 'Rejected a refund: {reason}', 'রিফান্ড বাতিল: {reason}'),
+  'escrow.released_manually': A('M06', 'critical', 'Released {meta.gross} poisha from escrow by hand (fee {meta.fee}): {reason}', 'হাতে এসক্রো থেকে {meta.gross} পয়সা ছাড় (ফি {meta.fee}): {reason}'),
+  'escrow.frozen': A('M06', 'notice', 'Froze an escrow hold: {reason}', 'এসক্রো আটকানো: {reason}'),
+  'escrow.unfrozen': A('M06', 'notice', 'Unfroze an escrow hold: {reason}', 'এসক্রো ছাড়া হলো: {reason}'),
+  'reconciliation.run_started': A('M06', 'info', 'Started reconciliation for {meta.businessDate}', '{meta.businessDate}-এর হিসাব মেলানো শুরু'),
+  'reconciliation.item_resolved': A('M06', 'notice', 'Marked a reconciliation exception {after.resolution}: {reason}', 'হিসাবের ব্যতিক্রম {after.resolution}: {reason}'),
 };
 
 const get = (action) => ACTIONS[action];

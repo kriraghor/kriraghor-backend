@@ -158,6 +158,19 @@ describe('OpenAPI contract (ADR-002)', () => {
       ['/auth', require('../../src/modules/auth/auth.routes')],
       ['/me', require('../../src/modules/users/users.routes')],
       ['/admin', require('../../src/modules/admin/admin.routes')],
+      ...(() => {
+        const pr = require('../../src/modules/payments/payments.routes');
+        return [
+          ['/payments', pr.payerRouter],
+          ['/me/payments', pr.meRouter],
+          ['/webhooks', pr.webhookRouter],
+          ['/admin/payments', pr.adminPayments],
+          ['/admin/refunds', pr.adminRefunds],
+          ['/admin/ledger', pr.adminLedger],
+          ['/admin/escrow', pr.adminEscrow],
+          ['/admin/reconciliation', pr.adminRecon],
+        ];
+      })(),
     ];
     const missing = [];
     for (const [prefix, router] of mounts) {

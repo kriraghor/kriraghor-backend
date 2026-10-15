@@ -10,9 +10,10 @@ const catalogS = require('../modules/catalog/catalog.schemas');
 const auditS = require('../modules/audit/audit.schemas');
 const eventsS = require('../modules/events/events.routes').schemas;
 const notifyS = require('../modules/notifications/notify.schemas');
+const paymentsS = require('../modules/payments/payments.schemas');
 
 /**
- * Every route (M01, M03, M04, M08), registered with its request and response schemas and the stable error
+ * Every route (M01, M03, M04, M06, M08), registered with its request and response schemas and the stable error
  * codes it can return (ADR-002). When a route is added in a module, add it here: the
  * coverage test fails if an Express route has no OpenAPI entry.
  */
@@ -251,6 +252,95 @@ function register(registry) {
     request: body(notifyS.prefsBody), responses: { 200: json(notifyS.NotificationPrefs), ...errors({ ...COMMON_AUTH, 422: ['VALIDATION_FAILED', 'PREF_MANDATORY'] }) } });
   p({ method: 'get', path: '/admin/notifications/deliveries', tags: ['notifications'], summary: 'Delivery log with masked phones (manage_users or master)', security: adminBearer,
     request: { query: notifyS.deliveriesQuery }, responses: { 200: json(z.object({ items: z.array(notifyS.Delivery) })), ...errors({ ...ADMIN_AUTH, ...VALIDATION }) } });
+
+  // ------------------------------------------------------------------ M06 payments, ledger and escrow
+  const idem = z.object({ 'idempotency-key': z.string().meta({ description: '8–80 letters, digits, - or _. Retries with the same key and body replay the first response' }) });
+  const IDEM = { 400: ['IDEMPOTENCY_KEY_REQUIRED', 'IDEMPOTENCY_KEY_INVALID'], 409: ['IDEMPOTENCY_IN_PROGRESS'], 422: ['VALIDATION_FAILED', 'IDEMPOTENCY_KEY_REUSED'] };
+  const STEP = { 403: ADMIN_AUTH[403].concat('STEP_UP_REQUIRED') };
+  const idP = { params: paymentsS.idParam };
+  const redirect = { description: 'See other: the web result page (never trust its query; read GET /payments/{id})' };
+
+  p({ method: 'get', path: '/payments/{id}', tags: ['payments'], summary: 'A payment, for its payer: amount, status, refunds, methods', security: bearer,
+    request: idP, responses: { 200: json(paymentsS.PayerPayment), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/payments/{id}/attempts', tags: ['payments'], summary: 'Start paying with bKash, Nagad or a card: returns the gateway URL (FR-02)', security: bearer,
+    request: { ...idP, headers: idem, ...body(paymentsS.attemptBody) },
+    responses: { 201: json(paymentsS.AttemptStarted, 'Created'), ...errors({ ...COMMON_AUTH, ...IDEM, 404: ['NOT_FOUND'], 409: ['PAYMENT_ALREADY_SUCCEEDED', 'PAYMENT_CANCELLED', 'IDEMPOTENCY_IN_PROGRESS'], 410: ['PAYMENT_EXPIRED'], 503: ['PROVIDER_UNAVAILABLE'] }) } });
+  p({ method: 'post', path: '/payments/{id}/verify', tags: ['payments'], summary: 'Ask the gateway now (the result page calls this); the server decides, never the browser (FR-03)', security: bearer,
+    request: idP, responses: { 200: json(paymentsS.PayerPayment), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], ...VALIDATION }) } });
+  for (const method of ['get', 'post']) {
+    p({ method, path: '/payments/return/sslcommerz', tags: ['payments'], summary: `Gateway return (${method === 'post' ? 'SSLCommerz form post' : 'simulator redirect'}): verify, then 303 to the web result page`,
+      request: { query: paymentsS.returnInput }, responses: { 303: redirect } });
+  }
+  p({ method: 'get', path: '/me/payments', tags: ['payments'], summary: 'My payments, newest first, with their refunds', security: bearer,
+    request: { query: paymentsS.meListQuery }, responses: { 200: json(paymentsS.PaymentPage), ...errors({ ...COMMON_AUTH, ...VALIDATION }) } });
+  p({ method: 'post', path: '/webhooks/sslcommerz', tags: ['payments'], summary: 'SSLCommerz IPN (form). Stored once per event, signature checked, re-validated with the gateway (FR-04)',
+    request: { body: { content: { 'application/x-www-form-urlencoded': { schema: z.object({ tran_id: z.string(), val_id: z.string().optional(), status: z.string(), verify_sign: z.string(), verify_key: z.string() }).loose() } } } },
+    responses: { 200: json(paymentsS.WebhookAck), ...errors({ 401: ['WEBHOOK_SIGNATURE_INVALID'] }) } });
+
+  const VIEW = ADMIN_AUTH;
+  p({ method: 'get', path: '/admin/payments', tags: ['payments'], summary: 'Payments for the finance desk (view_payouts or master)', security: adminBearer,
+    request: { query: paymentsS.adminPaymentsQuery }, responses: { 200: json(paymentsS.AdminPaymentPage), ...errors({ ...VIEW, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/payments/config', tags: ['payments'], summary: 'Payment environment: provider, simulator and test-charge flags', security: adminBearer,
+    responses: { 200: json(z.object({ testCharges: z.boolean(), simulator: z.boolean(), provider: z.string(), testChargeMax: z.number().int() })), ...errors(VIEW) } });
+  p({ method: 'get', path: '/admin/payments/{id}', tags: ['payments'], summary: 'One payment with attempts, refunds, escrow hold and ledger transactions', security: adminBearer,
+    request: idP, responses: { 200: json(paymentsS.AdminPayment), ...errors({ ...VIEW, 404: ['NOT_FOUND'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/payments/test-charges', tags: ['payments'], summary: 'Master test charge (dev and staging only): a real gateway payment held in escrow', security: adminBearer,
+    request: { headers: idem, ...body(paymentsS.testChargeBody) },
+    responses: { 201: json(paymentsS.TestCharge, 'Created'), ...errors({ ...MASTER_AUTH, 403: MASTER_AUTH[403].concat('TEST_CHARGES_DISABLED'), ...IDEM, 422: IDEM[422].concat('TEST_CHARGE_TOO_LARGE', 'PAYER_INVALID', 'PAYEE_INVALID') }) } });
+
+  p({ method: 'get', path: '/admin/refunds', tags: ['payments'], summary: 'Refunds, with the escalation queue (status=pending_master)', security: adminBearer,
+    request: { query: paymentsS.refundsQuery }, responses: { 200: json(paymentsS.RefundPage), ...errors({ ...VIEW, ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/refunds', tags: ['payments'], summary: 'Refund to the original method (refund_small up to the staff limit, else escalated; masters above it need step-up refund.large)', security: adminBearer,
+    request: { headers: idem.extend({ 'x-step-up': z.string().optional() }), ...body(paymentsS.refundCreate) },
+    responses: {
+      201: json(paymentsS.Refund, 'Approved'),
+      202: json(paymentsS.Refund, 'Escalated to a master (pending_master)'),
+      ...errors({ ...ADMIN_AUTH, ...STEP, ...IDEM, 404: ['NOT_FOUND'], 409: ['PAYMENT_NOT_REFUNDABLE', 'ESCROW_FROZEN', 'IDEMPOTENCY_IN_PROGRESS'], 422: IDEM[422].concat('REFUND_EXCEEDS_CAPTURED', 'REFUND_EXCEEDS_HELD') }),
+    } });
+  for (const [action, schema, summary] of [
+    ['approve', paymentsS.approveBody, 'Approve an escalated refund'],
+    ['reject', paymentsS.rejectBody, 'Reject an escalated refund (note required)'],
+  ]) {
+    p({ method: 'post', path: `/admin/refunds/{id}/${action}`, tags: ['payments'], summary: `${summary} (master, step-up refund.large)`, security: adminBearer,
+      request: { ...idP, headers: stepUpHeader, ...body(schema) },
+      responses: { 200: json(paymentsS.Refund), ...errors({ ...MASTER_AUTH, ...STEP, 404: ['NOT_FOUND'], 409: ['REFUND_NOT_PENDING', 'ESCROW_FROZEN'], 422: ['VALIDATION_FAILED', 'REFUND_EXCEEDS_HELD'] }) } });
+  }
+
+  p({ method: 'get', path: '/admin/ledger/accounts', tags: ['payments'], summary: 'Ledger accounts with balances (search by code)', security: adminBearer,
+    request: { query: paymentsS.accountsQuery }, responses: { 200: json(paymentsS.AccountList), ...errors({ ...VIEW, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/ledger/accounts/{id}/entries', tags: ['payments'], summary: 'Entries of one account, newest first', security: adminBearer,
+    request: { ...idP, query: paymentsS.entriesQuery }, responses: { 200: json(paymentsS.Entries), ...errors({ ...VIEW, 404: ['NOT_FOUND'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/ledger/transactions/{id}', tags: ['payments'], summary: 'One balanced transaction with its lines', security: adminBearer,
+    request: idP, responses: { 200: json(paymentsS.Transaction), ...errors({ ...VIEW, 404: ['NOT_FOUND'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/ledger/trial-balance', tags: ['payments'], summary: 'Trial balance: debit − credit must be 0', security: adminBearer,
+    responses: { 200: json(paymentsS.TrialBalance), ...errors(VIEW) } });
+  p({ method: 'get', path: '/admin/ledger/invariants', tags: ['payments'], summary: 'Run the ledger invariant checks now (read-only, FR-19)', security: adminBearer,
+    responses: { 200: json(z.object({ ok: z.boolean(), checks: z.array(z.object({ name: z.string(), ok: z.boolean(), detail: z.string().nullable() })), checkedAt: z.string() })), ...errors(VIEW) } });
+
+  p({ method: 'get', path: '/admin/escrow', tags: ['payments'], summary: 'Escrow holds with totals by status', security: adminBearer,
+    request: { query: paymentsS.escrowQuery }, responses: { 200: json(paymentsS.HoldPage), ...errors({ ...VIEW, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/escrow/{id}', tags: ['payments'], summary: 'One escrow hold', security: adminBearer,
+    request: idP, responses: { 200: json(paymentsS.Hold), ...errors({ ...VIEW, 404: ['NOT_FOUND'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/escrow/{id}/release', tags: ['payments'], summary: 'Release a hold to its payee by hand (master, step-up escrow.manage)', security: adminBearer,
+    request: { ...idP, headers: stepUpHeader, ...body(paymentsS.releaseBody) },
+    responses: { 200: json(paymentsS.Release), ...errors({ ...MASTER_AUTH, ...STEP, 404: ['NOT_FOUND'], 409: ['ESCROW_FROZEN', 'ESCROW_CLOSED', 'ESCROW_POOLED', 'ESCROW_EMPTY', 'LEDGER_INSUFFICIENT_BALANCE'], ...VALIDATION }) } });
+  for (const [action, summary, conflict] of [
+    ['freeze', 'Freeze a hold: no release, no automatic refund (master, step-up escrow.manage)', 'ESCROW_NOT_OPEN'],
+    ['unfreeze', 'Unfreeze a hold (master, step-up escrow.manage)', 'ESCROW_NOT_FROZEN'],
+  ]) {
+    p({ method: 'post', path: `/admin/escrow/{id}/${action}`, tags: ['payments'], summary, security: adminBearer,
+      request: { ...idP, headers: stepUpHeader, ...body(paymentsS.freezeBody) },
+      responses: { 200: json(paymentsS.Hold), ...errors({ ...MASTER_AUTH, ...STEP, 404: ['NOT_FOUND'], 409: [conflict], ...VALIDATION }) } });
+  }
+
+  p({ method: 'get', path: '/admin/reconciliation/runs', tags: ['payments'], summary: 'Daily reconciliation runs, newest first', security: adminBearer,
+    responses: { 200: json(paymentsS.RunPage), ...errors(VIEW) } });
+  p({ method: 'post', path: '/admin/reconciliation/runs', tags: ['payments'], summary: 'Reconcile a business day now (master)', security: adminBearer,
+    request: body(paymentsS.runBody), responses: { 201: json(paymentsS.Run, 'Created'), ...errors({ ...MASTER_AUTH, 409: ['RECON_RUN_EXISTS'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/reconciliation/runs/{id}/items', tags: ['payments'], summary: 'Items of a run (open=true: unresolved exceptions)', security: adminBearer,
+    request: { ...idP, query: paymentsS.itemsQuery }, responses: { 200: json(paymentsS.ItemList), ...errors({ ...VIEW, 404: ['NOT_FOUND'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/reconciliation/items/{id}/resolve', tags: ['payments'], summary: 'Resolve an exception with a note (master)', security: adminBearer,
+    request: { ...idP, ...body(paymentsS.resolveBody) }, responses: { 200: json(paymentsS.Item), ...errors({ ...MASTER_AUTH, 404: ['NOT_FOUND'], 409: ['RECON_ITEM_CLOSED'], ...VALIDATION }) } });
 }
 
 function dateTimeOf() {

@@ -10,6 +10,13 @@ const events = require('../modules/events/events.service');
 const chain = require('../modules/audit/audit.chain');
 const auditAdmin = require('../modules/audit/audit.admin.service');
 const notify = require('../modules/notifications/notify.service');
+const payments = require('../modules/payments/payments.service');
+const refunds = require('../modules/payments/refunds.service');
+const escrow = require('../modules/payments/escrow.service');
+const invariants = require('../modules/payments/invariants.service');
+const reconciliation = require('../modules/payments/reconciliation.service');
+const paymentJobs = require('../modules/payments/payments.jobs');
+const { purgeExpired: purgeIdempotencyKeys } = require('../common/idempotency');
 const logger = require('../common/logger');
 
 /**
@@ -98,6 +105,55 @@ const JOBS = [
     queue: QUEUES.NOTIFY,
     every: 60 * 60 * 1000,
     run: async () => notify.dlrTimeout(),
+  },
+
+  // ---------------- M06 payments (§10). Each is idempotent: status guards and ledger idempotency keys.
+  {
+    // Intents past expiry: ask the provider first (a late capture is captured, then refunded), else expire.
+    name: 'payments.expire-intents',
+    queue: QUEUES.PAYMENTS,
+    every: 60 * 1000,
+    run: async () => payments.expireIntents(),
+  },
+  {
+    // Attempts with no answer yet, at payments.poll_unknown_minutes after they started.
+    name: paymentJobs.JOBS.POLL_ATTEMPT,
+    queue: QUEUES.PAYMENTS,
+    run: async (data) => payments.pollAttempt(data),
+  },
+  {
+    // Provider refund call, then status polling; retries 1 min / 10 min / 1 h, then manual_required.
+    name: paymentJobs.JOBS.REFUND_PROCESS,
+    queue: QUEUES.PAYMENTS,
+    run: async (data) => refunds.processRefund(data),
+  },
+  {
+    name: 'escrow.release-due',
+    queue: QUEUES.PAYMENTS,
+    every: 5 * 60 * 1000,
+    run: async () => escrow.releaseDue(),
+  },
+  {
+    // FR-19: after the audit chain check (02:00).
+    name: 'ledger.invariants',
+    queue: QUEUES.PAYMENTS,
+    pattern: '30 2 * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => invariants.check(),
+  },
+  {
+    // FR-18: the previous Dhaka business day, per provider (UNIQUE provider + date).
+    name: 'reconciliation.daily',
+    queue: QUEUES.PAYMENTS,
+    pattern: '0 6 * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => reconciliation.run(),
+  },
+  {
+    name: 'idempotency.purge',
+    queue: QUEUES.PAYMENTS,
+    every: 60 * 60 * 1000,
+    run: async () => ({ purged: await purgeIdempotencyKeys() }),
   },
 ];
 
