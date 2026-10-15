@@ -15,7 +15,7 @@ function assertPoisha(v, what = 'amount') {
   return v;
 }
 
-/** BIGINT columns come back from mysql2 as strings; convert and check. */
+/** BIGINT, NUMERIC and COUNT columns come back from pg as strings; convert and check. */
 function toPoisha(v) {
   if (v === null || v === undefined) return 0;
   return assertPoisha(typeof v === 'string' ? Number(v) : v, 'stored amount');

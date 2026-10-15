@@ -9,10 +9,10 @@ const base = {
   database: config.db.name,
   host: config.db.host,
   port: config.db.port,
-  dialect: 'mysql',
+  dialect: 'postgres',
   timezone: '+00:00', // store UTC; business logic converts to Asia/Dhaka
-  dialectOptions: { dateStrings: false, supportBigNumbers: true, bigNumberStrings: true },
-  define: { underscored: true, charset: 'utf8mb4', collate: 'utf8mb4_0900_ai_ci' },
+  // pg returns BIGINT and NUMERIC as strings; money getters (common/money) turn them into checked numbers.
+  define: { underscored: true },
   migrationStorageTableName: 'sequelize_meta',
   seederStorage: 'sequelize',
   seederStorageTableName: 'sequelize_seeds',
@@ -20,7 +20,7 @@ const base = {
   logging: config.db.logging ? console.log : false,
 };
 
-// Pool per process. With N pods x 3 processes, keep N x 3 x DB_POOL_MAX under MySQL's max_connections.
+// Pool per process. With N pods x 3 processes, keep N x 3 x DB_POOL_MAX under Postgres max_connections (or put PgBouncer in front).
 const pool = { max: config.db.poolMax, min: 0, idle: 10000, acquire: 30000 };
 
 module.exports = {

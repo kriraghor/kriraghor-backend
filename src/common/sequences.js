@@ -2,21 +2,17 @@
 
 /**
  * Human-readable codes such as PAY-26-000123 (M06 §7). One counter row per name in id_sequences;
- * LAST_INSERT_ID(expr) makes the increment and the read atomic on the connection, so concurrent
- * callers never share a number. Always runs inside a transaction (one connection).
+ * INSERT … ON CONFLICT … RETURNING increments and reads in one atomic statement, so concurrent
+ * callers never share a number (the row lock serialises them).
  */
 const { sequelize } = require('../models');
 
 async function nextValue(name, transaction) {
-  const run = async (t) => {
-    await sequelize.query('INSERT INTO id_sequences (name, next) VALUES (?, LAST_INSERT_ID(1)) ON DUPLICATE KEY UPDATE next = LAST_INSERT_ID(next + 1)', {
-      replacements: [name],
-      transaction: t,
-    });
-    const [[row]] = await sequelize.query('SELECT LAST_INSERT_ID() AS v', { transaction: t });
-    return Number(row.v);
-  };
-  return transaction ? run(transaction) : sequelize.transaction(run);
+  const [[row]] = await sequelize.query(
+    'INSERT INTO id_sequences (name, next) VALUES (?, 1) ON CONFLICT (name) DO UPDATE SET next = id_sequences.next + 1 RETURNING next',
+    { replacements: [name], transaction }
+  );
+  return Number(row.next);
 }
 
 /** Two-digit year in Asia/Dhaka (UTC+6, no DST). */

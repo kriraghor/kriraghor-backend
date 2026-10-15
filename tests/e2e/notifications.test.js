@@ -270,7 +270,7 @@ describe('bell API (M08-FR-04, FR-05) and the support view', () => {
     // One minute apart, oldest first, so time-based reads are deterministic.
     const rows = await models.Notification.findAll({ where: { userId: member.user.id }, order: [['id', 'ASC']] });
     for (const [i, row] of rows.entries()) {
-      await sequelize.query('UPDATE notifications SET created_at = DATE_SUB(UTC_TIMESTAMP(3), INTERVAL ? MINUTE) WHERE id = ?', { replacements: [rows.length - i, row.id] });
+      await sequelize.query('UPDATE notifications SET created_at = clock_timestamp() - make_interval(mins => ?) WHERE id = ?', { replacements: [rows.length - i, row.id] });
     }
     return { master, member };
   }

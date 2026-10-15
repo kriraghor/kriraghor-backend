@@ -41,9 +41,9 @@ async function check({ publish = true } = {}) {
   add('escrow_matches_holds', escrowDiffs.length === 0, escrowDiffs.length ? `Differs: ${escrowDiffs.join(', ')}` : null);
 
   const [holdLedger] = await sequelize.query(
-    'SELECT h.id, h.held_poisha - h.released_poisha - h.refunded_poisha AS expected, ' +
+    'SELECT id FROM (SELECT h.id, h.held_poisha - h.released_poisha - h.refunded_poisha AS expected, ' +
       'COALESCE((SELECT SUM(e.credit_poisha) - SUM(e.debit_poisha) FROM ledger_entries e WHERE e.escrow_hold_id = h.id), 0) AS actual ' +
-      'FROM escrow_holds h HAVING expected <> actual LIMIT 20'
+      'FROM escrow_holds h) x WHERE expected <> actual LIMIT 20'
   );
   add('holds_match_ledger', holdLedger.length === 0, holdLedger.length ? `Holds out of line: ${holdLedger.map((r) => r.id).join(', ')}` : null);
 
@@ -55,7 +55,7 @@ async function check({ publish = true } = {}) {
   if (days > 0) {
     const [aged] = await sequelize.query(
       'SELECT a.code FROM ledger_accounts a JOIN ledger_entries e ON e.account_id = a.id JOIN ledger_transactions t ON t.id = e.txn_id ' +
-        "WHERE a.code LIKE 'provider_clearing:%' GROUP BY a.code HAVING SUM(e.debit_poisha) - SUM(e.credit_poisha) > 0 AND MIN(t.posted_at) < DATE_SUB(UTC_TIMESTAMP(3), INTERVAL ? DAY)",
+        "WHERE a.code LIKE 'provider_clearing:%' GROUP BY a.code HAVING SUM(e.debit_poisha) - SUM(e.credit_poisha) > 0 AND MIN(t.posted_at) < clock_timestamp() - make_interval(days => ?)",
       { replacements: [days] }
     );
     add('clearing_age', aged.length === 0, aged.length ? `Unsettled for over ${days} days: ${aged.map((r) => r.code).join(', ')}` : null);

@@ -5,7 +5,7 @@ Request names refer to the **"Kriraghor API: M03 Settings & esports catalogue"**
 (`postman/kriraghor-settings.postman_collection.json`, rebuilt with `node postman/build-collection-m03.js`).
 
 ## 0. Setup
-- [ ] `docker compose up -d`. MySQL runs with `--log-bin-trust-function-creators=1` (the append-only triggers need it; Q140).
+- [ ] `docker compose up -d`. PostgreSQL is healthy (`docker compose ps`).
 - [ ] `npm run release`. This applies the three M03 migrations and prints `reference seed done` with `settings: 151, esports: 23, templates: 88` the first time, and `0, 0` after that.
 - [ ] `npm test` → **199 passed**, and the coverage gate passes (100% on the settings and catalogue validators). 🤖 marks cases only the tests cover.
 - [ ] `node postman/run-m03.js` → **22 requests, 37 assertions, 0 failed**. It resets `kriraghor_test`, signs in two masters and pre-mints step-up tokens.
@@ -34,7 +34,7 @@ Request names refer to the **"Kriraghor API: M03 Settings & esports catalogue"**
 | 3.3 | Out of range, wrong type, unknown key, unchanged value, past effective time | `SETTING_OUT_OF_RANGE`, `SETTING_TYPE_INVALID`, `SETTING_UNKNOWN`, `SETTING_UNCHANGED`, `400 EFFECTIVE_AT_PAST` 🤖 |
 | 3.4 | A change with a future `effectiveAt` | `approved`; the value changes only when the `settings.apply-scheduled` job runs 🤖 |
 | 3.5 | A scheduled change that a later change makes invalid | The job rejects it with "Could not apply: …" 🤖 |
-| 3.6 | `settings_history`: `UPDATE` or `DELETE` in MySQL | Refused: "settings_history is append-only" 🤖 |
+| 3.6 | `settings_history`: `UPDATE` or `DELETE` in PostgreSQL | Refused: "settings_history is append-only" 🤖 |
 
 ## 4. Four-eyes (M03-FR-12, Q39)
 | # | Do | Expect |

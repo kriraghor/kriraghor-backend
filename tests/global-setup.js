@@ -3,7 +3,7 @@
 const { execSync } = require('child_process');
 const path = require('path');
 
-/** Create the test schema from migrations and seed reference data once per run (requires MySQL from docker-compose). */
+/** Create the test schema from migrations and seed reference data once per run (requires PostgreSQL from docker-compose). */
 module.exports = async () => {
   require('./env');
   const cli = path.join(__dirname, '..', 'node_modules', '.bin', 'sequelize-cli');

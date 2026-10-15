@@ -197,14 +197,14 @@ Next time the master signs in: **Send OTP to master** → **Admin login with OTP
 ## Part I: Look inside the database (optional)
 
 ```bash
-docker exec -it kriraghor-mysql mysql -ukriraghor -pkriraghor kriraghor
+docker exec -it kriraghor-postgres psql -U kriraghor -d kriraghor
 ```
 
 ```sql
 SELECT id, phone, email, username, status, kyc_status FROM users;
 SELECT user_id, role, status FROM user_roles;
 SELECT action, created_at FROM audit_logs ORDER BY id DESC LIMIT 20;
-exit
+\q
 ```
 
 Next: work through `M01-acceptance-checklist.md` in this folder to sign off the module.

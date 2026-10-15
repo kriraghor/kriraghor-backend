@@ -39,7 +39,7 @@ function assertGrantable(perms) {
   if (bad.length) throw new AppError(422, 'PERMISSION_NOT_GRANTABLE', 'These permissions cannot be granted to staff', { meta: { permissions: bad } });
 }
 
-/** Grant or re-grant a permission row (one row per user+permission; MySQL has no partial unique index). */
+/** Grant or re-grant a permission row (one row per user+permission, revoked_at marks revocation). */
 async function grant(userId, permission, by, transaction) {
   const row = await StaffPermission.findOne({ where: { userId, permission }, transaction, lock: transaction.LOCK.UPDATE });
   if (!row) return StaffPermission.create({ userId, permission, grantedBy: by }, { transaction }).then(() => true);

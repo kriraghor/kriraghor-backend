@@ -8,7 +8,7 @@
  *   2. creates missing accounts (lazily, ensureAccount);
  *   3. locks every guarded account (escrow:*, payable:*) that this posting debits, in id order (no
  *      deadlocks), and refuses a posting that would take one below zero;
- *   4. writes the entries, then the header; the MySQL trigger re-checks the balance on the header;
+ *   4. writes the entries and the header; a deferred constraint trigger re-checks the balance at COMMIT;
  *   5. publishes ledger.transaction_posted through the outbox.
  * Balances are computed from entries (never stored), so the ledger stays the single source of truth.
  */
@@ -29,9 +29,9 @@ async function ensureAccount(code, transaction) {
   const found = await LedgerAccount.findOne({ where: { code }, transaction });
   if (found) return found;
   try {
-    return await LedgerAccount.create(
-      { code, type, ownerUserId: rules.ownerOf(code), vertical: rules.verticalOf(code) },
-      { transaction }
+    // A savepoint: on Postgres a failed statement would otherwise abort the caller's whole transaction.
+    return await sequelize.transaction({ transaction }, (savepoint) =>
+      LedgerAccount.create({ code, type, ownerUserId: rules.ownerOf(code), vertical: rules.verticalOf(code) }, { transaction: savepoint })
     );
   } catch (err) {
     if (!(err instanceof UniqueConstraintError)) throw err;
@@ -156,10 +156,10 @@ async function trialBalance() {
 /** Accounts for the finance desk, with balances. */
 async function listAccounts({ code, limit = 50 } = {}) {
   const [rows] = await sequelize.query(
-    'SELECT a.id, a.code, a.type, a.owner_user_id AS ownerUserId, a.vertical, ' +
+    'SELECT a.id, a.code, a.type, a.owner_user_id AS "ownerUserId", a.vertical, ' +
       'COALESCE(SUM(e.debit_poisha), 0) AS d, COALESCE(SUM(e.credit_poisha), 0) AS c, COUNT(e.id) AS n ' +
       'FROM ledger_accounts a LEFT JOIN ledger_entries e ON e.account_id = a.id ' +
-      `${code ? 'WHERE a.code LIKE ? ' : ''}GROUP BY a.id ORDER BY a.code LIMIT ${Number(limit)}`,
+      `${code ? 'WHERE a.code ILIKE ? ' : ''}GROUP BY a.id ORDER BY a.code LIMIT ${Number(limit)}`,
     { replacements: code ? [`%${code}%`] : [] }
   );
   return rows.map((r) => ({

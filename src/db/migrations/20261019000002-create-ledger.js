@@ -1,60 +1,57 @@
 'use strict';
 
 /**
- * M06 double-entry ledger (§6.2, §7, FR-11, FR-12).
- *
- * MySQL has no deferred constraint triggers, so the balance rule (Σ debit = Σ credit, FR-12) is
- * enforced when the transaction header is written: LedgerService.post() inserts the entries first
- * and the ledger_transactions row last, inside one database transaction. The BEFORE INSERT trigger
- * on ledger_transactions sums that txn's entries and refuses the header unless they balance, match
- * total_poisha and entry_count, and there are at least two. Entries for a txn whose header already
- * exists are refused, so a sealed transaction can never grow. ledger_entries.txn_id therefore has no
- * foreign key (the header does not exist yet when entries are written); the nightly invariants job
- * reports entries without a header.
- *
- * FR-11: all three tables are append-only (UPDATE/DELETE triggers; corrections are reversing
- * transactions). Needs log_bin_trust_function_creators=1, as for audit_logs (Q140).
+ * M06 double-entry ledger (§6.2, §7, FR-11, FR-12), the spec's Postgres design (ADR-005):
+ *  - ledger_entries.txn_id references ledger_transactions with a DEFERRABLE INITIALLY DEFERRED foreign
+ *    key, so a transaction's header and entries can be written in any order inside one database
+ *    transaction;
+ *  - FR-12: a DEFERRABLE constraint trigger checks every touched ledger transaction at COMMIT: at
+ *    least two entries, entry_count matches, Σ debit = Σ credit = total_poisha. Entries added later
+ *    (in another database transaction) change the count, so a posted transaction never grows;
+ *  - FR-11: all three tables are append-only (kg_forbid_change); corrections are reversing transactions.
+ * LedgerService.post() validates the lines before writing; these checks are the database's backstop.
  */
 const APPEND_ONLY = ['ledger_accounts', 'ledger_transactions', 'ledger_entries'];
 
 module.exports = {
   async up(queryInterface, Sequelize) {
+    const h = require('../migration-helpers/pg-v1')(Sequelize);
     const { DataTypes } = Sequelize;
     const q = (sql) => queryInterface.sequelize.query(sql);
-    const now = { type: DataTypes.DATE(3), allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP(3)') };
-    const uuid = { type: DataTypes.CHAR(36), allowNull: false };
+    const now = { type: 'TIMESTAMP(3) WITH TIME ZONE', allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP(3)') };
+    const uuid = { type: DataTypes.UUID, allowNull: false };
 
-    await queryInterface.createTable('ledger_accounts', {
+    await h.createTable(queryInterface, 'ledger_accounts', {
       id: { ...uuid, primaryKey: true },
       code: { type: DataTypes.STRING(120), allowNull: false, unique: true },
-      type: { type: DataTypes.ENUM('asset', 'liability', 'revenue', 'expense', 'equity'), allowNull: false },
-      owner_user_id: { type: DataTypes.CHAR(36), allowNull: true },
+      type: { type: h.ENUM('asset', 'liability', 'revenue', 'expense', 'equity'), allowNull: false },
+      owner_user_id: { type: DataTypes.UUID, allowNull: true },
       vertical: { type: DataTypes.STRING(20), allowNull: true },
       created_at: now,
     });
     await queryInterface.addIndex('ledger_accounts', ['owner_user_id'], { name: 'ix_ledger_accounts_owner' });
 
-    await queryInterface.createTable('ledger_transactions', {
+    await h.createTable(queryInterface, 'ledger_transactions', {
       id: { ...uuid, primaryKey: true },
       kind: { type: DataTypes.STRING(40), allowNull: false },
       ref_type: { type: DataTypes.STRING(30), allowNull: false },
       ref_id: uuid,
       idempotency_key: { type: DataTypes.STRING(160), allowNull: false, unique: true },
-      reverses_txn_id: { type: DataTypes.CHAR(36), allowNull: true, references: { model: 'ledger_transactions', key: 'id' }, onDelete: 'RESTRICT' },
+      reverses_txn_id: { type: DataTypes.UUID, allowNull: true, references: { model: 'ledger_transactions', key: 'id' }, onDelete: 'RESTRICT' },
       memo: { type: DataTypes.STRING(300), allowNull: true },
       total_poisha: { type: DataTypes.BIGINT, allowNull: false },
-      entry_count: { type: DataTypes.SMALLINT.UNSIGNED, allowNull: false },
-      posted_by: { type: DataTypes.CHAR(36), allowNull: true },
+      entry_count: { type: DataTypes.SMALLINT, allowNull: false },
+      posted_by: { type: DataTypes.UUID, allowNull: true },
       posted_at: now,
     });
     await queryInterface.addIndex('ledger_transactions', ['ref_type', 'ref_id'], { name: 'ix_ledger_txn_ref' });
     await queryInterface.addIndex('ledger_transactions', ['posted_at'], { name: 'ix_ledger_txn_posted' });
 
-    await queryInterface.createTable('ledger_entries', {
+    await h.createTable(queryInterface, 'ledger_entries', {
       id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
       txn_id: uuid,
       account_id: { ...uuid, references: { model: 'ledger_accounts', key: 'id' }, onDelete: 'RESTRICT' },
-      escrow_hold_id: { type: DataTypes.CHAR(36), allowNull: true },
+      escrow_hold_id: { type: DataTypes.UUID, allowNull: true },
       debit_poisha: { type: DataTypes.BIGINT, allowNull: false, defaultValue: 0 },
       credit_poisha: { type: DataTypes.BIGINT, allowNull: false, defaultValue: 0 },
     });
@@ -66,32 +63,42 @@ module.exports = {
     );
 
     await q(
-      'CREATE TRIGGER trg_ledger_entries_sealed BEFORE INSERT ON ledger_entries FOR EACH ROW BEGIN ' +
-        'IF EXISTS (SELECT 1 FROM ledger_transactions WHERE id = NEW.txn_id) THEN ' +
-        "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ledger transaction is already posted'; END IF; END"
+      'ALTER TABLE ledger_entries ADD CONSTRAINT fk_ledger_entries_txn FOREIGN KEY (txn_id) REFERENCES ledger_transactions (id) ' +
+        'ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED'
     );
-    await q(
-      'CREATE TRIGGER trg_ledger_txn_balanced BEFORE INSERT ON ledger_transactions FOR EACH ROW BEGIN ' +
-        'DECLARE d BIGINT; DECLARE c BIGINT; DECLARE n INT; ' +
-        'SELECT COALESCE(SUM(debit_poisha), 0), COALESCE(SUM(credit_poisha), 0), COUNT(*) INTO d, c, n FROM ledger_entries WHERE txn_id = NEW.id; ' +
-        'IF n < 2 OR d <> c OR d <> NEW.total_poisha OR n <> NEW.entry_count THEN ' +
-        "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ledger transaction is unbalanced'; END IF; END"
-    );
-    for (const table of APPEND_ONLY) {
-      for (const op of ['UPDATE', 'DELETE']) {
-        await q(
-          `CREATE TRIGGER trg_${table}_no_${op.toLowerCase()} BEFORE ${op} ON ${table} FOR EACH ROW ` +
-            `SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '${table} is append-only'`
-        );
-      }
+
+    await q(`CREATE OR REPLACE FUNCTION kg_ledger_check_txn() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE
+  t uuid;
+  hdr ledger_transactions%ROWTYPE;
+  d bigint; c bigint; n int;
+BEGIN
+  -- Separate branches: NEW has txn_id only for ledger_entries rows.
+  IF TG_TABLE_NAME = 'ledger_entries' THEN t := NEW.txn_id; ELSE t := NEW.id; END IF;
+  SELECT * INTO hdr FROM ledger_transactions WHERE id = t;
+  IF NOT FOUND THEN RAISE EXCEPTION 'ledger entries without a posted transaction' USING ERRCODE = 'P0001'; END IF;
+  SELECT COALESCE(SUM(debit_poisha), 0), COALESCE(SUM(credit_poisha), 0), COUNT(*) INTO d, c, n FROM ledger_entries WHERE txn_id = t;
+  IF n > hdr.entry_count THEN RAISE EXCEPTION 'ledger transaction is already posted' USING ERRCODE = 'P0001'; END IF;
+  IF n < 2 OR n <> hdr.entry_count OR d <> c OR d <> hdr.total_poisha THEN
+    RAISE EXCEPTION 'ledger transaction is unbalanced' USING ERRCODE = 'P0001';
+  END IF;
+  RETURN NULL;
+END $$`);
+    for (const table of ['ledger_entries', 'ledger_transactions']) {
+      await q(
+        `CREATE CONSTRAINT TRIGGER trg_${table}_balanced AFTER INSERT ON ${table} DEFERRABLE INITIALLY DEFERRED ` +
+          'FOR EACH ROW EXECUTE FUNCTION kg_ledger_check_txn()'
+      );
     }
+    for (const table of APPEND_ONLY) await h.appendOnly(queryInterface, table);
   },
 
-  async down(queryInterface) {
+  async down(queryInterface, Sequelize) {
+    const h = require('../migration-helpers/pg-v1')(Sequelize);
     const q = (sql) => queryInterface.sequelize.query(sql);
-    await q('DROP TRIGGER IF EXISTS trg_ledger_entries_sealed');
-    await q('DROP TRIGGER IF EXISTS trg_ledger_txn_balanced');
-    for (const table of APPEND_ONLY) for (const op of ['update', 'delete']) await q(`DROP TRIGGER IF EXISTS trg_${table}_no_${op}`);
+    for (const table of APPEND_ONLY) await h.dropAppendOnly(queryInterface, table);
+    for (const table of ['ledger_entries', 'ledger_transactions']) await q(`DROP TRIGGER IF EXISTS trg_${table}_balanced ON ${table}`);
+    await q('DROP FUNCTION IF EXISTS kg_ledger_check_txn()');
     for (const t of ['ledger_entries', 'ledger_transactions', 'ledger_accounts']) await queryInterface.dropTable(t);
   },
 };

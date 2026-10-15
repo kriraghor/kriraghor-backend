@@ -123,12 +123,12 @@ describe('hash chain (M04-FR-05)', () => {
     expect(await chain.verify({ fromSeq: 3 })).toMatchObject({ checked: 3, ok: true });
 
     const third = await models.AuditChain.findByPk(3);
-    // Simulate tampering by someone who can drop the trigger.
-    await sequelize.query('DROP TRIGGER trg_audit_logs_no_update');
+    // Simulate tampering by someone who can switch the trigger off.
+    await sequelize.query('ALTER TABLE audit_logs DISABLE TRIGGER trg_audit_logs_append_only');
     try {
       await sequelize.query("UPDATE audit_logs SET entity_id = 'forged' WHERE id = ?", { replacements: [third.auditLogId] });
     } finally {
-      await sequelize.query("CREATE TRIGGER trg_audit_logs_no_update BEFORE UPDATE ON audit_logs FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'audit_logs is append-only'");
+      await sequelize.query('ALTER TABLE audit_logs ENABLE TRIGGER trg_audit_logs_append_only');
     }
     expect(await chain.verify()).toEqual({ checked: 2, ok: false, firstBad: { seq: 3, auditLogId: String(third.auditLogId) } });
     const row = await models.AuditLog.findByPk(third.auditLogId);
@@ -394,7 +394,7 @@ describe('audit API (M04 §9, FR-07, FR-08, FR-10)', () => {
     const other = await h.createSecondMaster();
     await api().get(`${P}/admin/audit-logs/exports/${created.body.id}`).set(h.bearer(other)).expect(404);
 
-    await sequelize.query('UPDATE audit_exports SET expires_at = DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 1 MINUTE) WHERE id = ?', { replacements: [created.body.id] });
+    await sequelize.query("UPDATE audit_exports SET expires_at = clock_timestamp() - interval '1 minute' WHERE id = ?", { replacements: [created.body.id] });
     const expired = await api().get(`${P}/admin/audit-logs/exports/${created.body.id}/download`).set(h.bearer(master)).expect(410);
     expect(expired.body.code).toBe('EXPORT_EXPIRED');
     expect((await api().get(`${P}/admin/audit-logs/exports/${created.body.id}`).set(h.bearer(master))).body.status).toBe('expired');

@@ -52,8 +52,8 @@ The gateway is the built-in SSLCommerz simulator (`PAYMENTS_SIMULATOR=true`, dev
 |---|---|---|
 | 4.1 | **Payee balance and platform fee**, **Escrow still holds ৳10** | `payable:user:…` ৳66.50; `escrow:test_charge` ৳10 |
 | 4.2 | **Trial balance is zero**, **Invariant checks pass** | `difference 0`; 5 checks OK |
-| 4.3 | `UPDATE` / `DELETE` on `ledger_*`; an unbalanced transaction; an entry for a posted transaction | Refused by MySQL ("append-only", "unbalanced", "already posted") 🤖 |
-| 4.4 | Edit an escrow hold's amount in MySQL, run the checks | `escrow_matches_holds` and `holds_match_ledger` fail; finance gets "Ledger check failed" 🤖 |
+| 4.3 | `UPDATE` / `DELETE` on `ledger_*`; an unbalanced transaction; an entry for a posted transaction | Refused by PostgreSQL ("append-only"; "unbalanced" and "already posted" at COMMIT, by the deferred constraint trigger) 🤖 |
+| 4.4 | Edit an escrow hold's amount in PostgreSQL, run the checks | `escrow_matches_holds` and `holds_match_ledger` fail; finance gets "Ledger check failed" 🤖 |
 | 4.5 | **Reconcile today**, then again | `completed`, capture and refund `matched`; `409 RECON_RUN_EXISTS` |
 | 4.6 | A capture we missed; a wrong amount | `missing_internal` healed automatically; `amount_mismatch` stays open until resolved with a note; finance is told 🤖 |
 

@@ -30,9 +30,8 @@ simulator.setIpnSender((_url, body) => request(app).post(`${P}/webhooks/sslcomme
 const TABLES = ['reconciliation_items', 'reconciliation_runs', 'ledger_entries', 'ledger_transactions', 'ledger_accounts', 'escrow_holds', 'refunds', 'provider_webhook_events', 'payment_attempts', 'payments', 'idempotency_keys', 'id_sequences', 'sms_log', 'notification_deliveries', 'notifications', 'notification_prefs', 'message_templates', 'consumed_events', 'outbox_events', 'audit_chain', 'audit_exports', 'settings_history', 'settings_change_requests', 'platform_settings', 'esports_points_presets', 'esports_maps', 'esports_modes', 'esports_games', 'oauth_identities', 'audit_logs', 'step_up_tokens', 'user_sanctions', 'staff_permissions', 'staff_members', 'otp_codes', 'sessions', 'user_roles', 'users'];
 
 async function resetDb() {
-  await models.sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
-  for (const t of TABLES) await models.sequelize.query(`TRUNCATE TABLE \`${t}\``);
-  await models.sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
+  // One statement: CASCADE covers foreign keys, RESTART IDENTITY resets bigserial ids (TRUNCATE fires no row triggers).
+  await models.sequelize.query(`TRUNCATE TABLE ${TABLES.map((t) => `"${t}"`).join(', ')} RESTART IDENTITY CASCADE`);
   await seedReference();
   await settings.load();
   // All tests run from one IP; the per-IP OTP cap (auth.otp_sends_per_ip_hour) is tested on its own.
@@ -178,7 +177,7 @@ const createSecondMaster = () => createSignedInMaster();
 
 /** Move earlier OTPs for a number out of the resend-cooldown window (the 60 s rule itself is tested separately). */
 async function allowResend(local) {
-  await models.sequelize.query('UPDATE otp_codes SET created_at = DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 11 MINUTE) WHERE target = ?', {
+  await models.sequelize.query("UPDATE otp_codes SET created_at = clock_timestamp() - interval '11 minutes' WHERE target = ?", {
     replacements: [e164(local)],
   });
 }

@@ -79,22 +79,25 @@ async function route(entry, event, { transaction }) {
     const dedupeKey = rules.dedupeKey({ code: entry.code, subjectId: event.id, userId, at: now, windowHours });
     let notification;
     try {
-      notification = await Notification.create(
-        {
-          userId,
-          code: entry.code,
-          category: entry.category,
-          roleContext: entry.roleContext?.(event) ?? null,
-          title: (inApp.title ?? entry.code).slice(0, 140),
-          body: inApp.body.slice(0, 500),
-          link: entry.link?.(event) ?? null,
-          data: { values },
-          locale: inApp.locale,
-          templateVersion: inApp.version,
-          sourceEventId: event.id,
-          dedupeKey,
-        },
-        { transaction }
+      // A savepoint, so a duplicate (FR-02) does not abort the consumer's transaction on Postgres.
+      notification = await sequelize.transaction({ transaction }, (savepoint) =>
+        Notification.create(
+          {
+            userId,
+            code: entry.code,
+            category: entry.category,
+            roleContext: entry.roleContext?.(event) ?? null,
+            title: (inApp.title ?? entry.code).slice(0, 140),
+            body: inApp.body.slice(0, 500),
+            link: entry.link?.(event) ?? null,
+            data: { values },
+            locale: inApp.locale,
+            templateVersion: inApp.version,
+            sourceEventId: event.id,
+            dedupeKey,
+          },
+          { transaction: savepoint }
+        )
       );
     } catch (err) {
       if (err?.name === 'SequelizeUniqueConstraintError') continue; // FR-02
@@ -190,7 +193,7 @@ async function deliver({ deliveryId }, { attemptsMade = 0 } = {}) {
 
 /** Job notify.release-deferred: quiet hours are over for these (FR-10). */
 async function releaseDeferred() {
-  const due = await NotificationDelivery.findAll({ where: { status: 'deferred', deliverAt: { [Op.lte]: sequelize.literal('UTC_TIMESTAMP(3)') } }, attributes: ['id'], limit: 1000 });
+  const due = await NotificationDelivery.findAll({ where: { status: 'deferred', deliverAt: { [Op.lte]: sequelize.literal('clock_timestamp()') } }, attributes: ['id'], limit: 1000 });
   if (!due.length) return { released: 0 };
   const ids = due.map((r) => r.id);
   await NotificationDelivery.update({ status: 'queued' }, { where: { id: ids, status: 'deferred' } });

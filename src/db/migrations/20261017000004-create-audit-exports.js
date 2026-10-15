@@ -7,18 +7,19 @@
  */
 module.exports = {
   async up(queryInterface, Sequelize) {
+    const h = require('../migration-helpers/pg-v1')(Sequelize);
     const { DataTypes } = Sequelize;
-    const now = { type: DataTypes.DATE(3), allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP(3)') };
-    await queryInterface.createTable('audit_exports', {
-      id: { type: DataTypes.CHAR(36), primaryKey: true },
-      requested_by: { type: DataTypes.CHAR(36), allowNull: false, references: { model: 'users', key: 'id' }, onDelete: 'RESTRICT' },
-      filters: { type: DataTypes.JSON, allowNull: false },
-      status: { type: DataTypes.ENUM('queued', 'running', 'ready', 'failed', 'expired'), allowNull: false, defaultValue: 'queued' },
-      row_count: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+    const now = { type: 'TIMESTAMP(3) WITH TIME ZONE', allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP(3)') };
+    await h.createTable(queryInterface, 'audit_exports', {
+      id: { type: DataTypes.UUID, primaryKey: true },
+      requested_by: { type: DataTypes.UUID, allowNull: false, references: { model: 'users', key: 'id' }, onDelete: 'RESTRICT' },
+      filters: { type: DataTypes.JSONB, allowNull: false },
+      status: { type: h.ENUM('queued', 'running', 'ready', 'failed', 'expired'), allowNull: false, defaultValue: 'queued' },
+      row_count: { type: DataTypes.INTEGER, allowNull: true },
       object_key: { type: DataTypes.STRING(255), allowNull: true },
       error: { type: DataTypes.TEXT, allowNull: true },
-      completed_at: { type: DataTypes.DATE(3), allowNull: true },
-      expires_at: { type: DataTypes.DATE(3), allowNull: true },
+      completed_at: { type: 'TIMESTAMP(3) WITH TIME ZONE', allowNull: true },
+      expires_at: { type: 'TIMESTAMP(3) WITH TIME ZONE', allowNull: true },
       created_at: now,
       updated_at: now,
     });

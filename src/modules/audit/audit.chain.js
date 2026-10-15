@@ -22,7 +22,7 @@ function canonical(value) {
   return JSON.stringify(value === undefined ? null : value);
 }
 
-/** The audited content of a row, normalised so reads from MySQL always produce the same text. */
+/** The audited content of a row, normalised so every read produces the same text. */
 function rowContent(row) {
   const r = typeof row.get === 'function' ? row.get({ plain: true }) : row;
   const iso = (d) => (d ? new Date(d).toISOString() : null);
@@ -55,35 +55,32 @@ const hashRow = (prevHash, row) => crypto.createHash('sha256').update(`${prevHas
 // Late commits are looked for this many ids behind the newest sealed row.
 const LATE_WINDOW = 5000;
 
-/** Append unsealed rows to the chain. One sealer at a time (MySQL named lock). */
+/** Append unsealed rows to the chain. One sealer at a time (transaction-scoped advisory lock). */
 async function seal({ batch = 500 } = {}) {
   return sequelize.transaction(async (transaction) => {
     const q = (sql, replacements) => sequelize.query(sql, { replacements, type: sequelize.QueryTypes.SELECT, transaction });
-    const [{ locked }] = await q("SELECT GET_LOCK('kg_audit_chain_seal', 0) AS locked");
-    if (Number(locked) !== 1) return { sealed: 0, skipped: true };
-    try {
-      const [last] = await q('SELECT seq, audit_log_id AS auditLogId, row_hash AS rowHash FROM audit_chain ORDER BY seq DESC LIMIT 1');
-      const low = Math.max(0, Number(last?.auditLogId ?? 0) - LATE_WINDOW);
-      const ids = await q(
-        'SELECT a.id FROM audit_logs a LEFT JOIN audit_chain c ON c.audit_log_id = a.id WHERE a.id >= ? AND c.audit_log_id IS NULL ORDER BY a.id LIMIT ?',
-        [low, batch]
-      );
-      if (!ids.length) return { sealed: 0 };
-      const rows = await AuditLog.findAll({ where: { id: ids.map((r) => r.id) }, order: [['id', 'ASC']], transaction });
-      let seq = Number(last?.seq ?? 0);
-      let prev = last?.rowHash ?? null;
-      const chain = rows.map((row) => {
-        seq += 1;
-        const rowHash = hashRow(prev, row);
-        const link = { seq, auditLogId: row.id, prevHash: prev, rowHash };
-        prev = rowHash;
-        return link;
-      });
-      await AuditChain.bulkCreate(chain, { transaction });
-      return { sealed: chain.length, lastSeq: seq };
-    } finally {
-      await q("SELECT RELEASE_LOCK('kg_audit_chain_seal')");
-    }
+    // Released when the transaction ends; a second sealer skips instead of waiting.
+    const [{ locked }] = await q("SELECT pg_try_advisory_xact_lock(hashtext('kg_audit_chain_seal')) AS locked");
+    if (!locked) return { sealed: 0, skipped: true };
+    const [last] = await q('SELECT seq, audit_log_id AS "auditLogId", row_hash AS "rowHash" FROM audit_chain ORDER BY seq DESC LIMIT 1');
+    const low = Math.max(0, Number(last?.auditLogId ?? 0) - LATE_WINDOW);
+    const ids = await q(
+      'SELECT a.id FROM audit_logs a LEFT JOIN audit_chain c ON c.audit_log_id = a.id WHERE a.id >= ? AND c.audit_log_id IS NULL ORDER BY a.id LIMIT ?',
+      [low, batch]
+    );
+    if (!ids.length) return { sealed: 0 };
+    const rows = await AuditLog.findAll({ where: { id: ids.map((r) => r.id) }, order: [['id', 'ASC']], transaction });
+    let seq = Number(last?.seq ?? 0);
+    let prev = last?.rowHash ?? null;
+    const chain = rows.map((row) => {
+      seq += 1;
+      const rowHash = hashRow(prev, row);
+      const link = { seq, auditLogId: row.id, prevHash: prev, rowHash };
+      prev = rowHash;
+      return link;
+    });
+    await AuditChain.bulkCreate(chain, { transaction });
+    return { sealed: chain.length, lastSeq: seq };
   });
 }
 
@@ -111,7 +108,7 @@ async function verify({ fromSeq = 1, pageSize = 1000 } = {}) {
     seq = Number(links[links.length - 1].seq) + 1;
   }
   const [{ n }] = await sequelize.query(
-    'SELECT COUNT(*) AS n FROM audit_logs a LEFT JOIN audit_chain c ON c.audit_log_id = a.id WHERE c.audit_log_id IS NULL AND a.created_at < UTC_TIMESTAMP(3) - INTERVAL 1 HOUR',
+    "SELECT COUNT(*) AS n FROM audit_logs a LEFT JOIN audit_chain c ON c.audit_log_id = a.id WHERE c.audit_log_id IS NULL AND a.created_at < clock_timestamp() - interval '1 hour'",
     { type: sequelize.QueryTypes.SELECT }
   );
   return { checked, ok: true, unsealedOlderThanHour: Number(n) };

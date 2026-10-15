@@ -32,7 +32,7 @@ async function search(principal, { q, status, role, roleStatus, limit = 20, curs
   if (q) {
     const digits = q.replace(/\D/g, '');
     where[Op.or] = [
-      { displayName: { [Op.like]: `%${q}%` } },
+      { displayName: { [Op.iLike]: `%${q}%` } }, // case-insensitive name search
       { email: { [Op.like]: `%${q.toLowerCase()}%` } },
       ...(digits.length >= 4 ? [{ phone: { [Op.like]: `%${digits.slice(-10)}%` } }] : []),
     ];

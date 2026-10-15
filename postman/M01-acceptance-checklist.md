@@ -4,7 +4,7 @@ Work through this list before starting the next module. Tick each box when the r
 Request names refer to the **"Kriraghor API: M01 Auth & RBAC"** Postman collection.
 
 ## 0. Setup
-- [ ] `docker compose up -d`. MySQL, Redis, Mailpit and SeaweedFS are healthy (`docker compose ps`).
+- [ ] `docker compose up -d`. PostgreSQL, Redis, Mailpit and SeaweedFS are healthy (`docker compose ps`).
 - [ ] `npm run db:migrate`. This reports *no pending migrations* or applies `add-session-audience`.
 - [ ] `npm run dev`. `GET http://localhost:4000/health` → `{"status":"ok","db":"up"}`.
 - [ ] Re-import the latest collection file (53 requests). Rebuild it with `node postman/build-collection.js`.
@@ -96,8 +96,8 @@ Request names refer to the **"Kriraghor API: M01 Auth & RBAC"** Postman collecti
 | 5.14 | Master: **Save permission changes** (revoke `manage_users`), then the staff member uses their old token | Sessions revoked → `401`. After signing in again, `GET /admin/users` → `403` |
 | 5.15 | A staff member with `manage_users` tries to suspend the master | `403 MASTER_REQUIRED` |
 
-## 6. Data checks (MySQL)
-`docker exec -it kriraghor-mysql mysql -ukriraghor -pkriraghor kriraghor`
+## 6. Data checks (PostgreSQL)
+`docker exec -it kriraghor-postgres psql -U kriraghor -d kriraghor`
 - [ ] `SELECT password_hash FROM users LIMIT 3;`: values start with `$argon2id$`, never plain text.
 - [ ] `SELECT code_hash FROM otp_codes LIMIT 3;`: 64-character hashes, never the 6-digit code.
 - [ ] `SELECT refresh_token_hash, revoke_cause FROM sessions;`: hashes only; causes such as `rotation`, `logout`, `sanction`.

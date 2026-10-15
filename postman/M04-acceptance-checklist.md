@@ -16,7 +16,7 @@ Request names refer to the **"Kriraghor API: M04 Audit log & events"** collectio
 | 1.1 | Ban a user (master + step-up `user.ban`) | Audit row `user.banned`: actor type master, module M01, severity critical, step-up true, session id. The outbox gets `user.banned`, `session.revoked` and `audit.critical_recorded` |
 | 1.2 | Make a change fail after its audit row was written | Neither the audit row nor the outbox row remains 🤖 |
 | 1.3 | Make the audit insert fail | The business change fails too (500) 🤖 |
-| 1.4 | `UPDATE`/`DELETE` on `audit_logs` or `audit_chain` in MySQL | Refused: "… is append-only" |
+| 1.4 | `UPDATE`/`DELETE` on `audit_logs` or `audit_chain` in PostgreSQL | Refused: "… is append-only" |
 | 1.5 | Change an email | `before`/`after` show `f***@example.com`; phones keep 3 digits; tokens and NID become `[redacted]` 🤖 |
 
 ## 2. Hash chain (FR-05, Q44)

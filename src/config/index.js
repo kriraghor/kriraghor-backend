@@ -29,7 +29,7 @@ const schema = z.object({
   REDIS_KEY_PREFIX: z.string().default('kg'),
 
   DB_HOST: z.string().default('127.0.0.1'),
-  DB_PORT: z.coerce.number().int().default(3306),
+  DB_PORT: z.coerce.number().int().default(5432),
   DB_NAME: z.string().default('kriraghor'),
   DB_USER: z.string().default('kriraghor'),
   DB_PASSWORD: z.string().default(''),

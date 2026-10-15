@@ -1,4 +1,4 @@
-# Lint, tests against MySQL + Redis, OpenAPI drift check, then image build, Trivy, GHCR and the
+# Lint, tests against PostgreSQL + Redis, OpenAPI drift check, then image build, Trivy, GHCR and the
 # staging image-tag PR, all from the reusable workflow in kriraghor-infra (ADR-003).
 name: ci
 on:

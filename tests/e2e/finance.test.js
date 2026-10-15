@@ -284,18 +284,21 @@ describe('escrow (FR-13, FR-14, §8)', () => {
 });
 
 describe('the ledger guards itself (FR-11, FR-12, FR-19)', () => {
-  it('refuses unbalanced, sealed, edited and deleted rows in MySQL', async () => {
+  it('refuses unbalanced, sealed, edited and deleted rows in the database', async () => {
     const { payment } = await paidCharge(1000);
     const [acc] = await models.LedgerAccount.findAll({ limit: 1 });
     const q = (sql, replacements) => models.sequelize.query(sql, { replacements });
+    // The balance is checked by a deferred constraint trigger, so the COMMIT is what fails.
     const txn = uuid7();
-    await models.sequelize.transaction(async (transaction) => {
+    const unbalanced = models.sequelize.transaction(async (transaction) => {
+      await models.LedgerTransaction.create({ id: txn, kind: 'test', refType: 'payment', refId: payment.id, idempotencyKey: 'bad', totalPoisha: 100, entryCount: 2 }, { transaction });
       await models.LedgerEntry.create({ txnId: txn, accountId: acc.id, debitPoisha: 100 }, { transaction });
       await models.LedgerEntry.create({ txnId: txn, accountId: acc.id, creditPoisha: 90 }, { transaction });
-      await expect(
-        models.LedgerTransaction.create({ id: txn, kind: 'test', refType: 'payment', refId: payment.id, idempotencyKey: 'bad', totalPoisha: 100, entryCount: 2 }, { transaction })
-      ).rejects.toThrow(/unbalanced/);
-    }).catch(() => {});
+    });
+    await expect(unbalanced).rejects.toThrow(/unbalanced/);
+    expect(await models.LedgerTransaction.findByPk(txn)).toBeNull();
+    // Entries with no transaction header are refused too (deferred foreign key).
+    await expect(q('INSERT INTO ledger_entries (txn_id, account_id, debit_poisha, credit_poisha) VALUES (?, ?, 1, 0)', [uuid7(), acc.id])).rejects.toThrow(/without a posted transaction|foreign key/);
     const posted = await models.LedgerTransaction.findOne();
     await expect(q('INSERT INTO ledger_entries (txn_id, account_id, debit_poisha, credit_poisha) VALUES (?, ?, 1, 0)', [posted.id, acc.id])).rejects.toThrow(/already posted/);
     await expect(q('UPDATE ledger_entries SET debit_poisha = 1 WHERE txn_id = ?', [posted.id])).rejects.toThrow(/append-only/);

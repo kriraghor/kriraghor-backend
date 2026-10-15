@@ -347,10 +347,14 @@ describe('cache bust across processes (M03-FR-16)', () => {
 describe('boot check and seed (M03 §12, §15)', () => {
   it('the boot check fails when a key is missing', async () => {
     await settings.bootCheck();
-    await models.sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
-    // Test-only removal to simulate a database the release step never seeded.
-    await models.sequelize.query("DELETE FROM platform_settings WHERE `key` = 'fees.hire_pct'");
-    await models.sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
+    // Test-only removal to simulate a database the release step never seeded (history first: it references the key).
+    await models.sequelize.query('ALTER TABLE settings_history DISABLE TRIGGER trg_settings_history_append_only');
+    try {
+      await models.sequelize.query("DELETE FROM settings_history WHERE \"key\" = 'fees.hire_pct'");
+    } finally {
+      await models.sequelize.query('ALTER TABLE settings_history ENABLE TRIGGER trg_settings_history_append_only');
+    }
+    await models.sequelize.query("DELETE FROM platform_settings WHERE \"key\" = 'fees.hire_pct'");
     await expect(settings.bootCheck()).rejects.toThrow(/missing 1 key\(s\), e\.g\. fees\.hire_pct/);
   });
 

@@ -275,6 +275,10 @@ async function capturedTwice(payment, result, { transaction }) {
 
 // ---------------------------------------------------------------- IPN and return (FR-03, FR-04)
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** Our tran_id is an attempt id; anything else from the gateway is simply unknown (never a uuid cast error). */
+const attemptByTranId = async (tranId) => (UUID_RE.test(String(tranId ?? '')) ? PaymentAttempt.findByPk(String(tranId)) : null);
+
 /**
  * POST /webhooks/sslcommerz. Stores the (redacted) IPN once per provider event (FR-04; a replay is a
  * no-op), checks the signature, then always re-validates with the provider before applying it.
@@ -282,7 +286,7 @@ async function capturedTwice(payment, result, { transaction }) {
 async function handleIpn(body) {
   const provider = providers.get('sslcommerz');
   const parsed = provider.parseWebhook(body);
-  const attempt = parsed.tranId ? await PaymentAttempt.findByPk(String(parsed.tranId)) : null;
+  const attempt = await attemptByTranId(parsed.tranId);
   let row;
   try {
     row = await ProviderWebhookEvent.create({ provider: provider.code, providerEventId: String(parsed.eventId).slice(0, 120), paymentId: attempt?.paymentId ?? null, signatureOk: parsed.signatureOk, raw: provider.redactIpn(body) });
@@ -309,7 +313,7 @@ async function handleIpn(body) {
  */
 async function handleReturn({ pid, tranId, valId }) {
   const target = (id) => (id ? `${config.apps.web}/pay/${id}/result` : `${config.apps.web}/me/payments`);
-  const attempt = tranId ? await PaymentAttempt.findByPk(String(tranId)) : null;
+  const attempt = await attemptByTranId(tranId);
   const paymentId = attempt?.paymentId ?? (/^[0-9a-f-]{36}$/i.test(String(pid ?? '')) ? pid : null);
   if (!attempt) return target(paymentId);
   try {

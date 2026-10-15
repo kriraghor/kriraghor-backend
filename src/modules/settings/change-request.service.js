@@ -266,7 +266,7 @@ async function withdraw(actor, id, { note } = {}, req) {
  * that now breaks a rule is rejected with a note instead of retried forever.
  */
 async function applyDue({ requestId } = {}) {
-  const where = { status: 'approved', effectiveAt: { [Op.lte]: sequelize.literal('UTC_TIMESTAMP(3)') } };
+  const where = { status: 'approved', effectiveAt: { [Op.lte]: sequelize.literal('clock_timestamp()') } };
   if (requestId) where.id = requestId;
   const due = await SettingsChangeRequest.findAll({ where, attributes: ['id'], order: [['effectiveAt', 'ASC']] });
   let applied = 0;

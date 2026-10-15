@@ -1,6 +1,6 @@
 # Kriraghor API (backend)
 
-Node.js · Express 5 · Sequelize 6 · MySQL 8 · Redis · BullMQ · Socket.IO · Passport JWT
+Node.js · Express 5 · Sequelize 6 · PostgreSQL 17 · Redis · BullMQ · Socket.IO · Passport JWT
 
 The specification for every module is in [`../kriraghor-docs/modules`](../kriraghor-docs/modules/README.md). Modules are built one at a time, in dependency order.
 
@@ -11,14 +11,14 @@ The specification for every module is in [`../kriraghor-docs/modules`](../krirag
 | **M03 Settings and esports catalogue** | ✅ Step 1: [`src/modules/settings`](src/modules/settings) (151 platform settings, history, four-eyes change requests, scheduled changes, SettingsService with Redis cache bust) and [`src/modules/catalog`](src/modules/catalog) (esports games, modes, maps, versioned points presets). Sports, locations, hire and item catalogues come with their modules |
 | **M04 Audit log and events** | ✅ [`src/modules/audit`](src/modules/audit) (redacted, append-only audit log with a hash chain sealed after commit, action registry with EN/BN summaries, search, entity history, CSV export) and [`src/modules/events`](src/modules/events) (event registry, transactional outbox, relay, inbox, retries, dead letters, replay). M01 and M03 publish their events |
 | **M08 Notifications core** | ✅ [`src/modules/notifications`](src/modules/notifications): catalogue router on M04 events, versioned EN/BN templates, preferences with mandatory categories, quiet hours, Redis SMS rate limits, dedupe, retries, in-app (bell, realtime), email and sandbox SMS, masked SMS log, OTP through M08. Push, broadcasts and the real SMS gateway come later (M21, Q59). **Phase 1 exit check passes** |
-| **M06 Payments, ledger and escrow** | ✅ Step 1: [`src/modules/payments`](src/modules/payments): payment intents with Idempotency-Key, SSLCommerz adapter (and a built-in simulator for dev and tests), server-side verification, replay-safe IPN, append-only double-entry ledger with the balance enforced in MySQL, escrow holds (release, freeze, pool settlement for M21), refunds with the staff cap and master step-up, daily reconciliation, nightly invariants, finance desk API. bKash and Nagad direct, off-platform collections, COD, split shares and fee invoices come later |
+| **M06 Payments, ledger and escrow** | ✅ Step 1: [`src/modules/payments`](src/modules/payments): payment intents with Idempotency-Key, SSLCommerz adapter (and a built-in simulator for dev and tests), server-side verification, replay-safe IPN, append-only double-entry ledger with the balance enforced by a deferred constraint trigger, escrow holds (release, freeze, pool settlement for M21), refunds with the staff cap and master step-up, daily reconciliation, nightly invariants, finance desk API. bKash and Nagad direct, off-platform collections, COD, split shares and fee invoices come later |
 | Everything else | Not started |
 
 ## Quick start
 
 ```bash
 cp .env.example .env              # then set real secrets (see the comments in the file)
-docker compose up -d              # MySQL 8.4, Redis 7.4, Mailpit, SeaweedFS (S3); also creates kriraghor_test
+docker compose up -d              # PostgreSQL 17 (host port 55432), Redis 7.4, Mailpit, SeaweedFS (S3); also creates kriraghor_test
 npm install
 npm run release                   # migrations, then the M03 reference seed (settings + esports catalogue)
 npm run create:master -- --phone 01XXXXXXXXX --name "Your Name" --employee-id KG-0001
@@ -66,7 +66,7 @@ npm run openapi                   # regenerate openapi.json after changing a rou
 docker compose up -d
 npm test
 ```
-Expected result: every test green and the coverage gate (100% on the settings and catalogue validators, the audit redactor, the retry backoff and the event registry rules) (unit tests plus end-to-end tests against a real MySQL test database and Redis). The tests cover:
+Expected result: every test green and the coverage gate (100% on the settings and catalogue validators, the audit redactor, the retry backoff and the event registry rules) (unit tests plus end-to-end tests against a real PostgreSQL test database and Redis). The tests cover:
 - OTP signup and sign-in; non-enumeration, cooldowns and code burning
 - Password lockout and reset
 - Refresh rotation and reuse detection; session revocation; `AUTHZ_STALE`
@@ -106,17 +106,18 @@ See [`postman/M01-acceptance-checklist.md`](postman/M01-acceptance-checklist.md)
 
 ### 3. Inspect the database
 ```bash
-docker exec -it kriraghor-mysql mysql -ukriraghor -pkriraghor kriraghor
+docker exec -it kriraghor-postgres psql -U kriraghor -d kriraghor
 ```
 ```sql
 SELECT action, actor_id, entity_type, created_at FROM audit_logs ORDER BY id DESC LIMIT 20;
 SELECT role, status FROM user_roles;
 SELECT id, audience, device_label, revoked_at, revoke_cause FROM sessions;
+\q
 ```
 
 ## Running in Kubernetes
 
-The image is built from the [`Dockerfile`](Dockerfile): production dependencies are installed on `node:24.16.0-bookworm-slim`, and the runtime is **distroless Node 24 (Debian 13)**, pinned by digest: no shell, no npm, no package manager. It runs as uid 1000 and needs no writable filesystem. CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs lint, the tests against MySQL and Redis, the OpenAPI drift check, the image build and a Trivy scan that fails on fixable HIGH or CRITICAL findings.
+The image is built from the [`Dockerfile`](Dockerfile): production dependencies are installed on `node:24.16.0-bookworm-slim`, and the runtime is **distroless Node 24 (Debian 13)**, pinned by digest: no shell, no npm, no package manager. It runs as uid 1000 and needs no writable filesystem. CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs lint, the tests against PostgreSQL and Redis, the OpenAPI drift check, the image build and a Trivy scan that fails on fixable HIGH or CRITICAL findings.
 
 ```bash
 docker build -t kriraghor-backend:dev .
@@ -165,7 +166,7 @@ src/providers/payments/   SSLCommerz adapter and the SSLCommerz-compatible simul
 scripts/                  release.js (migrate + reference seed), create-master.js (first master, CLI only), openapi.js (writes openapi.json)
 src/db/seed/              Reference seed (versioned JSON: settings, esports catalogue, message templates)
 postman/                  collection builder, collection, guide and acceptance checklist
-tests/                    Jest unit and Supertest e2e (real MySQL test database and Redis)
+tests/                    Jest unit and Supertest e2e (real PostgreSQL test database and Redis)
 ```
 
 ## Authentication model
@@ -283,10 +284,8 @@ Every process (api, realtime, worker) refuses to start until every seeded settin
 
 | Spec | Now | Why |
 |---|---|---|
-| Deferred constraint trigger for balanced transactions | Entries written first, the header last; a BEFORE INSERT trigger on `ledger_transactions` sums the entries; entries for a posted transaction are refused; nightly check for stray entries | MySQL has no deferred constraints |
-| `REVOKE UPDATE, DELETE` grants | BEFORE UPDATE/DELETE triggers on all three ledger tables (plus the model guards) | Same pattern as `audit_logs`; grants need a separate migration user (Q140) |
+| `REVOKE UPDATE, DELETE` grants | A BEFORE UPDATE OR DELETE trigger (`kg_forbid_change()`) on all three ledger tables (plus the model guards); the balance check is the spec's deferred constraint trigger | Same pattern as `audit_logs`; grants need a separate migration user (Q140) |
 | `payment_purpose` Postgres ENUM | VARCHAR validated by a code registry (`payments.purposes.js`) | New purposes need no migration |
-| Partial unique index "one in-flight attempt" | Stored generated column `inflight_payment_id` with a UNIQUE key | No partial indexes in MySQL |
 | Pool settlement posts Dr subsidy / Cr escrow first, then pays out of escrow | One posting: Dr each hold + Dr `prize_subsidy_expense` / Cr payables + Cr `fee_revenue:esports` | Same effect on every account; escrow never goes negative either way |
 | Refund statuses | Adds `rejected` (master rejects an escalation) and a `source` (escrow, goodwill, suspense); `kind` adds `amount_mismatch` and `goodwill` | Spec had no reject path or money source |
 | Daily settlement-file reconciliation | Query-based (validation and refund status per attempt and refund of the day); settlement and MDR import later | SSLCommerz has no settlement API (open question) |
@@ -305,4 +304,4 @@ Every process (api, realtime, worker) refuses to start until every seeded settin
 | `identity.sanction-expire` job | BullMQ job scheduler in the worker, every 60 s | Done in 0B |
 | Phone change, account closure | Not yet | Next M01 iteration |
 | Admin login with Google | Not offered; staff use password or OTP, then TOTP | Revisit with WebAuthn |
-| Postgres partial unique index on `staff_permissions` | One row per (user, permission) with `revoked_at`; history lives in `audit_logs` | — (MySQL) |
+| Partial unique index on `staff_permissions` | One row per (user, permission) with `revoked_at`; history lives in `audit_logs` | Simpler grants and revokes; could become a partial index later |

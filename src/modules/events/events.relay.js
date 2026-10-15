@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Outbox relay (M04-FR-13), MySQL edition. Claims due rows with SELECT … FOR UPDATE SKIP LOCKED, so
+ * Outbox relay (M04-FR-13). Claims due rows with SELECT … FOR UPDATE SKIP LOCKED, so
  * parallel relays (several worker pods, the 1 s scheduler and after-commit nudges) never claim the
  * same event. For each event it enqueues one job per registered consumer (jobId {eventId}__{consumer},
  * deduplicated by BullMQ) and marks the row published. A failed enqueue marks the row failed with a
@@ -17,7 +17,7 @@ async function relayOnce({ batch } = {}) {
   const size = batch ?? settings.get('events.relay_batch_size');
   return sequelize.transaction(async (transaction) => {
     const ids = await sequelize.query(
-      "SELECT id FROM outbox_events WHERE status IN ('pending','failed') AND available_at <= UTC_TIMESTAMP(3) ORDER BY id LIMIT ? FOR UPDATE SKIP LOCKED",
+      "SELECT id FROM outbox_events WHERE status IN ('pending','failed') AND available_at <= clock_timestamp() ORDER BY id LIMIT ? FOR UPDATE SKIP LOCKED",
       { replacements: [size], type: sequelize.QueryTypes.SELECT, transaction }
     );
     if (!ids.length) return { published: 0, failed: 0 };

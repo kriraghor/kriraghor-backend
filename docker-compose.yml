@@ -2,24 +2,24 @@ name: kriraghor
 
 # Local dependencies only (the app runs on the host with npm run dev). Image versions are pinned.
 services:
-  mysql:
-    image: mysql:8.4
-    container_name: kriraghor-mysql
+  postgres:
+    image: postgres:17.11-alpine
+    container_name: kriraghor-postgres
     environment:
-      MYSQL_DATABASE: kriraghor
-      MYSQL_USER: kriraghor
-      MYSQL_PASSWORD: kriraghor
-      MYSQL_ROOT_PASSWORD: root
+      POSTGRES_DB: kriraghor
+      POSTGRES_USER: kriraghor
+      POSTGRES_PASSWORD: kriraghor
       TZ: UTC
-    # log-bin-trust-function-creators: migrations create the M03 append-only triggers as the app user.
-    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci", "--default-time-zone=+00:00", "--log-bin-trust-function-creators=1"]
+      PGTZ: UTC
     ports:
-      - "3306:3306"
+      # Host port 55432: 5432/5433 are often taken by locally installed PostgreSQL servers.
+      - "55432:5432"
     volumes:
-      - mysql-data:/var/lib/mysql
-      - ./docker/mysql-init:/docker-entrypoint-initdb.d:ro
+      - pg-data:/var/lib/postgresql/data
+      # Creates kriraghor_test on first start (owned by the app user).
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      test: ["CMD", "pg_isready", "-U", "kriraghor", "-d", "kriraghor"]
       interval: 5s
       retries: 20
 
@@ -64,6 +64,6 @@ services:
       retries: 20
 
 volumes:
-  mysql-data:
+  pg-data:
   redis-data:
   s3-data:
