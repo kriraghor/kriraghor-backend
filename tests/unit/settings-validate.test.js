@@ -135,6 +135,7 @@ describe('cross-key rules (§6.5)', () => {
     'esports.room_reveal_minutes': 15,
     'refunds.staff_limit_poisha': 1000000,
     'payouts.four_eyes_threshold_poisha': 5000000,
+    'payouts.auto_release_max_poisha': 0,
   };
   const lookupWith = (over = {}) => (k) => (k in over ? over[k] : defaults[k]);
   const broken = (over, changed) => crossRuleViolations(lookupWith(over), changed).map((r) => r.id);
@@ -156,13 +157,14 @@ describe('cross-key rules (§6.5)', () => {
     ['esports.checkin_order', { 'esports.checkin_close_minutes': 60 }],
     ['esports.room_reveal', { 'esports.room_reveal_minutes': 21 }],
     ['money.refund_below_payout_threshold', { 'refunds.staff_limit_poisha': 5000001 }],
+    ['money.auto_release_below_payout_threshold', { 'payouts.auto_release_max_poisha': 5000001 }],
   ])('%s is broken by %p', (id, over) => {
     expect(broken(over)).toContain(id);
   });
 
   it('every rule is covered by the cases above', () => {
     expect(CROSS_RULES.map((r) => r.id).sort()).toEqual(
-      ['booking.advance_order', 'booking.advance_covers_fee', 'booking.refund_tiers', 'booking.grid_order', 'ground.price_band', 'market.offer_order', 'market.return_window', 'esports.checkin_order', 'esports.room_reveal', 'money.refund_below_payout_threshold'].sort()
+      ['booking.advance_order', 'booking.advance_covers_fee', 'booking.refund_tiers', 'booking.grid_order', 'ground.price_band', 'market.offer_order', 'market.return_window', 'esports.checkin_order', 'esports.room_reveal', 'money.refund_below_payout_threshold', 'money.auto_release_below_payout_threshold'].sort()
     );
   });
 

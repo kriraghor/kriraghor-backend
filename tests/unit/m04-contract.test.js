@@ -25,7 +25,7 @@ describe('event registry ↔ producers', () => {
   it('every published event literal is registered', () => {
     const published = [...code.matchAll(/name: '([a-z_]+\.[a-z_]+)'/g)].map((m) => m[1]).filter((n) => !/^(outbox|audit)\.[a-z]+-/.test(n));
     // Job names (not events) that look like event names.
-    const known = new Set([...Object.keys(EVENTS), 'outbox.relay', 'identity.sanction-expire', 'settings.apply-scheduled', 'ledger.invariants', 'reconciliation.daily', 'idempotency.purge']);
+    const known = new Set([...Object.keys(EVENTS), 'outbox.relay', 'identity.sanction-expire', 'settings.apply-scheduled', 'ledger.invariants', 'reconciliation.daily', 'idempotency.purge', 'payouts.schedule']);
     expect([...new Set(published)].filter((n) => !known.has(n) && !n.includes('-'))).toEqual([]);
   });
 });
@@ -71,6 +71,14 @@ describe('audit action registry ↔ emitters (M04-FR-06)', () => {
       'catalog_item.created/updated/deactivated': ['catalog_item.created', 'catalog_item.updated', 'catalog_item.deactivated'],
     },
     M04: { 'audit_log.exported': ['audit_log.exported'], 'outbox.event_replayed': ['outbox.event_replayed'] },
+    // M07 §5 FR-11: every release, hold, approval, retry and manual mark-paid is audited.
+    M07: {
+      'payout.released/approved': ['payout.released', 'payout.approved'],
+      'payout.held/hold_lifted': ['payout.held', 'payout.hold_lifted'],
+      'payout.marked_paid/failed': ['payout.marked_paid', 'payout.marked_failed'],
+      'payout.account_revealed': ['payout.account_revealed'],
+      'payout_account.*': ['payout_account.added', 'payout_account.verified', 'payout_account.rejected'],
+    },
   };
 
   it('every §6.2 action of a built module has an emitter, and the ★ ones are critical', () => {
@@ -84,7 +92,7 @@ describe('audit action registry ↔ emitters (M04-FR-06)', () => {
       }
     }
     expect(missing).toEqual([]);
-    for (const a of ['user.banned', 'staff.invited', 'staff.permission_granted', 'staff.offboarded', 'staff.totp_reset', 'setting.changed', 'audit_log.exported']) {
+    for (const a of ['user.banned', 'staff.invited', 'staff.permission_granted', 'staff.offboarded', 'staff.totp_reset', 'setting.changed', 'audit_log.exported', 'payout.released', 'payout.approved', 'payout.account_revealed', 'payout.marked_paid']) {
       expect([a, ACTIONS[a].severity]).toEqual([a, 'critical']);
     }
   });

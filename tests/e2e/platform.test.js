@@ -171,6 +171,16 @@ describe('OpenAPI contract (ADR-002)', () => {
           ['/admin/reconciliation', pr.adminRecon],
         ];
       })(),
+      ...(() => {
+        const po = require('../../src/modules/payouts/payouts.routes');
+        return [
+          ['/me/payout-accounts', po.meAccounts],
+          ['/me/payouts', po.mePayouts],
+          ['/admin/payouts', po.adminPayouts],
+          ['/admin/payout-batches', po.adminBatches],
+          ['/admin/payout-accounts', po.adminAccounts],
+        ];
+      })(),
     ];
     const missing = [];
     for (const [prefix, router] of mounts) {

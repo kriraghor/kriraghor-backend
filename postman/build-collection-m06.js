@@ -174,7 +174,7 @@ const collection = {
           checks: [['৳10 left', "j.items[0].balance === 1000"]],
         }),
         req('Trial balance is zero', 'GET', '/admin/ledger/trial-balance', { expect: { status: 200 }, checks: [['balanced', 'j.difference === 0']] }),
-        req('Invariant checks pass', 'GET', '/admin/ledger/invariants', { expect: { status: 200 }, checks: [['all ok', 'j.ok === true && j.checks.length === 5']] }),
+        req('Invariant checks pass', 'GET', '/admin/ledger/invariants', { expect: { status: 200 }, checks: [['all ok', 'j.ok === true && j.checks.length === 6']] }),
         req('Reconcile today', 'POST', '/admin/reconciliation/runs', {
           body: { businessDate: '{{businessDate}}' },
           expect: { status: 201 },

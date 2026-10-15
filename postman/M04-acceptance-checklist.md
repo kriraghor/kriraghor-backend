@@ -5,7 +5,7 @@ Request names refer to the **"Kriraghor API: M04 Audit log & events"** collectio
 (`postman/kriraghor-audit-events.postman_collection.json`, rebuilt with `node postman/build-collection-m04.js`).
 
 ## 0. Setup
-- [ ] `docker compose up -d`, then `npm run release`. This applies migrations `20261017000001` to `…04` and seeds the 7 new `operations` settings (151 in total after M06).
+- [ ] `docker compose up -d`, then `npm run release`. This applies migrations `20261017000001` to `…04` and seeds the 7 new `operations` settings (155 in total after M07).
 - [ ] `npm test`: everything green, including the coverage gate (100% on the redactor, the retry backoff and the event registry rules). 🤖 marks cases only the tests cover.
 - [ ] `node postman/run-m04.js` → **0 failed**. It resets `kriraghor_test`, signs in a master, pre-mints step-up tokens and runs a small worker loop (relay, consumers, exports) next to the API.
 - [ ] `node postman/run-m03.js` still passes (M03 now writes real outbox events).

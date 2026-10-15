@@ -161,11 +161,12 @@ describe('relay and consumers (M04-FR-13, FR-14, FR-16, FR-17)', () => {
     const results = await Promise.all([relay.relayOnce({ batch: 10 }), relay.relayOnce({ batch: 10 }), relay.relayOnce({ batch: 10 })]);
     await relay.relayOnce({ batch: 10 });
     expect(results.reduce((n, r) => n + r.published, 0)).toBeGreaterThan(0);
-    // Every user.restored goes to the test consumer and to M08 (notify.ACCOUNT_RESTORED).
+    // Every user.restored goes to the test consumer, to M08 (notify.ACCOUNT_RESTORED) and to M07
+    // (payouts.account-hold-lift).
     const mine = dispatched.filter((id) => id.endsWith('__test.restored'));
     expect(mine).toHaveLength(25);
     expect(new Set(dispatched).size).toBe(dispatched.length);
-    expect(dispatched).toHaveLength(50);
+    expect(dispatched).toHaveLength(75);
     expect(await models.OutboxEvent.count({ where: { status: 'published' } })).toBe(25);
     expect(await relay.health()).toEqual({ pending: 0, oldestPendingSeconds: null });
   });
