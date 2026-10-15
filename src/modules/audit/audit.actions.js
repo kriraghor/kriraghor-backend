@@ -46,6 +46,8 @@ const ACTIONS = {
   'staff.permission_revoked': A('M01', 'critical', 'Revoked {meta.permission}', '{meta.permission} অনুমতি বাতিল'),
   'staff.offboarded': A('M01', 'critical', 'Offboarded', 'স্টাফ থেকে বাদ'),
   'staff.promoted_to_master': A('M01', 'critical', 'Promoted to master admin', 'মাস্টার অ্যাডমিন করা হয়েছে'),
+  // scripts/create-master.js: the first master, created from the command line (M01-FR-12).
+  'staff.master_bootstrapped': A('M01', 'notice', 'First master admin created from the command line', 'কমান্ড লাইন থেকে প্রথম মাস্টার অ্যাডমিন তৈরি'),
   'staff.totp_setup_started': A('M01', 'info', 'Started authenticator setup', 'অথেন্টিকেটর সেটআপ শুরু'),
   'staff.totp_enabled': A('M01', 'notice', 'Authenticator turned on', 'অথেন্টিকেটর চালু'),
   'staff.totp_reset': A('M01', 'critical', 'Two-factor reset', 'টু-ফ্যাক্টর রিসেট'),
