@@ -1,6 +1,6 @@
 {
   "seedVersion": 5,
-  "source": "M03 §6.4 with the v3 business rules (Oct 2026), M21 §6.1 and M01 §6.4; v2 adds the M04 events.* and audit.* operations keys; v3 the M08 notify.* keys; v4 the M06 payments.* and refunds.retry_max keys; v5 the M07 payouts.min_amount_poisha, auto_release_max_poisha, run_hour and daily_enabled keys. Money in poisha, percentages as numbers.",
+  "source": "M03 §6.4 with the v3 business rules (Oct 2026), M21 §6.1 and M01 §6.4; v2 adds the M04 events.* and audit.* operations keys; v3 the M08 notify.* keys; v4 the M06 payments.* and refunds.retry_max keys; v5 the M07 payouts.min_amount_poisha, auto_release_max_poisha, run_hour and daily_enabled keys, and payments.test_charge_max_poisha 100000 (৳1,000, so a test charge can clear the ৳100 payout minimum; existing databases keep their value). Money in poisha, percentages as numbers.",
   "settings": [
     { "key": "fees.ground_booking_pct", "category": "fees", "type": "decimal", "value": 5, "unit": "%", "min": 0, "max": 20, "approval": "four_eyes", "public": true, "en": "Ground booking fee", "bn": "মাঠ বুকিং ফি", "why": "Charged on the full booking value and deducted from the online money at release." },
     { "key": "fees.shop_commission_pct", "category": "fees", "type": "decimal", "value": 5, "unit": "%", "min": 0, "max": 25, "approval": "four_eyes", "en": "Shop commission on new gear", "bn": "নতুন পণ্যে দোকানের কমিশন" },
@@ -169,7 +169,7 @@
     { "key": "payments.poll_unknown_minutes", "category": "payments", "type": "int_list", "value": [1, 5, 15], "unit": "min", "en": "Ask the gateway again after", "bn": "গেটওয়েকে আবার জিজ্ঞেস করা হয়" },
     { "key": "refunds.retry_max", "category": "payments", "type": "int", "value": 3, "min": 1, "max": 10, "en": "Gateway refund tries before manual handling", "bn": "হাতে দেখার আগে গেটওয়েতে রিফান্ডের চেষ্টা" },
     { "key": "payments.clearing_alert_days", "category": "payments", "type": "int", "value": 0, "unit": "days", "min": 0, "max": 30, "en": "Alert when gateway money is unsettled for (0 = off)", "bn": "গেটওয়ের টাকা জমা না হলে সতর্কতা (০ = বন্ধ)", "why": "Off until settlement import exists (M06 open question)" },
-    { "key": "payments.test_charge_max_poisha", "category": "payments", "type": "money", "value": 10000, "unit": "poisha", "min": 100, "max": 100000, "en": "Largest test charge", "bn": "সর্বোচ্চ টেস্ট চার্জ" },
+    { "key": "payments.test_charge_max_poisha", "category": "payments", "type": "money", "value": 100000, "unit": "poisha", "min": 100, "max": 100000, "en": "Largest test charge", "bn": "সর্বোচ্চ টেস্ট চার্জ" },
     { "key": "payments.test_charge_fee_pct", "category": "payments", "type": "decimal", "value": 5, "unit": "%", "min": 0, "max": 20, "en": "Fee on test charges", "bn": "টেস্ট চার্জে ফি" }
   ]
 }
