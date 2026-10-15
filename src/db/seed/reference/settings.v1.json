@@ -1,6 +1,6 @@
 {
-  "seedVersion": 4,
-  "source": "M03 §6.4 with the v3 business rules (Oct 2026), M21 §6.1 and M01 §6.4; v2 adds the M04 events.* and audit.* operations keys; v3 the M08 notify.* keys; v4 the M06 payments.* and refunds.retry_max keys. Money in poisha, percentages as numbers.",
+  "seedVersion": 5,
+  "source": "M03 §6.4 with the v3 business rules (Oct 2026), M21 §6.1 and M01 §6.4; v2 adds the M04 events.* and audit.* operations keys; v3 the M08 notify.* keys; v4 the M06 payments.* and refunds.retry_max keys; v5 the M07 payouts.min_amount_poisha, auto_release_max_poisha, run_hour and daily_enabled keys. Money in poisha, percentages as numbers.",
   "settings": [
     { "key": "fees.ground_booking_pct", "category": "fees", "type": "decimal", "value": 5, "unit": "%", "min": 0, "max": 20, "approval": "four_eyes", "public": true, "en": "Ground booking fee", "bn": "মাঠ বুকিং ফি", "why": "Charged on the full booking value and deducted from the online money at release." },
     { "key": "fees.shop_commission_pct", "category": "fees", "type": "decimal", "value": 5, "unit": "%", "min": 0, "max": 25, "approval": "four_eyes", "en": "Shop commission on new gear", "bn": "নতুন পণ্যে দোকানের কমিশন" },
@@ -112,6 +112,10 @@
     { "key": "payouts.four_eyes_threshold_poisha", "category": "money_limits", "type": "money", "value": 5000000, "unit": "poisha", "min": 0, "max": 10000000000, "approval": "four_eyes", "en": "Payouts above this need two approvers", "bn": "এর বেশি পেআউটে দুই অনুমোদনকারী লাগে" },
     { "key": "payouts.shop_weekday", "category": "money_limits", "type": "enum", "value": "thu", "options": ["sat", "sun", "mon", "tue", "wed", "thu", "fri"], "en": "Shop payout day", "bn": "দোকানের পেআউটের দিন" },
     { "key": "payouts.ground_weekday", "category": "money_limits", "type": "enum", "value": "thu", "options": ["sat", "sun", "mon", "tue", "wed", "thu", "fri"], "en": "Ground payout day", "bn": "মাঠের পেআউটের দিন" },
+    { "key": "payouts.min_amount_poisha", "category": "money_limits", "type": "money", "value": 10000, "unit": "poisha", "min": 0, "max": 10000000, "en": "Smallest payout (smaller balances wait for the next run)", "bn": "সর্বনিম্ন পেআউট (কম হলে পরের বার)" },
+    { "key": "payouts.auto_release_max_poisha", "category": "money_limits", "type": "money", "value": 0, "unit": "poisha", "min": 0, "max": 10000000000, "approval": "four_eyes", "en": "Release payouts up to this automatically (0 = a person releases every payout)", "bn": "এ পর্যন্ত পেআউট স্বয়ংক্রিয়ভাবে ছাড় (০ = প্রতিটি পেআউট একজন ছাড়বেন)", "why": "Q53: off in v1." },
+    { "key": "payouts.run_hour", "category": "money_limits", "type": "int", "value": 10, "unit": "hour", "min": 0, "max": 23, "en": "Hour payout runs start (Dhaka time)", "bn": "পেআউট শুরুর সময় (ঢাকা)" },
+    { "key": "payouts.daily_enabled", "category": "money_limits", "type": "bool", "value": true, "en": "Daily payout run (pros, organisers, used-gear sellers)", "bn": "দৈনিক পেআউট (প্রো, আয়োজক, পুরনো পণ্য বিক্রেতা)" },
 
     { "key": "risk.max_accounts_per_nid", "category": "risk", "type": "int", "value": 1, "min": 1, "max": 5, "en": "Accounts per NID", "bn": "NID প্রতি অ্যাকাউন্ট" },
     { "key": "risk.refund_rate_pct", "category": "risk", "type": "decimal", "value": 15, "unit": "%", "min": 0, "max": 100, "en": "Refund rate alert (last 30 days)", "bn": "রিফান্ড হারের সতর্কতা (৩০ দিন)" },

@@ -17,6 +17,9 @@ function registerAll() {
   // M08: notifications for every catalogue entry (critical audit alerts and dead letters included).
   registerNotifications();
 
+  // M07: refund payouts and account-suspension holds.
+  require('../payouts/payouts.consumers').registerPayoutConsumers();
+
   // M04 ops: a broken audit chain always reaches the logs (no notification code for it yet).
   onEvent('audit.chain_mismatch_detected', 'ops.log-chain-mismatch', async (event) => {
     logger.error({ seq: event.payload.seq, auditLogId: event.payload.auditLogId }, 'audit hash chain mismatch');

@@ -114,7 +114,7 @@ OtpCode.init(
   {
     id: uuidPk,
     target: { type: DataTypes.STRING(191), allowNull: false },
-    purpose: { type: DataTypes.ENUM('signup', 'login', 'reset', 'phone_change_old', 'phone_change_new', 'email_verify'), allowNull: false },
+    purpose: { type: DataTypes.ENUM('signup', 'login', 'reset', 'phone_change_old', 'phone_change_new', 'email_verify', 'payout_account'), allowNull: false },
     codeHash: { type: DataTypes.CHAR(64), allowNull: false },
     expiresAt: { type: DataTypes.DATE(3), allowNull: false },
     attempts: { type: DataTypes.SMALLINT, allowNull: false, defaultValue: 0 },
@@ -787,6 +787,160 @@ ReconciliationItem.init(
 );
 
 // ---- Associations ----
+// ---------------- M07 payouts (§7). Money in poisha; account numbers only encrypted (common/crypto).
+class PayoutAccount extends Model {}
+PayoutAccount.init(
+  {
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
+    userId: { type: DataTypes.UUID, allowNull: false },
+    type: { type: DataTypes.ENUM('bkash', 'nagad'), allowNull: false },
+    accountNoEnc: { type: DataTypes.STRING(200), allowNull: false },
+    accountNoLast4: { type: DataTypes.CHAR(4), allowNull: false },
+    accountNoHash: { type: DataTypes.CHAR(64), allowNull: false },
+    accountName: { type: DataTypes.STRING(120), allowNull: false },
+    status: { type: DataTypes.ENUM('pending_verification', 'active', 'rejected', 'superseded', 'disabled'), allowNull: false, defaultValue: 'pending_verification' },
+    reviewedBy: DataTypes.UUID,
+    reviewedAt: DataTypes.DATE(3),
+    reviewNote: DataTypes.STRING(300),
+    activatedAt: DataTypes.DATE(3),
+    holdUntil: DataTypes.DATE(3),
+    supersededBy: DataTypes.UUID,
+    createdAt: DataTypes.DATE(3),
+    updatedAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'PayoutAccount', tableName: 'payout_accounts' }
+);
+
+class PayoutBatch extends Model {}
+PayoutBatch.init(
+  {
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
+    schedule: { type: DataTypes.ENUM('daily', 'ground_weekly', 'shop_weekly', 'manual', 'refund'), allowNull: false },
+    windowEnd: { type: DataTypes.DATE(3), allowNull: false },
+    status: { type: DataTypes.ENUM('building', 'ready', 'processing', 'done', 'partially_failed'), allowNull: false, defaultValue: 'building' },
+    totals: DataTypes.JSON,
+    createdBy: DataTypes.UUID,
+    createdAt: DataTypes.DATE(3),
+    updatedAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'PayoutBatch', tableName: 'payout_batches' }
+);
+
+class Payout extends Model {}
+Payout.init(
+  {
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
+    code: { type: DataTypes.STRING(20), allowNull: false },
+    batchId: DataTypes.UUID,
+    payeeId: { type: DataTypes.UUID, allowNull: false },
+    kind: { type: DataTypes.ENUM('earning', 'refund'), allowNull: false, defaultValue: 'earning' },
+    refundId: DataTypes.UUID,
+    payoutAccountId: DataTypes.UUID,
+    periodStart: DataTypes.DATE(3),
+    periodEnd: DataTypes.DATE(3),
+    grossPoisha: poisha('grossPoisha'),
+    deductionsPoisha: poisha('deductionsPoisha'),
+    nettingPoisha: poisha('nettingPoisha'),
+    adjustmentsPoisha: poisha('adjustmentsPoisha'),
+    amountPoisha: poisha('amountPoisha', { defaultValue: undefined }),
+    status: { type: DataTypes.ENUM('scheduled', 'needs_approval', 'on_hold', 'processing', 'paid', 'failed', 'cancelled'), allowNull: false },
+    rulesSnapshot: { type: DataTypes.JSON, allowNull: false },
+    channel: DataTypes.ENUM('manual'),
+    providerRef: DataTypes.STRING(120),
+    attempts: { type: DataTypes.SMALLINT, allowNull: false, defaultValue: 0 },
+    failureCode: DataTypes.STRING(60),
+    failureNote: DataTypes.STRING(300),
+    releasedBy: DataTypes.UUID,
+    releasedAt: DataTypes.DATE(3),
+    paidBy: DataTypes.UUID,
+    paidAt: DataTypes.DATE(3),
+    ledgerTxnIds: { type: DataTypes.ARRAY(DataTypes.UUID), allowNull: false, defaultValue: [] },
+    createdAt: DataTypes.DATE(3),
+    updatedAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'Payout', tableName: 'payouts' }
+);
+
+// Items may be negative (a debit on the payable), so net is a signed BIGINT.
+const signedPoisha = (field) => ({
+  type: DataTypes.BIGINT,
+  allowNull: false,
+  get() {
+    const v = this.getDataValue(field);
+    return v == null ? v : Number(v);
+  },
+});
+
+class PayoutItem extends Model {}
+PayoutItem.init(
+  {
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
+    payoutId: { type: DataTypes.UUID, allowNull: false },
+    sourceType: { type: DataTypes.ENUM('escrow_hold', 'pool', 'reversal', 'fee_netting', 'refund'), allowNull: false },
+    sourceId: { type: DataTypes.UUID, allowNull: false },
+    ledgerEntryId: {
+      type: DataTypes.BIGINT,
+      get() {
+        const v = this.getDataValue('ledgerEntryId');
+        return v == null ? null : Number(v);
+      },
+    },
+    grossPoisha: poisha('grossPoisha', { defaultValue: undefined }),
+    feePoisha: poisha('feePoisha'),
+    netPoisha: signedPoisha('netPoisha'),
+    description: { type: DataTypes.STRING(200), allowNull: false },
+    status: { type: DataTypes.ENUM('included', 'returned'), allowNull: false, defaultValue: 'included' },
+    createdAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'PayoutItem', tableName: 'payout_items', updatedAt: false }
+);
+
+class PayoutHold extends Model {}
+PayoutHold.init(
+  {
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
+    scope: { type: DataTypes.ENUM('payee', 'payout', 'item_source'), allowNull: false },
+    payeeId: { type: DataTypes.UUID, allowNull: false },
+    payoutId: DataTypes.UUID,
+    sourceType: DataTypes.STRING(20),
+    sourceId: DataTypes.UUID,
+    type: { type: DataTypes.ENUM('account_change', 'risk_freeze', 'dispute', 'kyc', 'account_suspended', 'manual'), allowNull: false },
+    reason: DataTypes.STRING(300),
+    refId: { type: DataTypes.UUID, allowNull: false },
+    until: DataTypes.DATE(3),
+    placedBy: DataTypes.UUID,
+    placedAt: { type: DataTypes.DATE(3), allowNull: false, defaultValue: DataTypes.NOW },
+    liftedBy: DataTypes.UUID,
+    liftedAt: DataTypes.DATE(3),
+    liftReason: DataTypes.STRING(300),
+  },
+  { sequelize, modelName: 'PayoutHold', tableName: 'payout_holds', timestamps: false }
+);
+
+class PayoutApproval extends Model {}
+PayoutApproval.init(
+  {
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
+    payoutId: { type: DataTypes.UUID, allowNull: false },
+    approverId: { type: DataTypes.UUID, allowNull: false },
+    step: { type: DataTypes.SMALLINT, allowNull: false },
+    approvedAt: { type: DataTypes.DATE(3), allowNull: false, defaultValue: DataTypes.NOW },
+  },
+  { sequelize, modelName: 'PayoutApproval', tableName: 'payout_approvals', timestamps: false }
+);
+
+class PayoutReveal extends Model {}
+PayoutReveal.init(
+  {
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
+    payoutId: { type: DataTypes.UUID, allowNull: false },
+    accountId: { type: DataTypes.UUID, allowNull: false },
+    staffId: { type: DataTypes.UUID, allowNull: false },
+    revealedAt: { type: DataTypes.DATE(3), allowNull: false, defaultValue: DataTypes.NOW },
+  },
+  { sequelize, modelName: 'PayoutReveal', tableName: 'payout_reveals', timestamps: false, hooks: appendOnlyGuard('payout_reveals') }
+);
+
 User.hasMany(UserRole, { as: 'roles', foreignKey: 'userId' });
 UserRole.belongsTo(User, { as: 'user', foreignKey: 'userId' });
 User.hasMany(Session, { as: 'sessions', foreignKey: 'userId' });
@@ -815,6 +969,12 @@ LedgerTransaction.hasMany(LedgerEntry, { as: 'entries', foreignKey: 'txnId', con
 LedgerEntry.belongsTo(LedgerTransaction, { as: 'txn', foreignKey: 'txnId', constraints: false });
 LedgerEntry.belongsTo(LedgerAccount, { as: 'account', foreignKey: 'accountId' });
 ReconciliationRun.hasMany(ReconciliationItem, { as: 'items', foreignKey: 'runId' });
+Payout.hasMany(PayoutItem, { as: 'items', foreignKey: 'payoutId' });
+PayoutItem.belongsTo(Payout, { as: 'payout', foreignKey: 'payoutId' });
+Payout.hasMany(PayoutApproval, { as: 'approvals', foreignKey: 'payoutId' });
+Payout.belongsTo(PayoutAccount, { as: 'account', foreignKey: 'payoutAccountId' });
+Payout.belongsTo(PayoutBatch, { as: 'batch', foreignKey: 'batchId' });
+PayoutBatch.hasMany(Payout, { as: 'payouts', foreignKey: 'batchId' });
 
 module.exports = {
   sequelize,
@@ -856,4 +1016,11 @@ module.exports = {
   EscrowHold,
   ReconciliationRun,
   ReconciliationItem,
+  PayoutAccount,
+  PayoutBatch,
+  Payout,
+  PayoutItem,
+  PayoutHold,
+  PayoutApproval,
+  PayoutReveal,
 };

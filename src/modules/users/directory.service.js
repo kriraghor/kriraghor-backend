@@ -47,4 +47,15 @@ async function accounts(userIds) {
   return new Map(users.map((u) => [u.id, { status: u.status, isStaff: staffIds.has(u.id), displayName: u.displayName }]));
 }
 
-module.exports = { contactFor, masters, withPermission, accounts };
+/**
+ * Map userId → { displayName, legalName, kycStatus } for staff checking a payout account (M07 §4.1:
+ * the account must be in the payee's NID name). The NID number itself never leaves M01.
+ */
+async function identities(userIds) {
+  const ids = [...new Set(userIds.filter(Boolean))];
+  if (!ids.length) return new Map();
+  const users = await User.findAll({ where: { id: ids }, attributes: ['id', 'displayName', 'legalName', 'kycStatus'] });
+  return new Map(users.map((u) => [u.id, { displayName: u.displayName, legalName: u.legalName ?? null, kycStatus: u.kycStatus }]));
+}
+
+module.exports = { contactFor, masters, withPermission, accounts, identities };

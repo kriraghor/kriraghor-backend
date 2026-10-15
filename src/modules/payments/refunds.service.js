@@ -186,6 +186,23 @@ async function settle(refundId) {
   });
 }
 
+/**
+ * M07-FR-15: a manual_required refund was paid by hand through a refund payout. M07 has already moved
+ * the money out of refund_clearing (Dr refund_clearing / Cr payout_clearing, then platform_bank), so
+ * this only closes the refund and the payment's refunded total, inside M07's transaction.
+ */
+async function settleManually(refundId, { payoutCode }, { transaction }) {
+  const refund = await lockRefund(refundId, transaction);
+  if (refund.status === 'succeeded') return refund;
+  if (refund.status !== 'manual_required') throw new AppError(409, 'INVALID_STATE', 'Only a refund waiting to be paid by hand can be settled this way');
+  const payment = await lockPayment(refund.paymentId, transaction);
+  await refund.update({ status: 'succeeded', completedAt: new Date(), lastError: null, decisionNote: `Paid by hand in payout ${payoutCode}` }, { transaction });
+  const refunded = payment.refundedPoisha + refund.amountPoisha;
+  await payment.update({ refundedPoisha: refunded, status: rules.paymentStatusAfterRefund({ status: payment.status, captured: payment.capturedPoisha, refunded }) }, { transaction });
+  await events.publish(transaction, { name: 'refund.succeeded', aggregateType: 'refund', aggregateId: refund.id, payload: payload(refund, payment) });
+  return refund;
+}
+
 /** A provider refusal: retry with backoff, then manual_required (FR-10). */
 async function fail(refundId, err) {
   const retryMax = settings.get('refunds.retry_max');
@@ -275,4 +292,4 @@ async function facts(id) {
   return { initiatedBy: r.initiatedBy, reasonCode: r.reasonCode, reasonText: r.reasonText, attempts: r.attempts };
 }
 
-module.exports = { createInTx, create, approve, reject, processRefund, settle, fail, list, serialize, facts };
+module.exports = { createInTx, create, approve, reject, processRefund, settle, settleManually, fail, list, serialize, facts };

@@ -11,9 +11,10 @@ const auditS = require('../modules/audit/audit.schemas');
 const eventsS = require('../modules/events/events.routes').schemas;
 const notifyS = require('../modules/notifications/notify.schemas');
 const paymentsS = require('../modules/payments/payments.schemas');
+const payoutsS = require('../modules/payouts/payouts.schemas');
 
 /**
- * Every route (M01, M03, M04, M06, M08), registered with its request and response schemas and the stable error
+ * Every route (M01, M03, M04, M06, M07, M08), registered with its request and response schemas and the stable error
  * codes it can return (ADR-002). When a route is added in a module, add it here: the
  * coverage test fails if an Express route has no OpenAPI entry.
  */
@@ -341,6 +342,73 @@ function register(registry) {
     request: { ...idP, query: paymentsS.itemsQuery }, responses: { 200: json(paymentsS.ItemList), ...errors({ ...VIEW, 404: ['NOT_FOUND'], ...VALIDATION }) } });
   p({ method: 'post', path: '/admin/reconciliation/items/{id}/resolve', tags: ['payments'], summary: 'Resolve an exception with a note (master)', security: adminBearer,
     request: { ...idP, ...body(paymentsS.resolveBody) }, responses: { 200: json(paymentsS.Item), ...errors({ ...MASTER_AUTH, 404: ['NOT_FOUND'], 409: ['RECON_ITEM_CLOSED'], ...VALIDATION }) } });
+
+  // ------------------------------------------------------------------ M07 payouts
+  const poIdP = { params: payoutsS.idParam };
+  const PO_STATE = ['INVALID_STATE', 'PAYOUT_ACCOUNT_REQUIRED', 'PAYOUT_ACCOUNT_UNVERIFIED', 'PAYOUT_ON_HOLD'];
+  const SELF = { 403: STEP[403].concat('SELF_PAYOUT_FORBIDDEN') };
+
+  p({ method: 'get', path: '/me/payout-accounts', tags: ['payouts'], summary: 'My payout accounts (masked): the active one and any waiting for review', security: bearer,
+    responses: { 200: json(payoutsS.AccountList), ...errors(COMMON_AUTH) } });
+  p({ method: 'post', path: '/me/payout-accounts/otp', tags: ['payouts'], summary: 'Send a code to my registered phone to confirm a payout account change', security: bearer,
+    responses: { 202: json(payoutsS.CodeSent, 'Accepted'), ...errors({ ...COMMON_AUTH, 409: ['PHONE_REQUIRED'], 429: ['OTP_RATE_LIMITED', 'OTP_COOLDOWN'] }) } });
+  p({ method: 'post', path: '/me/payout-accounts', tags: ['payouts'], summary: 'Add or change my bKash / Nagad payout account (code required); staff check the name against my NID (FR-01, FR-02)', security: bearer,
+    request: body(payoutsS.accountAdd),
+    responses: { 201: json(payoutsS.Account, 'Created'), ...errors({ ...COMMON_AUTH, 400: ['OTP_INVALID', 'OTP_EXPIRED'], 409: ['PHONE_REQUIRED', 'PAYOUT_ACCOUNT_UNCHANGED'], 422: ['VALIDATION_FAILED', 'PAYOUT_ACCOUNT_INVALID'] }) } });
+  p({ method: 'get', path: '/me/payouts/summary', tags: ['payouts'], summary: 'Next payout projection, on hold, fees owed, paid this month (FR-16)', security: bearer,
+    responses: { 200: json(payoutsS.Summary), ...errors(COMMON_AUTH) } });
+  p({ method: 'get', path: '/me/payouts', tags: ['payouts'], summary: 'My payouts, newest first', security: bearer,
+    request: { query: payoutsS.meListQuery }, responses: { 200: json(payoutsS.MePage), ...errors({ ...COMMON_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/payouts/{id}', tags: ['payouts'], summary: 'One of my payouts with its lines', security: bearer,
+    request: poIdP, responses: { 200: json(payoutsS.MeDetail), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/payouts/{id}/statement.csv', tags: ['payouts'], summary: 'Statement for one payout (CSV, EN or BN headings)', security: bearer,
+    request: { ...poIdP, query: payoutsS.statementQuery },
+    responses: { 200: { description: 'CSV file', content: { 'text/csv': { schema: z.string() } } }, ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], ...VALIDATION }) } });
+
+  p({ method: 'get', path: '/admin/payouts', tags: ['payouts'], summary: 'Payouts for the finance desk, with counts per status (view_payouts)', security: adminBearer,
+    request: { query: payoutsS.adminListQuery }, responses: { 200: json(payoutsS.AdminPage), ...errors({ ...VIEW, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/payouts/{id}', tags: ['payouts'], summary: 'One payout: lines, holds, approvals, reveals and ledger transactions', security: adminBearer,
+    request: poIdP, responses: { 200: json(payoutsS.PayoutDetail), ...errors({ ...VIEW, 404: ['NOT_FOUND'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/payouts/{id}/release', tags: ['payouts'], summary: 'Release a payout up to the four-eyes threshold (release_payouts, step-up payout.approve)', security: adminBearer,
+    request: { ...poIdP, headers: idem.extend({ 'x-step-up': z.string() }) },
+    responses: { 200: json(payoutsS.Payout), ...errors({ ...ADMIN_AUTH, ...SELF, ...IDEM, 404: ['NOT_FOUND'], 409: PO_STATE.concat('FOUR_EYES_REQUIRED', 'LEDGER_INSUFFICIENT_BALANCE', 'IDEMPOTENCY_IN_PROGRESS') }) } });
+  p({ method: 'post', path: '/admin/payouts/{id}/approve', tags: ['payouts'], summary: 'Approve a payout above the threshold: step 1 or 2 of 2, by different masters; step 2 releases it (step-up payout.approve)', security: adminBearer,
+    request: { ...poIdP, headers: idem.extend({ 'x-step-up': z.string() }) },
+    responses: { 200: json(payoutsS.Approved), ...errors({ ...MASTER_AUTH, ...SELF, ...IDEM, 404: ['NOT_FOUND'], 409: PO_STATE.concat('SAME_APPROVER', 'HOLD_ACTOR_CANNOT_APPROVE', 'LEDGER_INSUFFICIENT_BALANCE', 'IDEMPOTENCY_IN_PROGRESS') }) } });
+  p({ method: 'post', path: '/admin/payouts/{id}/reveal', tags: ['payouts'], summary: 'Show the full wallet number of a released payout, to send it by hand. Audited (critical), never stored or logged', security: adminBearer,
+    request: { ...poIdP, headers: stepUpHeader },
+    responses: { 200: json(payoutsS.Reveal), ...errors({ ...ADMIN_AUTH, ...SELF, 404: ['NOT_FOUND'], 409: ['PAYOUT_REVEAL_FORBIDDEN'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/payouts/{id}/mark-paid', tags: ['payouts'], summary: 'Record the bKash / Nagad reference of a payout sent by hand (FR-08)', security: adminBearer,
+    request: { ...poIdP, headers: idem, ...body(payoutsS.markPaidBody) },
+    responses: { 200: json(payoutsS.Payout), ...errors({ ...ADMIN_AUTH, 403: ADMIN_AUTH[403].concat('SELF_PAYOUT_FORBIDDEN'), ...IDEM, 404: ['NOT_FOUND'], 409: ['INVALID_STATE', 'IDEMPOTENCY_IN_PROGRESS'] }) } });
+  p({ method: 'post', path: '/admin/payouts/{id}/mark-failed', tags: ['payouts'], summary: 'The send failed: the money returns to the payee balance (FR-10)', security: adminBearer,
+    request: { ...poIdP, ...body(payoutsS.markFailedBody) }, responses: { 200: json(payoutsS.Payout), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'], 409: ['INVALID_STATE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/payouts/{id}/retry', tags: ['payouts'], summary: 'Release a failed payout again (step-up payout.approve)', security: adminBearer,
+    request: { ...poIdP, headers: stepUpHeader },
+    responses: { 200: json(payoutsS.Payout), ...errors({ ...ADMIN_AUTH, ...SELF, 404: ['NOT_FOUND'], 409: PO_STATE.concat('PAYOUT_ACCOUNT_UPDATE_REQUIRED', 'LEDGER_INSUFFICIENT_BALANCE'), ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/payouts/{id}/cancel', tags: ['payouts'], summary: 'Cancel before sending (or after a failure); the lines return to the next run', security: adminBearer,
+    request: { ...poIdP, ...body(payoutsS.cancelBody) }, responses: { 200: json(payoutsS.Payout), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'], 409: ['INVALID_STATE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/payouts/{id}/hold', tags: ['payouts'], summary: 'Put this payout (or every payout of the payee) on hold, with a reason', security: adminBearer,
+    request: { ...poIdP, ...body(payoutsS.holdBody) }, responses: { 200: json(payoutsS.PayoutDetail), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'], 409: ['INVALID_STATE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/payouts/{id}/lift-hold', tags: ['payouts'], summary: 'Lift a manual hold (risk freezes are cleared on the Risk desk, FR-13)', security: adminBearer,
+    request: { ...poIdP, ...body(payoutsS.liftBody) },
+    responses: { 200: json(payoutsS.PayoutDetail), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'], 409: ['RISK_HOLD_MANAGED_IN_RISK', 'HOLD_NOT_LIFTABLE'], ...VALIDATION }) } });
+
+  p({ method: 'get', path: '/admin/payout-batches', tags: ['payouts'], summary: 'Payout runs, newest first, with totals', security: adminBearer,
+    request: { query: payoutsS.batchesQuery }, responses: { 200: json(payoutsS.BatchPage), ...errors({ ...VIEW, ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/payout-batches/run', tags: ['payouts'], summary: 'Build a payout run now (master): a catch-up, or in dev', security: adminBearer,
+    request: body(payoutsS.runBody), responses: { 201: json(payoutsS.BatchRun, 'Created'), ...errors({ ...MASTER_AUTH, 400: ['SCHEDULE_INVALID'], ...VALIDATION }) } });
+
+  p({ method: 'get', path: '/admin/payout-accounts', tags: ['payouts'], summary: 'Payout accounts to review, with the payee NID legal name and same-wallet warnings', security: adminBearer,
+    request: { query: payoutsS.accountsQuery }, responses: { 200: json(payoutsS.ReviewPage), ...errors({ ...VIEW, ...VALIDATION }) } });
+  for (const [action, schema, summary] of [
+    ['verify', payoutsS.verifyBody, 'Approve: the account name matches the NID; replacing an account starts the change hold'],
+    ['reject', payoutsS.rejectBody, 'Reject with a note the payee sees'],
+  ]) {
+    p({ method: 'post', path: `/admin/payout-accounts/{id}/${action}`, tags: ['payouts'], summary: `${summary} (release_payouts)`, security: adminBearer,
+      request: { ...poIdP, ...body(schema) },
+      responses: { 200: json(payoutsS.Account), ...errors({ ...ADMIN_AUTH, 403: ADMIN_AUTH[403].concat('SELF_REVIEW_FORBIDDEN'), 404: ['NOT_FOUND'], 409: ['PAYOUT_ACCOUNT_NOT_PENDING'], ...VALIDATION }) } });
+  }
 }
 
 function dateTimeOf() {

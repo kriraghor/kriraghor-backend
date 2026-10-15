@@ -78,6 +78,20 @@ const ACTIONS = {
   'escrow.unfrozen': A('M06', 'notice', 'Unfroze an escrow hold: {reason}', 'এসক্রো ছাড়া হলো: {reason}'),
   'reconciliation.run_started': A('M06', 'info', 'Started reconciliation for {meta.businessDate}', '{meta.businessDate}-এর হিসাব মেলানো শুরু'),
   'reconciliation.item_resolved': A('M06', 'notice', 'Marked a reconciliation exception {after.resolution}: {reason}', 'হিসাবের ব্যতিক্রম {after.resolution}: {reason}'),
+
+  // ---------------- M07 Payouts ----------------
+  'payout_account.added': A('M07', 'notice', 'Added a {after.type} payout account ending {after.last4}', '{after.type} পেআউট অ্যাকাউন্ট যোগ (শেষ {after.last4})'),
+  'payout_account.verified': A('M07', 'notice', 'Verified a payout account', 'পেআউট অ্যাকাউন্ট যাচাই'),
+  'payout_account.rejected': A('M07', 'notice', 'Rejected a payout account: {reason}', 'পেআউট অ্যাকাউন্ট বাতিল: {reason}'),
+  'payout_batch.run': A('M07', 'notice', 'Ran the {after.schedule} payout batch ({after.payouts} payouts)', '{after.schedule} পেআউট ব্যাচ চালানো ({after.payouts}টি)'),
+  'payout.released': A('M07', 'critical', 'Released payout {entityCode} of {after.amount} poisha', 'পেআউট {entityCode} ছাড় ({after.amount} পয়সা)'),
+  'payout.approved': A('M07', 'critical', 'Approved payout {entityCode} (step {meta.step} of 2)', 'পেআউট {entityCode} অনুমোদন (ধাপ {meta.step}/২)'),
+  'payout.account_revealed': A('M07', 'critical', 'Viewed the full payout number for {entityCode} (ending {meta.last4})', '{entityCode}-এর পুরো পেআউট নম্বর দেখা (শেষ {meta.last4})'),
+  'payout.marked_paid': A('M07', 'critical', 'Marked payout {entityCode} paid, ref {after.providerRef}', 'পেআউট {entityCode} পরিশোধিত, রেফ {after.providerRef}'),
+  'payout.marked_failed': A('M07', 'notice', 'Marked payout {entityCode} failed ({meta.reason})', 'পেআউট {entityCode} ব্যর্থ ({meta.reason})'),
+  'payout.cancelled': A('M07', 'notice', 'Cancelled payout {entityCode}: {reason}', 'পেআউট {entityCode} বাতিল: {reason}'),
+  'payout.held': A('M07', 'notice', 'Put payout {entityCode} on hold: {reason}', 'পেআউট {entityCode} আটকানো: {reason}'),
+  'payout.hold_lifted': A('M07', 'notice', 'Lifted a hold on payout {entityCode}: {reason}', 'পেআউট {entityCode}-এর আটক তোলা: {reason}'),
 };
 
 const get = (action) => ACTIONS[action];

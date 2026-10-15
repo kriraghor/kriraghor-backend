@@ -142,6 +142,13 @@ const CROSS_RULES = [
     keys: ['refunds.staff_limit_poisha', 'payouts.four_eyes_threshold_poisha'],
     ok: (v) => v('refunds.staff_limit_poisha') <= v('payouts.four_eyes_threshold_poisha'),
   },
+  {
+    // M07 §6.3: an automatic release never skips the two-master approval.
+    id: 'money.auto_release_below_payout_threshold',
+    text: 'payouts.auto_release_max_poisha ≤ payouts.four_eyes_threshold_poisha',
+    keys: ['payouts.auto_release_max_poisha', 'payouts.four_eyes_threshold_poisha'],
+    ok: (v) => v('payouts.auto_release_max_poisha') <= v('payouts.four_eyes_threshold_poisha'),
+  },
 ];
 
 /**

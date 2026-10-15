@@ -6,7 +6,7 @@
  * invalid payloads before commit. Payloads carry IDs, codes, amounts, statuses and timestamps only:
  * no phone, NID, DOB, email or names (consumers read details through the producer's service).
  *
- * Built so far: M01, M03, M04, M06. Each later module adds its events here when it is built.
+ * Built so far: M01, M03, M04, M06, M07. Each later module adds its events here when it is built.
  */
 const { z } = require('zod');
 
@@ -18,6 +18,7 @@ const json = z.unknown();
 const poisha = z.number().int().nonnegative();
 const paymentClosed = z.object({ paymentId: uuid, purpose: z.string(), purposeId: uuid, amount: poisha, payerId: uuid, reason: z.string().max(60) });
 const refundEvent = z.object({ refundId: uuid, paymentId: uuid, amount: poisha, purpose: z.string(), purposeId: uuid, payerId: uuid });
+const payoutEvent = z.object({ payoutId: uuid, code: z.string(), payeeId: uuid, amount: poisha });
 const catalogItem = z.object({ table: z.string(), id: uuid, key: z.string(), version: z.number().int().optional(), isActive: z.boolean().optional() });
 
 const EVENTS = {
@@ -108,6 +109,18 @@ const EVENTS = {
     version: 1,
     schema: z.object({ runId: uuid, provider: z.string(), businessDate: z.string(), matched: z.number().int(), exceptions: z.number().int(), autoHealed: z.number().int() }),
   },
+
+  // ---------------- M07 Payouts (amounts in poisha; no account numbers, only ids) ----------------
+  'payout.scheduled': { module: 'M07', version: 1, schema: payoutEvent.extend({ status: z.string(), kind: z.enum(['earning', 'refund']) }) },
+  'payout.approval_requested': { module: 'M07', version: 1, schema: payoutEvent },
+  'payout.released': { module: 'M07', version: 1, schema: payoutEvent.extend({ attempt: z.number().int() }) },
+  'payout.paid': { module: 'M07', version: 1, schema: payoutEvent.extend({ kind: z.enum(['earning', 'refund']) }) },
+  'payout.failed': { module: 'M07', version: 1, schema: payoutEvent.extend({ reason: z.string().max(40), retryable: z.boolean() }) },
+  'payout.held': { module: 'M07', version: 1, schema: z.object({ holdId: uuid, payeeId: uuid, payoutId: uuid.nullable(), type: z.string(), scope: z.string() }) },
+  'payout.hold_lifted': { module: 'M07', version: 1, schema: z.object({ holdId: uuid, payeeId: uuid, payoutId: uuid.nullable(), type: z.string() }) },
+  'payout_account.added': { module: 'M07', version: 1, schema: z.object({ accountId: uuid, userId: uuid, type: z.enum(['bkash', 'nagad']) }) },
+  'payout_account.verified': { module: 'M07', version: 1, schema: z.object({ accountId: uuid, userId: uuid, type: z.enum(['bkash', 'nagad']), holdUntil: iso.nullable() }) },
+  'payout_account.rejected': { module: 'M07', version: 1, schema: z.object({ accountId: uuid, userId: uuid }) },
 };
 
 /** FR-19: `<aggregate>.<past_tense_verb>`, snake_case. Irregular past tenses are listed. */

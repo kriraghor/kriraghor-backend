@@ -3,7 +3,7 @@
 /**
  * Notification catalogue (M08 §6.6), as code. Each entry maps a domain event to recipients, channels
  * and template variables. Template texts are versioned rows in message_templates (EN and BN for
- * every default channel; a contract test checks it). Built so far: the M01, M03, M04 and M06 events.
+ * every default channel; a contract test checks it). Built so far: the M01, M03, M04, M06 and M07 events.
  *
  * Entry: { code, events[], category, channels[], urgent, roleContext?(e), recipients(e) → userIds,
  *          values(e, { locale, userId }) → template values, link(e) → in-app link }
@@ -20,6 +20,7 @@ const roleLabel = (role, locale) => ROLE_LABELS[locale]?.[role] ?? ROLE_LABELS.e
 const reasonText = (code, locale) => (code ? code.replace(/_/g, ' ') : locale === 'bn' ? 'কারণ জানানো হয়নি' : 'no reason given');
 const none = (locale) => (locale === 'bn' ? 'কিছু না' : 'none');
 const adminUrl = (path) => `${config.apps.admin}${path}`;
+const webUrl = (path) => `${config.apps.web}${path}`;
 const valueText = (v) => (v == null ? '—' : typeof v === 'object' ? JSON.stringify(v) : String(v));
 /** "fees.shop_commission_pct 5 → 6" for a proposed setting change. */
 const changeText = (c) => `${c.key} ${valueText(c.from)} → ${valueText(c.to)}`;
@@ -34,6 +35,17 @@ const settingsRequest = (id) => require('../settings/change-request.service').ge
 const auditEntry = (id) => require('../audit/audit.admin.service').getOne(id);
 const paymentFacts = (id) => require('../payments/payments.service').facts(id);
 const refundFacts = (id) => require('../payments/refunds.service').facts(id);
+const payoutFacts = (id) => require('../payouts/payouts.service').facts(id);
+const accountFacts = (id) => require('../payouts/payout-accounts.service').facts(id);
+const settingsHours = () => require('../settings/settings.service').get('risk.payout_change_hold_hours');
+const HOLD_REASONS = {
+  en: { manual: 'our finance team is checking it', account_change: 'your payout account changed recently', account_suspended: 'your account is suspended', kyc: 'your verification needs renewing' },
+  bn: { manual: 'আমাদের ফিনান্স টিম যাচাই করছে', account_change: 'সম্প্রতি আপনার পেআউট অ্যাকাউন্ট বদলেছে', account_suspended: 'আপনার অ্যাকাউন্ট স্থগিত', kyc: 'আপনার যাচাই নবায়ন দরকার' },
+};
+function holdNote(until, locale) {
+  const when = formatValue('datetime', until, locale);
+  return locale === 'bn' ? `নিরাপত্তার জন্য ${when} পর্যন্ত পেআউট বন্ধ থাকবে।` : `For your safety, payouts to it start after ${when}.`;
+}
 async function holdFacts(holdId) {
   const hold = await require('../payments/escrow.service').getOne(holdId);
   return { ...hold, title: (await paymentFacts(hold.paymentId)).title };
@@ -302,6 +314,100 @@ const CATALOGUE = [
     recipients: () => directory.withPermission('view_payouts'),
     values: async (e) => ({ checks: e.payload.failed.join(', '), url: adminUrl('/admin/finance?tab=ledger') }),
     link: () => '/admin/finance?tab=ledger',
+  },
+  // ---------------- M07: payees (category money: in-app and SMS mandatory) and finance staff
+  {
+    code: 'PAYOUT_SCHEDULED',
+    events: ['payout.scheduled'],
+    category: 'money',
+    channels: ['in_app'],
+    recipients: (e) => (e.payload.kind === 'earning' ? [e.payload.payeeId] : []),
+    values: (e) => ({ amount: e.payload.amount, code: e.payload.code }),
+    link: () => '/me/payouts',
+  },
+  {
+    code: 'PAYOUT_PAID',
+    events: ['payout.paid'],
+    category: 'money',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.payeeId],
+    values: async (e) => {
+      const p = await payoutFacts(e.payload.payoutId);
+      return { amount: e.payload.amount, account: p.masked ?? '—', ref: p.providerRef ?? e.payload.code };
+    },
+    link: () => '/me/payouts',
+  },
+  {
+    code: 'PAYOUT_FAILED',
+    events: ['payout.failed'],
+    category: 'money',
+    channels: ['in_app', 'sms', 'email'],
+    recipients: (e) => [e.payload.payeeId],
+    values: async (e) => ({ amount: e.payload.amount, account: (await payoutFacts(e.payload.payoutId)).masked ?? '—', url: webUrl('/me/payout-account') }),
+    link: () => '/me/payout-account',
+  },
+  {
+    code: 'PAYOUT_HELD',
+    events: ['payout.held'],
+    category: 'money',
+    channels: ['in_app'],
+    // Payee-facing for the holds a payee can understand; risk and dispute holds speak through M18/M17.
+    recipients: (e) => (['manual', 'account_change', 'account_suspended', 'kyc'].includes(e.payload.type) ? [e.payload.payeeId] : []),
+    values: (e, { locale }) => ({ reason: HOLD_REASONS[locale]?.[e.payload.type] ?? HOLD_REASONS.en[e.payload.type] ?? e.payload.type }),
+    link: () => '/me/payouts',
+  },
+  {
+    code: 'PAYOUT_ACCOUNT_CHANGED',
+    events: ['payout_account.added'],
+    category: 'security',
+    channels: ['in_app', 'sms', 'email'],
+    // A possible account takeover: the registered phone hears at once, even in quiet hours.
+    urgent: true,
+    recipients: (e) => [e.payload.userId],
+    values: async (e) => ({ account: (await accountFacts(e.payload.accountId)).masked, hours: settingsHours() }),
+    link: () => '/me/payout-account',
+  },
+  {
+    code: 'PAYOUT_ACCOUNT_VERIFIED',
+    events: ['payout_account.verified'],
+    category: 'money',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.userId],
+    values: async (e, { locale }) => ({
+      account: (await accountFacts(e.payload.accountId)).masked,
+      note: e.payload.holdUntil ? holdNote(e.payload.holdUntil, locale) : locale === 'bn' ? 'এখন থেকে পেআউট এখানে যাবে।' : 'Payouts go to it from now on.',
+    }),
+    link: () => '/me/payout-account',
+  },
+  {
+    code: 'PAYOUT_ACCOUNT_REJECTED',
+    events: ['payout_account.rejected'],
+    category: 'money',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.userId],
+    values: async (e) => {
+      const a = await accountFacts(e.payload.accountId);
+      return { account: a.masked, reason: a.reviewNote ?? '—' };
+    },
+    link: () => '/me/payout-account',
+  },
+  {
+    code: 'PAYOUT_NEEDS_APPROVAL',
+    events: ['payout.approval_requested'],
+    category: 'staff_ops',
+    channels: ['in_app', 'email'],
+    recipients: () => directory.masters(),
+    values: (e) => ({ code: e.payload.code, amount: e.payload.amount, url: adminUrl(`/admin/finance?tab=payouts&id=${e.payload.payoutId}`) }),
+    link: (e) => `/admin/finance?tab=payouts&id=${e.payload.payoutId}`,
+  },
+  {
+    code: 'PAYOUT_ACCOUNT_REVIEW',
+    events: ['payout_account.added'],
+    category: 'staff_ops',
+    channels: ['in_app'],
+    recipients: () => directory.withPermission('view_payouts'),
+    values: async (e) => ({ account: (await accountFacts(e.payload.accountId)).masked }),
+    link: () => '/admin/finance?tab=accounts',
   },
 ];
 

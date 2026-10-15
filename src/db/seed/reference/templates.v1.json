@@ -1,6 +1,6 @@
 {
-  "seedVersion": 1,
-  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments.",
+  "seedVersion": 2,
+  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates.",
   "templates": [
     {
       "code": "AUDIT_CRITICAL",
@@ -1645,6 +1645,628 @@
         {
           "name": "url",
           "type": "link"
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_SCHEDULED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Payout on its way",
+      "body": "{{amount}} is in payout {{code}}. We will send it to your payout account soon.",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_SCHEDULED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পেআউট আসছে",
+      "body": "{{amount}} পেআউট {{code}}-এ আছে। শিগগিরই আপনার পেআউট অ্যাকাউন্টে পাঠানো হবে।",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_PAID",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Payout sent",
+      "body": "{{amount}} was paid to {{account}}. Reference {{ref}}.",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "account",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_PAID",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পেআউট পাঠানো হয়েছে",
+      "body": "{{amount}} {{account}}-এ পাঠানো হয়েছে। রেফারেন্স {{ref}}।",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "account",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_PAID",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{amount}} paid to {{account}}. Ref {{ref}}.",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "account",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_PAID",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{amount}} {{account}}-এ পাঠানো হয়েছে। রেফ {{ref}}",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "account",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_FAILED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Payout failed",
+      "body": "We couldn’t pay {{amount}} to {{account}}. Check or update your payout account and we will try again.",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "account",
+          "type": "text",
+          "maxLen": 24
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_FAILED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পেআউট ব্যর্থ",
+      "body": "{{amount}} {{account}}-এ পাঠানো যায়নি। পেআউট অ্যাকাউন্ট দেখে নিন বা বদলান, আমরা আবার চেষ্টা করব।",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "account",
+          "type": "text",
+          "maxLen": 24
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_FAILED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: we couldn’t pay {{amount}} to {{account}}. Please check your payout account in the app.",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "account",
+          "type": "text",
+          "maxLen": 24
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_FAILED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{amount}} {{account}}-এ পাঠানো যায়নি। অ্যাপে পেআউট অ্যাকাউন্ট দেখুন।",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "account",
+          "type": "text",
+          "maxLen": 24
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_FAILED",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Kriraghor: your payout failed",
+      "body": "We couldn’t pay {{amount}} to {{account}}.\n\nCheck or update your payout account, and we will send it again: {{url}}",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "account",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "url",
+          "type": "link"
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_FAILED",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "ক্রীড়াঘর: আপনার পেআউট ব্যর্থ",
+      "body": "{{amount}} {{account}}-এ পাঠানো যায়নি।\n\nপেআউট অ্যাকাউন্ট দেখে নিন বা বদলান, আমরা আবার পাঠাব: {{url}}",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "account",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "url",
+          "type": "link"
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_HELD",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Payout on hold",
+      "body": "Your payouts are paused because {{reason}}. Your money is safe in your balance.",
+      "variables": [
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_HELD",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পেআউট আটকে আছে",
+      "body": "আপনার পেআউট বন্ধ আছে কারণ {{reason}}। আপনার টাকা ব্যালান্সে নিরাপদে আছে।",
+      "variables": [
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_ACCOUNT_CHANGED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "New payout account added",
+      "body": "Payout account {{account}} was added. Once approved, payouts pause for {{hours}} hours if it replaces your old one. Not you? Contact support now.",
+      "variables": [
+        {
+          "name": "account",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "hours",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_ACCOUNT_CHANGED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "নতুন পেআউট অ্যাকাউন্ট যোগ হয়েছে",
+      "body": "পেআউট অ্যাকাউন্ট {{account}} যোগ হয়েছে। অনুমোদনের পর পুরনোটির বদলে হলে {{hours}} ঘণ্টা পেআউট বন্ধ থাকবে। আপনি না করলে এখনই সাপোর্টে জানান।",
+      "variables": [
+        {
+          "name": "account",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "hours",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_ACCOUNT_CHANGED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: payout account {{account}} was added to your account. Not you? Contact support now.",
+      "variables": [
+        {
+          "name": "account",
+          "type": "text",
+          "maxLen": 24
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_ACCOUNT_CHANGED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: আপনার অ্যাকাউন্টে পেআউট অ্যাকাউন্ট {{account}} যোগ হয়েছে। আপনি না করলে সাপোর্টে জানান।",
+      "variables": [
+        {
+          "name": "account",
+          "type": "text",
+          "maxLen": 24
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_ACCOUNT_CHANGED",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Kriraghor: new payout account added",
+      "body": "Payout account {{account}} was added to your Kriraghor account.\n\nWhen it replaces your old one, payouts pause for {{hours}} hours after it is approved.\n\nIf this was not you, contact Kriraghor support now.",
+      "variables": [
+        {
+          "name": "account",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "hours",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_ACCOUNT_CHANGED",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "ক্রীড়াঘর: নতুন পেআউট অ্যাকাউন্ট যোগ হয়েছে",
+      "body": "আপনার ক্রীড়াঘর অ্যাকাউন্টে পেআউট অ্যাকাউন্ট {{account}} যোগ হয়েছে।\n\nপুরনোটির বদলে হলে অনুমোদনের পর {{hours}} ঘণ্টা পেআউট বন্ধ থাকবে।\n\nআপনি না করলে এখনই ক্রীড়াঘর সাপোর্টে জানান।",
+      "variables": [
+        {
+          "name": "account",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "hours",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_ACCOUNT_VERIFIED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Payout account approved",
+      "body": "Your payout account {{account}} is approved. {{note}}",
+      "variables": [
+        {
+          "name": "account",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "note",
+          "type": "text",
+          "maxLen": 90
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_ACCOUNT_VERIFIED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পেআউট অ্যাকাউন্ট অনুমোদিত",
+      "body": "আপনার পেআউট অ্যাকাউন্ট {{account}} অনুমোদিত। {{note}}",
+      "variables": [
+        {
+          "name": "account",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "note",
+          "type": "text",
+          "maxLen": 90
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_ACCOUNT_VERIFIED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: payout account {{account}} approved. {{note}}",
+      "variables": [
+        {
+          "name": "account",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "note",
+          "type": "text",
+          "maxLen": 90
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_ACCOUNT_VERIFIED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: পেআউট অ্যাকাউন্ট {{account}} অনুমোদিত। {{note}}",
+      "variables": [
+        {
+          "name": "account",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "note",
+          "type": "text",
+          "maxLen": 90
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_ACCOUNT_REJECTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Payout account not approved",
+      "body": "Payout account {{account}} was not approved: {{reason}}. Add an account in the name on your NID.",
+      "variables": [
+        {
+          "name": "account",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_ACCOUNT_REJECTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পেআউট অ্যাকাউন্ট অনুমোদিত হয়নি",
+      "body": "পেআউট অ্যাকাউন্ট {{account}} অনুমোদিত হয়নি: {{reason}}। আপনার NID-এর নামে অ্যাকাউন্ট দিন।",
+      "variables": [
+        {
+          "name": "account",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_ACCOUNT_REJECTED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: payout account {{account}} not approved: {{reason}}. Add one in your NID name.",
+      "variables": [
+        {
+          "name": "account",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_ACCOUNT_REJECTED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{account}} অনুমোদিত হয়নি: {{reason}}। NID-এর নামে দিন।",
+      "variables": [
+        {
+          "name": "account",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_NEEDS_APPROVAL",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Payout needs two approvals",
+      "body": "Payout {{code}} of {{amount}} is above the four-eyes limit. Two masters must approve it.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "amount",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_NEEDS_APPROVAL",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পেআউটে দুই অনুমোদন লাগবে",
+      "body": "{{amount}}-এর পেআউট {{code}} ফোর-আইজ সীমার বেশি। দুইজন মাস্টারের অনুমোদন লাগবে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "amount",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_NEEDS_APPROVAL",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Kriraghor: payout {{code}} needs approval",
+      "body": "Payout {{code}} of {{amount}} is above the four-eyes limit and needs two masters to approve it.\n\nOpen it on the Finance desk: {{url}}",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "url",
+          "type": "link"
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_NEEDS_APPROVAL",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "ক্রীড়াঘর: পেআউট {{code}} অনুমোদন দরকার",
+      "body": "{{amount}}-এর পেআউট {{code}} ফোর-আইজ সীমার বেশি, দুইজন মাস্টারের অনুমোদন লাগবে।\n\nফিনান্স ডেস্কে খুলুন: {{url}}",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "url",
+          "type": "link"
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_ACCOUNT_REVIEW",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Payout account to check",
+      "body": "A new payout account {{account}} is waiting. Check the name against the NID before approving.",
+      "variables": [
+        {
+          "name": "account",
+          "type": "text",
+          "maxLen": 24
+        }
+      ]
+    },
+    {
+      "code": "PAYOUT_ACCOUNT_REVIEW",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "যাচাইয়ের জন্য পেআউট অ্যাকাউন্ট",
+      "body": "নতুন পেআউট অ্যাকাউন্ট {{account}} অপেক্ষায়। অনুমোদনের আগে নাম NID-এর সাথে মিলিয়ে নিন।",
+      "variables": [
+        {
+          "name": "account",
+          "type": "text",
+          "maxLen": 24
         }
       ]
     }

@@ -24,5 +24,7 @@ module.exports = {
     './src/modules/payments/ledger.rules.js': FULL,
     './src/modules/payments/escrow.rules.js': FULL,
     './src/modules/payments/refunds.rules.js': FULL,
+    // M07 payout amounts, holds, approvals and schedules.
+    './src/modules/payouts/payouts.rules.js': FULL,
   },
 };

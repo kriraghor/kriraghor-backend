@@ -16,6 +16,8 @@ const escrow = require('../modules/payments/escrow.service');
 const invariants = require('../modules/payments/invariants.service');
 const reconciliation = require('../modules/payments/reconciliation.service');
 const paymentJobs = require('../modules/payments/payments.jobs');
+const payouts = require('../modules/payouts/payouts.service');
+const payoutHolds = require('../modules/payouts/holds.service');
 const { purgeExpired: purgeIdempotencyKeys } = require('../common/idempotency');
 const logger = require('../common/logger');
 
@@ -148,6 +150,23 @@ const JOBS = [
     pattern: '0 6 * * *',
     tz: 'Asia/Dhaka',
     run: async () => reconciliation.run(),
+  },
+  // ---------------- M07 payouts (§10). Idempotent: UNIQUE(schedule, window_end), each ledger entry used once.
+  {
+    // Hourly at :00 Dhaka: builds the schedules due now (payouts.run_hour, weekdays, daily_enabled).
+    // A missed run is caught up by the next hour (same window).
+    name: 'payouts.schedule',
+    queue: QUEUES.PAYOUTS,
+    pattern: '0 * * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => payouts.runDue(),
+  },
+  {
+    // account_change holds past their time are lifted; the payee's payouts return to scheduled.
+    name: 'payouts.hold-expiry',
+    queue: QUEUES.PAYOUTS,
+    every: 15 * 60 * 1000,
+    run: async () => payoutHolds.expireDue(),
   },
   {
     name: 'idempotency.purge',

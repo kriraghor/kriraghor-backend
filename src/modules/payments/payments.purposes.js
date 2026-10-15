@@ -11,6 +11,10 @@
  * 'reject' (for example a slot hold that expired and was taken, §12 #2) triggers an automatic full
  * `late_capture` refund (FR-05). Purpose modules register their hook with register(); until they
  * do, a late capture is rejected and an on-time one accepted.
+ *
+ * payoutSchedule (M07 §6.1) says which payout run sweeps the money released to payees: 'daily',
+ * 'ground_weekly', 'shop_weekly', or 'withdraw' (esports prizes wait in the payable until the winner
+ * withdraws them, M07 v3 note; never swept).
  */
 const config = require('../../config');
 
@@ -18,9 +22,9 @@ const defaultOnCaptured = ({ late }) => (late ? 'reject' : 'accept');
 
 const PURPOSES = {
   // M21 entry fees, held per registration and settled per tournament (pool).
-  esports_entry: { vertical: 'esports', escrowAccount: 'escrow:esports_entry', pooled: true, testOnly: false },
+  esports_entry: { vertical: 'esports', escrowAccount: 'escrow:esports_entry', pooled: true, testOnly: false, payoutSchedule: 'withdraw' },
   // Master test charge (dev and staging only, PAYMENTS_TEST_CHARGES): the Phase 2 exit check.
-  test_charge: { vertical: 'test', escrowAccount: 'escrow:test_charge', pooled: false, testOnly: true },
+  test_charge: { vertical: 'test', escrowAccount: 'escrow:test_charge', pooled: false, testOnly: true, payoutSchedule: 'daily' },
 };
 
 const hooks = new Map();

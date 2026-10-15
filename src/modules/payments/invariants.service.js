@@ -8,6 +8,7 @@
  *   holds_match_ledger   each hold's sub-ledger (entries tagged with it) = what the hold row says it still holds
  *   no_negative          no escrow:* or payable:* account below zero
  *   clearing_age         provider_clearing not settled for payments.clearing_alert_days (0 = off until settlement import)
+ * Modules that post to the ledger add their own checks with register() (M07: payout_clearing_matches).
  * Any failure publishes ledger.invariant_failed (M08 alerts masters and finance).
  */
 const { sequelize } = require('../../models');
@@ -16,6 +17,12 @@ const events = require('../events/events.service');
 const { toPoisha } = require('../../common/money');
 const ledger = require('./ledger.service');
 const purposes = require('./payments.purposes');
+
+// name → async () => ({ ok, detail }); a module registers its check when it loads.
+const extraChecks = new Map();
+function register(name, fn) {
+  extraChecks.set(name, fn);
+}
 
 async function check({ publish = true } = {}) {
   const results = [];
@@ -61,6 +68,11 @@ async function check({ publish = true } = {}) {
     add('clearing_age', aged.length === 0, aged.length ? `Unsettled for over ${days} days: ${aged.map((r) => r.code).join(', ')}` : null);
   }
 
+  for (const [name, fn] of extraChecks) {
+    const { ok, detail } = await fn();
+    add(name, ok, ok ? null : detail);
+  }
+
   const failed = results.filter((r) => !r.ok).map((r) => r.name);
   if (failed.length && publish) {
     await sequelize.transaction((transaction) =>
@@ -70,4 +82,4 @@ async function check({ publish = true } = {}) {
   return { ok: failed.length === 0, checks: results, checkedAt: new Date().toISOString() };
 }
 
-module.exports = { check };
+module.exports = { check, register };

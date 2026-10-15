@@ -24,6 +24,7 @@ const eventsRoutes = require('./modules/events/events.routes');
 const subscriptions = require('./modules/events/subscriptions');
 const notifyRoutes = require('./modules/notifications/notify.routes');
 const paymentRoutes = require('./modules/payments/payments.routes');
+const payoutRoutes = require('./modules/payouts/payouts.routes');
 
 // ADR-004: customer and admin origins (exact or one-label wildcard). Unknown origins get no CORS headers.
 const allowedOrigin = compile([...config.corsOrigins, ...config.adminOrigins]);
@@ -73,6 +74,8 @@ function createApp() {
   api.use('/me/notifications', notifyRoutes.meRouter);
   api.use('/me/notification-prefs', notifyRoutes.prefsRouter);
   api.use('/me/payments', paymentRoutes.meRouter);
+  api.use('/me/payout-accounts', payoutRoutes.meAccounts);
+  api.use('/me/payouts', payoutRoutes.mePayouts);
   api.use('/payments', paymentRoutes.payerRouter);
   api.use('/webhooks', paymentRoutes.webhookRouter);
   api.use('/me', meRoutes);
@@ -91,6 +94,9 @@ function createApp() {
   api.use('/admin/ledger', paymentRoutes.adminLedger);
   api.use('/admin/escrow', paymentRoutes.adminEscrow);
   api.use('/admin/reconciliation', paymentRoutes.adminRecon);
+  api.use('/admin/payouts', payoutRoutes.adminPayouts);
+  api.use('/admin/payout-batches', payoutRoutes.adminBatches);
+  api.use('/admin/payout-accounts', payoutRoutes.adminAccounts);
   api.use('/admin', adminRoutes);
   app.use(config.apiPrefix, api);
 
