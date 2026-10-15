@@ -19,7 +19,7 @@ const base = useConnectionUri
       migrationStorageTableName: 'sequelize_meta',
       seederStorage: 'sequelize',
       seederStorageTableName: 'sequelize_seeds',
-      logging: config.db.logging ? console.log : false,
+      logging: config.db.logging ? (msg) => { void msg; } : false,
     }
   : {
       username: config.db.user,
@@ -38,7 +38,7 @@ const base = useConnectionUri
       migrationStorageTableName: 'sequelize_meta',
       seederStorage: 'sequelize',
       seederStorageTableName: 'sequelize_seeds',
-      logging: config.db.logging ? console.log : false,
+      logging: config.db.logging ? (msg) => { void msg; } : false,
     };
 
 // Pool per process.

@@ -16,7 +16,7 @@ if (process.env.DATABASE_URL) {
       },
     },
     define: { underscored: true },
-    logging: config.db.logging ? console.log : false,
+    logging: config.db.logging ? (msg) => { /* use custom logger or no-op */ void msg; } : false,
     pool: { max: config.db.poolMax, min: 0, idle: 10000, acquire: 30000 },
   });
 } else {
@@ -36,7 +36,7 @@ if (process.env.DATABASE_URL) {
         },
       },
       define: { underscored: true },
-      logging: config.db.logging ? console.log : false,
+      logging: config.db.logging ? (msg) => { /* use custom logger or no-op */ void msg; } : false,
       pool: { max: config.db.poolMax, min: 0, idle: 10000, acquire: 30000 },
     }
   );
