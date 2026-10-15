@@ -8,6 +8,7 @@ const config = require('../config');
 
 const memory = new Map();
 let client;
+let bucketReady = false;
 
 function s3() {
   if (!client) {
@@ -39,14 +40,13 @@ async function putPrivate(key, body, contentType) {
     return { key };
   }
   const { PutObjectCommand } = require('@aws-sdk/client-s3');
-  const cmd = () => new PutObjectCommand({ Bucket: config.s3.privateBucket, Key: key, Body: body, ContentType: contentType });
-  try {
-    await s3().send(cmd());
-  } catch (err) {
-    if (err?.name !== 'NoSuchBucket' || !config.s3.createBuckets) throw err;
+  // SeaweedFS answers a missing bucket with a 500 InternalError rather than NoSuchBucket, so where
+  // bucket creation is allowed (local, k3d) the bucket is ensured once per process before the first write.
+  if (config.s3.createBuckets && !bucketReady) {
     await ensureBucket(config.s3.privateBucket);
-    await s3().send(cmd());
+    bucketReady = true;
   }
+  await s3().send(new PutObjectCommand({ Bucket: config.s3.privateBucket, Key: key, Body: body, ContentType: contentType }));
   return { key };
 }
 
