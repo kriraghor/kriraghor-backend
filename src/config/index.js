@@ -68,6 +68,11 @@ const schema = z.object({
   S3_REGION: z.string().default('auto'),
   S3_ACCESS_KEY: z.string().optional(),
   S3_SECRET_KEY: z.string().optional(),
+  S3_BUCKET_PRIVATE: z.string().default('kriraghor-private'),
+  S3_FORCE_PATH_STYLE: bool.default(true),
+  // Create missing buckets on first use (local and k3d only; production buckets are provisioned).
+  S3_CREATE_BUCKETS: bool.default(false),
+  STORAGE_DRIVER: z.enum(['s3', 'memory']).default('s3'),
 });
 
 const parsed = schema.safeParse(process.env);
@@ -139,7 +144,16 @@ module.exports = {
       auth: env.SMTP_USER ? { user: env.SMTP_USER, pass: env.SMTP_PASSWORD } : undefined,
     },
   },
-  s3: { endpoint: env.S3_ENDPOINT, region: env.S3_REGION, accessKey: env.S3_ACCESS_KEY, secretKey: env.S3_SECRET_KEY },
+  s3: {
+    endpoint: env.S3_ENDPOINT,
+    region: env.S3_REGION,
+    accessKey: env.S3_ACCESS_KEY,
+    secretKey: env.S3_SECRET_KEY,
+    privateBucket: env.S3_BUCKET_PRIVATE,
+    forcePathStyle: env.S3_FORCE_PATH_STYLE,
+    createBuckets: env.S3_CREATE_BUCKETS,
+  },
+  storage: { driver: env.NODE_ENV === 'test' ? 'memory' : env.STORAGE_DRIVER },
   google: {
     clientIds: env.GOOGLE_CLIENT_IDS.split(',').map((s) => s.trim()).filter(Boolean),
   },

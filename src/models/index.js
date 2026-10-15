@@ -188,23 +188,105 @@ StepUpToken.init(
   { sequelize, modelName: 'StepUpToken', tableName: 'step_up_tokens', updatedAt: false }
 );
 
+const appendOnlyGuard = (table) => {
+  const refuse = () => {
+    throw new Error(`${table} is append-only`);
+  };
+  return { beforeUpdate: refuse, beforeBulkUpdate: refuse, beforeDestroy: refuse, beforeBulkDestroy: refuse };
+};
+
+// M04 audit log. created_at is the spec's occurred_at; meta is its metadata. Append-only (DB triggers).
 class AuditLog extends Model {}
 AuditLog.init(
   {
     id: { type: DataTypes.BIGINT.UNSIGNED, autoIncrement: true, primaryKey: true },
+    actorType: { type: DataTypes.ENUM('user', 'staff', 'master', 'system', 'provider'), allowNull: false, defaultValue: 'system' },
     actorId: DataTypes.UUID,
     actorRole: DataTypes.STRING(32),
     action: { type: DataTypes.STRING(80), allowNull: false },
+    module: { type: DataTypes.STRING(8), allowNull: false, defaultValue: 'M01' },
     entityType: DataTypes.STRING(40),
     entityId: DataTypes.STRING(64),
+    entityCode: DataTypes.STRING(40),
     before: DataTypes.JSON,
     after: DataTypes.JSON,
+    reason: DataTypes.TEXT,
+    severity: { type: DataTypes.ENUM('info', 'notice', 'critical'), allowNull: false, defaultValue: 'info' },
+    stepUp: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
     meta: DataTypes.JSON,
     ip: DataTypes.STRING(45),
     userAgent: DataTypes.STRING(512),
     requestId: DataTypes.STRING(64),
+    sessionId: DataTypes.UUID,
   },
-  { sequelize, modelName: 'AuditLog', tableName: 'audit_logs', updatedAt: false }
+  { sequelize, modelName: 'AuditLog', tableName: 'audit_logs', updatedAt: false, hooks: appendOnlyGuard('audit_logs') }
+);
+
+// M04-FR-05 hash chain over audit_logs, sealed after commit by the audit.chain-seal job.
+class AuditChain extends Model {}
+AuditChain.init(
+  {
+    seq: { type: DataTypes.BIGINT.UNSIGNED, primaryKey: true },
+    auditLogId: { type: DataTypes.BIGINT.UNSIGNED, allowNull: false },
+    prevHash: DataTypes.CHAR(64),
+    rowHash: { type: DataTypes.CHAR(64), allowNull: false },
+    sealedAt: { type: DataTypes.DATE(3), allowNull: false, defaultValue: DataTypes.NOW },
+  },
+  { sequelize, modelName: 'AuditChain', tableName: 'audit_chain', timestamps: false, hooks: appendOnlyGuard('audit_chain') }
+);
+
+// M04-FR-10 audit exports (CSV in the private bucket).
+class AuditExport extends Model {}
+AuditExport.init(
+  {
+    id: uuidPk,
+    requestedBy: { type: DataTypes.UUID, allowNull: false },
+    filters: { type: DataTypes.JSON, allowNull: false },
+    status: { type: DataTypes.ENUM('queued', 'running', 'ready', 'failed', 'expired'), allowNull: false, defaultValue: 'queued' },
+    rowCount: DataTypes.INTEGER.UNSIGNED,
+    objectKey: DataTypes.STRING(255),
+    error: DataTypes.TEXT,
+    completedAt: DataTypes.DATE(3),
+    expiresAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'AuditExport', tableName: 'audit_exports' }
+);
+
+// M04 transactional outbox and shared inbox.
+class OutboxEvent extends Model {}
+OutboxEvent.init(
+  {
+    id: { type: DataTypes.UUID, primaryKey: true },
+    name: { type: DataTypes.STRING(80), allowNull: false },
+    version: { type: DataTypes.SMALLINT.UNSIGNED, allowNull: false, defaultValue: 1 },
+    aggregateType: { type: DataTypes.STRING(40), allowNull: false },
+    aggregateId: { type: DataTypes.STRING(64), allowNull: false },
+    aggregateVersion: DataTypes.INTEGER.UNSIGNED,
+    payload: { type: DataTypes.JSON, allowNull: false },
+    metadata: DataTypes.JSON,
+    // Left to the DB default (CURRENT_TIMESTAMP(3)), so times come from DB now(), not app time (M04 §12).
+    occurredAt: DataTypes.DATE(3),
+    availableAt: DataTypes.DATE(3),
+    status: { type: DataTypes.ENUM('pending', 'published', 'failed'), allowNull: false, defaultValue: 'pending' },
+    publishedAt: DataTypes.DATE(3),
+    attempts: { type: DataTypes.SMALLINT.UNSIGNED, allowNull: false, defaultValue: 0 },
+    lastError: DataTypes.TEXT,
+  },
+  { sequelize, modelName: 'OutboxEvent', tableName: 'outbox_events', timestamps: false }
+);
+
+class ConsumedEvent extends Model {}
+ConsumedEvent.init(
+  {
+    consumer: { type: DataTypes.STRING(80), primaryKey: true },
+    eventId: { type: DataTypes.UUID, primaryKey: true },
+    eventName: { type: DataTypes.STRING(80), allowNull: false },
+    status: { type: DataTypes.ENUM('processed', 'dead'), allowNull: false },
+    attempts: { type: DataTypes.SMALLINT.UNSIGNED, allowNull: false, defaultValue: 1 },
+    lastError: DataTypes.TEXT,
+    processedAt: { type: DataTypes.DATE(3), allowNull: false, defaultValue: DataTypes.NOW },
+  },
+  { sequelize, modelName: 'ConsumedEvent', tableName: 'consumed_events', timestamps: false }
 );
 
 class OAuthIdentity extends Model {
@@ -251,9 +333,6 @@ PlatformSetting.init(
   { sequelize, modelName: 'PlatformSetting', tableName: 'platform_settings' }
 );
 
-const appendOnly = () => {
-  throw new Error('settings_history is append-only');
-};
 class SettingsHistory extends Model {}
 SettingsHistory.init(
   {
@@ -274,7 +353,7 @@ SettingsHistory.init(
     tableName: 'settings_history',
     updatedAt: false,
     // M03-FR-11: the DB triggers reject UPDATE/DELETE; the model refuses before reaching them.
-    hooks: { beforeUpdate: appendOnly, beforeBulkUpdate: appendOnly, beforeDestroy: appendOnly, beforeBulkDestroy: appendOnly },
+    hooks: appendOnlyGuard('settings_history'),
   }
 );
 
@@ -383,6 +462,10 @@ module.exports = {
   UserSanction,
   StepUpToken,
   AuditLog,
+  AuditChain,
+  AuditExport,
+  OutboxEvent,
+  ConsumedEvent,
   OAuthIdentity,
   PlatformSetting,
   SettingsHistory,

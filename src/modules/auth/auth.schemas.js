@@ -41,7 +41,7 @@ module.exports = {
   challenge: z.object({ challengeToken: z.string().min(20) }),
   challengeCode: z.object({ challengeToken: z.string().min(20), code: code6 }),
   stepUp: z.object({
-    scope: z.enum(['settings.write', 'staff.write', 'payout.approve', 'refund.large', 'user.ban', 'audit.export', 'twofa.reset', 'esports.money']),
+    scope: z.enum(['settings.write', 'staff.write', 'payout.approve', 'refund.large', 'user.ban', 'audit.export', 'twofa.reset', 'esports.money', 'events.replay']),
     code: code6,
   }),
   // Browsers send no body; mobile sends { refreshToken }.

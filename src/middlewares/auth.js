@@ -83,6 +83,8 @@ function requireStepUp(scope) {
   return async (req, _res, next) => {
     try {
       await authService.consumeStepUp(req.get('x-step-up'), { principal: req.user, sessionId: req.auth.sessionId, scope });
+      // Audit rows written while handling this request record step_up = true (M04-FR-02).
+      req.stepUp = { scope };
       return next();
     } catch (err) {
       return next(err);
