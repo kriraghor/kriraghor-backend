@@ -27,7 +27,7 @@ const P = '/api/v1';
 simulator.setIpnSender((_url, body) => request(app).post(`${P}/webhooks/sslcommerz`).type('form').send(body).then((r) => r.status));
 
 // M03 tables are reseeded after the truncate, so every test starts from the seeded settings and catalogue.
-const TABLES = ['reconciliation_items', 'reconciliation_runs', 'ledger_entries', 'ledger_transactions', 'ledger_accounts', 'escrow_holds', 'refunds', 'provider_webhook_events', 'payment_attempts', 'payments', 'idempotency_keys', 'id_sequences', 'sms_log', 'notification_deliveries', 'notifications', 'notification_prefs', 'message_templates', 'consumed_events', 'outbox_events', 'audit_chain', 'audit_exports', 'settings_history', 'settings_change_requests', 'platform_settings', 'esports_points_presets', 'esports_maps', 'esports_modes', 'esports_games', 'oauth_identities', 'audit_logs', 'step_up_tokens', 'user_sanctions', 'staff_permissions', 'staff_members', 'otp_codes', 'sessions', 'user_roles', 'users'];
+const TABLES = ['payout_reveals', 'payout_approvals', 'payout_holds', 'payout_items', 'payouts', 'payout_batches', 'payout_accounts', 'reconciliation_items', 'reconciliation_runs', 'ledger_entries', 'ledger_transactions', 'ledger_accounts', 'escrow_holds', 'refunds', 'provider_webhook_events', 'payment_attempts', 'payments', 'idempotency_keys', 'id_sequences', 'sms_log', 'notification_deliveries', 'notifications', 'notification_prefs', 'message_templates', 'consumed_events', 'outbox_events', 'audit_chain', 'audit_exports', 'settings_history', 'settings_change_requests', 'platform_settings', 'esports_points_presets', 'esports_maps', 'esports_modes', 'esports_games', 'oauth_identities', 'audit_logs', 'step_up_tokens', 'user_sanctions', 'staff_permissions', 'staff_members', 'otp_codes', 'sessions', 'user_roles', 'users'];
 
 async function resetDb() {
   // One statement: CASCADE covers foreign keys, RESTART IDENTITY resets bigserial ids (TRUNCATE fires no row triggers).
@@ -36,6 +36,10 @@ async function resetDb() {
   await settings.load();
   // All tests run from one IP; the per-IP OTP cap (auth.otp_sends_per_ip_hour) is tested on its own.
   await setSettingForTest('auth.otp_sends_per_ip_hour', 100000);
+  // No quiet window (start = end), so SMS and email go out at any hour the suite runs; the quiet-hours
+  // test sets its own window around the current time.
+  await setSettingForTest('notify.quiet_hours_start', '00:00');
+  await setSettingForTest('notify.quiet_hours_end', '00:00');
   sms.clear();
   mail.clear();
   events.clearRecorded();

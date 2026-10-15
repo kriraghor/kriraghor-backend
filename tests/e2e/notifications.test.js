@@ -134,7 +134,8 @@ describe('routing and channels (M08-FR-01 to FR-03, FR-06)', () => {
     const prefs = await api().get(`${P}/me/notification-prefs`).set(h.bearer(member)).expect(200);
     const security = prefs.body.categories.find((c) => c.category === 'security');
     expect(security.channels.find((c) => c.channel === 'sms')).toEqual({ channel: 'sms', enabled: true, locked: true, offered: true });
-    expect(prefs.body).toMatchObject({ quietHours: true, quietWindow: { start: '22:00', end: '08:00' }, locale: 'en' });
+    // resetDb sets an empty window (00:00–00:00) so the suite sends at any hour; the seed default is 22:00–08:00.
+    expect(prefs.body).toMatchObject({ quietHours: true, quietWindow: { start: '00:00', end: '00:00' }, locale: 'en' });
     expect(prefs.body.categories.map((c) => c.category)).not.toContain('staff_ops');
 
     const locked = await api().put(`${P}/me/notification-prefs`).set(h.bearer(member)).send({ prefs: [{ category: 'security', channel: 'sms', enabled: false }] }).expect(422);
