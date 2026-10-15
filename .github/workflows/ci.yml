@@ -61,6 +61,6 @@ jobs:
           NODE_ENV: test
           JWT_ACCESS_SECRET: test_jwt_access_secret_key_123456789
           JWT_SPECIAL_SECRET: test_jwt_special_secret_key_123456789
-          DATA_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          DATA_ENCRYPTION_KEY: MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=
           OTP_HASH_SECRET: test_otp_hash_secret_key_123456789
         run: npm test
