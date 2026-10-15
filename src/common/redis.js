@@ -44,7 +44,7 @@ async function pingRedis(timeoutMs = 1000) {
   });
   try {
     return (await Promise.race([getRedis().ping(), timeout])) === 'PONG';
-  } catch (_err) {
+  } catch {
     return false;
   } finally {
     clearTimeout(timer);
