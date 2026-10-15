@@ -5,7 +5,7 @@ Request names refer to the **"Kriraghor API: M08 Notifications (Phase 1 exit che
 (`postman/kriraghor-notifications.postman_collection.json`, rebuilt with `node postman/build-collection-m08.js`).
 
 ## 0. Setup
-- [ ] `docker compose up -d`, then `npm run release`. This applies migration `20261018000001`, seeds the 7 `notify.*` settings (144 in total) and the 48 EN/BN templates (insert-if-missing).
+- [ ] `docker compose up -d`, then `npm run release`. This applies migration `20261018000001`, seeds the 7 `notify.*` settings and the 48 EN/BN Phase 1 templates (insert-if-missing).
 - [ ] `npm test`: everything green, including the coverage gate (100% on `notify.rules.js`: SMS encoding, quiet hours, prefs ∩ mandatory, renderer, dedupe). 🤖 marks cases only the tests cover.
 - [ ] `node postman/run-m08.js` → **0 failed**. It resets `kriraghor_test`, signs in two masters with verified emails and a member, pre-mints step-up tokens and runs a worker loop (relay, consumers, deliveries) next to the API.
 - [ ] `node postman/run-m03.js` and `node postman/run-m04.js` still pass.

@@ -8,9 +8,10 @@ The specification for every module is in [`../kriraghor-docs/modules`](../krirag
 |---|---|
 | **M01 Identity and Access**: authentication and authorisation | ✅ Implemented: [`src/modules/auth`](src/modules/auth), [`src/modules/users`](src/modules/users), [`src/modules/admin`](src/modules/admin). Separate admin sessions per [ADR-004](../kriraghor-docs/decisions/ADR-004-cross-subdomain-auth.md) |
 | **Platform (0B)**: Kubernetes readiness | ✅ Three entrypoints, Redis, BullMQ, Socket.IO, probes, metrics, OpenAPI, Docker image ([ADR-002](../kriraghor-docs/decisions/ADR-002-polyrepo-api-contracts.md), [ADR-003](../kriraghor-docs/decisions/ADR-003-kubernetes-deployment.md)) |
-| **M03 Settings and esports catalogue** | ✅ Step 1: [`src/modules/settings`](src/modules/settings) (144 platform settings, history, four-eyes change requests, scheduled changes, SettingsService with Redis cache bust) and [`src/modules/catalog`](src/modules/catalog) (esports games, modes, maps, versioned points presets). Sports, locations, hire and item catalogues come with their modules |
+| **M03 Settings and esports catalogue** | ✅ Step 1: [`src/modules/settings`](src/modules/settings) (151 platform settings, history, four-eyes change requests, scheduled changes, SettingsService with Redis cache bust) and [`src/modules/catalog`](src/modules/catalog) (esports games, modes, maps, versioned points presets). Sports, locations, hire and item catalogues come with their modules |
 | **M04 Audit log and events** | ✅ [`src/modules/audit`](src/modules/audit) (redacted, append-only audit log with a hash chain sealed after commit, action registry with EN/BN summaries, search, entity history, CSV export) and [`src/modules/events`](src/modules/events) (event registry, transactional outbox, relay, inbox, retries, dead letters, replay). M01 and M03 publish their events |
 | **M08 Notifications core** | ✅ [`src/modules/notifications`](src/modules/notifications): catalogue router on M04 events, versioned EN/BN templates, preferences with mandatory categories, quiet hours, Redis SMS rate limits, dedupe, retries, in-app (bell, realtime), email and sandbox SMS, masked SMS log, OTP through M08. Push, broadcasts and the real SMS gateway come later (M21, Q59). **Phase 1 exit check passes** |
+| **M06 Payments, ledger and escrow** | ✅ Step 1: [`src/modules/payments`](src/modules/payments): payment intents with Idempotency-Key, SSLCommerz adapter (and a built-in simulator for dev and tests), server-side verification, replay-safe IPN, append-only double-entry ledger with the balance enforced in MySQL, escrow holds (release, freeze, pool settlement for M21), refunds with the staff cap and master step-up, daily reconciliation, nightly invariants, finance desk API. bKash and Nagad direct, off-platform collections, COD, split shares and fee invoices come later |
 | Everything else | Not started |
 
 ## Quick start
@@ -95,6 +96,8 @@ Expected result: every test green and the coverage gate (100% on the settings an
 
 See [`postman/M01-acceptance-checklist.md`](postman/M01-acceptance-checklist.md) for the full sign-off list.
 
+**M06 (payments, ledger and escrow)** runs unattended: `node postman/run-m06.js` (master, payer and payee; the simulator plays the gateway; 23 requests, 41 assertions). Checklist: [`postman/M06-acceptance-checklist.md`](postman/M06-acceptance-checklist.md).
+
 **M08 (notifications, the Phase 1 exit check)** runs unattended: `node postman/run-m08.js` (two masters with emails, a member and an in-process worker; 14 requests, 26 assertions). Checklist: [`postman/M08-acceptance-checklist.md`](postman/M08-acceptance-checklist.md).
 
 **M04 (audit log and events)** runs unattended the same way: `node postman/run-m04.js` (it also runs a small in-process worker for the relay, consumers and exports). Checklist: [`postman/M04-acceptance-checklist.md`](postman/M04-acceptance-checklist.md).
@@ -156,7 +159,9 @@ src/
    ├─ catalog/            M03 esports catalogue: games, modes, maps, points presets
    ├─ events/             M04 event registry, outbox publish, relay, consumers/inbox, dead letters, replay, ops API
    ├─ audit/              M04 audit writer, action registry, redactor, hash chain, search, exports
-   └─ notifications/      M08 catalogue, router, templates, prefs, delivery (in-app, email, SMS), bell API, delivery log
+   ├─ notifications/      M08 catalogue, router, templates, prefs, delivery (in-app, email, SMS), bell API, delivery log
+   └─ payments/           M06 intents, attempts, IPN, refunds, ledger (rules + service), escrow, reconciliation, invariants
+src/providers/payments/   SSLCommerz adapter and the SSLCommerz-compatible simulator (dev and tests only)
 scripts/                  release.js (migrate + reference seed), create-master.js (first master, CLI only), openapi.js (writes openapi.json)
 src/db/seed/              Reference seed (versioned JSON: settings, esports catalogue, message templates)
 postman/                  collection builder, collection, guide and acceptance checklist
@@ -258,6 +263,36 @@ Every process (api, realtime, worker) refuses to start until every seeded settin
 | `GET /admin/notifications/deliveries?userId&phoneSuffix&code&status` | `manage_users` or master | Delivery log, recipients masked |
 
 **Sending a notification:** add a code to [`notify.catalogue.js`](src/modules/notifications/notify.catalogue.js) (event, category, recipients, channels, variables) and active EN and BN templates to [`templates.v1.json`](src/db/seed/reference/templates.v1.json); the contract test fails until both exist and every SMS fits `notify.sms_max_segments`. Producers only publish their M04 event. OTPs use `notifications.sendOtp()` (priority route, code redacted in `sms_log`).
+
+## API (M06)
+
+| Endpoint | Access | Notes |
+|---|---|---|
+| `GET /payments/:id` · `POST /payments/:id/attempts` (Idempotency-Key) · `POST /payments/:id/verify` · `GET /me/payments` | payer | The pay page and the result page; success is decided by the server (validation API), never by the browser |
+| `POST /webhooks/sslcommerz` · `GET`/`POST /payments/return/sslcommerz` | gateway | IPN stored once per event and re-validated; the return verifies, then 303s to `WEB_APP_URL/pay/:id/result` |
+| `POST /admin/payments/test-charges` (Idempotency-Key) | master, `PAYMENTS_TEST_CHARGES` | Dev and staging only |
+| `GET /admin/payments` · `/admin/payments/:id` · `/admin/payments/config` | `view_payouts` or master | Detail has attempts, refunds, the hold and ledger postings |
+| `POST /admin/refunds` (Idempotency-Key) · `GET /admin/refunds` · `POST /admin/refunds/:id/approve` · `/reject` | `refund_small` (up to `refunds.staff_limit_poisha`) or master; decisions need step-up `refund.large` | `202 pending_master` when escalated |
+| `GET /admin/ledger/accounts` · `/accounts/:id/entries` · `/transactions/:id` · `/trial-balance` · `/invariants` | `view_payouts` or master | Balances are computed from entries |
+| `GET /admin/escrow` · `POST /admin/escrow/:id/release` · `/freeze` · `/unfreeze` | read: `view_payouts`; actions: master + step-up `escrow.manage` | |
+| `GET /admin/reconciliation/runs` · `/runs/:id/items` · `POST /admin/reconciliation/runs` · `/items/:id/resolve` | read: `view_payouts`; run and resolve: master | One run per provider and Dhaka business day |
+
+**Taking money in a module:** register the purpose in [`payments.purposes.js`](src/modules/payments/payments.purposes.js) (vertical, escrow account, pooled or not) and, if a late capture must be refused, `purposes.register(purpose, { onCaptured })`. Then call `payments.createIntent({ purpose, purposeId, payerId, amount, title, payeeId | groupRef, releaseRule, idempotencyKey })` at obligation time (the fee is snapshotted then), react to `payment.succeeded` / `payment.failed` / `payment.expired`, and use `escrow.releaseInTx`, `refunds.createInTx` or `escrow.settlePool`. Money only moves through `ledger.post` with a balanced, idempotent set of lines.
+
+## Differences from the M06 spec
+
+| Spec | Now | Why |
+|---|---|---|
+| Deferred constraint trigger for balanced transactions | Entries written first, the header last; a BEFORE INSERT trigger on `ledger_transactions` sums the entries; entries for a posted transaction are refused; nightly check for stray entries | MySQL has no deferred constraints |
+| `REVOKE UPDATE, DELETE` grants | BEFORE UPDATE/DELETE triggers on all three ledger tables (plus the model guards) | Same pattern as `audit_logs`; grants need a separate migration user (Q140) |
+| `payment_purpose` Postgres ENUM | VARCHAR validated by a code registry (`payments.purposes.js`) | New purposes need no migration |
+| Partial unique index "one in-flight attempt" | Stored generated column `inflight_payment_id` with a UNIQUE key | No partial indexes in MySQL |
+| Pool settlement posts Dr subsidy / Cr escrow first, then pays out of escrow | One posting: Dr each hold + Dr `prize_subsidy_expense` / Cr payables + Cr `fee_revenue:esports` | Same effect on every account; escrow never goes negative either way |
+| Refund statuses | Adds `rejected` (master rejects an escalation) and a `source` (escrow, goodwill, suspense); `kind` adds `amount_mismatch` and `goodwill` | Spec had no reject path or money source |
+| Daily settlement-file reconciliation | Query-based (validation and refund status per attempt and refund of the day); settlement and MDR import later | SSLCommerz has no settlement API (open question) |
+| bKash Tokenized, Nagad, saved wallets (FR-21) | Not yet; SSLCommerz covers bKash, Nagad and cards | Q9: aggregator first |
+| Off-platform collections, COD, split shares, fee invoices (FR-15, FR-16, FR-17, FR-20) | Not yet | Built with M10 and M13, their producers |
+| Manual ledger adjustments (four-eyes) | Reversals only | With M07 |
 
 ## Differences from the M01 spec
 
