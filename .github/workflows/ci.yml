@@ -59,4 +59,8 @@ jobs:
           DATABASE_URL: postgres://kriraghor:kriraghor@127.0.0.1:5432/kriraghor_test
           REDIS_URL: redis://127.0.0.1:6379
           NODE_ENV: test
+          JWT_ACCESS_SECRET: test_jwt_access_secret_key_123456789
+          JWT_SPECIAL_SECRET: test_jwt_special_secret_key_123456789
+          DATA_ENCRYPTION_KEY: test_data_encryption_key_32_bytes_long_abc
+          OTP_HASH_SECRET: test_otp_hash_secret_key_123456789
         run: npm test
