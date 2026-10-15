@@ -11,11 +11,19 @@ const clients = new Set();
  * connections, and BullMQ requires maxRetriesPerRequest: null.
  */
 function createRedis(name, { bullmq = false } = {}) {
-  const client = new IORedis(config.redis.url, {
+  // Always fallback to process.env.REDIS_URL if config.redis.url is not set properly
+  const redisUrl = process.env.REDIS_URL || config?.redis?.url || 'redis://127.0.0.1:6379';
+
+  const isTls = redisUrl.startsWith('rediss://');
+
+  const client = new IORedis(redisUrl, {
     connectionName: `kriraghor:${name}`,
     maxRetriesPerRequest: bullmq ? null : 3,
     enableReadyCheck: true,
+    // Add TLS support if using secure Redis (rediss://)
+    ...(isTls && { tls: { rejectUnauthorized: false } }),
   });
+
   client.on('error', (err) => logger.warn({ err: err.message, redis: name }, 'redis error'));
   clients.add(client);
   client.once('end', () => clients.delete(client));
@@ -36,6 +44,8 @@ async function pingRedis(timeoutMs = 1000) {
   });
   try {
     return (await Promise.race([getRedis().ping(), timeout])) === 'PONG';
+  } catch (err) {
+    return false;
   } finally {
     clearTimeout(timer);
   }
