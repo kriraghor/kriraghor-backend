@@ -4,6 +4,7 @@ const { User, UserRole, StaffMember, StaffPermission, sequelize } = require('../
 const { E, AppError } = require('../../common/errors');
 const { ROLES, PERMISSION_LIST, MASTER_ONLY_PERMISSIONS } = require('../../common/enums');
 const audit = require('../audit/audit.service');
+const events = require('../events/events.service');
 const sessions = require('../auth/session.service');
 const authz = require('../auth/authz.service');
 const { maskPhone, maskEmail } = require('../../common/identifiers');
@@ -72,6 +73,7 @@ async function invite(principal, { userId, employeeId, team, permissions = [] },
     await authz.bumpVersion(userId, { transaction });
     await sessions.revokeAllForUser(userId, 'permission_change', { transaction });
     await audit.record({ action: 'staff.invited', actor: principal, entityType: 'user', entityId: userId, after: { employeeId, team, permissions }, req }, { transaction });
+    await events.publish(transaction, { name: 'staff.invited', aggregateType: 'user', aggregateId: userId, payload: { userId }, actor: principal, req });
     return { userId, status: 'invited', permissions };
   });
 }
@@ -92,9 +94,12 @@ async function setPermissions(principal, { changes, reason }, req) {
       if (staff.isMaster) throw E.conflict('MASTER_PERMISSIONS_FIXED', 'Master admins hold every permission');
 
       let changed = false;
+      const added = [];
+      const removed = [];
       for (const p of change.grant || []) {
         if (await grant(change.userId, p, principal.id, transaction)) {
           changed = true;
+          added.push(p);
           applied += 1;
           await audit.record({ action: 'staff.permission_granted', actor: principal, entityType: 'user', entityId: change.userId, before: { [p]: false }, after: { [p]: true }, meta: { reason }, req }, { transaction });
         }
@@ -102,6 +107,7 @@ async function setPermissions(principal, { changes, reason }, req) {
       for (const p of change.revoke || []) {
         if (await revoke(change.userId, p, principal.id, transaction)) {
           changed = true;
+          removed.push(p);
           applied += 1;
           await audit.record({ action: 'staff.permission_revoked', actor: principal, entityType: 'user', entityId: change.userId, before: { [p]: true }, after: { [p]: false }, meta: { reason }, req }, { transaction });
         }
@@ -109,6 +115,7 @@ async function setPermissions(principal, { changes, reason }, req) {
       if (changed) {
         await authz.bumpVersion(change.userId, { transaction });
         sessionsRevoked += await sessions.revokeAllForUser(change.userId, 'permission_change', { transaction });
+        await events.publish(transaction, { name: 'staff.permissions_changed', aggregateType: 'user', aggregateId: change.userId, payload: { userId: change.userId, added, removed }, actor: principal, req });
       }
     }
     return { applied, sessionsRevoked };
@@ -130,6 +137,7 @@ async function offboard(principal, userId, { note }, req) {
     await authz.bumpVersion(userId, { transaction });
     await sessions.revokeAllForUser(userId, 'admin', { transaction });
     await audit.record({ action: 'staff.offboarded', actor: principal, entityType: 'user', entityId: userId, meta: { note }, req }, { transaction });
+    await events.publish(transaction, { name: 'staff.offboarded', aggregateType: 'user', aggregateId: userId, payload: { userId }, actor: principal, req });
     return { status: 'offboarded' };
   });
 }

@@ -5,6 +5,7 @@ const google = require('../../providers/google');
 const { E } = require('../../common/errors');
 const { ROLES, SELF_SERVICE_ROLES } = require('../../common/enums');
 const audit = require('../audit/audit.service');
+const events = require('../events/events.service');
 const otp = require('./otp.service');
 const limits = require('./limits');
 const passwords = require('./password');
@@ -150,6 +151,7 @@ async function signup({ signupToken, displayName, username, password, locale, ro
     if (role) await UserRole.create({ userId: created.id, role, status: 'applied', meta: roleMeta ?? null }, { transaction });
 
     await audit.record({ action: 'user.registered', actor: { id: created.id }, entityType: 'user', entityId: created.id, meta: { via: viaGoogle ? 'google' : target.type, role: role ?? null }, req }, { transaction });
+    await events.publish(transaction, { name: 'user.registered', aggregateType: 'user', aggregateId: created.id, payload: { userId: created.id, roles: [ROLES.MEMBER, ...(role ? [role] : [])] }, actor: { id: created.id }, req });
     return created;
   });
 
@@ -301,7 +303,9 @@ async function totpActivate({ challengeToken, code }, req) {
   await sequelize.transaction(async (transaction) => {
     await staff.update({ totpEnabledAt: new Date(), totpLastStep: step, status: staff.status === 'invited' ? 'active' : staff.status }, { transaction });
     await authz.bumpVersion(user.id, { transaction });
+    const firstActivation = staff.status === 'invited';
     await audit.record({ action: 'staff.totp_enabled', actor: { id: user.id }, entityType: 'staff_member', entityId: staff.id, req }, { transaction });
+    if (firstActivation) await events.publish(transaction, { name: 'staff.activated', aggregateType: 'user', aggregateId: user.id, payload: { userId: user.id }, actor: { id: user.id }, req });
   });
   await user.reload();
   return issueSession(user, req, { twoFactorAt: new Date(), method: `${method}+totp`, audience: AUDIENCES.ADMIN });
@@ -326,7 +330,7 @@ async function totpVerify({ challengeToken, code }, req) {
 // ---------------------------------------------------------------------------
 
 // esports.money (Q128): cancelling an esports tournament with refunds and finalising prizes (M21 §3).
-const STEP_UP_SCOPES = ['settings.write', 'staff.write', 'payout.approve', 'refund.large', 'user.ban', 'audit.export', 'twofa.reset', 'esports.money'];
+const STEP_UP_SCOPES = ['settings.write', 'staff.write', 'payout.approve', 'refund.large', 'user.ban', 'audit.export', 'twofa.reset', 'esports.money', 'events.replay'];
 
 async function stepUp(principal, sessionId, { scope, code }, req) {
   if (!STEP_UP_SCOPES.includes(scope)) throw E.badRequest('STEP_UP_SCOPE_INVALID', 'Unknown step-up scope');

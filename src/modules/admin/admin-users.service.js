@@ -6,6 +6,7 @@ const { E } = require('../../common/errors');
 const { ROLES, ADMIN_ROLES, ROLE_TRANSITIONS } = require('../../common/enums');
 const { hmac } = require('../../common/crypto');
 const audit = require('../audit/audit.service');
+const events = require('../events/events.service');
 const sessions = require('../auth/session.service');
 const authz = require('../auth/authz.service');
 const { serializeUserForAdmin } = require('../users/users.serializer');
@@ -104,6 +105,7 @@ async function suspend(principal, userId, { reasonCode, note, until }, req) {
     await authz.bumpVersion(userId, { transaction });
     const revoked = await sessions.revokeAllForUser(userId, 'sanction', { transaction });
     await audit.record({ action: 'user.suspended', actor: principal, entityType: 'user', entityId: userId, before: { status: 'active' }, after: { status: 'suspended', until: until ?? null }, meta: { reasonCode, sanctionId: sanction.id }, req }, { transaction });
+    await events.publish(transaction, { name: 'user.suspended', aggregateType: 'user', aggregateId: userId, payload: { userId, sanctionId: sanction.id, until: until ?? null }, actor: principal, req });
     return { sanctionId: sanction.id, status: 'suspended', sessionsRevoked: revoked };
   });
 }
@@ -122,6 +124,7 @@ async function ban(principal, userId, { reasonCode, note }, req) {
     await authz.bumpVersion(userId, { transaction });
     const revoked = await sessions.revokeAllForUser(userId, 'sanction', { transaction });
     await audit.record({ action: 'user.banned', actor: principal, entityType: 'user', entityId: userId, before: { status: before }, after: { status: 'banned' }, meta: { reasonCode, sanctionId: sanction.id }, req }, { transaction });
+    await events.publish(transaction, { name: 'user.banned', aggregateType: 'user', aggregateId: userId, payload: { userId, sanctionId: sanction.id }, actor: principal, req });
     return { sanctionId: sanction.id, status: 'banned', sessionsRevoked: revoked };
   });
 }
@@ -140,6 +143,7 @@ async function restore(principal, userId, { note }, req, { allowBan = false } = 
     await target.update({ status: 'active' }, { transaction });
     await authz.bumpVersion(userId, { transaction });
     await audit.record({ action: 'user.restored', actor: principal, entityType: 'user', entityId: userId, before: { status: before }, after: { status: 'active' }, meta: { note }, req }, { transaction });
+    await events.publish(transaction, { name: 'user.restored', aggregateType: 'user', aggregateId: userId, payload: { userId }, actor: principal, req });
     return { status: 'active' };
   });
 }
@@ -201,6 +205,12 @@ async function setRoleStatus(principal, userId, role, { status, reasonCode, note
     }
     await authz.bumpVersion(userId, { transaction });
     await audit.record({ action: `user_role.${status}`, actor: principal, entityType: 'user_role', entityId: row.id, before: { status: before }, after: { status }, meta: { role, reasonCode }, req }, { transaction });
+    // M04 §6.3 user_role.* events (in_review and changes_requested belong to M02, no event).
+    const roleEvent = { active: before === 'suspended' ? 'user_role.reinstated' : 'user_role.activated', rejected: 'user_role.rejected', suspended: 'user_role.suspended' }[status];
+    if (roleEvent) {
+      const payload = ['user_role.rejected', 'user_role.suspended'].includes(roleEvent) ? { userId, role, reasonCode: reasonCode ?? null } : { userId, role };
+      await events.publish(transaction, { name: roleEvent, aggregateType: 'user_role', aggregateId: row.id, payload, actor: principal, req });
+    }
     return row.toPublic();
   });
 }
@@ -218,6 +228,7 @@ async function liftExpiredSuspensions() {
         await user.update({ status: 'active' }, { transaction });
         await authz.bumpVersion(user.id, { transaction });
         await audit.record({ action: 'user.restored', actor: { id: null, role: 'system' }, entityType: 'user', entityId: user.id, after: { status: 'active' }, meta: { sanctionId: s.id, reason: 'expired' } }, { transaction });
+        await events.publish(transaction, { name: 'user.restored', aggregateType: 'user', aggregateId: user.id, payload: { userId: user.id } });
         lifted += 1;
       }
     });

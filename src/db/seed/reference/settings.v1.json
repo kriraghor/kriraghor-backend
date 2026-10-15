@@ -1,6 +1,6 @@
 {
-  "seedVersion": 1,
-  "source": "M03 §6.4 with the v3 business rules (Oct 2026), M21 §6.1 and M01 §6.4. Money in poisha, percentages as numbers.",
+  "seedVersion": 2,
+  "source": "M03 §6.4 with the v3 business rules (Oct 2026), M21 §6.1 and M01 §6.4; v2 adds the M04 events.* and audit.* operations keys. Money in poisha, percentages as numbers.",
   "settings": [
     { "key": "fees.ground_booking_pct", "category": "fees", "type": "decimal", "value": 5, "unit": "%", "min": 0, "max": 20, "approval": "four_eyes", "public": true, "en": "Ground booking fee", "bn": "মাঠ বুকিং ফি", "why": "Charged on the full booking value and deducted from the online money at release." },
     { "key": "fees.shop_commission_pct", "category": "fees", "type": "decimal", "value": 5, "unit": "%", "min": 0, "max": 25, "approval": "four_eyes", "en": "Shop commission on new gear", "bn": "নতুন পণ্যে দোকানের কমিশন" },
@@ -143,6 +143,14 @@
     { "key": "ratelimit.otp_per_hour", "category": "security", "type": "int", "value": 20, "min": 1, "max": 100000, "en": "Code requests per IP per hour", "bn": "ঘণ্টায় IP প্রতি কোড অনুরোধ" },
     { "key": "ratelimit.credential_per_15min", "category": "security", "type": "int", "value": 30, "min": 1, "max": 100000, "en": "Sign-in attempts per IP per 15 minutes", "bn": "১৫ মিনিটে IP প্রতি সাইন-ইন চেষ্টা" },
 
-    { "key": "sim.elasticity_pct_per_point", "category": "simulator", "type": "json", "value": { "grounds": 2.5, "market": 3, "hire": 2, "tournaments": 1.5, "esports": 2, "gym": 2 }, "en": "Volume change per fee point (simulator)", "bn": "প্রতি ফি পয়েন্টে লেনদেনের পরিবর্তন (সিমুলেটর)" }
+    { "key": "sim.elasticity_pct_per_point", "category": "simulator", "type": "json", "value": { "grounds": 2.5, "market": 3, "hire": 2, "tournaments": 1.5, "esports": 2, "gym": 2 }, "en": "Volume change per fee point (simulator)", "bn": "প্রতি ফি পয়েন্টে লেনদেনের পরিবর্তন (সিমুলেটর)" },
+
+    { "key": "events.relay_batch_size", "category": "operations", "type": "int", "value": 200, "min": 10, "max": 2000, "en": "Events relayed per batch", "bn": "প্রতি ব্যাচে পাঠানো ইভেন্ট" },
+    { "key": "events.consumer_max_attempts", "category": "operations", "type": "int", "value": 10, "min": 1, "max": 25, "en": "Delivery attempts before an event is dead-lettered", "bn": "ডেড-লেটারের আগে ইভেন্ট পাঠানোর চেষ্টা" },
+    { "key": "events.backoff_cap_sec", "category": "operations", "type": "int", "value": 900, "unit": "sec", "min": 10, "max": 3600, "en": "Longest wait between delivery attempts", "bn": "দুই চেষ্টার মাঝে সর্বোচ্চ অপেক্ষা" },
+    { "key": "audit.query_max_days", "category": "operations", "type": "int", "value": 366, "unit": "days", "min": 1, "max": 731, "en": "Longest audit log search range", "bn": "অডিট লগ খোঁজার সর্বোচ্চ সময়সীমা" },
+    { "key": "audit.export_max_days", "category": "operations", "type": "int", "value": 366, "unit": "days", "min": 1, "max": 731, "en": "Longest audit export range", "bn": "অডিট এক্সপোর্টের সর্বোচ্চ সময়সীমা" },
+    { "key": "audit.export_link_hours", "category": "operations", "type": "int", "value": 24, "unit": "hours", "min": 1, "max": 168, "en": "Audit export download link lasts", "bn": "অডিট এক্সপোর্ট লিংকের মেয়াদ" },
+    { "key": "audit.chain_seal_batch", "category": "operations", "type": "int", "value": 500, "min": 10, "max": 5000, "en": "Audit rows sealed per batch", "bn": "প্রতি ব্যাচে সিল করা অডিট সারি" }
   ]
 }

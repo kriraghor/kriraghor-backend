@@ -10,6 +10,7 @@ const { sequelize } = require('./models');
 const settings = require('./modules/settings/settings.service');
 const { closeQueues } = require('./jobs/queues');
 const { registerSchedules, startWorkers } = require('./jobs/runtime');
+const subscriptions = require('./modules/events/subscriptions');
 
 async function main() {
   initMetrics('worker');
@@ -21,6 +22,8 @@ async function main() {
   // M03 boot check: refuse to start before the release step has seeded every setting.
   await settings.bootCheck();
   await settings.subscribe();
+  // M04: every event consumer must be known before the relay and the events queue start.
+  subscriptions.registerAll();
   const schedules = await registerSchedules();
   const workers = startWorkers();
   // Closing a worker waits for its running jobs to finish.

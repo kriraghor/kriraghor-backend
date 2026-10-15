@@ -8,6 +8,9 @@ const { createRedis } = require('../common/redis');
 const QUEUES = Object.freeze({
   IDENTITY: 'identity',
   SETTINGS: 'settings',
+  OUTBOX: 'outbox', // outbox.relay
+  EVENTS: 'events', // events.consume (one job per event and consumer)
+  AUDIT: 'audit', // chain seal and verify, exports
 });
 
 const prefix = `${config.redis.prefix}:bull`;

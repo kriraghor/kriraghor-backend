@@ -3,6 +3,7 @@
 const { User, OAuthIdentity, sequelize } = require('../../models');
 const { E } = require('../../common/errors');
 const audit = require('../audit/audit.service');
+const events = require('../events/events.service');
 const otp = require('../auth/otp.service');
 const google = require('../../providers/google');
 
@@ -40,6 +41,7 @@ async function confirmEmailChange(principal, { email, code }, req) {
     const before = user.email;
     await user.update({ email, emailVerifiedAt: new Date() }, { transaction });
     await audit.record({ action: 'user.email_changed', actor: principal, entityType: 'user', entityId: user.id, before: { email: before }, after: { email }, req }, { transaction });
+    await events.publish(transaction, { name: 'user.email_changed', aggregateType: 'user', aggregateId: user.id, payload: { userId: user.id }, actor: principal, req });
   });
   return { email, verified: true };
 }

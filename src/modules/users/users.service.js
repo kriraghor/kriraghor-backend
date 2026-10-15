@@ -4,6 +4,7 @@ const { UserRole, sequelize } = require('../../models');
 const { E } = require('../../common/errors');
 const { SELF_SERVICE_ROLES } = require('../../common/enums');
 const audit = require('../audit/audit.service');
+const events = require('../events/events.service');
 const passwords = require('../auth/password');
 const sessions = require('../auth/session.service');
 const authz = require('../auth/authz.service');
@@ -47,6 +48,7 @@ async function applyForRole(principal, { role, meta }, req) {
     }
     await authz.bumpVersion(principal.id, { transaction });
     await audit.record({ action: 'user_role.applied', actor: principal, entityType: 'user_role', entityId: row.id, after: { role, attempt: row.attempt }, req }, { transaction });
+    await events.publish(transaction, { name: 'user_role.applied', aggregateType: 'user_role', aggregateId: row.id, payload: { userId: principal.id, role }, actor: principal, req });
     return row.toPublic();
   });
 }
@@ -61,7 +63,8 @@ async function withdrawRole(principal, role, req) {
     const before = row.status;
     await row.update({ status: 'withdrawn' }, { transaction });
     await authz.bumpVersion(principal.id, { transaction });
-    await audit.record({ action: 'user_role.withdrawn', actor: principal, entityType: 'user_role', entityId: row.id, before: { status: before }, after: { status: 'withdrawn' }, req }, { transaction });
+    await audit.record({ action: 'user_role.withdrawn', actor: principal, entityType: 'user_role', entityId: row.id, before: { status: before }, after: { status: 'withdrawn' }, meta: { role }, req }, { transaction });
+    await events.publish(transaction, { name: 'user_role.withdrawn', aggregateType: 'user_role', aggregateId: row.id, payload: { userId: principal.id, role }, actor: principal, req });
     return row.toPublic();
   });
 }
@@ -102,6 +105,7 @@ async function revokeSession(principal, sessionId, req) {
   await sequelize.transaction(async (transaction) => {
     await sessions.revokeFamilyOf(target.id, 'logout', { transaction });
     await audit.record({ action: 'session.revoked', actor: principal, entityType: 'session', entityId: target.id, req }, { transaction });
+    await events.publish(transaction, { name: 'session.revoked', aggregateType: 'user', aggregateId: principal.id, payload: { userId: principal.id, cause: 'logout', count: 1 }, actor: principal, req });
   });
 }
 

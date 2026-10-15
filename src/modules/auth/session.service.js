@@ -6,6 +6,7 @@ const { Session, sequelize } = require('../../models');
 const { sha256, randomToken } = require('../../common/crypto');
 const { E } = require('../../common/errors');
 const audit = require('../audit/audit.service');
+const events = require('../events/events.service');
 
 // Admin sessions (ADR-004) live auth.admin_refresh_ttl_hours; customer sessions auth.refresh_ttl_days.
 const { refreshTtlMs } = require('./limits');
@@ -124,6 +125,8 @@ async function revokeAllForUser(userId, cause, { exceptFamilyId, transaction } =
   const where = { userId, revokedAt: null };
   if (exceptFamilyId) where.familyId = { [Op.ne]: exceptFamilyId };
   const [n] = await Session.update({ revokedAt: new Date(), revokeCause: cause }, { where, transaction });
+  // M04 §6.3 session.revoked → M08 ("you were signed out"). Token rotation never comes through here.
+  if (n > 0) await events.publish(transaction ?? null, { name: 'session.revoked', aggregateType: 'user', aggregateId: userId, payload: { userId, cause, count: n } });
   return n;
 }
 

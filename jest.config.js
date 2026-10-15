@@ -13,5 +13,9 @@ module.exports = {
   coverageThreshold: {
     './src/modules/settings/settings.validate.js': FULL,
     './src/modules/catalog/catalog.validate.js': FULL,
+    // M04 redactor, retry backoff and event registry rules.
+    './src/modules/audit/audit.redact.js': FULL,
+    './src/modules/events/events.backoff.js': FULL,
+    './src/modules/events/catalog.js': { branches: 100 },
   },
 };

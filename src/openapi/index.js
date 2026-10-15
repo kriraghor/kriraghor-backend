@@ -39,6 +39,8 @@ function buildOpenApi() {
       { name: 'admin', description: 'Staff desks' },
       { name: 'settings', description: 'Platform settings, history and four-eyes change requests (M03)' },
       { name: 'catalog', description: 'Reference catalogues: esports games, modes, maps and points presets (M03)' },
+      { name: 'audit', description: 'Audit log search, entity history and exports (M04)' },
+      { name: 'events', description: 'Outbox health, dead letters and replay (M04)' },
     ],
   });
 }
