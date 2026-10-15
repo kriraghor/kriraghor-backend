@@ -6,7 +6,7 @@ Request names refer to the **"Kriraghor API: M03 Settings & esports catalogue"**
 
 ## 0. Setup
 - [ ] `docker compose up -d`. MySQL runs with `--log-bin-trust-function-creators=1` (the append-only triggers need it; Q140).
-- [ ] `npm run release`. This applies the three M03 migrations and prints `reference seed done` with `settings: 137, esports: 23` the first time, and `0, 0` after that.
+- [ ] `npm run release`. This applies the three M03 migrations and prints `reference seed done` with `settings: 144, esports: 23, templates: 48` the first time, and `0, 0` after that.
 - [ ] `npm test` → **199 passed**, and the coverage gate passes (100% on the settings and catalogue validators). 🤖 marks cases only the tests cover.
 - [ ] `node postman/run-m03.js` → **22 requests, 37 assertions, 0 failed**. It resets `kriraghor_test`, signs in two masters and pre-mints step-up tokens.
 
@@ -20,7 +20,7 @@ Request names refer to the **"Kriraghor API: M03 Settings & esports catalogue"**
 ## 2. Admin reads and guards (M03 §3, FR-15)
 | # | Do | Expect |
 |---|---|---|
-| 2.1 | **All settings** (master) | 137 settings with label (EN + BN), unit, bounds, approval and version |
+| 2.1 | **All settings** (master) | 144 settings with label (EN + BN), unit, bounds, approval and version |
 | 2.2 | `manage_catalog` staff read settings and history | `200`; proposing returns `403 MASTER_REQUIRED` 🤖 |
 | 2.3 | Staff without `manage_catalog`, and a customer token | `403 PERMISSION_REQUIRED`, `401 TOKEN_AUDIENCE_INVALID` 🤖 |
 | 2.4 | **Propose WITHOUT step-up** | `403 STEP_UP_REQUIRED` |

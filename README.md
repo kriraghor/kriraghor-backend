@@ -8,8 +8,9 @@ The specification for every module is in [`../kriraghor-docs/modules`](../krirag
 |---|---|
 | **M01 Identity and Access**: authentication and authorisation | ✅ Implemented: [`src/modules/auth`](src/modules/auth), [`src/modules/users`](src/modules/users), [`src/modules/admin`](src/modules/admin). Separate admin sessions per [ADR-004](../kriraghor-docs/decisions/ADR-004-cross-subdomain-auth.md) |
 | **Platform (0B)**: Kubernetes readiness | ✅ Three entrypoints, Redis, BullMQ, Socket.IO, probes, metrics, OpenAPI, Docker image ([ADR-002](../kriraghor-docs/decisions/ADR-002-polyrepo-api-contracts.md), [ADR-003](../kriraghor-docs/decisions/ADR-003-kubernetes-deployment.md)) |
-| **M03 Settings and esports catalogue** | ✅ Step 1: [`src/modules/settings`](src/modules/settings) (137 platform settings, history, four-eyes change requests, scheduled changes, SettingsService with Redis cache bust) and [`src/modules/catalog`](src/modules/catalog) (esports games, modes, maps, versioned points presets). Sports, locations, hire and item catalogues come with their modules |
+| **M03 Settings and esports catalogue** | ✅ Step 1: [`src/modules/settings`](src/modules/settings) (144 platform settings, history, four-eyes change requests, scheduled changes, SettingsService with Redis cache bust) and [`src/modules/catalog`](src/modules/catalog) (esports games, modes, maps, versioned points presets). Sports, locations, hire and item catalogues come with their modules |
 | **M04 Audit log and events** | ✅ [`src/modules/audit`](src/modules/audit) (redacted, append-only audit log with a hash chain sealed after commit, action registry with EN/BN summaries, search, entity history, CSV export) and [`src/modules/events`](src/modules/events) (event registry, transactional outbox, relay, inbox, retries, dead letters, replay). M01 and M03 publish their events |
+| **M08 Notifications core** | ✅ [`src/modules/notifications`](src/modules/notifications): catalogue router on M04 events, versioned EN/BN templates, preferences with mandatory categories, quiet hours, Redis SMS rate limits, dedupe, retries, in-app (bell, realtime), email and sandbox SMS, masked SMS log, OTP through M08. Push, broadcasts and the real SMS gateway come later (M21, Q59). **Phase 1 exit check passes** |
 | Everything else | Not started |
 
 ## Quick start
@@ -94,6 +95,8 @@ Expected result: every test green and the coverage gate (100% on the settings an
 
 See [`postman/M01-acceptance-checklist.md`](postman/M01-acceptance-checklist.md) for the full sign-off list.
 
+**M08 (notifications, the Phase 1 exit check)** runs unattended: `node postman/run-m08.js` (two masters with emails, a member and an in-process worker; 14 requests, 26 assertions). Checklist: [`postman/M08-acceptance-checklist.md`](postman/M08-acceptance-checklist.md).
+
 **M04 (audit log and events)** runs unattended the same way: `node postman/run-m04.js` (it also runs a small in-process worker for the relay, consumers and exports). Checklist: [`postman/M04-acceptance-checklist.md`](postman/M04-acceptance-checklist.md).
 
 **M03 (settings and esports catalogue)** runs unattended: `node postman/run-m03.js` resets the test database, signs in two masters, pre-mints step-up tokens and runs [`postman/kriraghor-settings.postman_collection.json`](postman/kriraghor-settings.postman_collection.json) with the Postman CLI (22 requests, 37 assertions). Checklist: [`postman/M03-acceptance-checklist.md`](postman/M03-acceptance-checklist.md).
@@ -152,9 +155,10 @@ src/
    ├─ settings/           M03 platform settings: SettingsService, validators, change requests (four-eyes), history
    ├─ catalog/            M03 esports catalogue: games, modes, maps, points presets
    ├─ events/             M04 event registry, outbox publish, relay, consumers/inbox, dead letters, replay, ops API
-   └─ audit/              M04 audit writer, action registry, redactor, hash chain, search, exports
+   ├─ audit/              M04 audit writer, action registry, redactor, hash chain, search, exports
+   └─ notifications/      M08 catalogue, router, templates, prefs, delivery (in-app, email, SMS), bell API, delivery log
 scripts/                  release.js (migrate + reference seed), create-master.js (first master, CLI only), openapi.js (writes openapi.json)
-src/db/seed/              M03 reference seed (versioned JSON: settings, esports catalogue)
+src/db/seed/              Reference seed (versioned JSON: settings, esports catalogue, message templates)
 postman/                  collection builder, collection, guide and acceptance checklist
 tests/                    Jest unit and Supertest e2e (real MySQL test database and Redis)
 ```
@@ -243,6 +247,17 @@ Every process (api, realtime, worker) refuses to start until every seeded settin
 | `POST /admin/events/:id/replay` | master + step-up `events.replay` | `EVENT_NOT_REPLAYABLE` once processed |
 
 **Writing code that changes state:** call `audit.record(entry, { transaction })` with a registered action ([`audit.actions.js`](src/modules/audit/audit.actions.js)) and `events.publish(transaction, event)` with a registered event ([`catalog.js`](src/modules/events/catalog.js)); payloads hold IDs, codes, amounts and statuses only. Consumers register in [`subscriptions.js`](src/modules/events/subscriptions.js) with `onEvent(name, consumer, handler)` and get `(event, { transaction })`; they run at least once, so keep them idempotent beyond the inbox.
+
+## API (M08)
+
+| Endpoint | Access | Notes |
+|---|---|---|
+| `GET /me/notifications?unread&category&cursor&limit` · `GET /me/notifications/unread-count` · `POST /me/notifications/read` | signed-in user | The list includes `unreadCount`; read takes `{ids}` or `{all: true, before}`. Realtime `notification.created` / `notification.read` to room `user:{id}` |
+| `GET /admin/me/notifications…` (same three) | staff (admin token) | Kept apart from the customer audience (ADR-004) |
+| `GET` / `PUT /me/notification-prefs` | signed-in user | Category × channel matrix with mandatory cells locked (`PREF_MANDATORY`), quiet hours |
+| `GET /admin/notifications/deliveries?userId&phoneSuffix&code&status` | `manage_users` or master | Delivery log, recipients masked |
+
+**Sending a notification:** add a code to [`notify.catalogue.js`](src/modules/notifications/notify.catalogue.js) (event, category, recipients, channels, variables) and active EN and BN templates to [`templates.v1.json`](src/db/seed/reference/templates.v1.json); the contract test fails until both exist and every SMS fits `notify.sms_max_segments`. Producers only publish their M04 event. OTPs use `notifications.sendOtp()` (priority route, code redacted in `sms_log`).
 
 ## Differences from the M01 spec
 
