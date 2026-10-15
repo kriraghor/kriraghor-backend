@@ -5,8 +5,8 @@ const config = require('../../config');
 const { OtpCode, sequelize } = require('../../models');
 const { hmac, randomDigits, timingSafeEqualHex } = require('../../common/crypto');
 const { E } = require('../../common/errors');
-const sms = require('../../providers/sms');
-const email = require('../../providers/email');
+// M08-FR-08: OTPs go out through the notification service's priority route (logged, code redacted).
+const notifications = require('../notifications/notify.service');
 const limits = require('./limits');
 
 // Limits come from platform_settings (auth.otp_*), read per call so a change applies at once.
@@ -94,8 +94,11 @@ async function issue({ target, purpose, ip, locale = 'en', deliver = true }) {
   });
 
   if (deliver) {
-    if (target.type === 'phone') await sms.send({ to: target.value, text: (MESSAGES[locale] || MESSAGES.en)(code, cfg.ttlSeconds) });
-    else await email.send({ to: target.value, ...emailBody(code, locale, cfg.ttlSeconds) });
+    await notifications.sendOtp({
+      target,
+      text: (MESSAGES[locale] || MESSAGES.en)(code, cfg.ttlSeconds),
+      email: emailBody(code, locale, cfg.ttlSeconds),
+    });
   }
   return { expiresInSeconds: cfg.ttlSeconds, resendInSeconds: cfg.resendCooldownSeconds };
 }

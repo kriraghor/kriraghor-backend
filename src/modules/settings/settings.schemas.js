@@ -13,7 +13,7 @@ const settingValue = z
   .meta({ description: 'Typed by the setting: number, bool, string (enum, HH:mm), list, or a map of numbers' });
 
 const REQUEST_STATUS = ['proposed', 'approved', 'applied', 'rejected', 'withdrawn', 'superseded'];
-const CATEGORIES = ['fees', 'booking', 'market', 'hire', 'tournament', 'esports', 'gym', 'moderation', 'money_limits', 'risk', 'accounts', 'security', 'simulator', 'operations'];
+const CATEGORIES = ['fees', 'booking', 'market', 'hire', 'tournament', 'esports', 'gym', 'moderation', 'money_limits', 'risk', 'accounts', 'security', 'simulator', 'operations', 'notifications'];
 
 // ---------------- requests ----------------
 const changeRequestCreate = z.object({

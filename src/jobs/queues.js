@@ -11,6 +11,7 @@ const QUEUES = Object.freeze({
   OUTBOX: 'outbox', // outbox.relay
   EVENTS: 'events', // events.consume (one job per event and consumer)
   AUDIT: 'audit', // chain seal and verify, exports
+  NOTIFY: 'notify', // M08 deliveries and their schedules
 });
 
 const prefix = `${config.redis.prefix}:bull`;

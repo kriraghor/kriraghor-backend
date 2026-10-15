@@ -11,13 +11,16 @@ const settings = require('../src/modules/settings/settings.service');
 const { seedReference } = require('../src/db/seed');
 const events = require('../src/modules/events/events.service');
 const consumers = require('../src/modules/events/events.consumers');
+const notify = require('../src/modules/notifications/notify.service');
+const notifyTemplates = require('../src/modules/notifications/notify.templates');
+const realtime = require('../src/modules/notifications/notify.realtime');
 
 const app = createApp();
 const api = () => request(app);
 const P = '/api/v1';
 
 // M03 tables are reseeded after the truncate, so every test starts from the seeded settings and catalogue.
-const TABLES = ['consumed_events', 'outbox_events', 'audit_chain', 'audit_exports', 'settings_history', 'settings_change_requests', 'platform_settings', 'esports_points_presets', 'esports_maps', 'esports_modes', 'esports_games', 'oauth_identities', 'audit_logs', 'step_up_tokens', 'user_sanctions', 'staff_permissions', 'staff_members', 'otp_codes', 'sessions', 'user_roles', 'users'];
+const TABLES = ['sms_log', 'notification_deliveries', 'notifications', 'notification_prefs', 'message_templates', 'consumed_events', 'outbox_events', 'audit_chain', 'audit_exports', 'settings_history', 'settings_change_requests', 'platform_settings', 'esports_points_presets', 'esports_maps', 'esports_modes', 'esports_games', 'oauth_identities', 'audit_logs', 'step_up_tokens', 'user_sanctions', 'staff_permissions', 'staff_members', 'otp_codes', 'sessions', 'user_roles', 'users'];
 
 async function resetDb() {
   await models.sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
@@ -31,6 +34,9 @@ async function resetDb() {
   mail.clear();
   events.clearRecorded();
   consumers.takeTestJobs();
+  notify.takeTestJobs();
+  notifyTemplates.reset();
+  realtime.clearEmitted();
 }
 
 /**
@@ -90,6 +96,24 @@ async function createSignedInMaster() {
   for (const role of ['member', 'staff', 'master_admin']) await models.UserRole.create({ userId: user.id, role, status: 'active', activatedAt: new Date() });
   await models.StaffMember.create({ userId: user.id, employeeId: `KG-M-${phoneSeq}`, team: 'Platform', isMaster: true });
   return signInStaff(phone, user.id);
+}
+
+/**
+ * Run what the worker would: relay the outbox, deliver every queued consumer job, then every queued
+ * notification delivery, until nothing is left. Returns the notification delivery results.
+ */
+async function drainEvents({ rounds = 5 } = {}) {
+  const relay = require('../src/modules/events/events.relay');
+  const results = [];
+  for (let i = 0; i < rounds; i += 1) {
+    await relay.relayOnce();
+    const jobs = consumers.takeTestJobs();
+    for (const job of jobs) await consumers.processConsume(job.data).catch(() => {});
+    const deliveries = notify.takeTestJobs();
+    for (const d of deliveries) results.push(await notify.deliver(d.data).catch((err) => ({ error: err.message })));
+    if (!jobs.length && !deliveries.length) break;
+  }
+  return results;
 }
 
 /** A second master (four-eyes approver), signed in to the admin portal. */
@@ -160,4 +184,4 @@ async function stepUp(session, scope) {
 
 const bearer = (s) => ({ Authorization: `Bearer ${s.accessToken}` });
 
-module.exports = { ADMIN_ORIGIN, WEB_ORIGIN, adminPost, cookieValue, cookieHeader, refreshWeb, api, P, models, resetDb, nextPhone, e164, lastCode, lastEmailCode, mail, allowResend, signupUser, verifyMember, totpFor, createSignedInMaster, createSecondMaster, signInStaff, stepUp, bearer, sms, settings, setSettingForTest, events, consumers };
+module.exports = { ADMIN_ORIGIN, WEB_ORIGIN, adminPost, cookieValue, cookieHeader, refreshWeb, api, P, models, resetDb, nextPhone, e164, lastCode, lastEmailCode, mail, allowResend, signupUser, verifyMember, totpFor, createSignedInMaster, createSecondMaster, signInStaff, stepUp, bearer, sms, settings, setSettingForTest, events, consumers, notify, realtime, drainEvents };

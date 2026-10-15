@@ -3,6 +3,7 @@
 const { DataTypes, Model } = require('sequelize');
 const { sequelize } = require('../db');
 const { ROLE_LIST } = require('../common/enums');
+const { uuid7 } = require('../common/uuid7');
 
 const ROLE_STATUSES = ['applied', 'documents_pending', 'in_review', 'changes_requested', 'active', 'rejected', 'suspended', 'withdrawn'];
 const PERMS = ['approve_listings', 'approve_documents', 'resolve_reports', 'refund_small', 'view_payouts', 'release_payouts', 'edit_fees', 'manage_staff', 'manage_users', 'manage_catalog', 'manage_esports'];
@@ -218,6 +219,8 @@ AuditLog.init(
     userAgent: DataTypes.STRING(512),
     requestId: DataTypes.STRING(64),
     sessionId: DataTypes.UUID,
+    // Millisecond precision in WHERE clauses too (date range filters).
+    createdAt: DataTypes.DATE(3),
   },
   { sequelize, modelName: 'AuditLog', tableName: 'audit_logs', updatedAt: false, hooks: appendOnlyGuard('audit_logs') }
 );
@@ -433,6 +436,104 @@ EsportsPointsPreset.init(
   { sequelize, modelName: 'EsportsPointsPreset', tableName: 'esports_points_presets' }
 );
 
+// ---- M08 notifications ----
+const CHANNELS = ['in_app', 'sms', 'email', 'push'];
+
+class Notification extends Model {}
+Notification.init(
+  {
+    // UUIDv7: time-ordered, so the bell's (created_at, id) cursor is stable within one millisecond.
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
+    userId: { type: DataTypes.UUID, allowNull: false },
+    code: { type: DataTypes.STRING(60), allowNull: false },
+    category: { type: DataTypes.STRING(30), allowNull: false },
+    roleContext: DataTypes.STRING(20),
+    title: { type: DataTypes.STRING(140), allowNull: false },
+    body: { type: DataTypes.STRING(500), allowNull: false },
+    link: DataTypes.STRING(300),
+    data: DataTypes.JSON,
+    locale: { type: DataTypes.ENUM('en', 'bn'), allowNull: false, defaultValue: 'en' },
+    templateVersion: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
+    sourceEventId: DataTypes.UUID,
+    dedupeKey: { type: DataTypes.STRING(200), allowNull: false, unique: true },
+    readAt: DataTypes.DATE(3),
+    archivedAt: DataTypes.DATE(3),
+    // Millisecond precision in WHERE clauses too (mark-all-read "before", cursors).
+    createdAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'Notification', tableName: 'notifications', updatedAt: false }
+);
+
+class NotificationPref extends Model {}
+NotificationPref.init(
+  {
+    userId: { type: DataTypes.UUID, primaryKey: true },
+    category: { type: DataTypes.STRING(30), primaryKey: true },
+    channel: { type: DataTypes.ENUM(...CHANNELS), primaryKey: true },
+    enabled: { type: DataTypes.BOOLEAN, allowNull: false },
+  },
+  { sequelize, modelName: 'NotificationPref', tableName: 'notification_prefs', createdAt: false }
+);
+
+class MessageTemplate extends Model {}
+MessageTemplate.init(
+  {
+    id: uuidPk,
+    code: { type: DataTypes.STRING(60), allowNull: false },
+    channel: { type: DataTypes.ENUM(...CHANNELS), allowNull: false },
+    locale: { type: DataTypes.ENUM('en', 'bn'), allowNull: false },
+    version: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
+    subject: DataTypes.STRING(160),
+    body: { type: DataTypes.TEXT, allowNull: false },
+    variables: { type: DataTypes.JSON, allowNull: false },
+    isActive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    maxSmsSegments: DataTypes.SMALLINT.UNSIGNED,
+    createdBy: DataTypes.UUID,
+  },
+  { sequelize, modelName: 'MessageTemplate', tableName: 'message_templates', updatedAt: false }
+);
+
+class NotificationDelivery extends Model {}
+NotificationDelivery.init(
+  {
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
+    notificationId: { type: DataTypes.UUID, allowNull: false },
+    userId: { type: DataTypes.UUID, allowNull: false },
+    channel: { type: DataTypes.ENUM(...CHANNELS), allowNull: false },
+    status: { type: DataTypes.ENUM('queued', 'deferred', 'sent', 'delivered', 'failed', 'rate_limited', 'suppressed'), allowNull: false, defaultValue: 'queued' },
+    deliverAt: { type: DataTypes.DATE(3), allowNull: false, defaultValue: DataTypes.NOW },
+    attempts: { type: DataTypes.SMALLINT.UNSIGNED, allowNull: false, defaultValue: 0 },
+    provider: DataTypes.STRING(20),
+    providerMessageId: DataTypes.STRING(120),
+    errorCode: DataTypes.STRING(60),
+    sentAt: DataTypes.DATE(3),
+    deliveredAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'NotificationDelivery', tableName: 'notification_deliveries' }
+);
+
+class SmsLog extends Model {}
+SmsLog.init(
+  {
+    id: uuidPk,
+    deliveryId: DataTypes.UUID,
+    route: { type: DataTypes.ENUM('otp', 'trans'), allowNull: false },
+    toPhoneHash: { type: DataTypes.CHAR(64), allowNull: false },
+    toPhoneMasked: { type: DataTypes.STRING(20), allowNull: false },
+    gateway: { type: DataTypes.STRING(20), allowNull: false },
+    encoding: { type: DataTypes.ENUM('gsm7', 'ucs2'), allowNull: false },
+    segments: { type: DataTypes.SMALLINT.UNSIGNED, allowNull: false },
+    bodyRedacted: { type: DataTypes.TEXT, allowNull: false },
+    gatewayMessageId: DataTypes.STRING(120),
+    status: { type: DataTypes.STRING(12), allowNull: false },
+    dlrStatus: DataTypes.STRING(20),
+    costPoisha: DataTypes.INTEGER.UNSIGNED,
+    requestedAt: { type: DataTypes.DATE(3), allowNull: false, defaultValue: DataTypes.NOW },
+    dlrAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'SmsLog', tableName: 'sms_log', timestamps: false }
+);
+
 // ---- Associations ----
 User.hasMany(UserRole, { as: 'roles', foreignKey: 'userId' });
 UserRole.belongsTo(User, { as: 'user', foreignKey: 'userId' });
@@ -444,6 +545,8 @@ User.hasMany(StaffPermission, { as: 'staffPermissions', foreignKey: 'userId' });
 User.hasMany(UserSanction, { as: 'sanctions', foreignKey: 'userId' });
 User.hasMany(OAuthIdentity, { as: 'identities', foreignKey: 'userId' });
 OAuthIdentity.belongsTo(User, { as: 'user', foreignKey: 'userId' });
+NotificationDelivery.belongsTo(Notification, { as: 'notification', foreignKey: 'notificationId' });
+Notification.hasMany(NotificationDelivery, { as: 'deliveries', foreignKey: 'notificationId' });
 for (const Child of [EsportsMode, EsportsMap, EsportsPointsPreset]) {
   Child.belongsTo(EsportsGame, { as: 'game', foreignKey: 'gameId' });
 }
@@ -467,6 +570,11 @@ module.exports = {
   OutboxEvent,
   ConsumedEvent,
   OAuthIdentity,
+  Notification,
+  NotificationPref,
+  MessageTemplate,
+  NotificationDelivery,
+  SmsLog,
   PlatformSetting,
   SettingsHistory,
   SettingsChangeRequest,

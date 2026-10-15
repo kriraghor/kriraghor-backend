@@ -9,9 +9,10 @@ const settingsS = require('../modules/settings/settings.schemas');
 const catalogS = require('../modules/catalog/catalog.schemas');
 const auditS = require('../modules/audit/audit.schemas');
 const eventsS = require('../modules/events/events.routes').schemas;
+const notifyS = require('../modules/notifications/notify.schemas');
 
 /**
- * Every route (M01, M03, M04), registered with its request and response schemas and the stable error
+ * Every route (M01, M03, M04, M08), registered with its request and response schemas and the stable error
  * codes it can return (ADR-002). When a route is added in a module, add it here: the
  * coverage test fails if an Express route has no OpenAPI entry.
  */
@@ -229,6 +230,27 @@ function register(registry) {
   p({ method: 'post', path: '/admin/events/{id}/replay', tags: ['events'], summary: 'Deliver an event to one consumer again (master, step-up events.replay)', security: adminBearer,
     request: { params: eventsS.idParam, headers: stepUpHeader, ...body(eventsS.replayBody) },
     responses: { 202: json(z.object({ eventId: z.uuid(), consumer: z.string(), status: z.literal('queued') }), 'Accepted'), ...errors({ ...MASTER_AUTH, 403: MASTER_AUTH[403].concat('STEP_UP_REQUIRED'), 404: ['NOT_FOUND'], 409: ['EVENT_NOT_REPLAYABLE'], ...VALIDATION }) } });
+
+  // ------------------------------------------------------------------ M08 notifications
+  const ReadResult = z.object({ updated: z.number().int(), unreadCount: z.number().int() });
+  const Unread = z.object({ unreadCount: z.number().int() });
+  for (const [prefix, security, auth, tag] of [
+    ['/me/notifications', bearer, COMMON_AUTH, 'customer'],
+    ['/admin/me/notifications', adminBearer, ADMIN_AUTH, 'staff'],
+  ]) {
+    p({ method: 'get', path: prefix, tags: ['notifications'], summary: `The bell: newest first, with the unread count (${tag})`, security,
+      request: { query: notifyS.listQuery }, responses: { 200: json(notifyS.NotificationPage), ...errors({ ...auth, ...VALIDATION }) } });
+    p({ method: 'get', path: `${prefix}/unread-count`, tags: ['notifications'], summary: `Unread count for the badge (${tag})`, security,
+      responses: { 200: json(Unread), ...errors(auth) } });
+    p({ method: 'post', path: `${prefix}/read`, tags: ['notifications'], summary: `Mark notifications read: { ids } or { all: true, before } (${tag})`, security,
+      request: body(notifyS.readBody), responses: { 200: json(ReadResult), ...errors({ ...auth, ...VALIDATION }) } });
+  }
+  p({ method: 'get', path: '/me/notification-prefs', tags: ['notifications'], summary: 'Notification preferences: category × channel, mandatory cells locked, quiet hours', security: bearer,
+    responses: { 200: json(notifyS.NotificationPrefs), ...errors(COMMON_AUTH) } });
+  p({ method: 'put', path: '/me/notification-prefs', tags: ['notifications'], summary: 'Change notification preferences', security: bearer,
+    request: body(notifyS.prefsBody), responses: { 200: json(notifyS.NotificationPrefs), ...errors({ ...COMMON_AUTH, 422: ['VALIDATION_FAILED', 'PREF_MANDATORY'] }) } });
+  p({ method: 'get', path: '/admin/notifications/deliveries', tags: ['notifications'], summary: 'Delivery log with masked phones (manage_users or master)', security: adminBearer,
+    request: { query: notifyS.deliveriesQuery }, responses: { 200: json(z.object({ items: z.array(notifyS.Delivery) })), ...errors({ ...ADMIN_AUTH, ...VALIDATION }) } });
 }
 
 function dateTimeOf() {

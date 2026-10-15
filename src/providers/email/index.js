@@ -1,8 +1,8 @@
 'use strict';
 
+const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const config = require('../../config');
-const logger = require('../../common/logger');
 
 /**
  * Email provider facade. Drivers:
@@ -23,16 +23,15 @@ const drivers = {
   },
   async smtp(msg) {
     transport ??= nodemailer.createTransport(config.email.smtp);
-    await transport.sendMail({ from: config.email.from, ...msg });
+    const info = await transport.sendMail({ from: config.email.from, ...msg });
+    return info?.messageId;
   },
 };
 
+/** Returns { provider, messageId } and throws on failure, so M08 can retry. */
 async function send({ to, subject, text, html }) {
-  try {
-    await drivers[config.email.driver]({ to, subject, text, html });
-  } catch (err) {
-    logger.error({ err }, 'email send failed');
-  }
+  const messageId = (await drivers[config.email.driver]({ to, subject, text, html })) ?? crypto.randomUUID();
+  return { provider: config.email.driver, messageId };
 }
 
 module.exports = {

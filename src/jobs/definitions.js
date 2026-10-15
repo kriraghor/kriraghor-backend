@@ -9,6 +9,7 @@ const consumers = require('../modules/events/events.consumers');
 const events = require('../modules/events/events.service');
 const chain = require('../modules/audit/audit.chain');
 const auditAdmin = require('../modules/audit/audit.admin.service');
+const notify = require('../modules/notifications/notify.service');
 const logger = require('../common/logger');
 
 /**
@@ -77,6 +78,26 @@ const JOBS = [
     name: auditAdmin.EXPORT_JOB,
     queue: QUEUES.AUDIT,
     run: async (data) => auditAdmin.runExport(data),
+  },
+  {
+    // M08-FR-08/11/12/13: send one channel of one notification; BullMQ retries 30 s, 2 min, 10 min.
+    name: notify.DELIVER_JOB,
+    queue: QUEUES.NOTIFY,
+    run: async (data, job) => notify.deliver(data, { attemptsMade: job?.attemptsMade ?? 0 }),
+  },
+  {
+    // M08-FR-10: deliveries held for quiet hours go out once the window ends.
+    name: 'notify.release-deferred',
+    queue: QUEUES.NOTIFY,
+    every: 5 * 60 * 1000,
+    run: async () => notify.releaseDeferred(),
+  },
+  {
+    // M08 §10: SMS accepted more than a day ago without a delivery receipt are failed.
+    name: 'notify.dlr-timeout',
+    queue: QUEUES.NOTIFY,
+    every: 60 * 60 * 1000,
+    run: async () => notify.dlrTimeout(),
   },
 ];
 

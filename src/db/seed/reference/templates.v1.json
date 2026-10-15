@@ -1,0 +1,812 @@
+{
+  "seedVersion": 1,
+  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built in Phase 1. in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments.",
+  "templates": [
+    {
+      "code": "AUDIT_CRITICAL",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Critical change",
+      "body": "{{actor}}: {{summary}}",
+      "variables": [
+        {
+          "name": "actor",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "summary",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "AUDIT_CRITICAL",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "গুরুত্বপূর্ণ পরিবর্তন",
+      "body": "{{actor}}: {{summary}}",
+      "variables": [
+        {
+          "name": "actor",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "summary",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "AUDIT_CRITICAL",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Kriraghor: critical change by {{actor}}",
+      "body": "{{actor}} made a critical change:\n\n{{summary}}\n\nOpen the audit log: {{url}}\n\nYou get this because you are a master admin.",
+      "variables": [
+        {
+          "name": "actor",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "summary",
+          "type": "text",
+          "maxLen": 300
+        },
+        {
+          "name": "url",
+          "type": "link"
+        }
+      ]
+    },
+    {
+      "code": "AUDIT_CRITICAL",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "ক্রীড়াঘর: {{actor}} গুরুত্বপূর্ণ পরিবর্তন করেছেন",
+      "body": "{{actor}} একটি গুরুত্বপূর্ণ পরিবর্তন করেছেন:\n\n{{summary}}\n\nঅডিট লগ খুলুন: {{url}}\n\nআপনি মাস্টার অ্যাডমিন বলে এই ইমেল পাচ্ছেন।",
+      "variables": [
+        {
+          "name": "actor",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "summary",
+          "type": "text",
+          "maxLen": 300
+        },
+        {
+          "name": "url",
+          "type": "link"
+        }
+      ]
+    },
+    {
+      "code": "SETTING_CHANGE_PROPOSED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Approval needed",
+      "body": "{{proposer}} proposed {{changes}}, effective {{effectiveAt}}. Another master must approve.",
+      "variables": [
+        {
+          "name": "proposer",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "changes",
+          "type": "text",
+          "maxLen": 300
+        },
+        {
+          "name": "effectiveAt",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "SETTING_CHANGE_PROPOSED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অনুমোদন দরকার",
+      "body": "{{proposer}} {{changes}} করার প্রস্তাব করেছেন, কার্যকর {{effectiveAt}}। আরেকজন মাস্টারকে অনুমোদন করতে হবে।",
+      "variables": [
+        {
+          "name": "proposer",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "changes",
+          "type": "text",
+          "maxLen": 300
+        },
+        {
+          "name": "effectiveAt",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "SETTING_CHANGE_PROPOSED",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Kriraghor: approve a settings change",
+      "body": "{{proposer}} proposed {{changes}}, effective {{effectiveAt}}.\n\nReason: {{reason}}\n\nReview it on Fees and rules: {{url}}",
+      "variables": [
+        {
+          "name": "proposer",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "changes",
+          "type": "text",
+          "maxLen": 300
+        },
+        {
+          "name": "effectiveAt",
+          "type": "datetime"
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 300
+        },
+        {
+          "name": "url",
+          "type": "link"
+        }
+      ]
+    },
+    {
+      "code": "SETTING_CHANGE_PROPOSED",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "ক্রীড়াঘর: সেটিংস পরিবর্তন অনুমোদন করুন",
+      "body": "{{proposer}} {{changes}} করার প্রস্তাব করেছেন, কার্যকর {{effectiveAt}}।\n\nকারণ: {{reason}}\n\nফি ও নিয়ম পাতায় দেখুন: {{url}}",
+      "variables": [
+        {
+          "name": "proposer",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "changes",
+          "type": "text",
+          "maxLen": 300
+        },
+        {
+          "name": "effectiveAt",
+          "type": "datetime"
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 300
+        },
+        {
+          "name": "url",
+          "type": "link"
+        }
+      ]
+    },
+    {
+      "code": "SETTING_CHANGE_REJECTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Change rejected",
+      "body": "Your change to {{keys}} was rejected. {{note}}",
+      "variables": [
+        {
+          "name": "keys",
+          "type": "text",
+          "maxLen": 200
+        },
+        {
+          "name": "note",
+          "type": "text",
+          "maxLen": 200
+        }
+      ]
+    },
+    {
+      "code": "SETTING_CHANGE_REJECTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পরিবর্তন প্রত্যাখ্যাত",
+      "body": "{{keys}} বদলানোর আপনার প্রস্তাব প্রত্যাখ্যাত হয়েছে। {{note}}",
+      "variables": [
+        {
+          "name": "keys",
+          "type": "text",
+          "maxLen": 200
+        },
+        {
+          "name": "note",
+          "type": "text",
+          "maxLen": 200
+        }
+      ]
+    },
+    {
+      "code": "SETTING_CHANGE_WITHDRAWN",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Change withdrawn",
+      "body": "{{proposer}} withdrew the proposed change to {{keys}}.",
+      "variables": [
+        {
+          "name": "proposer",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "keys",
+          "type": "text",
+          "maxLen": 200
+        }
+      ]
+    },
+    {
+      "code": "SETTING_CHANGE_WITHDRAWN",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পরিবর্তন প্রত্যাহার",
+      "body": "{{proposer}} {{keys}} বদলানোর প্রস্তাব প্রত্যাহার করেছেন।",
+      "variables": [
+        {
+          "name": "proposer",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "keys",
+          "type": "text",
+          "maxLen": 200
+        }
+      ]
+    },
+    {
+      "code": "EVENT_DEAD_LETTERED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Event delivery failed",
+      "body": "{{eventType}} could not be delivered to {{consumer}} after {{attempts}} attempts. Replay it on the Events desk.",
+      "variables": [
+        {
+          "name": "eventType",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "consumer",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "attempts",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "EVENT_DEAD_LETTERED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "ইভেন্ট পাঠানো ব্যর্থ",
+      "body": "{{attempts}} বার চেষ্টার পরও {{eventType}} {{consumer}}-এর কাছে পাঠানো যায়নি। ইভেন্ট ডেস্কে আবার চালান।",
+      "variables": [
+        {
+          "name": "eventType",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "consumer",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "attempts",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "EVENT_DEAD_LETTERED",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Kriraghor ops: {{eventType}} dead-lettered",
+      "body": "{{eventType}} could not be delivered to {{consumer}} after {{attempts}} attempts.\n\nReplay it on the Events desk: {{url}}",
+      "variables": [
+        {
+          "name": "eventType",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "consumer",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "attempts",
+          "type": "number"
+        },
+        {
+          "name": "url",
+          "type": "link"
+        }
+      ]
+    },
+    {
+      "code": "EVENT_DEAD_LETTERED",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "ক্রীড়াঘর অপস: {{eventType}} ডেড-লেটার",
+      "body": "{{attempts}} বার চেষ্টার পরও {{eventType}} {{consumer}}-এর কাছে পাঠানো যায়নি।\n\nইভেন্ট ডেস্কে আবার চালান: {{url}}",
+      "variables": [
+        {
+          "name": "eventType",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "consumer",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "attempts",
+          "type": "number"
+        },
+        {
+          "name": "url",
+          "type": "link"
+        }
+      ]
+    },
+    {
+      "code": "ROLE_ACTIVATED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "{{role}} is active",
+      "body": "Your {{role}} account is approved. You can start now.",
+      "variables": [
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ROLE_ACTIVATED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "{{role}} সক্রিয়",
+      "body": "আপনার {{role}} অ্যাকাউন্ট অনুমোদিত। এখনই শুরু করুন।",
+      "variables": [
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ROLE_ACTIVATED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: your {{role}} account is approved. You can start now.",
+      "variables": [
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ROLE_ACTIVATED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: আপনার {{role}} অ্যাকাউন্ট অনুমোদিত। এখনই শুরু করুন।",
+      "variables": [
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ROLE_REJECTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "{{role}} application not approved",
+      "body": "Your {{role}} application was not approved ({{reason}}). Check your account for what to change.",
+      "variables": [
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "ROLE_REJECTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "{{role}} আবেদন অনুমোদিত হয়নি",
+      "body": "আপনার {{role}} আবেদন অনুমোদিত হয়নি ({{reason}})। কী বদলাতে হবে অ্যাকাউন্টে দেখুন।",
+      "variables": [
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "ROLE_REJECTED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: your {{role}} application was not approved. See your account for details.",
+      "variables": [
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ROLE_REJECTED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: আপনার {{role}} আবেদন অনুমোদিত হয়নি। বিস্তারিত অ্যাকাউন্টে দেখুন।",
+      "variables": [
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ROLE_SUSPENDED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "{{role}} suspended",
+      "body": "Your {{role}} account is suspended ({{reason}}). Contact support if you think this is a mistake.",
+      "variables": [
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "ROLE_SUSPENDED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "{{role}} স্থগিত",
+      "body": "আপনার {{role}} অ্যাকাউন্ট স্থগিত ({{reason}})। ভুল মনে হলে সাপোর্টে যোগাযোগ করুন।",
+      "variables": [
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "ROLE_SUSPENDED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: your {{role}} account is suspended. Contact support if you think this is a mistake.",
+      "variables": [
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ROLE_SUSPENDED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: আপনার {{role}} অ্যাকাউন্ট স্থগিত। ভুল মনে হলে সাপোর্টে যোগাযোগ করুন।",
+      "variables": [
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ACCOUNT_SUSPENDED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Account suspended",
+      "body": "Your Kriraghor account is suspended{{until}}. Contact support if you think this is a mistake.",
+      "variables": [
+        {
+          "name": "until",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "ACCOUNT_SUSPENDED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অ্যাকাউন্ট স্থগিত",
+      "body": "আপনার ক্রীড়াঘর অ্যাকাউন্ট স্থগিত{{until}}। ভুল মনে হলে সাপোর্টে যোগাযোগ করুন।",
+      "variables": [
+        {
+          "name": "until",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "ACCOUNT_SUSPENDED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: your account is suspended{{until}}. Contact support if you think this is a mistake.",
+      "variables": [
+        {
+          "name": "until",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "ACCOUNT_SUSPENDED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: আপনার অ্যাকাউন্ট স্থগিত{{until}}। ভুল মনে হলে সাপোর্টে যোগাযোগ করুন।",
+      "variables": [
+        {
+          "name": "until",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "ACCOUNT_SUSPENDED",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Your Kriraghor account is suspended",
+      "body": "Your Kriraghor account is suspended{{until}}.\n\nYou cannot sign in or use Kriraghor while it is suspended. If you think this is a mistake, reply to this email or contact support.",
+      "variables": [
+        {
+          "name": "until",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "ACCOUNT_SUSPENDED",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "আপনার ক্রীড়াঘর অ্যাকাউন্ট স্থগিত",
+      "body": "আপনার ক্রীড়াঘর অ্যাকাউন্ট স্থগিত{{until}}।\n\nস্থগিত থাকা অবস্থায় সাইন ইন বা ক্রীড়াঘর ব্যবহার করা যাবে না। ভুল মনে হলে এই ইমেলের উত্তর দিন বা সাপোর্টে যোগাযোগ করুন।",
+      "variables": [
+        {
+          "name": "until",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "ACCOUNT_RESTORED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Account restored",
+      "body": "Your Kriraghor account is active again. Welcome back.",
+      "variables": []
+    },
+    {
+      "code": "ACCOUNT_RESTORED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অ্যাকাউন্ট পুনরুদ্ধার",
+      "body": "আপনার ক্রীড়াঘর অ্যাকাউন্ট আবার সক্রিয়। আবার স্বাগতম।",
+      "variables": []
+    },
+    {
+      "code": "ACCOUNT_RESTORED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: your account is active again. Welcome back.",
+      "variables": []
+    },
+    {
+      "code": "ACCOUNT_RESTORED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: আপনার অ্যাকাউন্ট আবার সক্রিয়। আবার স্বাগতম।",
+      "variables": []
+    },
+    {
+      "code": "ACCOUNT_RESTORED",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Your Kriraghor account is active again",
+      "body": "Your Kriraghor account is active again. You can sign in as usual.",
+      "variables": []
+    },
+    {
+      "code": "ACCOUNT_RESTORED",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "আপনার ক্রীড়াঘর অ্যাকাউন্ট আবার সক্রিয়",
+      "body": "আপনার ক্রীড়াঘর অ্যাকাউন্ট আবার সক্রিয়। আগের মতো সাইন ইন করতে পারবেন।",
+      "variables": []
+    },
+    {
+      "code": "STAFF_INVITED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "You are now Kriraghor staff",
+      "body": "Sign in at the admin portal to set up two-factor authentication.",
+      "variables": []
+    },
+    {
+      "code": "STAFF_INVITED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আপনি এখন ক্রীড়াঘর স্টাফ",
+      "body": "টু-ফ্যাক্টর সেট আপ করতে অ্যাডমিন পোর্টালে সাইন ইন করুন।",
+      "variables": []
+    },
+    {
+      "code": "STAFF_INVITED",
+      "channel": "email",
+      "locale": "en",
+      "subject": "You have been added to Kriraghor staff",
+      "body": "You have been added to the Kriraghor staff team.\n\nSign in at {{url}} with your phone or password, then set up an authenticator app. Staff accounts sign in only at the admin portal.",
+      "variables": [
+        {
+          "name": "url",
+          "type": "link"
+        }
+      ]
+    },
+    {
+      "code": "STAFF_INVITED",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "আপনাকে ক্রীড়াঘর স্টাফ টিমে যোগ করা হয়েছে",
+      "body": "আপনাকে ক্রীড়াঘর স্টাফ টিমে যোগ করা হয়েছে।\n\n{{url}} ঠিকানায় ফোন বা পাসওয়ার্ড দিয়ে সাইন ইন করুন, তারপর অথেন্টিকেটর অ্যাপ সেট আপ করুন। স্টাফরা শুধু অ্যাডমিন পোর্টালে সাইন ইন করেন।",
+      "variables": [
+        {
+          "name": "url",
+          "type": "link"
+        }
+      ]
+    },
+    {
+      "code": "STAFF_PERMISSIONS_CHANGED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Your permissions changed",
+      "body": "Added: {{added}}. Removed: {{removed}}. Sign in again to use them.",
+      "variables": [
+        {
+          "name": "added",
+          "type": "text",
+          "maxLen": 200
+        },
+        {
+          "name": "removed",
+          "type": "text",
+          "maxLen": 200
+        }
+      ]
+    },
+    {
+      "code": "STAFF_PERMISSIONS_CHANGED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আপনার অনুমতি বদলেছে",
+      "body": "যোগ: {{added}}। বাদ: {{removed}}। ব্যবহার করতে আবার সাইন ইন করুন।",
+      "variables": [
+        {
+          "name": "added",
+          "type": "text",
+          "maxLen": 200
+        },
+        {
+          "name": "removed",
+          "type": "text",
+          "maxLen": 200
+        }
+      ]
+    },
+    {
+      "code": "STAFF_PERMISSIONS_CHANGED",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Your Kriraghor staff permissions changed",
+      "body": "Your staff permissions changed.\n\nAdded: {{added}}\nRemoved: {{removed}}\n\nYou were signed out of the admin portal; sign in again at {{url}}.",
+      "variables": [
+        {
+          "name": "added",
+          "type": "text",
+          "maxLen": 200
+        },
+        {
+          "name": "removed",
+          "type": "text",
+          "maxLen": 200
+        },
+        {
+          "name": "url",
+          "type": "link"
+        }
+      ]
+    },
+    {
+      "code": "STAFF_PERMISSIONS_CHANGED",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "আপনার ক্রীড়াঘর স্টাফ অনুমতি বদলেছে",
+      "body": "আপনার স্টাফ অনুমতি বদলেছে।\n\nযোগ: {{added}}\nবাদ: {{removed}}\n\nঅ্যাডমিন পোর্টাল থেকে সাইন আউট করা হয়েছে; {{url}} ঠিকানায় আবার সাইন ইন করুন।",
+      "variables": [
+        {
+          "name": "added",
+          "type": "text",
+          "maxLen": 200
+        },
+        {
+          "name": "removed",
+          "type": "text",
+          "maxLen": 200
+        },
+        {
+          "name": "url",
+          "type": "link"
+        }
+      ]
+    }
+  ]
+}

@@ -161,9 +161,11 @@ describe('relay and consumers (M04-FR-13, FR-14, FR-16, FR-17)', () => {
     const results = await Promise.all([relay.relayOnce({ batch: 10 }), relay.relayOnce({ batch: 10 }), relay.relayOnce({ batch: 10 })]);
     await relay.relayOnce({ batch: 10 });
     expect(results.reduce((n, r) => n + r.published, 0)).toBeGreaterThan(0);
-    expect(dispatched).toHaveLength(25);
-    expect(new Set(dispatched).size).toBe(25);
-    expect(dispatched.every((id) => id.endsWith('__test.restored'))).toBe(true);
+    // Every user.restored goes to the test consumer and to M08 (notify.ACCOUNT_RESTORED).
+    const mine = dispatched.filter((id) => id.endsWith('__test.restored'));
+    expect(mine).toHaveLength(25);
+    expect(new Set(dispatched).size).toBe(dispatched.length);
+    expect(dispatched).toHaveLength(50);
     expect(await models.OutboxEvent.count({ where: { status: 'published' } })).toBe(25);
     expect(await relay.health()).toEqual({ pending: 0, oldestPendingSeconds: null });
   });
@@ -191,7 +193,7 @@ describe('relay and consumers (M04-FR-13, FR-14, FR-16, FR-17)', () => {
     const userId = uid();
     await publishRestored(userId);
     await relay.relayOnce();
-    const [job] = consumers.takeTestJobs();
+    const job = consumers.takeTestJobs().find((j) => j.data.consumer === 'test.restored');
     expect(job).toMatchObject({ data: { consumer: 'test.restored' } });
     expect(await consumers.processConsume(job.data)).toEqual({ status: 'processed' });
     expect(await consumers.processConsume(job.data)).toEqual({ status: 'skipped' });
@@ -210,7 +212,7 @@ describe('relay and consumers (M04-FR-13, FR-14, FR-16, FR-17)', () => {
     const poison = uid();
     await publishRestored(poison);
     await relay.relayOnce();
-    const [job] = consumers.takeTestJobs();
+    const job = consumers.takeTestJobs().find((j) => j.data.consumer === 'test.restored');
     for (let attemptsMade = 0; attemptsMade < 3; attemptsMade += 1) {
       await expect(consumers.processConsume(job.data, { attemptsMade })).rejects.toThrow('downstream unavailable');
     }
@@ -234,12 +236,12 @@ describe('relay and consumers (M04-FR-13, FR-14, FR-16, FR-17)', () => {
     };
     await publishRestored(uid());
     await relay.relayOnce();
-    const [job] = consumers.takeTestJobs();
+    const job = consumers.takeTestJobs().find((j) => j.data.consumer === 'test.restored');
     await expect(consumers.processConsume(job.data)).rejects.toThrow('boom');
 
     const master = await h.createSignedInMaster();
     const dead = await api().get(`${P}/admin/events?status=dead`).set(h.bearer(master)).expect(200);
-    expect(dead.body.items).toEqual([expect.objectContaining({ id: job.data.eventId, consumer: 'test.restored', status: 'dead', lastError: 'boom', consumers: ['test.restored'] })]);
+    expect(dead.body.items).toEqual([expect.objectContaining({ id: job.data.eventId, consumer: 'test.restored', status: 'dead', lastError: 'boom', consumers: expect.arrayContaining(['test.restored', 'notify.ACCOUNT_RESTORED']) })]);
     expect(dead.body.health).toEqual({ pending: 1, oldestPendingSeconds: expect.any(Number) }); // the dead-letter alert itself
 
     const noStepUp = await api().post(`${P}/admin/events/${job.data.eventId}/replay`).set(h.bearer(master)).send({ consumer: 'test.restored' }).expect(403);
@@ -252,7 +254,7 @@ describe('relay and consumers (M04-FR-13, FR-14, FR-16, FR-17)', () => {
     expect(await models.AuditLog.findOne({ where: { action: 'outbox.event_replayed' } })).toMatchObject({ actorId: master.userId, stepUp: true, severity: 'notice' });
 
     restoredHandler = async () => {};
-    const [again] = consumers.takeTestJobs();
+    const again = consumers.takeTestJobs().find((j) => j.data.consumer === 'test.restored');
     expect(again.jobId).toMatch(/__test\.restored__r\d+$/);
     expect(await consumers.processConsume(again.data)).toEqual({ status: 'processed' });
     expect(await models.ConsumedEvent.findOne({ where: { eventId: job.data.eventId } })).toMatchObject({ status: 'processed', attempts: 2 });

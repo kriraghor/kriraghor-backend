@@ -22,6 +22,7 @@ const catalogRoutes = require('./modules/catalog/catalog.routes');
 const auditRoutes = require('./modules/audit/audit.routes');
 const eventsRoutes = require('./modules/events/events.routes');
 const subscriptions = require('./modules/events/subscriptions');
+const notifyRoutes = require('./modules/notifications/notify.routes');
 
 // ADR-004: customer and admin origins (exact or one-label wildcard). Unknown origins get no CORS headers.
 const allowedOrigin = compile([...config.corsOrigins, ...config.adminOrigins]);
@@ -65,6 +66,8 @@ function createApp() {
 
   const api = express.Router();
   api.use('/auth', authRoutes);
+  api.use('/me/notifications', notifyRoutes.meRouter);
+  api.use('/me/notification-prefs', notifyRoutes.prefsRouter);
   api.use('/me', meRoutes);
   api.use('/settings', settingsRoutes.publicRouter);
   api.use('/catalog', catalogRoutes.publicRouter);
@@ -74,6 +77,8 @@ function createApp() {
   api.use('/admin/audit-logs', auditRoutes.auditRouter);
   api.use('/admin/entities', auditRoutes.entityRouter);
   api.use('/admin/events', eventsRoutes.router);
+  api.use('/admin/me/notifications', notifyRoutes.adminMeRouter);
+  api.use('/admin/notifications', notifyRoutes.adminRouter);
   api.use('/admin', adminRoutes);
   app.use(config.apiPrefix, api);
 

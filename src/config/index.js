@@ -60,6 +60,10 @@ const schema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
 
+  // Public app URLs used in notification emails (M08).
+  WEB_APP_URL: z.string().default('http://localhost:3000'),
+  ADMIN_APP_URL: z.string().default('http://localhost:3002'),
+
   // Comma-separated OAuth client IDs allowed as the ID-token audience (web, Android, iOS).
   GOOGLE_CLIENT_IDS: z.string().default(''),
 
@@ -154,6 +158,7 @@ module.exports = {
     createBuckets: env.S3_CREATE_BUCKETS,
   },
   storage: { driver: env.NODE_ENV === 'test' ? 'memory' : env.STORAGE_DRIVER },
+  apps: { web: env.WEB_APP_URL.replace(/\/$/, ''), admin: env.ADMIN_APP_URL.replace(/\/$/, '') },
   google: {
     clientIds: env.GOOGLE_CLIENT_IDS.split(',').map((s) => s.trim()).filter(Boolean),
   },

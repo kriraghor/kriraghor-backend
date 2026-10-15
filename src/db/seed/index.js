@@ -8,7 +8,8 @@
  */
 const settingsSeed = require('./reference/settings.v1.json');
 const esportsSeed = require('./reference/esports.v1.json');
-const { sequelize, PlatformSetting, SettingsHistory, EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset } = require('../../models');
+const templatesSeed = require('./reference/templates.v1.json');
+const { sequelize, PlatformSetting, SettingsHistory, EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset, MessageTemplate } = require('../../models');
 
 const SEED_REASON = `Seed settings v${settingsSeed.seedVersion}`;
 
@@ -81,11 +82,27 @@ async function seedEsports(transaction) {
   return inserted;
 }
 
+/** M08 message templates: version 1 of each (code, channel, locale), active, only when missing. */
+async function seedTemplates(transaction) {
+  let inserted = 0;
+  for (const t of templatesSeed.templates) {
+    const where = { code: t.code, channel: t.channel, locale: t.locale };
+    if (await MessageTemplate.findOne({ where, transaction })) continue;
+    await MessageTemplate.create(
+      { ...where, version: 1, subject: t.subject ?? null, body: t.body, variables: t.variables, isActive: true, maxSmsSegments: t.channel === 'sms' ? 3 : null },
+      { transaction }
+    );
+    inserted += 1;
+  }
+  return inserted;
+}
+
 async function seedReference() {
   return sequelize.transaction(async (transaction) => ({
     settings: await seedSettings(transaction),
     esports: await seedEsports(transaction),
+    templates: await seedTemplates(transaction),
   }));
 }
 
-module.exports = { seedReference, seedSettings, seedEsports, settingRow, SETTING_KEYS, settingsSeed, esportsSeed };
+module.exports = { seedReference, seedSettings, seedEsports, seedTemplates, settingRow, SETTING_KEYS, settingsSeed, esportsSeed, templatesSeed };

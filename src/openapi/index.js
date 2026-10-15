@@ -41,6 +41,7 @@ function buildOpenApi() {
       { name: 'catalog', description: 'Reference catalogues: esports games, modes, maps and points presets (M03)' },
       { name: 'audit', description: 'Audit log search, entity history and exports (M04)' },
       { name: 'events', description: 'Outbox health, dead letters and replay (M04)' },
+      { name: 'notifications', description: 'The bell, notification preferences and delivery logs (M08)' },
     ],
   });
 }

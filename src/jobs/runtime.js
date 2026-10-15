@@ -8,6 +8,7 @@ const { getQueue, prefix } = require('./queues');
 const { JOBS, byName } = require('./definitions');
 const settings = require('../modules/settings/settings.service');
 const { backoffMs } = require('../modules/events/events.backoff');
+const { retryDelay } = require('../modules/notifications/notify.service');
 
 /** Run one job by name. Exported so tests can call processors without a worker. */
 async function processJob(job) {
@@ -41,8 +42,9 @@ function startWorkers({ concurrency = 4 } = {}) {
       connection: createRedis(`worker:${name}`, { bullmq: true }),
       prefix,
       concurrency,
-      // M04-FR-16 retry delay for jobs added with backoff { type: 'capped' }: 2^n s, capped.
-      settings: { backoffStrategy: (attemptsMade) => backoffMs(attemptsMade, settings.get('events.backoff_cap_sec')) },
+      // Retry delays: M08 deliveries (type 'notify') 30 s, 2 min, 10 min; event deliveries
+      // (type 'capped', M04-FR-16) 2^n s up to events.backoff_cap_sec.
+      settings: { backoffStrategy: (attemptsMade, type) => (type === 'notify' ? retryDelay(attemptsMade) : backoffMs(attemptsMade, settings.get('events.backoff_cap_sec'))) },
     });
     worker.on('failed', (job, err) => logger.error({ err, job: job?.name, jobId: job?.id }, 'job failed'));
     worker.on('error', (err) => logger.error({ err }, 'worker error'));
