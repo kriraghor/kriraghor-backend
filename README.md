@@ -8,8 +8,8 @@ The specification for every module is in [`../kriraghor-docs/modules`](../krirag
 |---|---|
 | **M01 Identity and Access**: authentication and authorisation | ✅ Implemented: [`src/modules/auth`](src/modules/auth), [`src/modules/users`](src/modules/users), [`src/modules/admin`](src/modules/admin). Separate admin sessions per [ADR-004](../kriraghor-docs/decisions/ADR-004-cross-subdomain-auth.md) |
 | **Platform (0B)**: Kubernetes readiness | ✅ Three entrypoints, Redis, BullMQ, Socket.IO, probes, metrics, OpenAPI, Docker image ([ADR-002](../kriraghor-docs/decisions/ADR-002-polyrepo-api-contracts.md), [ADR-003](../kriraghor-docs/decisions/ADR-003-kubernetes-deployment.md)) |
-| **M03 Settings and esports catalogue** | ✅ Step 1: [`src/modules/settings`](src/modules/settings) (130 platform settings, history, four-eyes change requests, scheduled changes, SettingsService with Redis cache bust) and [`src/modules/catalog`](src/modules/catalog) (esports games, modes, maps, versioned points presets). Sports, locations, hire and item catalogues come with their modules |
-| M04 Audit log | Minimal append-only `audit_logs` table and service, plus the `events.publish` facade (logs only until the outbox lands) |
+| **M03 Settings and esports catalogue** | ✅ Step 1: [`src/modules/settings`](src/modules/settings) (137 platform settings, history, four-eyes change requests, scheduled changes, SettingsService with Redis cache bust) and [`src/modules/catalog`](src/modules/catalog) (esports games, modes, maps, versioned points presets). Sports, locations, hire and item catalogues come with their modules |
+| **M04 Audit log and events** | ✅ [`src/modules/audit`](src/modules/audit) (redacted, append-only audit log with a hash chain sealed after commit, action registry with EN/BN summaries, search, entity history, CSV export) and [`src/modules/events`](src/modules/events) (event registry, transactional outbox, relay, inbox, retries, dead letters, replay). M01 and M03 publish their events |
 | Everything else | Not started |
 
 ## Quick start
@@ -64,7 +64,7 @@ npm run openapi                   # regenerate openapi.json after changing a rou
 docker compose up -d
 npm test
 ```
-Expected result: `Tests: 199 passed, 199 total` and the coverage gate (100% on the settings and catalogue validators, which handle money and points) (unit tests plus end-to-end tests against a real MySQL test database and Redis). The tests cover:
+Expected result: every test green and the coverage gate (100% on the settings and catalogue validators, the audit redactor, the retry backoff and the event registry rules) (unit tests plus end-to-end tests against a real MySQL test database and Redis). The tests cover:
 - OTP signup and sign-in; non-enumeration, cooldowns and code burning
 - Password lockout and reset
 - Refresh rotation and reuse detection; session revocation; `AUTHZ_STALE`
@@ -93,6 +93,8 @@ Expected result: `Tests: 199 passed, 199 total` and the coverage gate (100% on t
      - Step up, make the member staff, then edit the permission matrix.
 
 See [`postman/M01-acceptance-checklist.md`](postman/M01-acceptance-checklist.md) for the full sign-off list.
+
+**M04 (audit log and events)** runs unattended the same way: `node postman/run-m04.js` (it also runs a small in-process worker for the relay, consumers and exports). Checklist: [`postman/M04-acceptance-checklist.md`](postman/M04-acceptance-checklist.md).
 
 **M03 (settings and esports catalogue)** runs unattended: `node postman/run-m03.js` resets the test database, signs in two masters, pre-mints step-up tokens and runs [`postman/kriraghor-settings.postman_collection.json`](postman/kriraghor-settings.postman_collection.json) with the Postman CLI (22 requests, 37 assertions). Checklist: [`postman/M03-acceptance-checklist.md`](postman/M03-acceptance-checklist.md).
 
@@ -149,8 +151,8 @@ src/
    ├─ admin/              /admin: me, user search, suspend, ban, restore, role decisions, staff and permission matrix
    ├─ settings/           M03 platform settings: SettingsService, validators, change requests (four-eyes), history
    ├─ catalog/            M03 esports catalogue: games, modes, maps, points presets
-   ├─ events/             domain event facade (M04 outbox later)
-   └─ audit/              append-only audit writer
+   ├─ events/             M04 event registry, outbox publish, relay, consumers/inbox, dead letters, replay, ops API
+   └─ audit/              M04 audit writer, action registry, redactor, hash chain, search, exports
 scripts/                  release.js (migrate + reference seed), create-master.js (first master, CLI only), openapi.js (writes openapi.json)
 src/db/seed/              M03 reference seed (versioned JSON: settings, esports catalogue)
 postman/                  collection builder, collection, guide and acceptance checklist
@@ -228,6 +230,19 @@ Errors are `application/problem+json` with a stable `code`: `AUTH_REQUIRED`, `TO
 New error codes: `SETTING_UNKNOWN`, `SETTING_TYPE_INVALID`, `SETTING_OUT_OF_RANGE`, `SETTING_CROSS_RULE`, `SETTING_UNCHANGED`, `EFFECTIVE_AT_PAST`, `FOUR_EYES_REQUIRED`, `NOT_PROPOSER`, `CHANGE_REQUEST_CLOSED`, `CATALOG_KEY_TAKEN`, `CATALOG_KEY_IMMUTABLE`.
 
 Every process (api, realtime, worker) refuses to start until every seeded setting exists, so run `npm run release` (or the Helm migrate Job) first. Code reads values with `settings.get(key)`; store `settings.snapshot(keys)` with anything that charges a fee.
+
+## API (M04)
+
+| Endpoint | Access | Notes |
+|---|---|---|
+| `GET /admin/audit-logs` | master | Filters from, to, actorId, actorType, module, action (comma list), entityType, entityId, severity, stepUp; cursor paging; 1-year cap (`RANGE_TOO_LARGE`) |
+| `GET /admin/audit-logs/:id` | master | Full IP, request and session, hash-chain status |
+| `GET /admin/entities/:entityType/:entityId/history` | staff | Masters see every row, other staff only their own |
+| `POST /admin/audit-logs/exports` · `GET …/exports/:id` · `GET …/exports/:id/download` | master + step-up `audit.export` | CSV built by the `audit.export` job into `S3_BUCKET_PRIVATE`, streamed back for 24 h (`EXPORT_NOT_READY`, `EXPORT_EXPIRED`) |
+| `GET /admin/events?status=dead|failed|pending` | master | Outbox health and dead letters |
+| `POST /admin/events/:id/replay` | master + step-up `events.replay` | `EVENT_NOT_REPLAYABLE` once processed |
+
+**Writing code that changes state:** call `audit.record(entry, { transaction })` with a registered action ([`audit.actions.js`](src/modules/audit/audit.actions.js)) and `events.publish(transaction, event)` with a registered event ([`catalog.js`](src/modules/events/catalog.js)); payloads hold IDs, codes, amounts and statuses only. Consumers register in [`subscriptions.js`](src/modules/events/subscriptions.js) with `onEvent(name, consumer, handler)` and get `(event, { transaction })`; they run at least once, so keep them idempotent beyond the inbox.
 
 ## Differences from the M01 spec
 

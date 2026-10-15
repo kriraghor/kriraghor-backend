@@ -10,13 +10,14 @@ const { decrypt } = require('../src/common/crypto');
 const settings = require('../src/modules/settings/settings.service');
 const { seedReference } = require('../src/db/seed');
 const events = require('../src/modules/events/events.service');
+const consumers = require('../src/modules/events/events.consumers');
 
 const app = createApp();
 const api = () => request(app);
 const P = '/api/v1';
 
 // M03 tables are reseeded after the truncate, so every test starts from the seeded settings and catalogue.
-const TABLES = ['settings_history', 'settings_change_requests', 'platform_settings', 'esports_points_presets', 'esports_maps', 'esports_modes', 'esports_games', 'oauth_identities', 'audit_logs', 'step_up_tokens', 'user_sanctions', 'staff_permissions', 'staff_members', 'otp_codes', 'sessions', 'user_roles', 'users'];
+const TABLES = ['consumed_events', 'outbox_events', 'audit_chain', 'audit_exports', 'settings_history', 'settings_change_requests', 'platform_settings', 'esports_points_presets', 'esports_maps', 'esports_modes', 'esports_games', 'oauth_identities', 'audit_logs', 'step_up_tokens', 'user_sanctions', 'staff_permissions', 'staff_members', 'otp_codes', 'sessions', 'user_roles', 'users'];
 
 async function resetDb() {
   await models.sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
@@ -29,6 +30,7 @@ async function resetDb() {
   sms.clear();
   mail.clear();
   events.clearRecorded();
+  consumers.takeTestJobs();
 }
 
 /**
@@ -158,4 +160,4 @@ async function stepUp(session, scope) {
 
 const bearer = (s) => ({ Authorization: `Bearer ${s.accessToken}` });
 
-module.exports = { ADMIN_ORIGIN, WEB_ORIGIN, adminPost, cookieValue, cookieHeader, refreshWeb, api, P, models, resetDb, nextPhone, e164, lastCode, lastEmailCode, mail, allowResend, signupUser, verifyMember, totpFor, createSignedInMaster, createSecondMaster, signInStaff, stepUp, bearer, sms, settings, setSettingForTest, events };
+module.exports = { ADMIN_ORIGIN, WEB_ORIGIN, adminPost, cookieValue, cookieHeader, refreshWeb, api, P, models, resetDb, nextPhone, e164, lastCode, lastEmailCode, mail, allowResend, signupUser, verifyMember, totpFor, createSignedInMaster, createSecondMaster, signInStaff, stepUp, bearer, sms, settings, setSettingForTest, events, consumers };

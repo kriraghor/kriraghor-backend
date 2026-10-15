@@ -117,9 +117,12 @@ describe('single-approval changes (M03-FR-11, FR-15)', () => {
     expect(auditRow).toMatchObject({ actorId: master.userId, entityType: 'platform_setting', before: { value: 15, version: 1 }, after: { value: 10, version: 2 } });
     expect(auditRow.meta).toMatchObject({ severity: 'critical', stepUp: true, requestId: r.body.id });
 
+    // setting.changed is critical (M04-FR-11), so the audit row also emits audit.critical_recorded.
     const names = h.events.recorded().map((e) => e.name);
-    expect(names).toEqual(['setting.change_proposed', 'setting.changed']);
-    expect(h.events.recorded()[1].payload).toMatchObject({ key: 'esports.room_reveal_minutes', version: 2, oldValue: 15, newValue: 10, requestId: r.body.id });
+    expect(names).toEqual(['setting.change_proposed', 'audit.critical_recorded', 'setting.changed']);
+    expect(h.events.recorded()[1].payload).toMatchObject({ action: 'setting.changed', actorId: master.userId, entityId: 'esports.room_reveal_minutes' });
+    expect(await models.OutboxEvent.count({ where: { status: 'pending' } })).toBe(3);
+    expect(h.events.recorded()[2].payload).toMatchObject({ key: 'esports.room_reveal_minutes', version: 2, oldValue: 15, newValue: 10, requestId: r.body.id });
   });
 
   it('validates type, range, cross-key rules and no-op changes before consuming step-up', async () => {
@@ -356,7 +359,7 @@ describe('boot check and seed (M03 §12, §15)', () => {
     await propose(master, [{ key: 'esports.room_reveal_minutes', to: 12 }]);
     expect(await seedReference()).toEqual({ settings: 0, esports: 0 });
     expect((await models.PlatformSetting.findByPk('esports.room_reveal_minutes')).value).toBe(12);
-    expect(await models.PlatformSetting.count()).toBe(130);
+    expect(await models.PlatformSetting.count()).toBe(137);
     expect(await models.EsportsGame.count()).toBe(2);
   });
 });
