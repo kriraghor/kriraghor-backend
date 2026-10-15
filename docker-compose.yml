@@ -2,23 +2,20 @@ name: kriraghor
 
 # Local dependencies only (the app runs on the host with npm run dev). Image versions are pinned.
 services:
-  mysql:
-    image: mysql:8.4
-    container_name: kriraghor-mysql
+  postgres:
+    image: postgres:16-alpine
+    container_name: kriraghor-postgres
     environment:
-      MYSQL_DATABASE: kriraghor
-      MYSQL_USER: kriraghor
-      MYSQL_PASSWORD: kriraghor
-      MYSQL_ROOT_PASSWORD: root
+      POSTGRES_DB: kriraghor
+      POSTGRES_USER: kriraghor
+      POSTGRES_PASSWORD: kriraghor
       TZ: UTC
-    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci", "--default-time-zone=+00:00"]
     ports:
-      - "3306:3306"
+      - "5432:5432"
     volumes:
-      - mysql-data:/var/lib/mysql
-      - ./docker/mysql-init:/docker-entrypoint-initdb.d:ro
+      - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      test: ["CMD-SHELL", "pg_isready -U kriraghor -d kriraghor"]
       interval: 5s
       retries: 20
 
@@ -63,6 +60,6 @@ services:
       retries: 20
 
 volumes:
-  mysql-data:
+  postgres-data:
   redis-data:
   s3-data:
