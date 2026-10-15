@@ -1,20 +1,45 @@
 'use strict';
 
 const { Sequelize } = require('sequelize');
-const dbConfig = require('../config/database');
 const config = require('../config');
 
-const c = dbConfig[config.env];
+let sequelize;
 
-const sequelize = new Sequelize(c.database, c.username, c.password, {
-  host: c.host,
-  port: c.port,
-  dialect: c.dialect,
-  timezone: c.timezone,
-  dialectOptions: c.dialectOptions,
-  define: c.define,
-  pool: c.pool,
-  logging: c.logging,
-});
+if (process.env.DATABASE_URL) {
+  // Directly use the connection URI for Supabase / Cloud environments
+  sequelize = new Sequelize(process.env.DATABASE_URL, {
+    dialect: 'postgres',
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false, // Supabase SSL support
+      },
+    },
+    define: { underscored: true },
+    logging: config.db.logging ? console.log : false,
+    pool: { max: config.db.poolMax, min: 0, idle: 10000, acquire: 30000 },
+  });
+} else {
+  // Fallback to individual config fields for local development
+  sequelize = new Sequelize(
+    config.db.name,
+    config.db.user,
+    config.db.password,
+    {
+      host: config.db.host,
+      port: config.db.port,
+      dialect: 'postgres',
+      dialectOptions: {
+        ssl: {
+          require: true,
+          rejectUnauthorized: false,
+        },
+      },
+      define: { underscored: true },
+      logging: config.db.logging ? console.log : false,
+      pool: { max: config.db.poolMax, min: 0, idle: 10000, acquire: 30000 },
+    }
+  );
+}
 
-module.exports = { sequelize, Sequelize };
+module.exports = { sequelize };
