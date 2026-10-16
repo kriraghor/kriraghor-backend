@@ -2,10 +2,16 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-    // PostgreSQL native IF NOT EXISTS - foolproof and clean
-    await queryInterface.sequelize.query(
-      'ALTER TABLE sessions ADD COLUMN IF NOT EXISTS audience VARCHAR(32);'
-    );
+    // Foolproof PL/pgSQL block that catches duplicate column errors safely
+    await queryInterface.sequelize.query(`
+      DO $$ 
+      BEGIN
+        ALTER TABLE sessions ADD COLUMN audience VARCHAR(32);
+      EXCEPTION
+        WHEN duplicate_column THEN 
+          NULL;
+      END $$;
+    `);
   },
 
   async down(queryInterface, Sequelize) {
