@@ -44,12 +44,14 @@ async function main() {
   lifecycle.onShutdown('database', () => sequelize.close());
   lifecycle.onShutdown('redis', closeAllRedis);
 
-  await runReleaseSteps();
   await sequelize.authenticate();
+  logger.info({ db: config.db.name }, 'database connected');
+
+  await runReleaseSteps();
+
   // M03 boot check: refuse to start before the release step has seeded every setting.
   await settings.bootCheck();
   await settings.subscribe();
-  logger.info({ db: config.db.name }, 'database connected');
 
   const app = createApp();
   const server = app.listen(config.port, () => logger.info(`Kriraghor API listening on :${config.port}${config.apiPrefix}`));
