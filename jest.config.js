@@ -28,5 +28,7 @@ module.exports = {
     './src/modules/payouts/payouts.rules.js': FULL,
     // M02 NID format, age, file types, checks, decisions and the member role.
     './src/modules/kyc/kyc.rules.js': FULL,
+    // M05 SLA, claim lock, rubric, checks and decisions.
+    './src/modules/moderation/moderation.rules.js': FULL,
   },
 };

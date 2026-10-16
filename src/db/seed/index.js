@@ -10,7 +10,8 @@ const settingsSeed = require('./reference/settings.v1.json');
 const esportsSeed = require('./reference/esports.v1.json');
 const templatesSeed = require('./reference/templates.v1.json');
 const kycSeed = require('./reference/kyc-requirements.v1.json');
-const { sequelize, PlatformSetting, SettingsHistory, EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset, MessageTemplate, DocumentRequirement } = require('../../models');
+const moderationSeed = require('./reference/moderation.v1.json');
+const { sequelize, PlatformSetting, SettingsHistory, EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset, MessageTemplate, DocumentRequirement, ReviewRubric, RejectionReason } = require('../../models');
 
 const SEED_REASON = `Seed settings v${settingsSeed.seedVersion}`;
 
@@ -110,13 +111,30 @@ async function seedKycRequirements(transaction) {
   return inserted;
 }
 
+/** M05 rubrics (one active version per kind) and rejection reasons, only when missing. */
+async function seedModeration(transaction) {
+  let inserted = 0;
+  for (const r of moderationSeed.rubrics) {
+    if (await ReviewRubric.findOne({ where: { kind: r.kind }, transaction })) continue;
+    await ReviewRubric.create({ kind: r.kind, version: r.version, items: r.items, isActive: true }, { transaction });
+    inserted += 1;
+  }
+  for (const r of moderationSeed.reasons) {
+    if (await RejectionReason.findByPk(r.code, { transaction })) continue;
+    await RejectionReason.create({ requiresText: false, ...r }, { transaction });
+    inserted += 1;
+  }
+  return inserted;
+}
+
 async function seedReference() {
   return sequelize.transaction(async (transaction) => ({
     settings: await seedSettings(transaction),
     esports: await seedEsports(transaction),
     templates: await seedTemplates(transaction),
     kycRequirements: await seedKycRequirements(transaction),
+    moderation: await seedModeration(transaction),
   }));
 }
 
-module.exports = { seedReference, seedSettings, seedEsports, seedTemplates, seedKycRequirements, kycSeed, settingRow, SETTING_KEYS, settingsSeed, esportsSeed, templatesSeed };
+module.exports = { seedReference, seedSettings, seedEsports, seedTemplates, seedKycRequirements, kycSeed, seedModeration, moderationSeed, settingRow, SETTING_KEYS, settingsSeed, esportsSeed, templatesSeed };

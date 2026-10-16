@@ -1,6 +1,6 @@
 {
-  "seedVersion": 3,
-  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates.",
+  "seedVersion": 4,
+  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*).",
   "templates": [
     {
       "code": "AUDIT_CRITICAL",
@@ -2345,7 +2345,7 @@
       "channel": "in_app",
       "locale": "en",
       "subject": "NID to review",
-      "body": "A new NID ({{masked}}) is waiting on the KYC desk.",
+      "body": "A new NID ({{masked}}) is waiting on the Moderation desk.",
       "variables": [
         {
           "name": "masked",
@@ -2359,12 +2359,200 @@
       "channel": "in_app",
       "locale": "bn",
       "subject": "যাচাইয়ের জন্য NID",
-      "body": "KYC ডেস্কে একটি নতুন NID ({{masked}}) অপেক্ষায়।",
+      "body": "মডারেশন ডেস্কে একটি নতুন NID ({{masked}}) অপেক্ষায়।",
       "variables": [
         {
           "name": "masked",
           "type": "text",
           "maxLen": 12
+        }
+      ]
+    },
+    {
+      "code": "MOD_SLA_BREACH",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Review overdue",
+      "body": "An {{kind}} has waited {{hours}} h past its review deadline.",
+      "variables": [
+        {
+          "name": "kind",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "hours",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "MOD_SLA_BREACH",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "যাচাই সময় পেরিয়েছে",
+      "body": "একটি {{kind}} যাচাইয়ের সময়সীমা পেরিয়ে {{hours}} ঘণ্টা অপেক্ষায়।",
+      "variables": [
+        {
+          "name": "kind",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "hours",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "MOD_SLA_BREACH",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Kriraghor: review overdue",
+      "body": "An {{kind}} has waited {{hours}} h past its review deadline.\n\nOpen it on the Moderation desk: {{url}}",
+      "variables": [
+        {
+          "name": "kind",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "hours",
+          "type": "number"
+        },
+        {
+          "name": "url",
+          "type": "link"
+        }
+      ]
+    },
+    {
+      "code": "MOD_SLA_BREACH",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "ক্রীড়াঘর: যাচাই সময় পেরিয়েছে",
+      "body": "একটি {{kind}} যাচাইয়ের সময়সীমা পেরিয়ে {{hours}} ঘণ্টা অপেক্ষায়।\n\nমডারেশন ডেস্কে খুলুন: {{url}}",
+      "variables": [
+        {
+          "name": "kind",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "hours",
+          "type": "number"
+        },
+        {
+          "name": "url",
+          "type": "link"
+        }
+      ]
+    },
+    {
+      "code": "MOD_APPLY_FAILED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Approval not applied",
+      "body": "An approved {{kind}} was not applied after {{attempts}} attempts. Check it on the Moderation desk.",
+      "variables": [
+        {
+          "name": "kind",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "attempts",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "MOD_APPLY_FAILED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অনুমোদন কার্যকর হয়নি",
+      "body": "অনুমোদিত একটি {{kind}} {{attempts}} বার চেষ্টার পরও কার্যকর হয়নি। মডারেশন ডেস্কে দেখুন।",
+      "variables": [
+        {
+          "name": "kind",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "attempts",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "MOD_APPLY_FAILED",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Kriraghor: approval not applied",
+      "body": "An approved {{kind}} was not applied after {{attempts}} attempts.\n\nCheck it on the Moderation desk: {{url}}",
+      "variables": [
+        {
+          "name": "kind",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "attempts",
+          "type": "number"
+        },
+        {
+          "name": "url",
+          "type": "link"
+        }
+      ]
+    },
+    {
+      "code": "MOD_APPLY_FAILED",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "ক্রীড়াঘর: অনুমোদন কার্যকর হয়নি",
+      "body": "অনুমোদিত একটি {{kind}} {{attempts}} বার চেষ্টার পরও কার্যকর হয়নি।\n\nমডারেশন ডেস্কে দেখুন: {{url}}",
+      "variables": [
+        {
+          "name": "kind",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "attempts",
+          "type": "number"
+        },
+        {
+          "name": "url",
+          "type": "link"
+        }
+      ]
+    },
+    {
+      "code": "MOD_CLAIM_LOST",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Your review lock ended",
+      "body": "The {{kind}} you were reviewing was resubmitted or withdrawn. Pick it up again from the queue.",
+      "variables": [
+        {
+          "name": "kind",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "MOD_CLAIM_LOST",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আপনার যাচাই লক শেষ",
+      "body": "আপনি যে {{kind}} যাচাই করছিলেন তা আবার জমা বা প্রত্যাহার হয়েছে। সারি থেকে আবার নিন।",
+      "variables": [
+        {
+          "name": "kind",
+          "type": "text",
+          "maxLen": 40
         }
       ]
     }

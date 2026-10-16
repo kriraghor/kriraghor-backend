@@ -4,8 +4,9 @@
  * M02 routes (§9), lite.
  *   meVerification  /me/verification     the member checklist, badge, unlocks and limits
  *   meDocuments     /me/documents        upload a file (raw body), submit the NID, view my own upload
- *   adminKyc        /admin/kyc           the KYC desk (approve_documents): queue, review, audited file
- *                                        viewer, NID reveal, decision
+ *   adminKyc        /admin/kyc           the document panel on the Moderation desk (approve_documents):
+ *                                        review fields, audited file viewer, NID reveal. The queue and
+ *                                        the decision are M05 (/admin/submissions).
  * Files and the NID number are never cached (no-store) and never idempotency-stored.
  */
 const express = require('express');
@@ -41,13 +42,11 @@ meDocuments.get('/:id/files/:fileId', validate(s.fileParams, 'params'), async (r
 
 const adminKyc = Router();
 adminKyc.use(authenticateAdmin, requireStaff, requireAnyPermission(PERMISSIONS.APPROVE_DOCUMENTS));
-adminKyc.get('/documents', validate(s.adminListQuery, 'query'), async (req, res) => res.json(await kyc.adminList(req.validQuery)));
 adminKyc.get('/documents/:id', validate(s.idParam, 'params'), async (req, res) => res.json(await kyc.adminGet(req.params.id)));
 adminKyc.get('/documents/:id/files/:fileId', validate(s.fileParams, 'params'), async (req, res) => sendFile(res, await kyc.viewFile(req.user, req.params.id, req.params.fileId, req)));
 adminKyc.post('/documents/:id/reveal-nid', validate(s.idParam, 'params'), validate(s.revealBody), async (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.json(await kyc.revealNid(req.user, req.params.id, req.body, req));
 });
-adminKyc.post('/documents/:id/decide', validate(s.idParam, 'params'), validate(s.decideBody), async (req, res) => res.json(await kyc.decide(req.user, req.params.id, req.body, req)));
 
 module.exports = { meVerification, meDocuments, adminKyc };

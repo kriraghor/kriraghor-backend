@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Kriraghor API: M02 KYC",
-    "description": "A member uploads the NID front, back and a selfie, then submits the number, date of birth and legal name; the master reviews it on the KYC desk (masked data, an audited file view, an audited 60-second reveal) and approves it with the full rubric; the member role becomes active and the identity fields are copied to the account.\n\nUnattended: `node postman/run-m02.js` (kriraghor_test database; fixtures in postman/fixtures).\n\nRebuild this file with: node postman/build-collection-m02.js",
+    "description": "A member uploads the NID front, back and a selfie, then submits the number, date of birth and legal name; the master claims it on the M05 Moderation desk, reads the document panel (masked data, an audited file view, an audited 60-second reveal), ticks the rubric and approves it; the member role becomes active and the identity fields are copied to the account.\n\nUnattended: `node postman/run-m02.js` (kriraghor_test database; fixtures in postman/fixtures).\n\nRebuild this file with: node postman/build-collection-m02.js",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -35,6 +35,10 @@
     },
     {
       "key": "documentId",
+      "value": ""
+    },
+    {
+      "key": "submissionId",
       "value": ""
     }
   ],
@@ -552,10 +556,10 @@
       ]
     },
     {
-      "name": "2. KYC desk",
+      "name": "2. Moderation desk (M05) with the document panel",
       "item": [
         {
-          "name": "Queue",
+          "name": "Queue (documents)",
           "event": [
             {
               "listen": "test",
@@ -565,10 +569,11 @@
                   "let j = null; try { j = pm.response.json(); } catch (e) {}",
                   "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
                   "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'items.0.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('submissionId', v); }",
                   "pm.test('status 200', () => {",
                   "  pm.response.to.have.status(200);",
                   "});",
-                  "pm.test(\"one waiting, masked, checks passed\", () => { pm.expect(j.items.length === 1 && j.items[0].id === pm.collectionVariables.get('documentId') && j.items[0].failedChecks.length === 0 && !JSON.stringify(j).includes('19901234567890123')).to.eql(true); });"
+                  "pm.test(\"one waiting\", () => { pm.expect(j.items.length === 1 && j.items[0].kind === 'document' && j.items[0].status === 'pending_review' && !JSON.stringify(j).includes('19901234567890123')).to.eql(true); });"
                 ]
               }
             }
@@ -582,14 +587,60 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/admin/kyc/documents",
+              "raw": "{{baseUrl}}/admin/submissions?kind=document",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "admin",
-                "kyc",
-                "documents"
+                "submissions"
+              ],
+              "query": [
+                {
+                  "key": "kind",
+                  "value": "document"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Claim it",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"mine, checks passed, masked payload\", () => { pm.expect(j.claim.mine === true && j.checks.every((c) => c.result !== 'fail') && j.payload.documentId === pm.collectionVariables.get('documentId') && j.payload.numberMasked === '•••• 0123').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/submissions/{{submissionId}}/claim",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "submissions",
+                "{{submissionId}}",
+                "claim"
               ]
             }
           }
@@ -817,6 +868,10 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
               }
             ],
             "body": {
@@ -829,22 +884,75 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/admin/kyc/documents/{{documentId}}/decide",
+              "raw": "{{baseUrl}}/admin/submissions/{{submissionId}}/decide",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "admin",
-                "kyc",
-                "documents",
-                "{{documentId}}",
+                "submissions",
+                "{{submissionId}}",
                 "decide"
               ]
             }
           }
         },
         {
-          "name": "Approve with the full rubric",
+          "name": "Tick the rubric",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"nothing missing\", () => { pm.expect(j.missing.length === 0).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticks\": [\n    \"name_matches\",\n    \"readable\",\n    \"not_edited\",\n    \"face_matches\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/submissions/{{submissionId}}/ticks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "submissions",
+                "{{submissionId}}",
+                "ticks"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Approve",
           "event": [
             {
               "listen": "test",
@@ -872,11 +980,15 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
               }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"decision\": \"approve\",\n  \"rubric\": {\n    \"nameMatches\": true,\n    \"readable\": true,\n    \"notExpired\": true\n  }\n}",
+              "raw": "{\n  \"decision\": \"approve\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -884,15 +996,14 @@
               }
             },
             "url": {
-              "raw": "{{baseUrl}}/admin/kyc/documents/{{documentId}}/decide",
+              "raw": "{{baseUrl}}/admin/submissions/{{submissionId}}/decide",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "admin",
-                "kyc",
-                "documents",
-                "{{documentId}}",
+                "submissions",
+                "{{submissionId}}",
                 "decide"
               ]
             }

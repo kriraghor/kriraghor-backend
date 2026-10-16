@@ -57,7 +57,11 @@
     },
     {
       "name": "kyc",
-      "description": "Identity verification: NID upload, review desk and the member checklist (M02)"
+      "description": "Identity verification: NID upload, the document panel and the member checklist (M02)"
+    },
+    {
+      "name": "moderation",
+      "description": "Submissions, the Moderation desk: claim, rubric, decisions, SLA (M05)"
     }
   ],
   "components": {
@@ -6607,157 +6611,6 @@
           "sizeBytes"
         ]
       },
-      "KycQueue": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "id": {
-                  "type": "string",
-                  "format": "uuid"
-                },
-                "docType": {
-                  "type": "string"
-                },
-                "version": {
-                  "type": "integer"
-                },
-                "status": {
-                  "type": "string",
-                  "enum": [
-                    "in_review",
-                    "changes_requested",
-                    "approved",
-                    "rejected",
-                    "superseded",
-                    "withdrawn"
-                  ]
-                },
-                "numberMasked": {
-                  "type": "string"
-                },
-                "birthYear": {
-                  "type": "integer"
-                },
-                "reasonCode": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "reasonText": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "decidedAt": {
-                  "type": [
-                    "string",
-                    "null"
-                  ],
-                  "format": "date-time"
-                },
-                "submittedAt": {
-                  "type": "string",
-                  "format": "date-time"
-                },
-                "files": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": {
-                        "type": "string",
-                        "format": "uuid"
-                      },
-                      "slot": {
-                        "type": "string"
-                      },
-                      "mime": {
-                        "type": "string"
-                      },
-                      "sizeBytes": {
-                        "type": "integer"
-                      },
-                      "purged": {
-                        "type": "boolean"
-                      }
-                    },
-                    "required": [
-                      "id",
-                      "slot",
-                      "mime",
-                      "sizeBytes",
-                      "purged"
-                    ]
-                  }
-                },
-                "user": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string",
-                      "format": "uuid"
-                    },
-                    "displayName": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "id",
-                    "displayName"
-                  ]
-                },
-                "failedChecks": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              },
-              "required": [
-                "id",
-                "docType",
-                "version",
-                "status",
-                "numberMasked",
-                "birthYear",
-                "reasonCode",
-                "reasonText",
-                "decidedAt",
-                "submittedAt",
-                "files",
-                "user",
-                "failedChecks"
-              ]
-            }
-          },
-          "nextCursor": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "counts": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "integer"
-            }
-          }
-        },
-        "required": [
-          "items",
-          "nextCursor",
-          "counts"
-        ]
-      },
       "KycReview": {
         "type": "object",
         "properties": {
@@ -7021,35 +6874,50 @@
         ],
         "description": "The full NID number for 60 seconds. Audited (critical); never stored or logged; do not cache."
       },
-      "KycDecided": {
+      "MySubmissionList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MySubmission"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "MySubmission": {
         "type": "object",
         "properties": {
           "id": {
             "type": "string",
             "format": "uuid"
           },
-          "docType": {
+          "kind": {
             "type": "string"
+          },
+          "subjectId": {
+            "type": "string",
+            "format": "uuid"
           },
           "version": {
             "type": "integer"
           },
+          "title": {
+            "type": "string"
+          },
           "status": {
             "type": "string",
             "enum": [
-              "in_review",
+              "pending_review",
               "changes_requested",
               "approved",
               "rejected",
-              "superseded",
-              "withdrawn"
+              "withdrawn",
+              "superseded"
             ]
-          },
-          "numberMasked": {
-            "type": "string"
-          },
-          "birthYear": {
-            "type": "integer"
           },
           "reasonCode": {
             "type": [
@@ -7063,6 +6931,10 @@
               "null"
             ]
           },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
           "decidedAt": {
             "type": [
               "string",
@@ -7070,11 +6942,32 @@
             ],
             "format": "date-time"
           },
-          "submittedAt": {
-            "type": "string",
+          "appliedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time"
-          },
-          "files": {
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "subjectId",
+          "version",
+          "title",
+          "status",
+          "reasonCode",
+          "reasonText",
+          "submittedAt",
+          "decidedAt",
+          "appliedAt"
+        ]
+      },
+      "ModerationQueue": {
+        "type": "object",
+        "properties": {
+          "items": {
             "type": "array",
             "items": {
               "type": "object",
@@ -7083,27 +6976,345 @@
                   "type": "string",
                   "format": "uuid"
                 },
-                "slot": {
+                "kind": {
                   "type": "string"
                 },
-                "mime": {
-                  "type": "string"
+                "subjectId": {
+                  "type": "string",
+                  "format": "uuid"
                 },
-                "sizeBytes": {
+                "version": {
                   "type": "integer"
                 },
-                "purged": {
+                "isEdit": {
                   "type": "boolean"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "pending_review",
+                    "changes_requested",
+                    "approved",
+                    "rejected",
+                    "withdrawn",
+                    "superseded"
+                  ]
+                },
+                "submittedBy": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name"
+                  ]
+                },
+                "submittedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "slaDueAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "sla": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "enum": [
+                    "ok",
+                    "warn",
+                    "overdue",
+                    null
+                  ]
+                },
+                "claim": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "properties": {
+                    "staffId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "mine": {
+                      "type": "boolean"
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "hardExpiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "staffId",
+                    "name",
+                    "mine",
+                    "expiresAt",
+                    "hardExpiresAt"
+                  ]
+                },
+                "reasonCode": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "decidedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "decidedBy": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name"
+                  ]
                 }
               },
               "required": [
                 "id",
-                "slot",
-                "mime",
-                "sizeBytes",
-                "purged"
+                "kind",
+                "subjectId",
+                "version",
+                "isEdit",
+                "title",
+                "status",
+                "submittedBy",
+                "submittedAt",
+                "slaDueAt",
+                "sla",
+                "claim",
+                "reasonCode",
+                "decidedAt",
+                "decidedBy"
               ]
             }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "ModerationStats": {
+        "type": "object",
+        "properties": {
+          "inQueue": {
+            "type": "integer"
+          },
+          "overdue": {
+            "type": "integer"
+          },
+          "claimedByYou": {
+            "type": "integer"
+          },
+          "decidedToday": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "inQueue",
+          "overdue",
+          "claimedByYou",
+          "decidedToday"
+        ]
+      },
+      "ModerationDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "subjectId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "isEdit": {
+            "type": "boolean"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending_review",
+              "changes_requested",
+              "approved",
+              "rejected",
+              "withdrawn",
+              "superseded"
+            ]
+          },
+          "submittedBy": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "slaDueAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sla": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "ok",
+              "warn",
+              "overdue",
+              null
+            ]
+          },
+          "claim": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "staffId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "mine": {
+                "type": "boolean"
+              },
+              "expiresAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "hardExpiresAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "staffId",
+              "name",
+              "mine",
+              "expiresAt",
+              "hardExpiresAt"
+            ]
+          },
+          "reasonCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "decidedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "decidedBy": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          },
+          "payload": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": {}
+          },
+          "reasonText": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "checks": {
             "type": "array",
@@ -7113,11 +7324,22 @@
                 "key": {
                   "type": "string"
                 },
-                "ok": {
-                  "type": "boolean"
+                "severity": {
+                  "type": "string",
+                  "enum": [
+                    "hard",
+                    "soft"
+                  ]
                 },
-                "blocks": {
-                  "type": "boolean"
+                "result": {
+                  "type": "string",
+                  "enum": [
+                    "pass",
+                    "warn",
+                    "fail",
+                    "pending",
+                    "not_computed"
+                  ]
                 },
                 "detail": {
                   "type": [
@@ -7128,25 +7350,273 @@
               },
               "required": [
                 "key",
-                "ok",
-                "blocks"
+                "severity",
+                "result",
+                "detail"
+              ]
+            }
+          },
+          "rubric": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "version": {
+                "type": "integer"
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string"
+                    },
+                    "labelEn": {
+                      "type": "string"
+                    },
+                    "labelBn": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "labelEn",
+                    "labelBn"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            },
+            "required": [
+              "id",
+              "version",
+              "items"
+            ]
+          },
+          "ticks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rubricResult": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "object",
+              "properties": {
+                "itemKey": {
+                  "type": "string"
+                },
+                "ticked": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "itemKey",
+                "ticked"
+              ]
+            }
+          },
+          "override": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "by": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "reason": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "by",
+              "reason"
+            ]
+          },
+          "appliedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "labelEn": {
+                  "type": "string"
+                },
+                "labelBn": {
+                  "type": "string"
+                },
+                "requiresText": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "code",
+                "labelEn",
+                "labelBn",
+                "requiresText"
+              ]
+            }
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "version": {
+                  "type": "integer"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "pending_review",
+                    "changes_requested",
+                    "approved",
+                    "rejected",
+                    "withdrawn",
+                    "superseded"
+                  ]
+                },
+                "reasonCode": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "decidedBy": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "decidedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "submittedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "version",
+                "status",
+                "reasonCode",
+                "decidedBy",
+                "decidedAt",
+                "submittedAt"
               ]
             }
           }
         },
         "required": [
           "id",
-          "docType",
+          "kind",
+          "subjectId",
           "version",
+          "isEdit",
+          "title",
           "status",
-          "numberMasked",
-          "birthYear",
-          "reasonCode",
-          "reasonText",
-          "decidedAt",
+          "submittedBy",
           "submittedAt",
-          "files",
-          "checks"
+          "slaDueAt",
+          "sla",
+          "claim",
+          "reasonCode",
+          "decidedAt",
+          "decidedBy",
+          "payload",
+          "reasonText",
+          "checks",
+          "rubric",
+          "ticks",
+          "rubricResult",
+          "override",
+          "appliedAt",
+          "reasons",
+          "history"
+        ]
+      },
+      "ModerationHeartbeat": {
+        "type": "object",
+        "properties": {
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "hardExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "expiresAt",
+          "hardExpiresAt"
+        ]
+      },
+      "ModerationTicks": {
+        "type": "object",
+        "properties": {
+          "ticks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "missing": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "ticks",
+          "missing"
+        ]
+      },
+      "ModerationReleased": {
+        "type": "object",
+        "properties": {
+          "released": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "released"
         ]
       }
     },
@@ -8433,7 +8903,8 @@
                       "twofa.reset",
                       "esports.money",
                       "events.replay",
-                      "escrow.manage"
+                      "escrow.manage",
+                      "moderation.override"
                     ]
                   },
                   "code": {
@@ -19747,106 +20218,12 @@
         }
       }
     },
-    "/admin/kyc/documents": {
-      "get": {
-        "tags": [
-          "kyc"
-        ],
-        "summary": "KYC desk queue (approve_documents): masked, with failed checks and counts per status",
-        "security": [
-          {
-            "adminBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "enum": [
-                "in_review",
-                "changes_requested",
-                "approved",
-                "rejected",
-                "superseded",
-                "withdrawn"
-              ],
-              "default": "in_review"
-            },
-            "required": false,
-            "name": "status",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "required": false,
-            "name": "cursor",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100,
-              "default": 50
-            },
-            "required": false,
-            "name": "limit",
-            "in": "query"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/KycQueue"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Error. Codes: VALIDATION_FAILED",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/admin/kyc/documents/{id}": {
       "get": {
         "tags": [
           "kyc"
         ],
-        "summary": "One document for review: legal name, DOB, masked number, checks, files and history",
+        "summary": "The document panel on the Moderation desk: legal name, DOB, masked number, checks, files and history",
         "security": [
           {
             "adminBearer": []
@@ -20117,12 +20494,322 @@
         }
       }
     },
-    "/admin/kyc/documents/{id}/decide": {
+    "/me/submissions": {
+      "get": {
+        "tags": [
+          "moderation"
+        ],
+        "summary": "My submissions and their decisions, with the reason and note (FR-14)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 30
+            },
+            "required": false,
+            "name": "kind",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending_review",
+                "changes_requested",
+                "approved",
+                "rejected",
+                "withdrawn",
+                "superseded"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MySubmissionList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/submissions/{id}/withdraw": {
       "post": {
         "tags": [
-          "kyc"
+          "moderation"
         ],
-        "summary": "Approve (all rubric checks), request changes or reject (reason). Approval makes the member role active (FR-09, FR-10)",
+        "summary": "Withdraw my open submission (kinds that allow it; documents are replaced by resubmitting)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MySubmission"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: INVALID_STATE, WITHDRAW_NOT_ALLOWED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/submissions": {
+      "get": {
+        "tags": [
+          "moderation"
+        ],
+        "summary": "The Moderation queue: kinds I may review, oldest deadline first, with SLA and lock (FR-07, FR-17)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending_review",
+                "changes_requested",
+                "approved",
+                "rejected",
+                "withdrawn",
+                "superseded"
+              ],
+              "default": "pending_review"
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 30
+            },
+            "required": false,
+            "name": "kind",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "me",
+                "others",
+                "none"
+              ]
+            },
+            "required": false,
+            "name": "claimed",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "required": false,
+            "name": "overdue",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 80
+            },
+            "required": false,
+            "name": "q",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModerationQueue"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/submissions/stats": {
+      "get": {
+        "tags": [
+          "moderation"
+        ],
+        "summary": "Desk KPIs: in the queue, overdue, claimed by me, decided today (Asia/Dhaka)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModerationStats"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/submissions/{id}": {
+      "get": {
+        "tags": [
+          "moderation"
+        ],
+        "summary": "One submission: payload summary, latest checks, rubric, my ticks, reasons for the kind and version history. A kind I may not review is 404",
         "security": [
           {
             "adminBearer": []
@@ -20139,64 +20826,89 @@
             "in": "path"
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "decision": {
-                    "type": "string",
-                    "enum": [
-                      "approve",
-                      "changes_requested",
-                      "reject"
-                    ]
-                  },
-                  "rubric": {
-                    "type": "object",
-                    "properties": {
-                      "nameMatches": {
-                        "type": "boolean"
-                      },
-                      "readable": {
-                        "type": "boolean"
-                      },
-                      "notExpired": {
-                        "type": "boolean"
-                      }
-                    }
-                  },
-                  "reasonCode": {
-                    "type": "string",
-                    "enum": [
-                      "blurry",
-                      "name_mismatch",
-                      "not_nid",
-                      "under_age",
-                      "duplicate_nid",
-                      "other"
-                    ]
-                  },
-                  "note": {
-                    "type": "string",
-                    "maxLength": 500
-                  }
-                },
-                "required": [
-                  "decision"
-                ]
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/KycDecided"
+                  "$ref": "#/components/schemas/ModerationDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/submissions/{id}/claim": {
+      "post": {
+        "tags": [
+          "moderation"
+        ],
+        "summary": "Claim the review lock (moderation.claim_ttl_min, capped at moderation.claim_max_min); checks re-run (FR-05, FR-08)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModerationDetail"
                 }
               }
             }
@@ -20232,7 +20944,7 @@
             }
           },
           "409": {
-            "description": "Error. Codes: DOC_NOT_IN_REVIEW, CHECKS_FAILED",
+            "description": "Error. Codes: ALREADY_CLAIMED, INVALID_STATE",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -20242,7 +20954,560 @@
             }
           },
           "422": {
-            "description": "Error. Codes: VALIDATION_FAILED, RUBRIC_INCOMPLETE, REASON_REQUIRED",
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/submissions/{id}/heartbeat": {
+      "post": {
+        "tags": [
+          "moderation"
+        ],
+        "summary": "Keep my lock while the review pane is open (every moderation.heartbeat_sec)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModerationHeartbeat"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED, CLAIM_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: CLAIM_EXPIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/submissions/{id}/ticks": {
+      "put": {
+        "tags": [
+          "moderation"
+        ],
+        "summary": "Save my rubric ticks on the server (FR-09)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ticks": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 60
+                    },
+                    "maxItems": 30
+                  }
+                },
+                "required": [
+                  "ticks"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModerationTicks"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED, CLAIM_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: CLAIM_EXPIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/submissions/{id}/release": {
+      "post": {
+        "tags": [
+          "moderation"
+        ],
+        "summary": "Release my lock; a master may force-release another reviewer’s lock (audited)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "force": {
+                    "type": "boolean",
+                    "description": "Master only: release another reviewer’s lock (audited)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModerationReleased"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED, CLAIM_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/submissions/{id}/decide": {
+      "post": {
+        "tags": [
+          "moderation"
+        ],
+        "summary": "Approve (every rubric tick, no failing hard check), request changes or reject (a reason for the kind). A master may approve over a failing check with step-up moderation.override and a reason (Q46)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "8–80 letters, digits, - or _. Retries with the same key and body replay the first response"
+            },
+            "required": true,
+            "description": "8–80 letters, digits, - or _. Retries with the same key and body replay the first response",
+            "name": "idempotency-key",
+            "in": "header"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Required with override"
+            },
+            "required": false,
+            "description": "Required with override",
+            "name": "x-step-up",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "decision": {
+                    "type": "string",
+                    "enum": [
+                      "approve",
+                      "request_changes",
+                      "reject"
+                    ]
+                  },
+                  "reasonCode": {
+                    "type": "string",
+                    "maxLength": 40
+                  },
+                  "reasonText": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "description": "Sent to the submitter; required when the reason is \"other\""
+                  },
+                  "override": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 500,
+                    "description": "Master only, with step-up moderation.override: approve despite a failing hard check (audited)"
+                  }
+                },
+                "required": [
+                  "decision"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModerationDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error. Codes: IDEMPOTENCY_KEY_REQUIRED, IDEMPOTENCY_KEY_INVALID",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED, SELF_REVIEW_FORBIDDEN, CLAIM_REQUIRED, STEP_UP_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: INVALID_STATE, CLAIM_EXPIRED, IDEMPOTENCY_IN_PROGRESS",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, IDEMPOTENCY_KEY_REUSED, RUBRIC_INCOMPLETE, CHECK_FAILED, CHECK_LOCKED, REASON_REQUIRED, REASON_NOT_ALLOWED_FOR_KIND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/submissions/{id}/reopen": {
+      "post": {
+        "tags": [
+          "moderation"
+        ],
+        "summary": "Master: reopen a decided submission for review, with a reason (step-up moderation.override, critical audit)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Single-use step-up token from POST /auth/step-up"
+            },
+            "required": true,
+            "description": "Single-use step-up token from POST /auth/step-up",
+            "name": "x-step-up",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModerationDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED, STEP_UP_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: INVALID_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
             "content": {
               "application/problem+json": {
                 "schema": {

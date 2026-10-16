@@ -9,10 +9,10 @@ const { Op } = require('sequelize');
 const { User, StaffMember, StaffPermission } = require('../../models');
 
 /** Map userId → { phone, email, emailVerified, locale, status }. Missing users are absent. */
-async function contactFor(userIds) {
+async function contactFor(userIds, { transaction } = {}) {
   const ids = [...new Set(userIds.filter(Boolean))];
   if (!ids.length) return new Map();
-  const users = await User.findAll({ where: { id: ids }, attributes: ['id', 'phone', 'phoneVerifiedAt', 'email', 'emailVerifiedAt', 'locale', 'status', 'displayName'] });
+  const users = await User.findAll({ where: { id: ids }, attributes: ['id', 'phone', 'phoneVerifiedAt', 'email', 'emailVerifiedAt', 'locale', 'status', 'displayName'], transaction });
   return new Map(
     users.map((u) => [
       u.id,
@@ -59,8 +59,8 @@ async function identities(userIds) {
 }
 
 /** M02-FR-07: how many other users already hold this NID hash (verified members). */
-async function nidHashHolders(nidHash, exceptUserId) {
-  return User.count({ where: { nidHash, id: { [Op.ne]: exceptUserId } } });
+async function nidHashHolders(nidHash, exceptUserId, { transaction } = {}) {
+  return User.count({ where: { nidHash, id: { [Op.ne]: exceptUserId } }, transaction });
 }
 
 module.exports = { contactFor, masters, withPermission, accounts, identities, nidHashHolders };

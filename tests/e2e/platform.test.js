@@ -189,6 +189,13 @@ describe('OpenAPI contract (ADR-002)', () => {
           ['/admin/kyc', k.adminKyc],
         ];
       })(),
+      ...(() => {
+        const m = require('../../src/modules/moderation/moderation.routes');
+        return [
+          ['/me/submissions', m.meSubmissions],
+          ['/admin/submissions', m.adminRouter],
+        ];
+      })(),
     ];
     const missing = [];
     for (const [prefix, router] of mounts) {

@@ -1,8 +1,8 @@
 'use strict';
 
 // M02 KYC lite: the member checklist (FR-18), uploads through the API (FR-03, FR-04 lite), submitting
-// the NID (FR-05 to FR-07, FR-11), the KYC desk with the audited viewer and reveal (FR-12, FR-13),
-// decisions (FR-09), the member role and identity fields in M01 (FR-10, M01-FR-14), the
+// the NID (FR-05 to FR-07, FR-11), the document panel with the audited viewer and reveal (FR-12, FR-13),
+// decisions through the M05 Moderation desk (FR-08, FR-09), the member role and identity fields in M01 (FR-10, M01-FR-14), the
 // withdraw_winnings gate, notifications, retention (FR-17) and no PII in events.
 const h = require('../helpers');
 const { closeAllRedis } = require('../../src/common/redis');
@@ -53,8 +53,24 @@ async function staffWith(permissions) {
   return h.signInStaff(s.phone, s.user.id);
 }
 
-const decide = (who, id, body) => api().post(`${P}/admin/kyc/documents/${id}/decide`).set(h.bearer(who)).send(body);
-const RUBRIC = { nameMatches: true, readable: true, notExpired: true };
+const RUBRIC = ['name_matches', 'readable', 'not_edited', 'face_matches'];
+const submissionOf = (documentId) => models.Submission.findOne({ where: { kind: 'document', payload: { documentId } }, order: [['version', 'DESC']] });
+/** Status check for async helpers (a promise has no .expect); the body shows on failure. */
+const is = (status) => (r) => {
+  expect({ status: r.status, body: r.body }).toMatchObject({ status });
+  return r;
+};
+let idem = 0;
+/** Review a document on the Moderation desk (M05): claim, tick the rubric, decide; then M02 applies it. */
+async function decide(who, documentId, body, { ticks = RUBRIC } = {}) {
+  const sub = await submissionOf(documentId);
+  await api().post(`${P}/admin/submissions/${sub.id}/claim`).set(h.bearer(who));
+  await api().put(`${P}/admin/submissions/${sub.id}/ticks`).set(h.bearer(who)).send({ ticks });
+  idem += 1;
+  const r = await api().post(`${P}/admin/submissions/${sub.id}/decide`).set(h.bearer(who)).set('Idempotency-Key', `kyc-test-${idem}`).send(body);
+  await h.drainEvents();
+  return r;
+}
 /** M01 bumps the authz version when the member role moves: the client refreshes its access token (AUTHZ_STALE). */
 async function settle() {
   await h.drainEvents();
@@ -154,16 +170,21 @@ describe('submitting the NID (FR-05 to FR-07, FR-11)', () => {
   });
 });
 
-describe('the KYC desk (FR-09, FR-12, FR-13)', () => {
+describe('review on the Moderation desk (FR-08, FR-09, FR-12, FR-13)', () => {
   it('needs approve_documents; shows masked data; every file view and the reveal are audited', async () => {
     const doc = (await submit(member)).body;
     const viewer = await staffWith(['view_payouts']);
-    expect((await api().get(`${P}/admin/kyc/documents`).set(h.bearer(viewer)).expect(403)).body.code).toBe('PERMISSION_REQUIRED');
+    expect((await api().get(`${P}/admin/submissions`).set(h.bearer(viewer)).expect(403)).body.code).toBe('PERMISSION_REQUIRED');
+    expect((await api().get(`${P}/admin/kyc/documents/${doc.id}`).set(h.bearer(viewer)).expect(403)).body.code).toBe('PERMISSION_REQUIRED');
     const reviewer = await staffWith(['approve_documents']);
-    const q = await api().get(`${P}/admin/kyc/documents`).set(h.bearer(reviewer)).expect(200);
-    expect(q.body.items.map((d) => [d.id, d.user.displayName, d.numberMasked])).toEqual([[doc.id, 'Nusrat Jahan', '•••• 0123']]);
-    expect(q.body.counts).toMatchObject({ in_review: 1 });
-    expect(JSON.stringify(q.body)).not.toContain(NID_NORMALISED);
+    const q = await api().get(`${P}/admin/submissions?kind=document`).set(h.bearer(reviewer)).expect(200);
+    expect(q.body.items.map((d) => [d.kind, d.version, d.submittedBy.name, d.status])).toEqual([['document', 1, 'Nusrat Jahan', 'pending_review']]);
+    const sub = await submissionOf(doc.id);
+    const detail = await api().get(`${P}/admin/submissions/${sub.id}`).set(h.bearer(reviewer)).expect(200);
+    expect(detail.body.payload).toMatchObject({ documentId: doc.id, numberMasked: '•••• 0123', birthYear: 1990 });
+    expect(detail.body.checks.map((c) => [c.key, c.result])).toContainEqual(['nid_unique', 'pass']);
+    expect((await api().get(`${P}/admin/submissions/stats`).set(h.bearer(reviewer)).expect(200)).body).toMatchObject({ inQueue: 1 });
+    expect(JSON.stringify([q.body, detail.body])).not.toContain(NID_NORMALISED);
 
     const one = await api().get(`${P}/admin/kyc/documents/${doc.id}`).set(h.bearer(reviewer)).expect(200);
     expect(one.body).toMatchObject({ fields: { legalName: 'Nusrat Jahan', dob: '1990-05-14', numberMasked: '•••• 0123' }, user: { phoneVerified: true }, history: [{ version: 1, status: 'in_review' }] });
@@ -193,11 +214,13 @@ describe('the KYC desk (FR-09, FR-12, FR-13)', () => {
   it('approval needs the full rubric; it makes the member active and copies the verified identity', async () => {
     const doc = (await submit(member)).body;
     await settle();
-    expect((await decide(master, doc.id, { decision: 'approve' }).expect(422)).body.code).toBe('RUBRIC_INCOMPLETE');
-    expect((await decide(master, doc.id, { decision: 'approve', rubric: { ...RUBRIC, readable: false } }).expect(422)).body.code).toBe('RUBRIC_INCOMPLETE');
-    const ok = await decide(master, doc.id, { decision: 'approve', rubric: RUBRIC }).expect(200);
+    expect((await decide(master, doc.id, { decision: 'approve' }, { ticks: [] }).then(is(422))).body.code).toBe('RUBRIC_INCOMPLETE');
+    expect((await decide(master, doc.id, { decision: 'approve' }, { ticks: RUBRIC.slice(1) }).then(is(422))).body.code).toBe('RUBRIC_INCOMPLETE');
+    const ok = await decide(master, doc.id, { decision: 'approve' }).then(is(200));
     expect(ok.body.status).toBe('approved');
-    expect((await decide(master, doc.id, { decision: 'approve', rubric: RUBRIC }).expect(409)).body.code).toBe('DOC_NOT_IN_REVIEW');
+    expect((await decide(master, doc.id, { decision: 'approve' }).then(is(409))).body.code).toBe('INVALID_STATE');
+    expect(await models.VerificationDocument.findByPk(doc.id)).toMatchObject({ status: 'approved', decidedBy: master.userId });
+    expect((await submissionOf(doc.id)).appliedAt).toBeTruthy();
 
     await settle();
     expect(await memberRole(member.user.id)).toBe('active');
@@ -214,14 +237,15 @@ describe('the KYC desk (FR-09, FR-12, FR-13)', () => {
 
   it('changes requested: the member is told why and can resubmit', async () => {
     const doc = (await submit(member)).body;
-    expect((await decide(master, doc.id, { decision: 'changes_requested' }).expect(422)).body.code).toBe('REASON_REQUIRED');
-    await decide(master, doc.id, { decision: 'changes_requested', reasonCode: 'blurry', note: 'The back is out of focus' }).expect(200);
+    expect((await decide(master, doc.id, { decision: 'request_changes' }).then(is(422))).body.code).toBe('REASON_REQUIRED');
+    expect((await decide(master, doc.id, { decision: 'request_changes', reasonCode: 'price_wrong' }).then(is(422))).body.code).toBe('REASON_NOT_ALLOWED_FOR_KIND');
+    await decide(master, doc.id, { decision: 'request_changes', reasonCode: 'unreadable', reasonText: 'The back is out of focus' }).then(is(200));
     await settle();
     expect(await memberRole(member.user.id)).toBe('changes_requested');
     expect(await codesOf(member.user.id)).toContain('DOCUMENT_CHANGES_REQUESTED');
-    expect(h.sms.lastTo(h.e164(member.phone)).text).toContain('not clear enough');
+    expect(h.sms.lastTo(h.e164(member.phone)).text).toContain('unclear or cut off');
     const v = await api().get(`${P}/me/verification`).set(h.bearer(member)).expect(200);
-    expect(v.body.items[1]).toMatchObject({ status: 'changes_requested', document: { reasonCode: 'blurry', reasonText: 'The back is out of focus' } });
+    expect(v.body.items[1]).toMatchObject({ status: 'changes_requested', document: { reasonCode: 'unreadable', reasonText: 'The back is out of focus' } });
     const again = await submit(member, { salt: 'clearer' });
     expect(again.body).toMatchObject({ version: 2, status: 'in_review' });
     await settle();
@@ -230,15 +254,15 @@ describe('the KYC desk (FR-09, FR-12, FR-13)', () => {
 
   it('a duplicate NID blocks approval; the reviewer rejects it (FR-07)', async () => {
     const first = (await submit(member)).body;
-    await decide(master, first.id, { decision: 'approve', rubric: RUBRIC }).expect(200);
+    await decide(master, first.id, { decision: 'approve' }).then(is(200));
     await settle();
     const other = await h.signupUser({ name: 'Someone Else' });
     const dup = (await submit(other, { legalName: 'Someone Else', number: '19901234567890123', salt: 'x' })).body;
     const check = (await models.VerificationDocument.findByPk(dup.id)).checks.find((c) => c.key === 'nid_unique');
     expect(check).toMatchObject({ ok: false, blocks: true });
     expect(await models.OutboxEvent.count({ where: { name: 'document.duplicate_nid_detected' } })).toBe(1);
-    expect((await decide(master, dup.id, { decision: 'approve', rubric: RUBRIC }).expect(409)).body.code).toBe('CHECKS_FAILED');
-    await decide(master, dup.id, { decision: 'reject', reasonCode: 'duplicate_nid' }).expect(200);
+    expect((await decide(master, dup.id, { decision: 'approve' }).then(is(422))).body.code).toBe('CHECK_FAILED');
+    await decide(master, dup.id, { decision: 'reject', reasonCode: 'duplicate' }).then(is(200));
     await settle();
     expect(await memberRole(other.user.id)).toBe('rejected');
     expect((await models.User.findByPk(other.user.id)).kycStatus).toBe('rejected');
@@ -258,7 +282,8 @@ describe('the KYC desk (FR-09, FR-12, FR-13)', () => {
 describe('retention (FR-17)', () => {
   it('deletes images of decided documents after the retention period, and unused uploads after a day', async () => {
     const doc = (await submit(member)).body;
-    await decide(master, doc.id, { decision: 'approve', rubric: RUBRIC }).expect(200);
+    await decide(master, doc.id, { decision: 'approve' }).then(is(200));
+    await settle();
     const orphan = (await upload(member, 'front', Buffer.concat([JPEG, Buffer.from('orphan')])).expect(201)).body;
     expect(await kyc.purgeDue(new Date())).toEqual({ decided: 0, orphans: 0 });
     expect(await kyc.purgeDue(new Date(Date.now() + 25 * 3600000))).toEqual({ decided: 0, orphans: 1 });

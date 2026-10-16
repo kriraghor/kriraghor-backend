@@ -3,12 +3,13 @@
 /**
  * M02 KYC lite: NID verification (§5, §8). The member uploads the NID front, back and a selfie
  * holding it (through the API, FR-03 lite), then submits the number, date of birth and legal name.
- * Staff with approve_documents review it on the KYC desk until M05 exists:
+ * Each version goes to M05 as a `document` submission (FR-08). Staff with approve_documents claim and
+ * decide it on the Moderation desk, and kyc.moderation applies the decision here (FR-09):
  *
- *   submit ─▶ in_review ─approve─▶ approved (verification.passed → M01 makes the member role active)
- *                       ─changes─▶ changes_requested ─resubmit─▶ in_review (new version)
- *                       ─reject──▶ rejected ─resubmit─▶ in_review (new version)
- *   resubmit while in_review: the open version becomes withdrawn (FR-11)
+ *   submit ─▶ in_review ─approved─▶ approved (verification.passed → M01 makes the member role active)
+ *                       ─changes──▶ changes_requested ─resubmit─▶ in_review (new version)
+ *                       ─rejected─▶ rejected ─resubmit─▶ in_review (new version)
+ *   resubmit while in_review: the open version is withdrawn here and superseded in M05 (FR-11)
  *
  * The fields are encrypted (common/crypto); responses carry the masked number only. Every file view
  * and the NID reveal are audited (FR-12, FR-13). Images are purged after the retention period (FR-17).
@@ -26,6 +27,8 @@ const events = require('../events/events.service');
 const settings = require('../settings/settings.service');
 const directory = require('../users/directory.service');
 const rules = require('./kyc.rules');
+const moderation = require('../moderation/moderation.service');
+const { subjectIdFor } = require('./kyc.moderation');
 
 const ERRORS = {
   NID_FORMAT_INVALID: [422, 'Enter the NID number with 10, 13 or 17 digits'],
@@ -39,10 +42,6 @@ const ERRORS = {
   FILES_INCOMPLETE: [422, 'Add the NID front, the back and a selfie holding it'],
   PHONE_REQUIRED: [409, 'Add and verify your phone number first'],
   DOC_ALREADY_APPROVED: [409, 'Your NID is already verified'],
-  DOC_NOT_IN_REVIEW: [409, 'This document is not waiting for review'],
-  RUBRIC_INCOMPLETE: [422, 'Tick every review check before approving'],
-  CHECKS_FAILED: [409, 'A blocking check failed (for example, the NID is on another account)'],
-  REASON_REQUIRED: [422, 'Choose a reason'],
   SELF_REVIEW_FORBIDDEN: [403, 'You cannot review your own documents'],
   FILE_PURGED: [410, 'This file was deleted after the retention period'],
 };
@@ -148,11 +147,7 @@ async function submit(principal, { docType, fields, files }, req) {
     for (const d of mine.filter((x) => x.isCurrent)) {
       await d.update({ isCurrent: false, ...(d.status === 'in_review' ? { status: 'withdrawn' } : {}) }, { transaction });
     }
-    const duplicateUsers =
-      (await directory.nidHashHolders(hash, user.id)) +
-      (await VerificationDocument.count({ where: { nidHash: hash, userId: { [Op.ne]: user.id }, status: { [Op.in]: ['in_review', 'approved'] } }, distinct: true, col: 'user_id', transaction }));
-    const reusedFiles = await DocumentFile.count({ where: { sha256: rows.map((f) => f.sha256), userId: { [Op.ne]: user.id } }, transaction });
-    const checks = rules.checks({ duplicateUsers, reusedFiles });
+    const { checks, duplicateUsers } = await computeChecks({ userId: user.id, hash, sha256s: rows.map((f) => f.sha256) }, { transaction });
     const doc = await VerificationDocument.create(
       {
         userId: user.id,
@@ -168,6 +163,17 @@ async function submit(principal, { docType, fields, files }, req) {
       { transaction }
     );
     await DocumentFile.update({ documentId: doc.id }, { where: { id: fileIds }, transaction });
+    // FR-08: one M05 submission per version; one subject per user and document type.
+    await moderation.submit(
+      {
+        kind: 'document',
+        subjectId: subjectIdFor(user.id, docType),
+        payload: { documentId: doc.id, docType, version: doc.version, numberMasked: doc.fieldsPublic.numberMasked, birthYear: doc.fieldsPublic.birthYear },
+        title: `National ID · v${doc.version}`,
+        submittedBy: user.id,
+      },
+      { transaction }
+    );
     await audit.record(
       { action: 'document.submitted', actor: principal, entityType: 'verification_document', entityId: doc.id, after: { docType, version: doc.version, status: doc.status }, req },
       { transaction }
@@ -195,26 +201,7 @@ async function ownFile(principal, documentId, fileId) {
   return { body: obj.body, mime: file.mime };
 }
 
-// ---------------------------------------------------------------- staff: the KYC desk (FR-09, FR-12, FR-13)
-
-/** GET /admin/kyc/documents?status: the queue, masked, oldest first while waiting. */
-async function adminList({ status = 'in_review', cursor, limit = 50 } = {}) {
-  const asc = status === 'in_review';
-  const where = { status, ...(cursor ? { id: { [asc ? Op.gt : Op.lt]: cursor } } : {}) };
-  const rows = await VerificationDocument.findAll({ where, order: [['id', asc ? 'ASC' : 'DESC']], limit: limit + 1 });
-  const page = rows.slice(0, limit);
-  const people = await directory.identities(page.map((d) => d.userId));
-  const [counts] = await sequelize.query('SELECT status, COUNT(*) AS n FROM verification_documents GROUP BY status');
-  return {
-    items: page.map((d) => ({
-      ...serialize(d),
-      user: { id: d.userId, displayName: people.get(d.userId)?.displayName ?? null },
-      failedChecks: d.checks.filter((c) => !c.ok).map((c) => c.key),
-    })),
-    nextCursor: rows.length > limit ? page[page.length - 1].id : null,
-    counts: Object.fromEntries(counts.map((c) => [c.status, Number(c.n)])),
-  };
-}
+// ---------------------------------------------------------------- staff: the document panel on the Moderation desk (FR-12, FR-13)
 
 /** GET /admin/kyc/documents/:id: fields for the reviewer (DOB and legal name; the number stays masked). */
 async function adminGet(id) {
@@ -255,42 +242,73 @@ async function revealNid(actor, id, { reason }, req) {
   return { documentId: d.id, number: numberAsTyped, normalised: number, showForSeconds: 60 };
 }
 
-const EVENT_FOR = { approved: 'document.approved', changes_requested: 'document.changes_requested', rejected: 'document.rejected' };
+// ---------------------------------------------------------------- checks and decisions through M05 (FR-07 to FR-10)
 
-/** POST /admin/kyc/documents/:id/decide: approve (full rubric), request changes or reject (reason). */
-async function decide(actor, id, { decision, rubric, reasonCode, note }, req) {
-  return sequelize.transaction(async (transaction) => {
-    const d = await VerificationDocument.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
-    if (!d) throw E.notFound('Document');
-    if (d.userId === actor.id) throw fail('SELF_REVIEW_FORBIDDEN');
-    const block = rules.decisionBlock({ decision, status: d.status, checks: d.checks, rubric, reasonCode });
-    if (block) throw fail(block);
-    const status = rules.DOC_STATUS[decision];
-    const before = { status: d.status };
-    await d.update(
-      { status, decidedBy: actor.id, decidedAt: new Date(), reasonCode: decision === 'approve' ? null : reasonCode, reasonText: decision === 'approve' ? null : note ?? null },
-      { transaction }
-    );
-    await audit.record(
-      { action: EVENT_FOR[status], actor, entityType: 'verification_document', entityId: d.id, before, after: { status, reasonCode: d.reasonCode }, reason: note ?? null, meta: { rubric: decision === 'approve' ? rubric : null }, req },
-      { transaction }
-    );
-    const payload = { documentId: d.id, userId: d.userId, docType: d.docType, ...(decision === 'approve' ? {} : { reasonCode }) };
-    await events.publish(transaction, { name: EVENT_FOR[status], aggregateType: 'verification_document', aggregateId: d.id, payload, actor, req });
-    // FR-10: the member requirements are all satisfied (phone verified + NID approved) → M01 activates the role.
-    if (status === 'approved') {
-      const contact = (await directory.contactFor([d.userId])).get(d.userId);
-      if (contact?.phone) {
-        await events.publish(transaction, { name: 'verification.passed', aggregateType: 'user', aggregateId: d.userId, payload: { userId: d.userId, role: 'member' }, actor, req });
-      }
-    }
-    return adminGetInTx(d, transaction);
-  });
+/** The NID on other accounts (verified in M01 or approved; waiting for review) and reused images. */
+async function computeChecks({ userId, hash, sha256s }, { transaction }) {
+  const others = (status) => VerificationDocument.count({ where: { nidHash: hash, userId: { [Op.ne]: userId }, status }, distinct: true, col: 'user_id', transaction });
+  const verifiedHolders = Math.max(await directory.nidHashHolders(hash, userId, { transaction }), await others('approved'));
+  const pendingHolders = await others('in_review');
+  const reusedFiles = await DocumentFile.count({ where: { sha256: sha256s, userId: { [Op.ne]: userId } }, transaction });
+  return { checks: rules.checks({ verifiedHolders, pendingHolders, reusedFiles }), duplicateUsers: verifiedHolders + pendingHolders };
 }
 
-async function adminGetInTx(d, transaction) {
-  const files = await DocumentFile.findAll({ where: { documentId: d.id }, order: [['slot', 'ASC']], transaction });
-  return { ...serialize(d, { files }), checks: d.checks };
+/** The M05 adapter's checks, re-run on every claim (a duplicate may appear while an item waits). */
+async function checksFor(documentId, { transaction }) {
+  const d = await VerificationDocument.findByPk(documentId, { transaction });
+  if (!d) return [];
+  const files = await DocumentFile.findAll({ where: { documentId }, attributes: ['sha256'], transaction });
+  const { checks } = await computeChecks({ userId: d.userId, hash: d.nidHash, sha256s: files.map((f) => f.sha256) }, { transaction });
+  if (d.status === 'in_review') await d.update({ checks }, { transaction });
+  return checks;
+}
+
+const EVENT_FOR = { approved: 'document.approved', changes_requested: 'document.changes_requested', rejected: 'document.rejected' };
+
+/**
+ * Apply an M05 decision to the document (kyc.moderation consumers, inside the inbox transaction).
+ * Idempotent: a repeated or stale decision changes nothing. An approval is always acknowledged with
+ * submission.applied, so the M05 watchdog stops (FR-13).
+ */
+async function applyDecision(submissionId, status, { transaction }) {
+  const sub = await moderation.getById(submissionId, { transaction });
+  if (!sub) return null;
+  const ack = () =>
+    events.publish(transaction, {
+      name: 'submission.applied',
+      aggregateType: 'submission',
+      aggregateId: sub.id,
+      payload: { submissionId: sub.id, kind: sub.kind, subjectId: sub.subjectId, version: sub.version, submittedBy: sub.submittedBy },
+    });
+  const d = await VerificationDocument.findByPk(sub.payload.documentId, { transaction, lock: transaction.LOCK.UPDATE });
+  if (!d || !d.isCurrent || d.status === status || (status === 'withdrawn' && d.status !== 'in_review')) {
+    if (d && status === 'approved') await ack();
+    return null;
+  }
+  const before = { status: d.status };
+  if (status === 'withdrawn') {
+    await d.update({ status: 'withdrawn', isCurrent: false }, { transaction });
+    await audit.record({ action: 'document.withdrawn', actor: null, entityType: 'verification_document', entityId: d.id, before, after: { status }, meta: { submissionId: sub.id } }, { transaction });
+    return status;
+  }
+  const approved = status === 'approved';
+  await d.update(
+    { status, decidedBy: sub.decidedBy, decidedAt: sub.decidedAt ?? new Date(), reasonCode: approved ? null : sub.reasonCode, reasonText: approved ? null : sub.reasonText ?? null },
+    { transaction }
+  );
+  await audit.record(
+    { action: EVENT_FOR[status], actor: null, entityType: 'verification_document', entityId: d.id, before, after: { status, reasonCode: d.reasonCode }, meta: { submissionId: sub.id, decidedBy: sub.decidedBy } },
+    { transaction }
+  );
+  const payload = { documentId: d.id, userId: d.userId, docType: d.docType, ...(approved ? {} : { reasonCode: sub.reasonCode }) };
+  await events.publish(transaction, { name: EVENT_FOR[status], aggregateType: 'verification_document', aggregateId: d.id, payload });
+  if (approved) {
+    // FR-10: phone verified + NID approved satisfies the member requirements → M01 activates the role.
+    const contact = (await directory.contactFor([d.userId], { transaction })).get(d.userId);
+    if (contact?.phone) await events.publish(transaction, { name: 'verification.passed', aggregateType: 'user', aggregateId: d.userId, payload: { userId: d.userId, role: 'member' } });
+    await ack();
+  }
+  return status;
 }
 
 // ---------------------------------------------------------------- for other modules (§2)
@@ -335,4 +353,4 @@ async function purgeDue(now = new Date()) {
   return { decided: due.length, orphans: orphans.length };
 }
 
-module.exports = { verification, uploadFile, submit, ownFile, adminList, adminGet, viewFile, revealNid, decide, getVerifiedIdentity, facts, purgeDue, requirementsFor, nidHash };
+module.exports = { verification, uploadFile, submit, ownFile, adminGet, viewFile, revealNid, checksFor, applyDecision, getVerifiedIdentity, facts, purgeDue, requirementsFor, nidHash };

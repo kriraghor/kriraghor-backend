@@ -19,6 +19,7 @@ const paymentJobs = require('../modules/payments/payments.jobs');
 const payouts = require('../modules/payouts/payouts.service');
 const payoutHolds = require('../modules/payouts/holds.service');
 const kyc = require('../modules/kyc/kyc.service');
+const moderation = require('../modules/moderation/moderation.service');
 const { purgeExpired: purgeIdempotencyKeys } = require('../common/idempotency');
 const logger = require('../common/logger');
 
@@ -178,6 +179,30 @@ const JOBS = [
     pattern: '30 3 * * *',
     tz: 'Asia/Dhaka',
     run: async () => kyc.purgeDue(),
+  },
+  // ---------------- M05 moderation (§10). Idempotent: conditional updates, breach_notified_at, apply_attempts.
+  {
+    // Locks past their TTL (moderation.claim_ttl_min, extended by heartbeats) or hard cap are released.
+    name: 'moderation.claim-expire',
+    queue: QUEUES.MODERATION,
+    every: 60 * 1000,
+    run: async () => moderation.expireClaims(),
+  },
+  {
+    // FR-18: one submission.sla_breached per overdue submission (reviewers of the kind and masters).
+    name: 'moderation.sla-breach',
+    queue: QUEUES.MODERATION,
+    pattern: '5 * * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => moderation.reportBreaches(),
+  },
+  {
+    // FR-13: an approval not applied within moderation.apply_timeout_minutes is republished, up to
+    // moderation.apply_max_attempts, then submission.apply_failed alerts the masters.
+    name: 'moderation.apply-watchdog',
+    queue: QUEUES.MODERATION,
+    every: 60 * 1000,
+    run: async () => moderation.watchApplies(),
   },
   {
     name: 'idempotency.purge',
