@@ -1,6 +1,5 @@
 'use strict';
 
-// Used by sequelize-cli (migrations/seeders) and by the app's Sequelize instance.
 const config = require('./index');
 
 const base = {
@@ -10,7 +9,7 @@ const base = {
   host: config.db.host,
   port: config.db.port,
   dialect: 'postgres',
-  timezone: '+00:00', // store UTC; business logic converts to Asia/Dhaka
+  timezone: '+00:00',
   define: { underscored: true },
   migrationStorageTableName: 'sequelize_meta',
   seederStorage: 'sequelize',
@@ -20,8 +19,8 @@ const base = {
 
 const pool = { max: config.db.poolMax, min: 0, idle: 10000, acquire: 30000 };
 
-// Render & Cloud PostgreSQL requires SSL & URL parsing
-const productionConfig = process.env.DATABASE_URL
+// Render ba onno kono Cloud Provider-er jonno (SSL soho)
+const databaseUrlConfig = process.env.DATABASE_URL
   ? {
       use_env_variable: 'DATABASE_URL',
       url: process.env.DATABASE_URL,
@@ -36,14 +35,15 @@ const productionConfig = process.env.DATABASE_URL
       dialectOptions: {
         ssl: {
           require: true,
-          rejectUnauthorized: false, // Render Postgres connection requires SSL
+          rejectUnauthorized: false, // Cloud Postgres (Render) SSL connection handle kore
         },
       },
     }
-  : { ...base, pool };
+  : null;
 
+// Config Export: DATABASE_URL thakle automatic oita priority pabe
 module.exports = {
-  development: { ...base, pool },
+  development: databaseUrlConfig || { ...base, pool },
   test: base,
-  production: productionConfig,
+  production: databaseUrlConfig || { ...base, pool },
 };
