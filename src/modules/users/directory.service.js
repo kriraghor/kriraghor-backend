@@ -58,4 +58,9 @@ async function identities(userIds) {
   return new Map(users.map((u) => [u.id, { displayName: u.displayName, legalName: u.legalName ?? null, kycStatus: u.kycStatus }]));
 }
 
-module.exports = { contactFor, masters, withPermission, accounts, identities };
+/** M02-FR-07: how many other users already hold this NID hash (verified members). */
+async function nidHashHolders(nidHash, exceptUserId) {
+  return User.count({ where: { nidHash, id: { [Op.ne]: exceptUserId } } });
+}
+
+module.exports = { contactFor, masters, withPermission, accounts, identities, nidHashHolders };

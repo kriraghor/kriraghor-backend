@@ -18,6 +18,8 @@ const ACTIONS = Object.freeze({
   list_product: ROLES.SHOP_OWNER,
   publish_tournament: ROLES.ORGANISER,
   accept_hire: [ROLES.PLAYER, ROLES.PRO],
+  // M02 v3: withdrawing esports winnings needs NID KYC (M07, M21).
+  withdraw_winnings: ROLES.MEMBER,
 });
 
 const PENDING = new Set(['applied', 'documents_pending', 'in_review']);

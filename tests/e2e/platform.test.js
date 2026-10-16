@@ -181,6 +181,14 @@ describe('OpenAPI contract (ADR-002)', () => {
           ['/admin/payout-accounts', po.adminAccounts],
         ];
       })(),
+      ...(() => {
+        const k = require('../../src/modules/kyc/kyc.routes');
+        return [
+          ['/me/verification', k.meVerification],
+          ['/me/documents', k.meDocuments],
+          ['/admin/kyc', k.adminKyc],
+        ];
+      })(),
     ];
     const missing = [];
     for (const [prefix, router] of mounts) {

@@ -1,6 +1,6 @@
 {
-  "seedVersion": 2,
-  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates.",
+  "seedVersion": 3,
+  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates.",
   "templates": [
     {
       "code": "AUDIT_CRITICAL",
@@ -2267,6 +2267,104 @@
           "name": "account",
           "type": "text",
           "maxLen": 24
+        }
+      ]
+    },
+    {
+      "code": "DOCUMENT_SUBMITTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "NID sent for review",
+      "body": "Thanks. We check your NID within a working day and tell you here.",
+      "variables": []
+    },
+    {
+      "code": "DOCUMENT_SUBMITTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "NID যাচাইয়ে পাঠানো হয়েছে",
+      "body": "ধন্যবাদ। এক কর্মদিবসের মধ্যে আমরা আপনার NID যাচাই করে এখানে জানাব।",
+      "variables": []
+    },
+    {
+      "code": "DOCUMENT_CHANGES_REQUESTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Your NID needs another look",
+      "body": "We could not verify your NID: {{reason}}. Please upload it again.",
+      "variables": [
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "DOCUMENT_CHANGES_REQUESTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আপনার NID আবার দিন",
+      "body": "আপনার NID যাচাই করা যায়নি: {{reason}}। আবার আপলোড করুন।",
+      "variables": [
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "DOCUMENT_CHANGES_REQUESTED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: we could not verify your NID ({{reason}}). Please upload it again in the app.",
+      "variables": [
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "DOCUMENT_CHANGES_REQUESTED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: আপনার NID যাচাই হয়নি ({{reason}})। অ্যাপে আবার আপলোড করুন।",
+      "variables": [
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 50
+        }
+      ]
+    },
+    {
+      "code": "KYC_REVIEW_NEEDED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "NID to review",
+      "body": "A new NID ({{masked}}) is waiting on the KYC desk.",
+      "variables": [
+        {
+          "name": "masked",
+          "type": "text",
+          "maxLen": 12
+        }
+      ]
+    },
+    {
+      "code": "KYC_REVIEW_NEEDED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "যাচাইয়ের জন্য NID",
+      "body": "KYC ডেস্কে একটি নতুন NID ({{masked}}) অপেক্ষায়।",
+      "variables": [
+        {
+          "name": "masked",
+          "type": "text",
+          "maxLen": 12
         }
       ]
     }

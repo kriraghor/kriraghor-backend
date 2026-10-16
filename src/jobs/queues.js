@@ -14,6 +14,7 @@ const QUEUES = Object.freeze({
   NOTIFY: 'notify', // M08 deliveries and their schedules
   PAYMENTS: 'payments', // M06 polls, refunds, expiry, escrow releases, invariants, reconciliation
   PAYOUTS: 'payouts', // M07 schedule runs and hold expiry
+  KYC: 'kyc', // M02 retention purge
 });
 
 const prefix = `${config.redis.prefix}:bull`;

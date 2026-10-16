@@ -1,6 +1,6 @@
 {
-  "seedVersion": 5,
-  "source": "M03 §6.4 with the v3 business rules (Oct 2026), M21 §6.1 and M01 §6.4; v2 adds the M04 events.* and audit.* operations keys; v3 the M08 notify.* keys; v4 the M06 payments.* and refunds.retry_max keys; v5 the M07 payouts.min_amount_poisha, auto_release_max_poisha, run_hour and daily_enabled keys. Money in poisha, percentages as numbers.",
+  "seedVersion": 6,
+  "source": "M03 §6.4 with the v3 business rules (Oct 2026), M21 §6.1 and M01 §6.4; v2 adds the M04 events.* and audit.* operations keys; v3 the M08 notify.* keys; v4 the M06 payments.* and refunds.retry_max keys; v5 the M07 payouts.min_amount_poisha, auto_release_max_poisha, run_hour and daily_enabled keys, and payments.test_charge_max_poisha 100000 (৳1,000, so a test charge can clear the ৳100 payout minimum; existing databases keep their value); v6 the M02 kyc.uploads_per_hour and kyc.orphan_upload_hours keys. Money in poisha, percentages as numbers.",
   "settings": [
     { "key": "fees.ground_booking_pct", "category": "fees", "type": "decimal", "value": 5, "unit": "%", "min": 0, "max": 20, "approval": "four_eyes", "public": true, "en": "Ground booking fee", "bn": "মাঠ বুকিং ফি", "why": "Charged on the full booking value and deducted from the online money at release." },
     { "key": "fees.shop_commission_pct", "category": "fees", "type": "decimal", "value": 5, "unit": "%", "min": 0, "max": 25, "approval": "four_eyes", "en": "Shop commission on new gear", "bn": "নতুন পণ্যে দোকানের কমিশন" },
@@ -141,6 +141,8 @@
     { "key": "kyc.expiry_reminder_days", "category": "accounts", "type": "int_list", "value": [30, 7], "unit": "days", "en": "Remind before a document expires", "bn": "নথির মেয়াদ শেষের আগে মনে করানো" },
     { "key": "kyc.raw_image_retention_days", "category": "accounts", "type": "int", "value": 90, "unit": "days", "min": 1, "max": 3650, "en": "Keep raw KYC images for", "bn": "KYC ছবি সংরক্ষণের সময়" },
     { "key": "kyc.min_age_years", "category": "accounts", "type": "int", "value": 16, "unit": "years", "min": 13, "max": 21, "en": "Minimum age", "bn": "ন্যূনতম বয়স" },
+    { "key": "kyc.uploads_per_hour", "category": "accounts", "type": "int", "value": 20, "min": 3, "max": 200, "en": "Document uploads per person per hour", "bn": "প্রতি ঘণ্টায় একজনের ডকুমেন্ট আপলোড" },
+    { "key": "kyc.orphan_upload_hours", "category": "accounts", "type": "int", "value": 24, "unit": "hours", "min": 1, "max": 168, "en": "Delete uploads never submitted after", "bn": "জমা না দেওয়া আপলোড মুছে ফেলা হয়" },
     { "key": "audit.retention_years", "category": "accounts", "type": "int", "value": 5, "unit": "years", "min": 5, "max": 20, "approval": "four_eyes", "en": "Keep audit records for", "bn": "অডিট রেকর্ড সংরক্ষণের সময়" },
 
     { "key": "ratelimit.global_per_15min", "category": "security", "type": "int", "value": 300, "min": 10, "max": 100000, "en": "Auth requests per IP per 15 minutes", "bn": "১৫ মিনিটে IP প্রতি অথ অনুরোধ" },
@@ -169,7 +171,7 @@
     { "key": "payments.poll_unknown_minutes", "category": "payments", "type": "int_list", "value": [1, 5, 15], "unit": "min", "en": "Ask the gateway again after", "bn": "গেটওয়েকে আবার জিজ্ঞেস করা হয়" },
     { "key": "refunds.retry_max", "category": "payments", "type": "int", "value": 3, "min": 1, "max": 10, "en": "Gateway refund tries before manual handling", "bn": "হাতে দেখার আগে গেটওয়েতে রিফান্ডের চেষ্টা" },
     { "key": "payments.clearing_alert_days", "category": "payments", "type": "int", "value": 0, "unit": "days", "min": 0, "max": 30, "en": "Alert when gateway money is unsettled for (0 = off)", "bn": "গেটওয়ের টাকা জমা না হলে সতর্কতা (০ = বন্ধ)", "why": "Off until settlement import exists (M06 open question)" },
-    { "key": "payments.test_charge_max_poisha", "category": "payments", "type": "money", "value": 10000, "unit": "poisha", "min": 100, "max": 100000, "en": "Largest test charge", "bn": "সর্বোচ্চ টেস্ট চার্জ" },
+    { "key": "payments.test_charge_max_poisha", "category": "payments", "type": "money", "value": 100000, "unit": "poisha", "min": 100, "max": 100000, "en": "Largest test charge", "bn": "সর্বোচ্চ টেস্ট চার্জ" },
     { "key": "payments.test_charge_fee_pct", "category": "payments", "type": "decimal", "value": 5, "unit": "%", "min": 0, "max": 20, "en": "Fee on test charges", "bn": "টেস্ট চার্জে ফি" }
   ]
 }

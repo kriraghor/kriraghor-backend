@@ -17,6 +17,11 @@ const logger = pino({
       '*.refreshToken',
       '*.phone',
       '*.target',
+      // M02: identity fields never reach the logs.
+      '*.fields',
+      '*.number',
+      '*.dob',
+      '*.legalName',
     ],
     censor: '[redacted]',
   },

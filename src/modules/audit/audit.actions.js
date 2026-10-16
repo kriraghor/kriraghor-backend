@@ -79,6 +79,15 @@ const ACTIONS = {
   'reconciliation.run_started': A('M06', 'info', 'Started reconciliation for {meta.businessDate}', '{meta.businessDate}-এর হিসাব মেলানো শুরু'),
   'reconciliation.item_resolved': A('M06', 'notice', 'Marked a reconciliation exception {after.resolution}: {reason}', 'হিসাবের ব্যতিক্রম {after.resolution}: {reason}'),
 
+  // ---------------- M02 KYC ----------------
+  'document.submitted': A('M02', 'info', 'Submitted an identity document for review (version {after.version})', 'পরিচয় ডকুমেন্ট যাচাইয়ে জমা (সংস্করণ {after.version})'),
+  'document.approved': A('M02', 'notice', 'Approved an identity document', 'পরিচয় ডকুমেন্ট অনুমোদিত'),
+  'document.changes_requested': A('M02', 'notice', 'Asked for changes to an identity document ({after.reasonCode})', 'পরিচয় ডকুমেন্টে পরিবর্তন চাওয়া হয়েছে ({after.reasonCode})'),
+  'document.rejected': A('M02', 'notice', 'Rejected an identity document ({after.reasonCode})', 'পরিচয় ডকুমেন্ট বাতিল ({after.reasonCode})'),
+  'document.file_viewed': A('M02', 'notice', 'Viewed the {meta.slot} image of an identity document', 'পরিচয় ডকুমেন্টের {meta.slot} ছবি দেখা'),
+  'document.nid_revealed': A('M02', 'critical', 'Viewed a full NID number (ending {meta.last4}): {reason}', 'পুরো NID নম্বর দেখা (শেষ {meta.last4}): {reason}'),
+  'document.files_purged': A('M02', 'info', 'Deleted {meta.decided} reviewed and {meta.orphans} unused document images (retention)', '{meta.decided}টি যাচাই করা ও {meta.orphans}টি অব্যবহৃত ছবি মুছে ফেলা (সংরক্ষণের মেয়াদ)'),
+
   // ---------------- M07 Payouts ----------------
   'payout_account.added': A('M07', 'notice', 'Added a {after.type} payout account ending {after.last4}', '{after.type} পেআউট অ্যাকাউন্ট যোগ (শেষ {after.last4})'),
   'payout_account.verified': A('M07', 'notice', 'Verified a payout account', 'পেআউট অ্যাকাউন্ট যাচাই'),

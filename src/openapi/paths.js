@@ -12,9 +12,10 @@ const eventsS = require('../modules/events/events.routes').schemas;
 const notifyS = require('../modules/notifications/notify.schemas');
 const paymentsS = require('../modules/payments/payments.schemas');
 const payoutsS = require('../modules/payouts/payouts.schemas');
+const kycS = require('../modules/kyc/kyc.schemas');
 
 /**
- * Every route (M01, M03, M04, M06, M07, M08), registered with its request and response schemas and the stable error
+ * Every route (M01, M02, M03, M04, M06, M07, M08), registered with its request and response schemas and the stable error
  * codes it can return (ADR-002). When a route is added in a module, add it here: the
  * coverage test fails if an Express route has no OpenAPI entry.
  */
@@ -409,6 +410,35 @@ function register(registry) {
       request: { ...poIdP, ...body(schema) },
       responses: { 200: json(payoutsS.Account), ...errors({ ...ADMIN_AUTH, 403: ADMIN_AUTH[403].concat('SELF_REVIEW_FORBIDDEN'), 404: ['NOT_FOUND'], 409: ['PAYOUT_ACCOUNT_NOT_PENDING'], ...VALIDATION }) } });
   }
+
+  // ------------------------------------------------------------------ M02 KYC (lite: NID)
+  const kycDocP = { params: kycS.idParam };
+  const kycFileP = { params: kycS.fileParams };
+  const binary = (description) => ({ description, content: { 'image/jpeg': { schema: z.string() }, 'image/png': { schema: z.string() }, 'application/pdf': { schema: z.string() } } });
+  const KYC_STAFF = { ...ADMIN_AUTH };
+
+  p({ method: 'get', path: '/me/verification', tags: ['kyc'], summary: 'My verification checklist: phone and NID status, badge, unlocks and limits (FR-18)', security: bearer,
+    request: { query: kycS.verificationQuery }, responses: { 200: json(kycS.Verification), ...errors({ ...COMMON_AUTH, ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/documents/files', tags: ['kyc'], summary: 'Upload one NID image or PDF (raw body: image/jpeg, image/png or application/pdf; checked by its first bytes)', security: bearer,
+    request: { query: kycS.uploadQuery, body: binary('The file itself, up to kyc.max_file_bytes') },
+    responses: { 201: json(kycS.Uploaded, 'Created'), ...errors({ ...COMMON_AUTH, 413: ['FILE_TOO_LARGE', 'PAYLOAD_TOO_LARGE'], 415: ['FILE_TYPE_NOT_ALLOWED', 'FILE_TYPE_MISMATCH'], 422: ['VALIDATION_FAILED', 'FILE_EMPTY'], 429: ['UPLOAD_RATE_LIMITED'] }) } });
+  p({ method: 'post', path: '/me/documents', tags: ['kyc'], summary: 'Submit my NID for review: number, date of birth, legal name and the three files (FR-05 to FR-07, FR-11)', security: bearer,
+    request: body(kycS.submitBody),
+    responses: { 201: json(kycS.Document, 'Created'), ...errors({ ...COMMON_AUTH, 409: ['PHONE_REQUIRED', 'DOC_ALREADY_APPROVED'], 422: ['VALIDATION_FAILED', 'NID_FORMAT_INVALID', 'DOB_INVALID', 'DOB_IN_FUTURE', 'UNDER_MIN_AGE', 'FILES_INCOMPLETE'] }) } });
+  p({ method: 'get', path: '/me/documents/{id}/files/{fileId}', tags: ['kyc'], summary: 'View my own upload (no-store)', security: bearer,
+    request: kycFileP, responses: { 200: binary('The file'), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], 410: ['FILE_PURGED'], ...VALIDATION }) } });
+
+  p({ method: 'get', path: '/admin/kyc/documents', tags: ['kyc'], summary: 'KYC desk queue (approve_documents): masked, with failed checks and counts per status', security: adminBearer,
+    request: { query: kycS.adminListQuery }, responses: { 200: json(kycS.Queue), ...errors({ ...KYC_STAFF, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/kyc/documents/{id}', tags: ['kyc'], summary: 'One document for review: legal name, DOB, masked number, checks, files and history', security: adminBearer,
+    request: kycDocP, responses: { 200: json(kycS.Review), ...errors({ ...KYC_STAFF, 404: ['NOT_FOUND'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/kyc/documents/{id}/files/{fileId}', tags: ['kyc'], summary: 'View one image or PDF (inline, no-store, sandboxed). Every view is audited (FR-12)', security: adminBearer,
+    request: kycFileP, responses: { 200: binary('The file'), ...errors({ ...KYC_STAFF, 404: ['NOT_FOUND'], 410: ['FILE_PURGED'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/kyc/documents/{id}/reveal-nid', tags: ['kyc'], summary: 'Show the full NID number for 60 seconds, with a reason (critical audit, FR-13)', security: adminBearer,
+    request: { ...kycDocP, ...body(kycS.revealBody) }, responses: { 200: json(kycS.Reveal), ...errors({ ...KYC_STAFF, 403: KYC_STAFF[403].concat('SELF_REVIEW_FORBIDDEN'), 404: ['NOT_FOUND'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/kyc/documents/{id}/decide', tags: ['kyc'], summary: 'Approve (all rubric checks), request changes or reject (reason). Approval makes the member role active (FR-09, FR-10)', security: adminBearer,
+    request: { ...kycDocP, ...body(kycS.decideBody) },
+    responses: { 200: json(kycS.Decided), ...errors({ ...KYC_STAFF, 403: KYC_STAFF[403].concat('SELF_REVIEW_FORBIDDEN'), 404: ['NOT_FOUND'], 409: ['DOC_NOT_IN_REVIEW', 'CHECKS_FAILED'], 422: ['VALIDATION_FAILED', 'RUBRIC_INCOMPLETE', 'REASON_REQUIRED'] }) } });
 }
 
 function dateTimeOf() {

@@ -71,7 +71,7 @@ describe('test charges and intents (FR-01, FR-07)', () => {
   it('refuses staff payers, unknown payees, too much, and environments without test charges', async () => {
     expect((await testCharge(100, { payerId: master.userId }).expect(422)).body.code).toBe('PAYER_INVALID');
     expect((await testCharge(100, { payeeId: '0190a0b1-0000-7000-8000-000000000001' }).expect(422)).body.code).toBe('PAYEE_INVALID');
-    expect((await testCharge(10001).expect(422)).body.code).toBe('TEST_CHARGE_TOO_LARGE');
+    expect((await testCharge(100001).expect(422)).body.code).toBe('TEST_CHARGE_TOO_LARGE');
     config.payments.testCharges = false;
     try {
       expect((await testCharge(100).expect(403)).body.code).toBe('TEST_CHARGES_DISABLED');
@@ -79,7 +79,7 @@ describe('test charges and intents (FR-01, FR-07)', () => {
       config.payments.testCharges = true;
     }
     const cfg = await api().get(`${P}/admin/payments/config`).set(h.bearer(master)).expect(200);
-    expect(cfg.body).toEqual({ testCharges: true, simulator: true, provider: 'sslcommerz', testChargeMax: 10000 });
+    expect(cfg.body).toEqual({ testCharges: true, simulator: true, provider: 'sslcommerz', testChargeMax: 100000 });
   });
 
   it('createIntent is idempotent per payer and key, and checks its input', async () => {

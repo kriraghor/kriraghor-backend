@@ -27,7 +27,6 @@ beforeEach(async () => {
   payee = await h.signupUser({ name: 'Nusrat Jahan' });
   // A ৳100 test charge nets ৳95; the ৳100 minimum (FR-04) has its own test below.
   await h.setSettingForTest('payouts.min_amount_poisha', 1000);
-  await h.setSettingForTest('payments.test_charge_max_poisha', 100000);
 });
 afterAll(async () => {
   await closeAllRedis();

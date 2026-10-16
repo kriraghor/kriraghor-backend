@@ -944,6 +944,73 @@ PayoutReveal.init(
   { sequelize, modelName: 'PayoutReveal', tableName: 'payout_reveals', timestamps: false, hooks: appendOnlyGuard('payout_reveals') }
 );
 
+// ---------------- M02 KYC (§7). Document fields only encrypted (fields_enc); files in the private bucket.
+class DocumentRequirement extends Model {}
+DocumentRequirement.init(
+  {
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
+    role: { type: DataTypes.STRING(32), allowNull: false },
+    docType: DataTypes.STRING(30),
+    derivedKey: DataTypes.STRING(30),
+    scope: { type: DataTypes.ENUM('user', 'role', 'hire_role'), allowNull: false, defaultValue: 'user' },
+    required: { type: DataTypes.ENUM('always', 'conditional', 'optional'), allowNull: false, defaultValue: 'always' },
+    fileSlots: { type: DataTypes.JSON, allowNull: false, defaultValue: [] },
+    fieldSchema: { type: DataTypes.JSON, allowNull: false, defaultValue: [] },
+    labelEn: { type: DataTypes.STRING(120), allowNull: false },
+    labelBn: { type: DataTypes.STRING(120), allowNull: false },
+    whyEn: DataTypes.STRING(300),
+    whyBn: DataTypes.STRING(300),
+    sort: { type: DataTypes.SMALLINT, allowNull: false, defaultValue: 0 },
+    version: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
+    isActive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+    createdAt: DataTypes.DATE(3),
+    updatedAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'DocumentRequirement', tableName: 'document_requirements' }
+);
+
+class VerificationDocument extends Model {}
+VerificationDocument.init(
+  {
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
+    userId: { type: DataTypes.UUID, allowNull: false },
+    docType: { type: DataTypes.ENUM('nid'), allowNull: false },
+    subjectKey: { type: DataTypes.STRING(64), allowNull: false, defaultValue: '' },
+    version: { type: DataTypes.INTEGER, allowNull: false },
+    status: { type: DataTypes.ENUM('in_review', 'changes_requested', 'approved', 'rejected', 'superseded', 'withdrawn'), allowNull: false },
+    isCurrent: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+    fieldsEnc: { type: DataTypes.TEXT, allowNull: false },
+    fieldsPublic: { type: DataTypes.JSON, allowNull: false },
+    nidHash: DataTypes.CHAR(64),
+    checks: { type: DataTypes.JSON, allowNull: false, defaultValue: [] },
+    decidedBy: DataTypes.UUID,
+    decidedAt: DataTypes.DATE(3),
+    reasonCode: DataTypes.STRING(40),
+    reasonText: DataTypes.STRING(500),
+    createdAt: DataTypes.DATE(3),
+    updatedAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'VerificationDocument', tableName: 'verification_documents' }
+);
+
+class DocumentFile extends Model {}
+DocumentFile.init(
+  {
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
+    userId: { type: DataTypes.UUID, allowNull: false },
+    documentId: DataTypes.UUID,
+    slot: { type: DataTypes.STRING(20), allowNull: false },
+    storageKey: { type: DataTypes.STRING(200), allowNull: false },
+    mime: { type: DataTypes.ENUM('image/jpeg', 'image/png', 'application/pdf'), allowNull: false },
+    sizeBytes: { type: DataTypes.INTEGER, allowNull: false },
+    sha256: { type: DataTypes.CHAR(64), allowNull: false },
+    scanStatus: { type: DataTypes.ENUM('type_checked', 'clean', 'infected'), allowNull: false, defaultValue: 'type_checked' },
+    purgedAt: DataTypes.DATE(3),
+    createdAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'DocumentFile', tableName: 'document_files', updatedAt: false }
+);
+
 User.hasMany(UserRole, { as: 'roles', foreignKey: 'userId' });
 UserRole.belongsTo(User, { as: 'user', foreignKey: 'userId' });
 User.hasMany(Session, { as: 'sessions', foreignKey: 'userId' });
@@ -978,6 +1045,8 @@ Payout.hasMany(PayoutApproval, { as: 'approvals', foreignKey: 'payoutId' });
 Payout.belongsTo(PayoutAccount, { as: 'account', foreignKey: 'payoutAccountId' });
 Payout.belongsTo(PayoutBatch, { as: 'batch', foreignKey: 'batchId' });
 PayoutBatch.hasMany(Payout, { as: 'payouts', foreignKey: 'batchId' });
+VerificationDocument.hasMany(DocumentFile, { as: 'files', foreignKey: 'documentId' });
+DocumentFile.belongsTo(VerificationDocument, { as: 'document', foreignKey: 'documentId' });
 
 <<<<<<< HEAD
 module.exports = {
@@ -1027,6 +1096,9 @@ module.exports = {
   PayoutHold,
   PayoutApproval,
   PayoutReveal,
+  DocumentRequirement,
+  VerificationDocument,
+  DocumentFile,
 };
 =======
 module.exports = { sequelize, User, UserRole, Session, OtpCode, StaffMember, StaffPermission, UserSanction, StepUpToken, AuditLog, OAuthIdentity };

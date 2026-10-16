@@ -20,6 +20,9 @@ function registerAll() {
   // M07: refund payouts and account-suspension holds.
   require('../payouts/payouts.consumers').registerPayoutConsumers();
 
+  // M01 ← M02: the member role follows the NID review.
+  require('../users/kyc.consumers').registerKycConsumers();
+
   // M04 ops: a broken audit chain always reaches the logs (no notification code for it yet).
   onEvent('audit.chain_mismatch_detected', 'ops.log-chain-mismatch', async (event) => {
     logger.error({ seq: event.payload.seq, auditLogId: event.payload.auditLogId }, 'audit hash chain mismatch');

@@ -21,8 +21,10 @@ function store(name) {
 }
 
 /** `settingKey` holds the limit per window (M03 ratelimit.*); read per request so a change applies at once. */
-function limiter(name, { windowMs, settingKey, code = 'RATE_LIMITED' }) {
+function limiter(name, { windowMs, settingKey, code = 'RATE_LIMITED', perUser = false }) {
   return rateLimit({
+    // perUser: signed-in routes count per account (req.user is set by authenticate before the limiter).
+    ...(perUser ? { keyGenerator: (req) => `u:${req.user.id}` } : {}),
     windowMs,
     limit: () => settings.get(settingKey) * (config.isTest ? 100 : 1),
     standardHeaders: 'draft-7',
@@ -39,4 +41,5 @@ module.exports = {
   authGeneral: limiter('auth', { windowMs: 15 * 60 * 1000, settingKey: 'ratelimit.global_per_15min' }),
   otpSend: limiter('otp', { windowMs: 60 * 60 * 1000, settingKey: 'ratelimit.otp_per_hour', code: 'OTP_RATE_LIMITED' }),
   credential: limiter('cred', { windowMs: 15 * 60 * 1000, settingKey: 'ratelimit.credential_per_15min' }), // login, OTP verify, TOTP, reset
+  kycUpload: limiter('kyc', { windowMs: 60 * 60 * 1000, settingKey: 'kyc.uploads_per_hour', code: 'UPLOAD_RATE_LIMITED', perUser: true }), // M02 document files
 };
