@@ -2,26 +2,31 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-    // Check information_schema first so it never throws an error if column exists
-    await queryInterface.sequelize.query(`
-      DO $$ 
-      BEGIN
-        IF NOT EXISTS (
-          SELECT 1 
-          FROM information_schema.columns 
-          WHERE table_schema = 'public' 
-            AND table_name = 'sessions' 
-            AND column_name = 'audience'
-        ) THEN
-          ALTER TABLE sessions ADD COLUMN audience VARCHAR(32);
-        END IF;
-      END $$;
+    const h = require('../migration-helpers/pg-v1')(Sequelize);
+
+    // Check if column already exists using information_schema
+    const [results] = await queryInterface.sequelize.query(`
+      SELECT 1 
+      FROM information_schema.columns 
+      WHERE table_schema = 'public' 
+        AND table_name = 'sessions' 
+        AND column_name = 'audience'
     `);
+
+    // Add column only if it does not exist
+    if (results.length === 0) {
+      await h.addColumn(queryInterface, 'sessions', 'audience', {
+        type: h.ENUM('api', 'admin'),
+        allowNull: false,
+        defaultValue: 'api',
+      });
+    }
+    
+    // Safe update query
+    await queryInterface.sequelize.query("UPDATE sessions SET audience = 'admin' WHERE two_factor_at IS NOT NULL AND audience = 'api'");
   },
 
-  async down(queryInterface, Sequelize) {
-    await queryInterface.sequelize.query(
-      'ALTER TABLE sessions DROP COLUMN IF EXISTS audience;'
-    );
+  async down(queryInterface) {
+    await queryInterface.removeColumn('sessions', 'audience');
   },
 };
