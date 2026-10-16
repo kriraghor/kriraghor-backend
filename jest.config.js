@@ -31,5 +31,8 @@ module.exports = {
     // M05 SLA, claim lock, rubric, checks and decisions.
     './src/modules/moderation/moderation.rules.js': FULL,
     './src/modules/esports/esports.rules.js': FULL,
+    // M09 price formula and limits (shared with M10), listing rules.
+    './src/modules/grounds/pricing.rules.js': FULL,
+    './src/modules/grounds/grounds.rules.js': FULL,
   },
 };

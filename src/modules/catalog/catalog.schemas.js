@@ -3,7 +3,7 @@
 const { z } = require('zod');
 
 const dateTime = z.iso.datetime({ offset: true });
-const TABLES = ['esports-games', 'esports-modes', 'esports-maps', 'esports-points-presets'];
+const TABLES = ['esports-games', 'esports-modes', 'esports-maps', 'esports-points-presets', 'sports', 'divisions', 'districts', 'areas', 'facilities', 'surfaces'];
 
 const key = z.string().regex(/^[a-z][a-z0-9_]{1,39}$/, 'Lowercase letters, digits and _ (like squad)');
 const names = {
@@ -45,10 +45,41 @@ const preset = z.object({
   killPoints: z.number().int().min(0).max(100),
 });
 
+// ---- M03 §6.1, §6.3: sports and places ----
+const lat = z.number().min(20).max(27);
+const lng = z.number().min(88).max(93);
+const sport = z.object({
+  key,
+  ...names,
+  engine: z.enum(['ball_by_ball', 'clock', 'rally', 'none']),
+  officialLabelEn: z.string().trim().max(40).nullable().optional(),
+  officialLabelBn: z.string().trim().max(40).nullable().optional(),
+  defaultTiebreakers: z.array(z.string().regex(/^[a-z_]{2,40}$/)).max(10).optional(),
+  verticalFlags: z.number().int().min(0).max(1023).meta({ description: 'Bits: 1 grounds, 2 hire, 4 market, 8 tournaments, 16 gyms' }),
+  icon: z.string().trim().max(40).nullable().optional(),
+  tint: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional(),
+});
+const division = z.object({ key, ...names, bbsCode: z.string().regex(/^[0-9]{2}$/) });
+const district = z.object({ key, ...names, divisionId: z.uuid(), bbsCode: z.string().regex(/^[0-9]{4}$/), lat: lat.nullable().optional(), lng: lng.nullable().optional() });
+const area = z.object({
+  key,
+  ...names,
+  districtId: z.uuid(),
+  parentAreaId: z.uuid().nullable().optional(),
+  lat,
+  lng,
+  isDhakaMetro: z.boolean(),
+  dhakaZone: z.enum(['north', 'south']).nullable().optional(),
+  aliases: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
+  serviceFlags: z.number().int().min(0).max(1023).meta({ description: 'Bits: 1 grounds listing, 2 delivery' }),
+});
+const facility = z.object({ key, ...names, icon: z.string().trim().max(40).nullable().optional() });
+const surface = z.object({ key, ...names, indoorTypical: z.boolean() });
+
 /** PATCH bodies: everything optional; key and gameId may be sent but must not change. */
 const patch = (schema) => schema.partial().refine((b) => Object.keys(b).length > 0, 'Nothing to change');
 
-const CREATE = { 'esports-games': game, 'esports-modes': mode, 'esports-maps': map, 'esports-points-presets': preset };
+const CREATE = { 'esports-games': game, 'esports-modes': mode, 'esports-maps': map, 'esports-points-presets': preset, sports: sport, divisions: division, districts: district, areas: area, facilities: facility, surfaces: surface };
 const UPDATE = Object.fromEntries(Object.entries(CREATE).map(([t, sch]) => [t, patch(sch)]));
 
 // ---------------- responses ----------------
@@ -71,7 +102,19 @@ const EsportsGame = z
   })
   .meta({ id: 'EsportsGame' });
 const EsportsGameWithChildren = EsportsGame.extend({ modes: z.array(EsportsMode), maps: z.array(EsportsMap), presets: z.array(EsportsPointsPreset) }).meta({ id: 'EsportsGameCatalog' });
-const CatalogItem = z.union([EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset]);
+const placeBase = { id: z.uuid(), key: z.string(), nameEn: z.string(), nameBn: z.string(), sort: z.number().int() };
+const Sport = z
+  .object({ ...placeBase, engine: z.string(), officialLabelEn: z.string().nullable(), officialLabelBn: z.string().nullable(), defaultTiebreakers: z.array(z.string()), verticalFlags: z.number().int(), icon: z.string().nullable(), tint: z.string().nullable() })
+  .meta({ id: 'Sport' });
+const District = z.object({ ...placeBase, divisionId: z.uuid(), bbsCode: z.string(), lat: z.number().nullable(), lng: z.number().nullable() }).meta({ id: 'District' });
+const Division = z.object({ ...placeBase, bbsCode: z.string(), districts: z.array(District) }).meta({ id: 'DivisionWithDistricts' });
+const Area = z
+  .object({ ...placeBase, districtId: z.uuid(), parentAreaId: z.uuid().nullable(), lat: z.number(), lng: z.number(), isDhakaMetro: z.boolean(), dhakaZone: z.enum(['north', 'south']).nullable(), aliases: z.array(z.string()), serviceFlags: z.number().int() })
+  .meta({ id: 'Area' });
+const Facility = z.object({ ...placeBase, icon: z.string().nullable() }).meta({ id: 'Facility' });
+const Surface = z.object({ ...placeBase, indoorTypical: z.boolean() }).meta({ id: 'Surface' });
+const list = (item, id) => z.object({ items: z.array(item) }).meta({ id });
+const CatalogItem = z.union([EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset, z.looseObject({ ...base })]);
 
 module.exports = {
   TABLES,
@@ -79,7 +122,14 @@ module.exports = {
   UPDATE,
   tableParam: z.object({ table: z.enum(TABLES) }),
   tableIdParam: z.object({ table: z.enum(TABLES), id: z.uuid() }),
-  listQuery: z.object({ gameId: z.uuid().optional() }),
+  listQuery: z.object({ gameId: z.uuid().optional(), divisionId: z.uuid().optional(), districtId: z.uuid().optional() }),
+  locationsQuery: z.object({ divisionId: z.uuid().optional() }),
+  areasQuery: z.object({ districtId: z.uuid().optional(), service: z.enum(['grounds', 'delivery']).optional(), q: z.string().trim().min(1).max(60).optional() }),
+  SportList: list(Sport, 'SportList'),
+  LocationList: list(Division, 'LocationList'),
+  AreaList: list(Area, 'AreaList'),
+  FacilityList: list(Facility, 'FacilityList'),
+  SurfaceList: list(Surface, 'SurfaceList'),
   createBody: z.union(Object.values(CREATE)),
   updateBody: z.union(Object.values(UPDATE)),
   EsportsGame,

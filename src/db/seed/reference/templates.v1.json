@@ -1,6 +1,6 @@
 {
-  "seedVersion": 5,
-  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*).",
+  "seedVersion": 6,
+  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes.",
   "templates": [
     {
       "code": "AUDIT_CRITICAL",
@@ -3063,6 +3063,384 @@
           "name": "title",
           "type": "text",
           "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "BUSINESS_DOC_SUBMITTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Documents received",
+      "body": "Thanks. We check your {{doc}} within a working day and tell you here.",
+      "variables": [
+        {
+          "name": "doc",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "BUSINESS_DOC_SUBMITTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "কাগজ পাওয়া গেছে",
+      "body": "ধন্যবাদ। এক কর্মদিবসের মধ্যে আমরা আপনার {{doc}} যাচাই করে এখানে জানাব।",
+      "variables": [
+        {
+          "name": "doc",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "BUSINESS_DOC_CHANGES_REQUESTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Document needs changes",
+      "body": "We could not accept your {{doc}}: {{reason}}. Please upload it again.",
+      "variables": [
+        {
+          "name": "doc",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "BUSINESS_DOC_CHANGES_REQUESTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "কাগজে পরিবর্তন দরকার",
+      "body": "আপনার {{doc}} গ্রহণ করা যায়নি: {{reason}}। আবার আপলোড করুন।",
+      "variables": [
+        {
+          "name": "doc",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "BUSINESS_DOC_CHANGES_REQUESTED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: we could not accept your {{doc}}. Please upload it again in your account.",
+      "variables": [
+        {
+          "name": "doc",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "BUSINESS_DOC_CHANGES_REQUESTED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: আপনার {{doc}} গ্রহণ করা যায়নি। অ্যাকাউন্টে আবার আপলোড করুন।",
+      "variables": [
+        {
+          "name": "doc",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "BUSINESS_DOC_REVIEW_NEEDED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Owner documents to review",
+      "body": "A ground owner's {{doc}} is waiting on the Moderation desk.",
+      "variables": [
+        {
+          "name": "doc",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "BUSINESS_DOC_REVIEW_NEEDED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "মালিকের কাগজ যাচাই",
+      "body": "মডারেশন ডেস্কে একজন মাঠ মালিকের {{doc}} অপেক্ষায়।",
+      "variables": [
+        {
+          "name": "doc",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "GROUND_LIVE",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Ground approved",
+      "body": "{{name}} is approved and live on Kriraghor.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "url",
+          "type": "text",
+          "maxLen": 200
+        }
+      ]
+    },
+    {
+      "code": "GROUND_LIVE",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "মাঠ অনুমোদিত",
+      "body": "{{name}} অনুমোদিত হয়েছে এবং ক্রীড়াঘরে লাইভ।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "url",
+          "type": "text",
+          "maxLen": 200
+        }
+      ]
+    },
+    {
+      "code": "GROUND_LIVE",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{name}} is approved and live. Manage it on your business desk.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "GROUND_LIVE",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{name}} অনুমোদিত ও লাইভ। বিজনেস ডেস্কে পরিচালনা করুন।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "GROUND_CHANGES_REQUESTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Changes needed",
+      "body": "Staff asked for changes to {{name}}: {{reason}}.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "GROUND_CHANGES_REQUESTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পরিবর্তন দরকার",
+      "body": "{{name}}-এ পরিবর্তন চাওয়া হয়েছে: {{reason}}।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "GROUND_CHANGES_REQUESTED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: please update {{name}} and send it again ({{reason}}).",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "GROUND_CHANGES_REQUESTED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{name}} ঠিক করে আবার পাঠান ({{reason}})।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "GROUND_REJECTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Ground not approved",
+      "body": "{{name}} was not approved: {{reason}}.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "GROUND_REJECTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "মাঠ অনুমোদিত হয়নি",
+      "body": "{{name}} অনুমোদিত হয়নি: {{reason}}।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "GROUND_REJECTED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{name}} was not approved. See your business desk for details.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "GROUND_REJECTED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{name}} অনুমোদিত হয়নি। বিস্তারিত বিজনেস ডেস্কে দেখুন।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "GROUND_PRICING_PUBLISHED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "New prices live",
+      "body": "New prices for {{name}} are live. Bookings already made keep their price.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "GROUND_PRICING_PUBLISHED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "নতুন দাম চালু",
+      "body": "{{name}}-এর নতুন দাম চালু। আগের বুকিংয়ের দাম বদলাবে না।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "GROUND_REVIEW_NEEDED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Ground to review",
+      "body": "A ground ({{name}}) is waiting on the Moderation desk.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "GROUND_REVIEW_NEEDED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "যাচাইয়ের জন্য মাঠ",
+      "body": "মডারেশন ডেস্কে একটি মাঠ ({{name}}) অপেক্ষায়।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
         }
       ]
     }

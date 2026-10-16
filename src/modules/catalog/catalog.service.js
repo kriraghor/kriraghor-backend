@@ -1,39 +1,44 @@
 'use strict';
 
 /**
- * M03 esports catalogue (§7.1 [v3]): games, modes, maps and points presets.
+ * M03 catalogues: esports (§7.1 [v3]: games, modes, maps, points presets) and, for M09 and later
+ * verticals, sports, divisions, districts, areas, facilities and surfaces (§6.1, §6.3).
  *  - Rows are never deleted: deactivate hides them from pickers, old references stay valid (M03-FR-01).
- *  - `key` (and the parent game) are immutable after create: CATALOG_KEY_IMMUTABLE.
+ *  - `key` (and the parent row) are immutable after create: CATALOG_KEY_IMMUTABLE.
  *  - Points presets are immutable rows: an edit inserts version n+1, so tournaments that
  *    snapshotted an older version keep scoring with it.
  */
 const { AppError, E } = require('../../common/errors');
-const { sequelize, EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset } = require('../../models');
+const { sequelize, EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset, Sport, Division, District, Area, Facility, Surface, AREA_FLAGS } = require('../../models');
 const audit = require('../audit/audit.service');
 const events = require('../events/events.service');
 const { modeCapacityError, presetPointsError, uidRegexError } = require('./catalog.validate');
 
+/** parentKey: the immutable foreign key to the parent row (and the list filter). */
 const TABLES = {
-  'esports-games': { Model: EsportsGame, entity: 'esports_game', parent: false },
-  'esports-modes': { Model: EsportsMode, entity: 'esports_mode', parent: true },
-  'esports-maps': { Model: EsportsMap, entity: 'esports_map', parent: true },
-  'esports-points-presets': { Model: EsportsPointsPreset, entity: 'esports_points_preset', parent: true, versioned: true },
+  'esports-games': { Model: EsportsGame, entity: 'esports_game', esports: true },
+  'esports-modes': { Model: EsportsMode, entity: 'esports_mode', esports: true, parentKey: 'gameId', Parent: EsportsGame, parentLabel: 'Game' },
+  'esports-maps': { Model: EsportsMap, entity: 'esports_map', esports: true, parentKey: 'gameId', Parent: EsportsGame, parentLabel: 'Game' },
+  'esports-points-presets': { Model: EsportsPointsPreset, entity: 'esports_points_preset', esports: true, parentKey: 'gameId', Parent: EsportsGame, parentLabel: 'Game', versioned: true },
+  sports: { Model: Sport, entity: 'sport' },
+  divisions: { Model: Division, entity: 'division' },
+  districts: { Model: District, entity: 'district', parentKey: 'divisionId', Parent: Division, parentLabel: 'Division' },
+  areas: { Model: Area, entity: 'area', parentKey: 'districtId', Parent: District, parentLabel: 'District' },
+  facilities: { Model: Facility, entity: 'facility' },
+  surfaces: { Model: Surface, entity: 'surface' },
 };
 
 const invalid = (field, message) => new AppError(422, 'VALIDATION_FAILED', 'Some fields are invalid', { errors: [{ field, message }] });
 const iso = (d) => (d ? new Date(d).toISOString() : null);
+const HIDDEN = new Set(['createdAt', 'createdBy', 'updatedBy']);
 
+/** Every column except the audit ones; missing optional values are null. */
 function serialize(row, { latest } = {}) {
   const r = row.get({ plain: true });
-  const out = { id: r.id, key: r.key, nameEn: r.nameEn, nameBn: r.nameBn, sort: r.sort, isActive: r.isActive, updatedAt: iso(r.updatedAt) };
-  if (row instanceof EsportsGame) {
-    return { ...out, publisher: r.publisher ?? null, platform: r.platform, uidLabelEn: r.uidLabelEn, uidLabelBn: r.uidLabelBn, uidRegex: r.uidRegex, ignMaxLen: r.ignMaxLen, icon: r.icon ?? null };
-  }
-  out.gameId = r.gameId;
-  if (row instanceof EsportsMode) return { ...out, teamSize: r.teamSize, maxTeams: r.maxTeams, maxPlayers: r.maxPlayers, maxSubs: r.maxSubs };
-  if (row instanceof EsportsPointsPreset) {
-    return { ...out, placementPoints: r.placementPoints, killPoints: r.killPoints, version: r.version, isLatest: latest ? latest.get(`${r.gameId}:${r.key}`) === r.version : true };
-  }
+  const out = {};
+  for (const k of Object.keys(row.constructor.rawAttributes)) if (!HIDDEN.has(k)) out[k] = r[k] ?? null;
+  out.updatedAt = iso(r.updatedAt);
+  if (row instanceof EsportsPointsPreset) out.isLatest = latest ? latest.get(`${r.gameId}:${r.key}`) === r.version : true;
   return out;
 }
 
@@ -61,6 +66,7 @@ function checkRow(table, row) {
     const err = presetPointsError(row);
     if (err) throw invalid('placementPoints', err);
   }
+  if (table === 'areas' && row.dhakaZone && !row.isDhakaMetro) throw invalid('dhakaZone', 'Only Dhaka metro areas have a zone');
 }
 
 const cfg = (table) => TABLES[table];
@@ -70,22 +76,23 @@ async function emit(transaction, name, table, row, actor, extra = {}) {
 }
 
 /** Admin list: every row including inactive ones and every preset version. */
-async function list(table, { gameId } = {}) {
-  const { Model, parent } = cfg(table);
-  const where = parent && gameId ? { gameId } : {};
-  const rows = await Model.findAll({ where, order: [...(parent ? [['gameId', 'ASC']] : []), ['sort', 'ASC'], ['key', 'ASC'], ...(cfg(table).versioned ? [['version', 'DESC']] : [])] });
-  const latest = cfg(table).versioned ? latestVersions(rows) : undefined;
+async function list(table, query = {}) {
+  const { Model, parentKey, versioned } = cfg(table);
+  const where = parentKey && query[parentKey] ? { [parentKey]: query[parentKey] } : {};
+  const rows = await Model.findAll({ where, order: [...(parentKey ? [[parentKey, 'ASC']] : []), ['sort', 'ASC'], ['key', 'ASC'], ...(versioned ? [['version', 'DESC']] : [])] });
+  const latest = versioned ? latestVersions(rows) : undefined;
   return { items: rows.map((r) => serialize(r, { latest })) };
 }
 
 async function create(actor, table, body, req) {
-  const { Model, parent, entity } = cfg(table);
+  const { Model, parentKey, Parent, parentLabel, entity, versioned } = cfg(table);
   checkRow(table, body);
   const row = await sequelize.transaction(async (transaction) => {
-    if (parent && !(await EsportsGame.findByPk(body.gameId, { transaction }))) throw E.notFound('Game');
-    const taken = await Model.findOne({ where: parent ? { gameId: body.gameId, key: body.key } : { key: body.key }, transaction });
+    if (parentKey && !(await Parent.findByPk(body[parentKey], { transaction }))) throw E.notFound(parentLabel);
+    // Keys are unique per parent for esports children, platform-wide everywhere else.
+    const taken = await Model.findOne({ where: parentKey && cfg(table).esports ? { [parentKey]: body[parentKey], key: body.key } : { key: body.key }, transaction });
     if (taken) throw E.conflict('CATALOG_KEY_TAKEN', 'That key is already used', `Pick another key than ${body.key}`);
-    const created = await Model.create({ ...body, ...(cfg(table).versioned ? { version: 1 } : {}), createdBy: actor.id, updatedBy: actor.id }, { transaction });
+    const created = await Model.create({ ...body, ...(versioned ? { version: 1 } : {}), createdBy: actor.id, updatedBy: actor.id }, { transaction });
     await audit.record({ action: 'catalog_item.created', actor, entityType: entity, entityId: created.id, after: serialize(created), req }, { transaction });
     await emit(transaction, 'catalog_item.created', table, created, actor);
     return created;
@@ -94,15 +101,17 @@ async function create(actor, table, body, req) {
 }
 
 async function update(actor, table, id, body, req) {
-  const { Model, entity, versioned } = cfg(table);
+  const { Model, entity, versioned, parentKey } = cfg(table);
   const row = await sequelize.transaction(async (transaction) => {
     const current = await Model.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
     if (!current) throw E.notFound('Catalogue item');
     if (body.key !== undefined && body.key !== current.key) throw new AppError(422, 'CATALOG_KEY_IMMUTABLE', 'A key cannot change after it is created', { errors: [{ field: 'key', message: 'Keys are permanent' }] });
-    if (body.gameId !== undefined && body.gameId !== current.gameId) throw new AppError(422, 'CATALOG_KEY_IMMUTABLE', 'An item cannot move to another game', { errors: [{ field: 'gameId', message: 'The game is permanent' }] });
+    if (parentKey && body[parentKey] !== undefined && body[parentKey] !== current[parentKey]) {
+      throw new AppError(422, 'CATALOG_KEY_IMMUTABLE', 'An item cannot move to another parent', { errors: [{ field: parentKey, message: 'The parent is permanent' }] });
+    }
     const changes = { ...body };
     delete changes.key;
-    delete changes.gameId;
+    if (parentKey) delete changes[parentKey];
     const before = serialize(current);
     checkRow(table, { ...current.get({ plain: true }), ...changes });
 
@@ -176,4 +185,42 @@ async function publicGames() {
   };
 }
 
-module.exports = { list, create, update, setActive, publicGames, TABLES };
+// ---------------- public places and sports (M03 §9) ----------------
+const ORDER = [['sort', 'ASC'], ['nameEn', 'ASC']];
+const pub = (row) => {
+  const out = serialize(row);
+  delete out.isActive;
+  delete out.updatedAt;
+  return out;
+};
+const activeList = async (Model, where = {}) => ({ items: (await Model.findAll({ where: { isActive: true, ...where }, order: ORDER })).map(pub) });
+
+const publicSports = () => activeList(Sport);
+const publicFacilities = () => activeList(Facility);
+const publicSurfaces = () => activeList(Surface);
+
+/** GET /catalog/locations: divisions with their districts (optionally one division). */
+async function publicLocations({ divisionId } = {}) {
+  const divisions = await Division.findAll({ where: { isActive: true, ...(divisionId ? { id: divisionId } : {}) }, order: ORDER });
+  const districts = await District.findAll({ where: { isActive: true, divisionId: divisions.map((d) => d.id) }, order: ORDER });
+  return { items: divisions.map((d) => ({ ...pub(d), districts: districts.filter((x) => x.divisionId === d.id).map(pub) })) };
+}
+
+/**
+ * GET /catalog/areas: active areas, optionally in a district, offering a service (grounds), or
+ * matching `q` against the English and Bangla names and the aliases.
+ */
+async function publicAreas({ districtId, service, q } = {}) {
+  const where = { isActive: true };
+  if (districtId) where.districtId = districtId;
+  const rows = await Area.findAll({ where, order: ORDER });
+  const bit = service ? AREA_FLAGS[service.toUpperCase()] : 0;
+  const needle = q ? q.trim().toLowerCase() : '';
+  const items = rows
+    .filter((a) => !bit || (a.serviceFlags & bit) === bit)
+    .filter((a) => !needle || [a.nameEn, a.nameBn, ...a.aliases].some((n) => n.toLowerCase().includes(needle)))
+    .map(pub);
+  return { items };
+}
+
+module.exports = { list, create, update, setActive, publicGames, publicSports, publicFacilities, publicSurfaces, publicLocations, publicAreas, TABLES };

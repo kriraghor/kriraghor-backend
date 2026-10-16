@@ -16,6 +16,7 @@ The specification for every module is in [`../kriraghor-docs/modules`](../krirag
 | **M02 KYC (lite)** | ✅ [`src/modules/kyc`](src/modules/kyc): the member NID (front, back, selfie; number, DOB, legal name) uploaded through the API (type by magic bytes, size, SHA-256), encrypted fields, duplicate-NID and reused-image checks, the document panel API (`approve_documents`: audited file viewer, audited 60-second reveal), review through M05 (kind `document`), M01 consumers that move the member role and copy the verified identity, the `withdraw_winnings` gate, retention purge. Business-role documents and virus scanning come later |
 | **M05 Moderation (lite)** | ✅ [`src/modules/moderation`](src/modules/moderation): `SubmissionService` (versions, supersede, checks, SLA), subject adapters by kind and permission, the claim lock (TTL, heartbeat, hard cap, force release), server-stored rubric ticks, decisions with reasons per kind, master override of a failing hard check and reopen (step-up `moderation.override`), `submission.applied` with the apply watchdog, SLA breach alerts, sanctions withdraw open submissions. First kind: `document` (M02). M21 adds `game_profile` and `esports_tournament`. Websocket queue push, diff view and the other kinds come later |
 | **M21 Esports (step 1)** | ✅ [`src/modules/esports`](src/modules/esports): game UIDs (screenshot, M05 review, bans), squads, tournaments (`single_match`, `series`; M05 review, no self-approval, prize table locked), registration (row-locked slots, M06 `esports_entry` pool, waitlist offers, refunds, auto-cancel below the minimum), check-in, encrypted versioned room credentials revealed only to checked-in players (socket and API, every view audited), results with disputes (built in until M17), disqualification, finalise through `escrow.settlePool` with step-up `esports.money`, rankings, and M07 withdrawals. Jobs: `esports.tick` (every minute), `esports.rankings-recompute` (03:00 Dhaka). Group stages, auto-finalise and cheating reports are step 2 |
+| **M09 Grounds (step 1)** | ✅ [`src/modules/grounds`](src/modules/grounds): listings with a live version beside edits (`live_snapshot`, review diff), courts and weekly hours, photos in the public bucket, versioned pricing rules (one draft, one published, history, "apply to all") with the pure shared calculator (`pricing.rules`, §6.1, both v3 payment options), quote and heatmap, the public `/grounds` (filters, facets, sorts) and detail, staff list, suspend, restore and remove, sanctions pause. With it: M03 places catalogue (sports, divisions, districts, areas, facilities, surfaces), M02 ground-owner documents lite, M01 business-role activation, M05 kind `ground`. The occupancy port waits for M10; closures and series come with it |
 | Everything else | Not started |
 
 ## Quick start
@@ -110,6 +111,8 @@ See [`postman/M01-acceptance-checklist.md`](postman/M01-acceptance-checklist.md)
 
 **M21 (esports step 1)** runs unattended: `node postman/run-m21.js` (masters A and B, two players; a local test clock moves the stored times between steps; UID review, authoring and review, paid registration, check-in, room reveal and audited views, results, a dispute, finalise with step-up, winnings, leaderboard, the KYC gate on withdrawal; 60 requests, 91 assertions). Checklist: [`postman/M21-acceptance-checklist.md`](postman/M21-acceptance-checklist.md).
 
+**M09 (grounds step 1)** runs unattended: `node postman/run-m09.js` (masters A and B, an owner who applied as a ground owner; business documents, the role, a ground with a court and three photos through review, public list, detail and quote, pricing draft and publish, a live edit with a diff, pause, staff suspend and restore; 69 requests, 115 assertions). Checklist: [`postman/M09-acceptance-checklist.md`](postman/M09-acceptance-checklist.md).
+
 **M08 (notifications, the Phase 1 exit check)** runs unattended: `node postman/run-m08.js` (two masters with emails, a member and an in-process worker; 14 requests, 26 assertions). Checklist: [`postman/M08-acceptance-checklist.md`](postman/M08-acceptance-checklist.md).
 
 **M04 (audit log and events)** runs unattended the same way: `node postman/run-m04.js` (it also runs a small in-process worker for the relay, consumers and exports). Checklist: [`postman/M04-acceptance-checklist.md`](postman/M04-acceptance-checklist.md).
@@ -177,6 +180,7 @@ src/
    ├─ payouts/            M07 payout accounts, runs, holds, approvals, manual disbursement, refund payouts (rules + service)
    ├─ kyc/                M02 NID uploads, submissions, document panel, retention (rules + service), M05 adapter (kyc.moderation.js); M01 follows through users/kyc.consumers.js
    ├─ moderation/         M05 submissions, adapters, claims, rubric, decisions, override, reopen, jobs (rules + service)
+   ├─ grounds/            M09 listings, courts, hours, photos, pricing (pricing.rules: the shared calculator), public read side, occupancy port, reads for M10, M05 adapter
    └─ esports/            M21 profiles, squads, tournaments, registrations, rooms, results, prizes, rankings, lifecycle tick, M05 adapters and M06 hook (rules + services)
 src/providers/payments/   SSLCommerz adapter and the SSLCommerz-compatible simulator (dev and tests only)
 scripts/                  release.js (migrate + reference seed), create-master.js (first master, CLI only), openapi.js (writes openapi.json)
@@ -347,6 +351,20 @@ Every process (api, realtime, worker) refuses to start until every seeded settin
 | `POST /admin/submissions/:id/reopen` | master, step-up `moderation.override` | A decided submission back to the queue (critical audit) |
 
 **Adding a kind:** widen the `submissions.kind` CHECK in a migration, seed its rubric and reasons in `moderation.v1.json`, register an adapter (`moderation.adapters.register({ kind, permission, checks, ownerWithdraw, lockedChecks })`), call `moderation.submit` from your module, and apply decisions in consumers of `submission.approved` / `.changes_requested` / `.rejected`, acknowledging with `submission.applied` (see `kyc/kyc.moderation.js`).
+
+## API (M09)
+
+| Endpoint | Access | Notes |
+|---|---|---|
+| `GET /catalog/sports` · `/locations` · `/areas?districtId=&service=grounds&q=` · `/facilities` · `/surfaces` | public | M03 places catalogue (cacheable, ETag) |
+| `GET /grounds` · `/grounds/:slug` · `POST /grounds/:id/quote` | public | Live grounds only (the public version): filters, facets, sorts; detail with courts, hours, price table and the v3 payment line; the quote shows both payment options |
+| `GET|POST /me/grounds` · `GET|PATCH /me/grounds/:id` · `/submit` · `/withdraw` · `/pause` · `/resume` | gate `list_ground` (active `ground_owner`), own grounds (`NOT_OWNER`) | Draft, review (M05 kind `ground`), live edits beside the public version |
+| `POST /me/grounds/:id/courts` · `PATCH /me/courts/:id` · `/retire` · `PUT /me/courts/:id/hours` | same | Courts `pending` until approved; hours on the half-hour grid; retire through the occupancy port |
+| `POST /me/grounds/:id/photos` (raw) · `PUT /photos/order` · `POST /photos/:photoId/remove` | same | JPEG, PNG or WebP by first bytes, to the public bucket |
+| `/me/grounds/:id/pricing` (GET) · `/draft` (PUT) · `/draft/discard` · `/publish` · `/history` · `/heatmap` · `/quote` | same | One draft and one published version; base locked in review; "apply to all"; history with summaries |
+| `GET /admin/grounds` · `/admin/grounds/:id` | `approve_listings` or `manage_users` | The list and the working copy with the public version and rules |
+| `POST /admin/grounds/:id/suspend` · `/restore` · `/remove` | `manage_users` (suspend), master (restore, remove) | With a reason; critical audit |
+| `GET /me/verification?role=ground_owner` · `POST /me/documents` (`trade_license`, `deed_or_lease`, `tin`) | signed in, active member, role applied | M02 business documents lite; approval of the required ones activates `ground_owner` |
 
 ## API (M21)
 

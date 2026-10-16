@@ -1,6 +1,6 @@
 {
   "seedVersion": 1,
-  "source": "M05 §6.2 rubrics and §6.3 rejection reasons, lite (Oct 2026): the document kind (M02 NID); game_profile and esports_tournament (M21). Kinds are added as their modules arrive (M21 game_profile and esports_tournament). Rows are inserted only when missing.",
+  "source": "M05 §6.2 rubrics and §6.3 rejection reasons, lite (Oct 2026): the document kind (M02 NID); game_profile and esports_tournament (M21). Kinds are added as their modules arrive (M21 game_profile and esports_tournament). Rows are inserted only when missing. Ground listings (M09): rubric rb_ground_v1 and the ground kind on the shared reasons, plus location_wrong and not_a_venue.",
   "rubrics": [
     {
       "kind": "document",
@@ -69,6 +69,37 @@
           "labelBn": "নিয়ম পরিষ্কার ও অনুমোদিত"
         }
       ]
+    },
+    {
+      "kind": "ground",
+      "version": 1,
+      "items": [
+        {
+          "key": "photos_real",
+          "labelEn": "Photos show this ground and match the courts",
+          "labelBn": "ছবিগুলো এই মাঠের এবং কোর্টের সাথে মেলে"
+        },
+        {
+          "key": "location_ok",
+          "labelEn": "Name, address and map pin agree",
+          "labelBn": "নাম, ঠিকানা ও ম্যাপ পিন মেলে"
+        },
+        {
+          "key": "courts_ok",
+          "labelEn": "Courts, sports, surface and hours make sense",
+          "labelBn": "কোর্ট, খেলা, সারফেস ও সময় যুক্তিসঙ্গত"
+        },
+        {
+          "key": "price_ok",
+          "labelEn": "Base price fits the area",
+          "labelBn": "ভিত্তি দাম এলাকার সাথে মানানসই"
+        },
+        {
+          "key": "rules_ok",
+          "labelEn": "Rules and description are fair and allowed",
+          "labelBn": "নিয়ম ও বর্ণনা ন্যায্য ও অনুমোদিত"
+        }
+      ]
     }
   ],
   "reasons": [
@@ -76,14 +107,18 @@
       "code": "photos_unclear",
       "labelEn": "Photos unclear or not of the item",
       "labelBn": "ছবি অস্পষ্ট বা জিনিসটির নয়",
-      "kinds": [],
+      "kinds": [
+        "ground"
+      ],
       "sort": 1
     },
     {
       "code": "price_wrong",
       "labelEn": "Price looks wrong",
       "labelBn": "দাম ঠিক মনে হচ্ছে না",
-      "kinds": [],
+      "kinds": [
+        "ground"
+      ],
       "sort": 2
     },
     {
@@ -120,7 +155,8 @@
       "labelBn": "অন্য অ্যাকাউন্ট বা বিজ্ঞাপনে আগে থেকেই আছে",
       "kinds": [
         "document",
-        "game_profile"
+        "game_profile",
+        "ground"
       ],
       "sort": 6
     },
@@ -138,7 +174,8 @@
       "kinds": [
         "document",
         "game_profile",
-        "esports_tournament"
+        "esports_tournament",
+        "ground"
       ],
       "sort": 8
     },
@@ -149,7 +186,8 @@
       "kinds": [
         "document",
         "game_profile",
-        "esports_tournament"
+        "esports_tournament",
+        "ground"
       ],
       "sort": 9
     },
@@ -160,7 +198,8 @@
       "kinds": [
         "document",
         "game_profile",
-        "esports_tournament"
+        "esports_tournament",
+        "ground"
       ],
       "requiresText": true,
       "sort": 10
@@ -191,6 +230,24 @@
         "esports_tournament"
       ],
       "sort": 13
+    },
+    {
+      "code": "location_wrong",
+      "labelEn": "Address or map pin is wrong",
+      "labelBn": "ঠিকানা বা ম্যাপ পিন ভুল",
+      "kinds": [
+        "ground"
+      ],
+      "sort": 14
+    },
+    {
+      "code": "not_a_venue",
+      "labelEn": "Not a bookable sports venue",
+      "labelBn": "বুকিংযোগ্য খেলার মাঠ নয়",
+      "kinds": [
+        "ground"
+      ],
+      "sort": 15
     }
   ]
 }

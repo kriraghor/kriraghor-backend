@@ -18,7 +18,8 @@ const json = z.unknown();
 const poisha = z.number().int().nonnegative();
 const paymentClosed = z.object({ paymentId: uuid, purpose: z.string(), purposeId: uuid, amount: poisha, payerId: uuid, reason: z.string().max(60) });
 const refundEvent = z.object({ refundId: uuid, paymentId: uuid, amount: poisha, purpose: z.string(), purposeId: uuid, payerId: uuid });
-const docEvent = z.object({ documentId: uuid, userId: uuid, docType: z.string().max(30) });
+const groundEvent = z.object({ groundId: uuid, ownerId: uuid });
+const docEvent = z.object({ documentId: uuid, userId: uuid, docType: z.string().max(30), role: z.string().max(32).optional() });
 const payoutEvent = z.object({ payoutId: uuid, code: z.string(), payeeId: uuid, amount: poisha });
 const subEvent = z.object({ submissionId: uuid, kind: z.string().max(30), subjectId: uuid, version: z.number().int(), submittedBy: uuid });
 const esReg = z.object({ registrationId: uuid, tournamentId: uuid, registrantUserId: uuid });
@@ -180,8 +181,19 @@ const EVENTS = {
   'esports_prize.credited': { module: 'M21', version: 1, schema: esShare },
   'esports_prize.reversed': { module: 'M21', version: 1, schema: esShare },
   'esports_prize.forfeited': { module: 'M21', version: 1, schema: z.object({ awardId: uuid, tournamentId: uuid, registrationId: uuid, amount: poisha }) },
+// ---------------- M09 Grounds (ids and keys only) ----------------
+  'ground.submitted': { module: 'M09', version: 1, schema: groundEvent.extend({ version: z.number().int(), isEdit: z.boolean() }) },
+  'ground.published': { module: 'M09', version: 1, schema: groundEvent.extend({ version: z.number().int(), first: z.boolean() }) },
+  'ground.changes_requested': { module: 'M09', version: 1, schema: groundEvent.extend({ isEdit: z.boolean(), reasonCode: z.string().max(40).nullable() }) },
+  'ground.rejected': { module: 'M09', version: 1, schema: groundEvent.extend({ isEdit: z.boolean(), reasonCode: z.string().max(40).nullable() }) },
+  'ground.withdrawn': { module: 'M09', version: 1, schema: groundEvent },
+  'ground.paused': { module: 'M09', version: 1, schema: groundEvent.extend({ reason: z.string().max(300).nullable().optional() }) },
+  'ground.resumed': { module: 'M09', version: 1, schema: groundEvent },
+  'ground.suspended': { module: 'M09', version: 1, schema: groundEvent.extend({ reason: z.string().max(300).nullable().optional() }) },
+  'ground.restored': { module: 'M09', version: 1, schema: groundEvent },
+  'ground.removed': { module: 'M09', version: 1, schema: groundEvent.extend({ reason: z.string().max(300).nullable().optional() }) },
+  'ground.pricing_published': { module: 'M09', version: 1, schema: groundEvent.extend({ version: z.number().int(), changedKeys: z.array(z.string().max(40)) }) },
 };
-
 /** FR-19: `<aggregate>.<past_tense_verb>`, snake_case. Irregular past tenses are listed. */
 const IRREGULAR = new Set(['sent', 'paid', 'held', 'won', 'lost', 'made', 'begun', 'done', 'drawn', 'shown', 'thrown', 'given', 'taken', 'built', 'set', 'put', 'cut', 'withdrawn', 'chosen', 'written', 'frozen', 'unfrozen', 'seen', 'broken', 'sold', 'told', 'found', 'left', 'met', 'read', 'run', 'spent', 'struck']);
 function nameError(name) {

@@ -15,9 +15,10 @@ const payoutsS = require('../modules/payouts/payouts.schemas');
 const kycS = require('../modules/kyc/kyc.schemas');
 const modS = require('../modules/moderation/moderation.schemas');
 const esS = require('../modules/esports/esports.schemas');
+const grS = require('../modules/grounds/grounds.schemas');
 
 /**
- * Every route (M01, M02, M03, M04, M06, M07, M08), registered with its request and response schemas and the stable error
+ * Every route (M01, M02, M03, M04, M05, M06, M07, M08, M09, M21), registered with its request and response schemas and the stable error
  * codes it can return (ADR-002). When a route is added in a module, add it here: the
  * coverage test fails if an Express route has no OpenAPI entry.
  */
@@ -185,6 +186,13 @@ function register(registry) {
   const CATALOG_AUTH = { ...ADMIN_AUTH, 404: ['NOT_FOUND'], ...VALIDATION };
   p({ method: 'get', path: '/catalog/esports/games', tags: ['catalog'], summary: 'Active esports games with modes, maps and current points presets (cacheable, ETag)',
     responses: { 200: json(z.object({ items: z.array(catalogS.EsportsGameWithChildren) })), 304: { description: 'Not modified' } } });
+  const cached = { 304: { description: 'Not modified' } };
+  p({ method: 'get', path: '/catalog/sports', tags: ['catalog'], summary: 'Active sports (M03 §6.1; rows only, rule schemas come with M14)', responses: { 200: json(catalogS.SportList), ...cached } });
+  p({ method: 'get', path: '/catalog/locations', tags: ['catalog'], summary: 'Divisions with their districts (BBS geocodes)', request: { query: catalogS.locationsQuery }, responses: { 200: json(catalogS.LocationList), ...cached, ...errors(VALIDATION) } });
+  p({ method: 'get', path: '/catalog/areas', tags: ['catalog'], summary: 'Active areas; filter by district, by service (grounds: Dhaka metro, Q15) or by name and aliases (q)',
+    request: { query: catalogS.areasQuery }, responses: { 200: json(catalogS.AreaList), ...cached, ...errors(VALIDATION) } });
+  p({ method: 'get', path: '/catalog/facilities', tags: ['catalog'], summary: 'Ground facilities (floodlights, parking …)', responses: { 200: json(catalogS.FacilityList), ...cached } });
+  p({ method: 'get', path: '/catalog/surfaces', tags: ['catalog'], summary: 'Playing surfaces', responses: { 200: json(catalogS.SurfaceList), ...cached } });
   p({ method: 'get', path: '/admin/catalog/{table}', tags: ['catalog'], summary: 'Every row of a catalogue, inactive rows and all preset versions included (manage_esports or manage_catalog)', security: adminBearer,
     request: { params: catalogS.tableParam, query: catalogS.listQuery }, responses: { 200: json(z.object({ items: z.array(catalogS.CatalogItem) })), ...errors(CATALOG_AUTH) } });
   p({ method: 'post', path: '/admin/catalog/{table}', tags: ['catalog'], summary: 'Add a catalogue row; the body matches the table', security: adminBearer,
@@ -424,9 +432,9 @@ function register(registry) {
   p({ method: 'post', path: '/me/documents/files', tags: ['kyc'], summary: 'Upload one NID image or PDF (raw body: image/jpeg, image/png or application/pdf; checked by its first bytes)', security: bearer,
     request: { query: kycS.uploadQuery, body: binary('The file itself, up to kyc.max_file_bytes') },
     responses: { 201: json(kycS.Uploaded, 'Created'), ...errors({ ...COMMON_AUTH, 413: ['FILE_TOO_LARGE', 'PAYLOAD_TOO_LARGE'], 415: ['FILE_TYPE_NOT_ALLOWED', 'FILE_TYPE_MISMATCH'], 422: ['VALIDATION_FAILED', 'FILE_EMPTY'], 429: ['UPLOAD_RATE_LIMITED'] }) } });
-  p({ method: 'post', path: '/me/documents', tags: ['kyc'], summary: 'Submit my NID for review: number, date of birth, legal name and the three files (FR-05 to FR-07, FR-11)', security: bearer,
+  p({ method: 'post', path: '/me/documents', tags: ['kyc'], summary: 'Submit my NID (number, date of birth, legal name, three files) or a business document of a role I applied for (fields from the requirement, one file)', security: bearer,
     request: body(kycS.submitBody),
-    responses: { 201: json(kycS.Document, 'Created'), ...errors({ ...COMMON_AUTH, 409: ['PHONE_REQUIRED', 'DOC_ALREADY_APPROVED'], 422: ['VALIDATION_FAILED', 'NID_FORMAT_INVALID', 'DOB_INVALID', 'DOB_IN_FUTURE', 'UNDER_MIN_AGE', 'FILES_INCOMPLETE'] }) } });
+    responses: { 201: json(kycS.Document, 'Created'), ...errors({ ...COMMON_AUTH, 409: ['PHONE_REQUIRED', 'DOC_ALREADY_APPROVED', 'MEMBER_NOT_ACTIVE', 'ROLE_NOT_APPLIED'], 422: ['VALIDATION_FAILED', 'NID_FORMAT_INVALID', 'DOB_INVALID', 'DOB_IN_FUTURE', 'UNDER_MIN_AGE', 'FILES_INCOMPLETE', 'DOC_TYPE_NOT_REQUIRED'] }) } });
   p({ method: 'get', path: '/me/documents/{id}/files/{fileId}', tags: ['kyc'], summary: 'View my own upload (no-store)', security: bearer,
     request: kycFileP, responses: { 200: binary('The file'), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], 410: ['FILE_PURGED'], ...VALIDATION }) } });
 
@@ -611,6 +619,63 @@ function register(registry) {
     request: { ...esId, ...body(esS.liftBody) }, responses: { 200: json(esS.Ban), ...errors({ ...ES, ...NF, ...VALIDATION }) } });
   p({ method: 'get', path: '/admin/esports/profiles/{id}/screenshot', tags: ['esports'], summary: 'A UID screenshot for the Moderation desk (approve_listings or manage_esports; audited, no-store)', security: adminBearer,
     request: esId, responses: { 200: image('The screenshot'), ...errors({ ...ES, ...NF, ...VALIDATION }) } });
+
+  // ------------------------------------------------------------------ M09 grounds
+  const grId = { params: grS.idParam };
+  const OWNER = { ...COMMON_AUTH, 403: ['ROLE_REQUIRED', 'KYC_REQUIRED', 'PHONE_REQUIRED', 'NOT_OWNER'], 404: ['NOT_FOUND'] };
+  const photo = (description) => ({ description, content: { 'image/jpeg': { schema: z.string() }, 'image/png': { schema: z.string() }, 'image/webp': { schema: z.string() } } });
+  p({ method: 'get', path: '/grounds', tags: ['grounds'], summary: 'Live grounds: filters, facet counts, sorts cheapest / nearest / newest (FR-25)', request: { query: grS.listQuery }, responses: { 200: json(grS.GroundList), ...errors(VALIDATION) } });
+  p({ method: 'get', path: '/grounds/{slug}', tags: ['grounds'], summary: 'A live ground: facts, courts and hours, facilities, rules, price table, v3 payment line (FR-27; ETag)',
+    request: { params: grS.slugParam }, responses: { 200: json(grS.GroundDetail), 304: { description: 'Not modified' }, ...errors({ 404: ['NOT_FOUND'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/grounds/{id}/quote', tags: ['grounds'], summary: 'Price a slot on public courts: both payment options and the platform fee (FR-13)',
+    request: { ...grId, ...body(grS.publicQuote) }, responses: { 200: json(grS.Quote), ...errors({ 404: ['NOT_FOUND'], 409: ['PRICING_MISSING'], 422: ['VALIDATION_FAILED', 'COURT_UNKNOWN', 'NOT_COMBINABLE', 'LENGTH_INVALID', 'OUTSIDE_HOURS'] }) } });
+
+  p({ method: 'get', path: '/me/grounds', tags: ['grounds'], summary: 'My grounds (ground owner)', security: bearer, responses: { 200: json(grS.OwnerGroundList), ...errors(OWNER) } });
+  p({ method: 'post', path: '/me/grounds', tags: ['grounds'], summary: 'Start a ground: a draft with a first pricing draft (FR-01; gate list_ground)', security: bearer,
+    request: body(grS.createGround), responses: { 201: json(grS.OwnerGround, 'Created'), ...errors({ ...OWNER, 422: ['VALIDATION_FAILED', 'AREA_NOT_SERVED', 'CATALOG_ITEM_UNKNOWN'] }) } });
+  p({ method: 'get', path: '/me/grounds/{id}', tags: ['grounds'], summary: 'My ground: the working copy with photos, courts and hours', security: bearer, request: grId, responses: { 200: json(grS.OwnerGround), ...errors(OWNER) } });
+  p({ method: 'patch', path: '/me/grounds/{id}', tags: ['grounds'], summary: 'Edit my ground; on a live ground, review fields start an edit and the rest apply at once (FR-04)', security: bearer,
+    request: { ...grId, ...body(grS.updateGround) }, responses: { 200: json(grS.OwnerGround), ...errors({ ...OWNER, 409: ['GROUND_IN_REVIEW', 'GROUND_STATE'], 422: ['VALIDATION_FAILED', 'AREA_NOT_SERVED', 'CATALOG_ITEM_UNKNOWN'] }) } });
+  p({ method: 'post', path: '/me/grounds/{id}/submit', tags: ['grounds'], summary: 'Send the ground, or an edit of a live ground, for review (FR-02, FR-03)', security: bearer,
+    request: grId, responses: { 200: json(grS.OwnerGround), ...errors({ ...OWNER, 409: ['GROUND_IN_REVIEW', 'GROUND_STATE', 'NOTHING_TO_REVIEW'], 422: ['GROUND_INCOMPLETE'] }) } });
+  p({ method: 'post', path: '/me/grounds/{id}/withdraw', tags: ['grounds'], summary: 'Take the ground (or its edit) out of review', security: bearer, request: grId, responses: { 200: json(grS.OwnerGround), ...errors({ ...OWNER, 409: ['GROUND_STATE'] }) } });
+  p({ method: 'post', path: '/me/grounds/{id}/pause', tags: ['grounds'], summary: 'Hide a live ground; bookings stay (FR-05)', security: bearer, request: grId, responses: { 200: json(grS.OwnerGround), ...errors({ ...OWNER, 409: ['GROUND_STATE'] }) } });
+  p({ method: 'post', path: '/me/grounds/{id}/resume', tags: ['grounds'], summary: 'Show a paused ground again', security: bearer, request: grId, responses: { 200: json(grS.OwnerGround), ...errors({ ...OWNER, 409: ['GROUND_STATE'] }) } });
+  p({ method: 'post', path: '/me/grounds/{id}/courts', tags: ['grounds'], summary: 'Add a court (pending until approved); hours default to the whole bookable day', security: bearer,
+    request: { ...grId, ...body(grS.createCourt) }, responses: { 201: json(grS.OwnerGround, 'Created'), ...errors({ ...OWNER, 409: ['GROUND_IN_REVIEW', 'GROUND_STATE', 'COURT_NAME_TAKEN'], 422: ['VALIDATION_FAILED', 'CATALOG_ITEM_UNKNOWN'] }) } });
+  p({ method: 'patch', path: '/me/courts/{id}', tags: ['grounds'], summary: 'Edit a court; sports, surface, size and name of an active court need review (FR-04)', security: bearer,
+    request: { ...grId, ...body(grS.updateCourt) }, responses: { 200: json(grS.OwnerGround), ...errors({ ...OWNER, 409: ['GROUND_IN_REVIEW', 'GROUND_STATE', 'COURT_NAME_TAKEN'], 422: ['VALIDATION_FAILED', 'CATALOG_ITEM_UNKNOWN'] }) } });
+  p({ method: 'post', path: '/me/courts/{id}/retire', tags: ['grounds'], summary: 'Retire a court (no upcoming bookings; a live ground keeps one court) (FR-06)', security: bearer,
+    request: grId, responses: { 200: json(grS.OwnerGround), ...errors({ ...OWNER, 409: ['GROUND_IN_REVIEW', 'COURT_HAS_BOOKINGS', 'LAST_COURT'] }) } });
+  p({ method: 'put', path: '/me/courts/{id}/hours', tags: ['grounds'], summary: 'Set a court\'s weekly hours: 7 rows, half-hour aligned, inside the bookable day (FR-07, FR-08)', security: bearer,
+    request: { ...grId, ...body(grS.hoursBody) }, responses: { 200: json(grS.OwnerGround), ...errors({ ...OWNER, 409: ['GROUND_STATE', 'HOURS_CONFLICT'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/grounds/{id}/photos', tags: ['grounds'], summary: 'Upload a photo (raw JPEG, PNG or WebP, checked by its first bytes) to the public bucket', security: bearer,
+    request: { ...grId, body: photo('The photo itself, up to ground.photo_max_bytes') },
+    responses: { 201: json(grS.Photo, 'Created'), ...errors({ ...OWNER, 409: ['GROUND_IN_REVIEW', 'GROUND_STATE', 'PHOTO_LIMIT'], 413: ['FILE_TOO_LARGE', 'PAYLOAD_TOO_LARGE'], 415: ['FILE_TYPE_NOT_ALLOWED', 'FILE_TYPE_MISMATCH'], 422: ['FILE_EMPTY'], 429: ['UPLOAD_RATE_LIMITED'] }) } });
+  p({ method: 'put', path: '/me/grounds/{id}/photos/order', tags: ['grounds'], summary: 'Reorder the photos (first = cover)', security: bearer,
+    request: { ...grId, ...body(grS.photoOrder) }, responses: { 200: json(z.object({ items: z.array(grS.Photo) })), ...errors({ ...OWNER, 409: ['GROUND_IN_REVIEW', 'GROUND_STATE'], 422: ['VALIDATION_FAILED', 'PHOTOS_MISMATCH'] }) } });
+  p({ method: 'post', path: '/me/grounds/{id}/photos/{photoId}/remove', tags: ['grounds'], summary: 'Remove a photo (status; nothing is deleted)', security: bearer,
+    request: { params: grS.photoParams }, responses: { 200: json(z.object({ removed: z.uuid() })), ...errors({ ...OWNER, 409: ['GROUND_IN_REVIEW', 'GROUND_STATE'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/grounds/{id}/pricing', tags: ['grounds'], summary: 'Published and draft pricing, limits, the v3 payment policy, upcoming bookings (FR-11)', security: bearer,
+    request: grId, responses: { 200: json(grS.PricingView), ...errors(OWNER) } });
+  p({ method: 'put', path: '/me/grounds/{id}/pricing/draft', tags: ['grounds'], summary: 'Save the pricing draft (validated on the server; base locked in review) (FR-09)', security: bearer,
+    request: { ...grId, ...body(grS.pricingDraft) }, responses: { 200: json(grS.Rules), ...errors({ ...OWNER, 409: ['GROUND_IN_REVIEW'], 422: ['VALIDATION_FAILED', 'COURT_UNKNOWN'] }) } });
+  p({ method: 'post', path: '/me/grounds/{id}/pricing/draft/discard', tags: ['grounds'], summary: 'Discard the pricing draft (FR-10)', security: bearer,
+    request: grId, responses: { 200: json(z.object({ discarded: z.number().int() })), ...errors({ ...OWNER, 409: ['PRICING_DRAFT_MISSING'] }) } });
+  p({ method: 'post', path: '/me/grounds/{id}/pricing/publish', tags: ['grounds'], summary: 'Publish the draft; optionally the same rules on all my grounds (FR-09, FR-12, FR-14)', security: bearer,
+    request: { ...grId, ...body(grS.publishBody) }, responses: { 200: json(grS.PublishResult), ...errors({ ...OWNER, 409: ['PRICING_DRAFT_MISSING', 'GROUND_IN_REVIEW'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/grounds/{id}/pricing/history', tags: ['grounds'], summary: 'Every published version with its summary (FR-14)', security: bearer, request: grId, responses: { 200: json(grS.History), ...errors(OWNER) } });
+  p({ method: 'get', path: '/me/grounds/{id}/pricing/heatmap', tags: ['grounds'], summary: 'Hourly rates for the next days (06–22), draft or published', security: bearer,
+    request: { ...grId, query: grS.heatmapQuery }, responses: { 200: json(grS.Heatmap), ...errors({ ...OWNER, 409: ['PRICING_MISSING'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/grounds/{id}/pricing/quote', tags: ['grounds'], summary: 'Quote a slot with unsaved changes (FR-13)', security: bearer,
+    request: { ...grId, ...body(grS.ownerQuote) }, responses: { 200: json(grS.Quote), ...errors({ ...OWNER, 409: ['PRICING_MISSING'], 422: ['VALIDATION_FAILED', 'COURT_UNKNOWN', 'NOT_COMBINABLE', 'LENGTH_INVALID', 'OUTSIDE_HOURS'] }) } });
+
+  const STAFF = { ...ADMIN_AUTH, 404: ['NOT_FOUND'], 409: ['GROUND_STATE'], ...VALIDATION };
+  p({ method: 'get', path: '/admin/grounds', tags: ['grounds'], summary: 'Grounds for staff (approve_listings or manage_users): status filter, name or slug search', security: adminBearer, request: { query: grS.staffListQuery }, responses: { 200: json(grS.StaffList), ...errors({ ...ADMIN_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/grounds/{id}', tags: ['grounds'], summary: 'A ground for reviewers: the working copy, the public version and pricing', security: adminBearer, request: grId, responses: { 200: json(grS.StaffGround), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/grounds/{id}/suspend', tags: ['grounds'], summary: 'Suspend a live or paused ground (manage_users)', security: adminBearer, request: { ...grId, ...body(grS.reasonBody) }, responses: { 200: json(grS.StaffResult), ...errors(STAFF) } });
+  p({ method: 'post', path: '/admin/grounds/{id}/restore', tags: ['grounds'], summary: 'Restore a suspended ground (master)', security: adminBearer, request: { ...grId, ...body(grS.reasonBody) }, responses: { 200: json(grS.StaffResult), ...errors(STAFF) } });
+  p({ method: 'post', path: '/admin/grounds/{id}/remove', tags: ['grounds'], summary: 'Remove a ground (master; status, never deleted)', security: adminBearer, request: { ...grId, ...body(grS.reasonBody) }, responses: { 200: json(grS.StaffResult), ...errors(STAFF) } });
 }
 
 function dateTimeOf() {

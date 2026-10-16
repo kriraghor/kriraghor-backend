@@ -971,7 +971,7 @@ VerificationDocument.init(
   {
     id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
     userId: { type: DataTypes.UUID, allowNull: false },
-    docType: { type: DataTypes.ENUM('nid'), allowNull: false },
+    docType: { type: DataTypes.ENUM('nid', 'trade_license', 'deed_or_lease', 'tin'), allowNull: false },
     subjectKey: { type: DataTypes.STRING(64), allowNull: false, defaultValue: '' },
     version: { type: DataTypes.INTEGER, allowNull: false },
     status: { type: DataTypes.ENUM('in_review', 'changes_requested', 'approved', 'rejected', 'superseded', 'withdrawn'), allowNull: false },
@@ -1142,6 +1142,15 @@ Submission.hasMany(SubmissionCheck, { as: 'checks', foreignKey: 'submissionId' }
 Submission.hasMany(ReviewClaim, { as: 'claims', foreignKey: 'submissionId' });
 Submission.belongsTo(ReviewRubric, { as: 'rubric', foreignKey: 'rubricId' });
 
+// ---- M03 places and sports catalogues (models in ./places.js) ----
+const places = require('./places');
+
+// ---- M09 grounds (models in ./grounds.js) ----
+const grounds = require('./grounds');
+grounds.Ground.belongsTo(places.Area, { as: 'area', foreignKey: 'areaId' });
+grounds.Ground.belongsTo(User, { as: 'owner', foreignKey: 'ownerId' });
+grounds.Court.belongsTo(places.Surface, { as: 'surface', foreignKey: 'surfaceId' });
+
 // ---- M21 esports (models in ./esports.js) ----
 const esports = require('./esports');
 esports.EsportsTournament.belongsTo(EsportsGame, { as: 'game', foreignKey: 'gameId' });
@@ -1152,6 +1161,8 @@ esports.EsportsGameProfile.belongsTo(User, { as: 'user', foreignKey: 'userId' })
 
 module.exports = {
   ...esports,
+  ...places,
+  ...grounds,
   sequelize,
   User,
   UserRole,

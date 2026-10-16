@@ -66,6 +66,7 @@ const schema = z.object({
   // Public app URLs used in notification emails (M08).
   WEB_APP_URL: z.string().default('http://localhost:3000'),
   ESPORTS_APP_URL: z.string().default('http://localhost:3001'),
+  VENDOR_APP_URL: z.string().default('http://localhost:3002/vendor'),
   ADMIN_APP_URL: z.string().default('http://localhost:3002'),
 
   // M06 payments. The API's public origin builds the gateway's IPN and return URLs.
@@ -88,6 +89,9 @@ const schema = z.object({
   S3_ACCESS_KEY: z.string().optional(),
   S3_SECRET_KEY: z.string().optional(),
   S3_BUCKET_PRIVATE: z.string().default('kriraghor-private'),
+  // Public objects (ground photos): read anonymously at PUBLIC_ASSET_BASE_URL/<key> (a CDN or R2 domain in production).
+  S3_BUCKET_PUBLIC: z.string().default('kriraghor-public'),
+  PUBLIC_ASSET_BASE_URL: z.string().default('http://127.0.0.1:8333/kriraghor-public'),
   S3_FORCE_PATH_STYLE: bool.default(true),
   // Create missing buckets on first use (local and k3d only; production buckets are provisioned).
   S3_CREATE_BUCKETS: bool.default(false),
@@ -177,11 +181,18 @@ module.exports = {
     accessKey: env.S3_ACCESS_KEY,
     secretKey: env.S3_SECRET_KEY,
     privateBucket: env.S3_BUCKET_PRIVATE,
+    publicBucket: env.S3_BUCKET_PUBLIC,
+    publicBaseUrl: env.PUBLIC_ASSET_BASE_URL.replace(/\/+$/, ''),
     forcePathStyle: env.S3_FORCE_PATH_STYLE,
     createBuckets: env.S3_CREATE_BUCKETS,
   },
   storage: { driver: env.NODE_ENV === 'test' ? 'memory' : env.STORAGE_DRIVER },
-  apps: { web: env.WEB_APP_URL.replace(/\/$/, ''), esports: env.ESPORTS_APP_URL.replace(/\/$/, ''), admin: env.ADMIN_APP_URL.replace(/\/$/, '') },
+  apps: {
+    web: env.WEB_APP_URL.replace(/\/$/, ''),
+    esports: env.ESPORTS_APP_URL.replace(/\/$/, ''),
+    vendor: env.VENDOR_APP_URL.replace(/\/$/, ''),
+    admin: env.ADMIN_APP_URL.replace(/\/$/, ''),
+  },
   apiPublicUrl: apiPublic,
   payments: {
     provider: env.PAYMENT_PROVIDER,

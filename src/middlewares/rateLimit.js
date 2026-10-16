@@ -44,4 +44,5 @@ module.exports = {
   kycUpload: limiter('kyc', { windowMs: 60 * 60 * 1000, settingKey: 'kyc.uploads_per_hour', code: 'UPLOAD_RATE_LIMITED', perUser: true }), // M02 document files
   esportsRoom: limiter('esroom', { windowMs: 60 * 1000, settingKey: 'esports.room_reads_per_minute', code: 'RATE_LIMITED', perUser: true }), // M21-FR-16 room credential reads
   esportsUpload: limiter('esup', { windowMs: 60 * 60 * 1000, settingKey: 'kyc.uploads_per_hour', code: 'UPLOAD_RATE_LIMITED', perUser: true }), // M21 screenshots
+  groundPhoto: limiter('grph', { windowMs: 60 * 60 * 1000, settingKey: 'ground.photo_uploads_per_hour', code: 'UPLOAD_RATE_LIMITED', perUser: true }), // M09 ground photos
 };

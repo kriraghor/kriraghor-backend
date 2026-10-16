@@ -11,14 +11,20 @@ const s = require('./catalog.schemas');
 
 // ---------------- public: /catalog (M03-FR-02, cacheable) ----------------
 const publicRouter = Router();
-publicRouter.get('/esports/games', async (req, res) => {
-  const body = await catalog.publicGames();
-  sendCached(req, res, body, crypto.createHash('sha1').update(JSON.stringify(body)).digest('hex'));
-});
+const cached = (req, res, body) => sendCached(req, res, body, crypto.createHash('sha1').update(JSON.stringify(body)).digest('hex'));
+publicRouter.get('/esports/games', async (req, res) => cached(req, res, await catalog.publicGames()));
+publicRouter.get('/sports', async (req, res) => cached(req, res, await catalog.publicSports()));
+publicRouter.get('/facilities', async (req, res) => cached(req, res, await catalog.publicFacilities()));
+publicRouter.get('/surfaces', async (req, res) => cached(req, res, await catalog.publicSurfaces()));
+publicRouter.get('/locations', validate(s.locationsQuery, 'query'), async (req, res) => cached(req, res, await catalog.publicLocations(req.validQuery)));
+publicRouter.get('/areas', validate(s.areasQuery, 'query'), async (req, res) => cached(req, res, await catalog.publicAreas(req.validQuery)));
 
-// ---------------- admin: /admin/catalog/:table (manage_esports or manage_catalog) ----------------
+// ---------------- admin: /admin/catalog/:table ----------------
+// Esports tables: manage_esports or manage_catalog. Sports and places: manage_catalog only.
 const adminRouter = Router();
 adminRouter.use(authenticateAdmin, requireStaff, requireAnyPermission(PERMISSIONS.MANAGE_ESPORTS, PERMISSIONS.MANAGE_CATALOG));
+const catalogOnly = requireAnyPermission(PERMISSIONS.MANAGE_CATALOG);
+adminRouter.param('table', (req, res, next, table) => (catalog.TABLES[table] && !catalog.TABLES[table].esports ? catalogOnly(req, res, next) : next()));
 
 /** The body schema depends on :table, so pick it after the params are validated. */
 const bodyFor = (schemas) => (req, res, next) => validate(schemas[req.params.table])(req, res, next);

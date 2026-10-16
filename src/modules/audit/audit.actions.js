@@ -146,8 +146,30 @@ const ACTIONS = {
   'payout.cancelled': A('M07', 'notice', 'Cancelled payout {entityCode}: {reason}', 'পেআউট {entityCode} বাতিল: {reason}'),
   'payout.held': A('M07', 'notice', 'Put payout {entityCode} on hold: {reason}', 'পেআউট {entityCode} আটকানো: {reason}'),
   'payout.hold_lifted': A('M07', 'notice', 'Lifted a hold on payout {entityCode}: {reason}', 'পেআউট {entityCode}-এর আটক তোলা: {reason}'),
+// ---------------- M09 Grounds ----------------
+  'ground.created': A('M09', 'info', 'Created ground draft {after.name}', 'মাঠের খসড়া {after.name} তৈরি'),
+  'ground.updated': A('M09', 'info', 'Edited a ground', 'মাঠ সম্পাদনা'),
+  'ground.submitted': A('M09', 'info', 'Sent a ground for review (version {meta.version})', 'মাঠ রিভিউতে পাঠানো (সংস্করণ {meta.version})'),
+  'ground.published': A('M09', 'notice', 'Ground approved and live (version {after.version})', 'মাঠ অনুমোদিত ও লাইভ (সংস্করণ {after.version})'),
+  'ground.changes_requested': A('M09', 'notice', 'Asked for changes to a ground ({after.reasonCode})', 'মাঠে পরিবর্তন চাওয়া হয়েছে ({after.reasonCode})'),
+  'ground.rejected': A('M09', 'notice', 'Ground rejected ({after.reasonCode})', 'মাঠ প্রত্যাখ্যাত ({after.reasonCode})'),
+  'ground.withdrawn': A('M09', 'info', 'Withdrew a ground from review', 'মাঠ রিভিউ থেকে প্রত্যাহার'),
+  'ground.paused': A('M09', 'info', 'Paused a ground', 'মাঠ বিরতিতে'),
+  'ground.resumed': A('M09', 'info', 'Showed a ground again', 'মাঠ আবার দেখানো'),
+  'ground.suspended': A('M09', 'critical', 'Suspended a ground: {reason}', 'মাঠ স্থগিত: {reason}'),
+  'ground.restored': A('M09', 'critical', 'Restored a ground: {reason}', 'মাঠ পুনর্বহাল: {reason}'),
+  'ground.removed': A('M09', 'critical', 'Removed a ground: {reason}', 'মাঠ সরানো: {reason}'),
+  'ground_court.added': A('M09', 'info', 'Added court {after.name}', 'কোর্ট {after.name} যোগ'),
+  'ground_court.updated': A('M09', 'info', 'Edited a court', 'কোর্ট সম্পাদনা'),
+  'ground_court.retired': A('M09', 'notice', 'Retired a court', 'কোর্ট বন্ধ'),
+  'ground_court.hours_set': A('M09', 'info', 'Changed opening hours', 'খোলার সময় পরিবর্তন'),
+  'ground_photo.added': A('M09', 'info', 'Added a ground photo', 'মাঠের ছবি যোগ'),
+  'ground_photo.removed': A('M09', 'info', 'Removed a ground photo', 'মাঠের ছবি সরানো'),
+  'ground_photo.reordered': A('M09', 'info', 'Reordered ground photos', 'মাঠের ছবির ক্রম পরিবর্তন'),
+  'ground_pricing.draft_saved': A('M09', 'info', 'Saved a pricing draft (version {meta.version})', 'দামের খসড়া সংরক্ষণ (সংস্করণ {meta.version})'),
+  'ground_pricing.discarded': A('M09', 'info', 'Discarded a pricing draft', 'দামের খসড়া বাতিল'),
+  'ground_pricing.published': A('M09', 'notice', 'Published pricing: {meta.summary}', 'দাম প্রকাশ: {meta.summary}'),
 };
-
 const get = (action) => ACTIONS[action];
 
 function lookup(row, path) {
