@@ -8,11 +8,12 @@ The specification for every module is in [`../kriraghor-docs/modules`](../krirag
 |---|---|
 | **M01 Identity and Access**: authentication and authorisation | ✅ Implemented: [`src/modules/auth`](src/modules/auth), [`src/modules/users`](src/modules/users), [`src/modules/admin`](src/modules/admin). Separate admin sessions per [ADR-004](../kriraghor-docs/decisions/ADR-004-cross-subdomain-auth.md) |
 | **Platform (0B)**: Kubernetes readiness | ✅ Three entrypoints, Redis, BullMQ, Socket.IO, probes, metrics, OpenAPI, Docker image ([ADR-002](../kriraghor-docs/decisions/ADR-002-polyrepo-api-contracts.md), [ADR-003](../kriraghor-docs/decisions/ADR-003-kubernetes-deployment.md)) |
-| **M03 Settings and esports catalogue** | ✅ Step 1: [`src/modules/settings`](src/modules/settings) (155 platform settings, history, four-eyes change requests, scheduled changes, SettingsService with Redis cache bust) and [`src/modules/catalog`](src/modules/catalog) (esports games, modes, maps, versioned points presets). Sports, locations, hire and item catalogues come with their modules |
+| **M03 Settings and esports catalogue** | ✅ Step 1: [`src/modules/settings`](src/modules/settings) (157 platform settings, history, four-eyes change requests, scheduled changes, SettingsService with Redis cache bust) and [`src/modules/catalog`](src/modules/catalog) (esports games, modes, maps, versioned points presets). Sports, locations, hire and item catalogues come with their modules |
 | **M04 Audit log and events** | ✅ [`src/modules/audit`](src/modules/audit) (redacted, append-only audit log with a hash chain sealed after commit, action registry with EN/BN summaries, search, entity history, CSV export) and [`src/modules/events`](src/modules/events) (event registry, transactional outbox, relay, inbox, retries, dead letters, replay). M01 and M03 publish their events |
 | **M08 Notifications core** | ✅ [`src/modules/notifications`](src/modules/notifications): catalogue router on M04 events, versioned EN/BN templates, preferences with mandatory categories, quiet hours, Redis SMS rate limits, dedupe, retries, in-app (bell, realtime), email and sandbox SMS, masked SMS log, OTP through M08. Push, broadcasts and the real SMS gateway come later (M21, Q59). **Phase 1 exit check passes** |
 | **M06 Payments, ledger and escrow** | ✅ Step 1: [`src/modules/payments`](src/modules/payments): payment intents with Idempotency-Key, SSLCommerz adapter (and a built-in simulator for dev and tests), server-side verification, replay-safe IPN, append-only double-entry ledger with the balance enforced by a deferred constraint trigger, escrow holds (release, freeze, pool settlement for M21), refunds with the staff cap and master step-up, daily reconciliation, nightly invariants, finance desk API. bKash and Nagad direct, off-platform collections, COD, split shares and fee invoices come later |
 | **M07 Payouts** | ✅ Step 1: [`src/modules/payouts`](src/modules/payouts): bKash and Nagad payout accounts (code to the registered phone, encrypted, masked, checked by finance against the NID name), payout runs from the ledger (daily, weekly ground and shop, idempotent, each payable entry once), fee-receivable netting and the minimum, holds (`PayoutHoldService` for M17 and M18), release with step-up and two-master approval above the threshold, manual sending with an audited 60-second number reveal, paid / failed / retry / cancel, refund payouts for M06 `manual_required`, payee summary and CSV statements. Disbursement APIs, bank and BEFTN, statements PDF and withdrawals (M21) come later |
+| **M02 KYC (lite)** | ✅ [`src/modules/kyc`](src/modules/kyc): the member NID (front, back, selfie; number, DOB, legal name) uploaded through the API (type by magic bytes, size, SHA-256), encrypted fields, duplicate-NID and reused-image checks, the KYC desk API (`approve_documents`: masked queue, audited file viewer, audited 60-second reveal, rubric and decisions), M01 consumers that move the member role and copy the verified identity, the `withdraw_winnings` gate, retention purge. Business-role documents, virus scanning and M05 queueing come later |
 | Everything else | Not started |
 
 ## Quick start
@@ -99,6 +100,8 @@ See [`postman/M01-acceptance-checklist.md`](postman/M01-acceptance-checklist.md)
 
 **M06 (payments, ledger and escrow)** runs unattended: `node postman/run-m06.js` (master, payer and payee; the simulator plays the gateway; 23 requests, 41 assertions). Checklist: [`postman/M06-acceptance-checklist.md`](postman/M06-acceptance-checklist.md).
 
+**M02 (KYC lite)** runs unattended: `node postman/run-m02.js` (a master and a member; uploads from `postman/fixtures`; 19 requests, 29 assertions). Checklist: [`postman/M02-acceptance-checklist.md`](postman/M02-acceptance-checklist.md).
+
 **M07 (payouts, the Phase 2 exit check)** runs unattended: `node postman/run-m07.js` (two masters, a payer and a payee with a released ৳100 charge; account, run, four-eyes, reveal, paid; 21 requests, 38 assertions). Checklist: [`postman/M07-acceptance-checklist.md`](postman/M07-acceptance-checklist.md).
 
 **M08 (notifications, the Phase 1 exit check)** runs unattended: `node postman/run-m08.js` (two masters with emails, a member and an in-process worker; 14 requests, 26 assertions). Checklist: [`postman/M08-acceptance-checklist.md`](postman/M08-acceptance-checklist.md).
@@ -165,7 +168,8 @@ src/
    ├─ audit/              M04 audit writer, action registry, redactor, hash chain, search, exports
    ├─ notifications/      M08 catalogue, router, templates, prefs, delivery (in-app, email, SMS), bell API, delivery log
    ├─ payments/           M06 intents, attempts, IPN, refunds, ledger (rules + service), escrow, reconciliation, invariants
-   └─ payouts/            M07 payout accounts, runs, holds, approvals, manual disbursement, refund payouts (rules + service)
+   ├─ payouts/            M07 payout accounts, runs, holds, approvals, manual disbursement, refund payouts (rules + service)
+   └─ kyc/                M02 NID uploads, submissions, KYC desk, retention (rules + service); M01 follows through users/kyc.consumers.js
 src/providers/payments/   SSLCommerz adapter and the SSLCommerz-compatible simulator (dev and tests only)
 scripts/                  release.js (migrate + reference seed), create-master.js (first master, CLI only), openapi.js (writes openapi.json)
 src/db/seed/              Reference seed (versioned JSON: settings, esports catalogue, message templates)
@@ -311,6 +315,18 @@ Every process (api, realtime, worker) refuses to start until every seeded settin
 | `GET /admin/payout-accounts` · `POST /:id/verify` · `/reject` | read: `view_payouts`; decide: `release_payouts` | Account name next to the NID legal name; same-wallet warning |
 
 **Paying a module's payees:** give the payment purpose a `payoutSchedule` in [`payments.purposes.js`](src/modules/payments/payments.purposes.js) (`daily`, `ground_weekly`, `shop_weekly`, or `withdraw` for money the payee withdraws). Released money then reaches the payee in the next run. Holds for disputes and risk go through `holds.service` (`place`, `release`).
+
+## API (M02)
+
+| Endpoint | Access | Notes |
+|---|---|---|
+| `GET /me/verification` | member | Checklist (phone, NID), badge, unlocks and limits; `?locale=bn` |
+| `POST /me/documents/files?slot=front|back|selfie` | member | Raw body (JPEG, PNG or PDF), checked by its first bytes; rate-limited per account |
+| `POST /me/documents` · `GET /me/documents/:id/files/:fileId` | member | Submit the NID (number, DOB, legal name, three file ids, consent); view your own upload |
+| `GET /admin/kyc/documents` · `/:id` · `/:id/files/:fileId` | `approve_documents` | Masked queue and review panel; every file view audited |
+| `POST /admin/kyc/documents/:id/reveal-nid` · `/decide` | `approve_documents` | Reveal with a reason (critical audit, 60 s); approve (full rubric) / changes / reject (reason) |
+
+**Who reads the result:** M01 moves the member role from the M02 events; other modules call `kyc.getVerifiedIdentity(userId)` or use the gate (`requireGate('withdraw_winnings')`). `NID_HMAC_SECRET` keys the NID hash: never rotate it without re-hashing.
 
 ## Differences from the M01 spec
 
