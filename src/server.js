@@ -12,28 +12,30 @@ const { sequelize } = require('./models');
 const settings = require('./modules/settings/settings.service');
 const { createApp } = require('./app');
 
-function runMigrations() {
+function runCliCommand(args) {
   return new Promise((resolve, reject) => {
-    const migrate = spawn(
-      process.execPath,
-      ['node_modules/sequelize-cli/lib/sequelize', 'db:migrate'],
-      {
-        stdio: 'inherit',
-        env: process.env,
-      }
-    );
-
-    migrate.on('close', (code) => {
-      if (code === 0) {
-        logger.info('Database migrations completed successfully');
-        resolve();
-      } else {
-        reject(new Error(`Migration process exited with code ${code}`));
-      }
+    const proc = spawn(process.execPath, args, {
+      stdio: 'inherit',
+      env: process.env,
     });
 
-    migrate.on('error', (err) => reject(err));
+    proc.on('close', (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`Command ${args.join(' ')} failed with code ${code}`));
+    });
+
+    proc.on('error', (err) => reject(err));
   });
+}
+
+async function runReleaseSteps() {
+  const cliPath = 'node_modules/sequelize-cli/lib/sequelize';
+  
+  logger.info('Running database migrations...');
+  await runCliCommand([cliPath, 'db:migrate']);
+
+  logger.info('Running database seeders...');
+  await runCliCommand([cliPath, 'db:seed:all']);
 }
 
 async function main() {
@@ -41,7 +43,7 @@ async function main() {
   lifecycle.onShutdown('database', () => sequelize.close());
   lifecycle.onShutdown('redis', closeAllRedis);
 
-  await runMigrations();
+  await runReleaseSteps();
   await sequelize.authenticate();
   // M03 boot check: refuse to start before the release step has seeded every setting.
   await settings.bootCheck();
