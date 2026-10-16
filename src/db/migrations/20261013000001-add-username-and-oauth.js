@@ -2,14 +2,19 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-    // Foolproof PL/pgSQL block that catches duplicate column errors safely
+    // Check information_schema first so it never throws an error if column exists
     await queryInterface.sequelize.query(`
       DO $$ 
       BEGIN
-        ALTER TABLE sessions ADD COLUMN audience VARCHAR(32);
-      EXCEPTION
-        WHEN duplicate_column THEN 
-          NULL;
+        IF NOT EXISTS (
+          SELECT 1 
+          FROM information_schema.columns 
+          WHERE table_schema = 'public' 
+            AND table_name = 'sessions' 
+            AND column_name = 'audience'
+        ) THEN
+          ALTER TABLE sessions ADD COLUMN audience VARCHAR(32);
+        END IF;
       END $$;
     `);
   },
