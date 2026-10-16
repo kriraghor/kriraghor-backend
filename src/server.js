@@ -34,8 +34,9 @@ async function runReleaseSteps() {
   logger.info('Running database migrations...');
   await runCliCommand([cliPath, 'db:migrate']);
 
-  logger.info('Running database seeders...');
-  await runCliCommand([cliPath, 'db:seed:all']);
+  logger.info('Loading platform settings from reference JSON...');
+  await settings.load();
+  logger.info('Platform settings loaded successfully.');
 }
 
 async function main() {
