@@ -5,7 +5,10 @@ const { ROLES } = require('../../common/enums');
 /**
  * The public "gate" (M01 §6.2): signed in → account active → member (NID) active → role active.
  * Action → requirement map. Keep in sync with the frontend contract.
+ * PHONE_VERIFIED (v3, M21): esports play needs a verified phone, not NID KYC; the verified game
+ * profile for the tournament's game is checked by M21 itself (ESPORTS_GAME_PROFILE_REQUIRED).
  */
+const PHONE_VERIFIED = 'phone_verified';
 const ACTIONS = Object.freeze({
   book_ground: ROLES.MEMBER,
   hire: ROLES.MEMBER,
@@ -20,6 +23,7 @@ const ACTIONS = Object.freeze({
   accept_hire: [ROLES.PLAYER, ROLES.PRO],
   // M02 v3: withdrawing esports winnings needs NID KYC (M07, M21).
   withdraw_winnings: ROLES.MEMBER,
+  join_esports: PHONE_VERIFIED,
 });
 
 const PENDING = new Set(['applied', 'documents_pending', 'in_review']);
@@ -33,6 +37,7 @@ const NEXT = {
   ROLE_REQUIRED: '/account/roles',
   ROLE_PENDING: '/account/verification',
   ROLE_SUSPENDED: '/help',
+  PHONE_REQUIRED: '/me',
 };
 
 /**
@@ -47,6 +52,7 @@ function evaluate(principal, need) {
   const { user, roles } = principal;
   if (user.status === 'suspended') return deny('ACCOUNT_SUSPENDED');
   if (user.status !== 'active') return deny('ACCOUNT_BANNED');
+  if (need === PHONE_VERIFIED) return user.phone && user.phoneVerifiedAt ? { allowed: true } : deny('PHONE_REQUIRED');
 
   const member = roles[ROLES.MEMBER];
   if (member !== 'active') {
@@ -68,4 +74,4 @@ function evaluateAction(principal, action) {
   return evaluate(principal, need);
 }
 
-module.exports = { ACTIONS, evaluate, evaluateAction };
+module.exports = { ACTIONS, PHONE_VERIFIED, evaluate, evaluateAction };

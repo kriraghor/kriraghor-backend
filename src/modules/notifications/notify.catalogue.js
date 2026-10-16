@@ -3,7 +3,7 @@
 /**
  * Notification catalogue (M08 §6.6), as code. Each entry maps a domain event to recipients, channels
  * and template variables. Template texts are versioned rows in message_templates (EN and BN for
- * every default channel; a contract test checks it). Built so far: the M01, M02, M03, M04, M06 and M07 events.
+ * every default channel; a contract test checks it). Built so far: the M01, M02, M03, M04, M05, M06, M07 and M21 events.
  *
  * Entry: { code, events[], category, channels[], urgent, roleContext?(e), recipients(e) → userIds,
  *          values(e, { locale, userId }) → template values, link(e) → in-app link }
@@ -44,6 +44,9 @@ const KYC_REASONS = {
 const reviewersOf = (kind) => directory.withPermission(require('../moderation/moderation.adapters').get(kind).permission);
 const KIND_LABELS = { en: { document: 'identity document' }, bn: { document: 'পরিচয় ডকুমেন্ট' } };
 const kindLabel = (kind, locale) => KIND_LABELS[locale]?.[kind] ?? KIND_LABELS.en[kind] ?? kind;
+const es = () => require('../esports/esports.facts');
+const esportsUrl = (p) => `${config.apps.esports}${p}`;
+const tTitle = async (id, locale) => es().title(await es().tournament(id), locale);
 const payoutFacts = (id) => require('../payouts/payouts.service').facts(id);
 const accountFacts = (id) => require('../payouts/payout-accounts.service').facts(id);
 const settingsHours = () => require('../settings/settings.service').get('risk.payout_change_hold_hours');
@@ -381,6 +384,119 @@ const CATALOGUE = [
     recipients: (e) => [e.payload.claimedBy].filter(Boolean),
     values: (e, { locale }) => ({ kind: kindLabel(e.payload.kind, locale) }),
     link: () => '/admin/moderation',
+  },
+  // ---------------- M21: players (category tournaments; push arrives with the mobile app) and staff
+  {
+    code: 'ESPORTS_UID_VERIFIED',
+    events: ['esports_game_profile.verified'],
+    category: 'tournaments',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.userId],
+    values: () => ({}),
+    link: () => esportsUrl('/me/esports'),
+  },
+  {
+    code: 'ESPORTS_UID_REJECTED',
+    events: ['esports_game_profile.rejected'],
+    category: 'tournaments',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.userId],
+    values: (e) => ({ reason: (e.payload.reasonCode ?? 'other').replace(/_/g, ' ') }),
+    link: () => esportsUrl('/me/esports'),
+  },
+  {
+    code: 'ESPORTS_SQUAD_INVITE',
+    events: ['esports_squad.invited'],
+    category: 'tournaments',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.userId],
+    values: async (e) => ({ squad: await es().squadName(e.payload.squadId) }),
+    link: () => esportsUrl('/me/esports'),
+  },
+  {
+    code: 'ESPORTS_REG_CONFIRMED',
+    events: ['esports_registration.confirmed'],
+    category: 'tournaments',
+    channels: ['in_app'],
+    recipients: (e) => es().entryPeople(e.payload.registrationId),
+    values: async (e, { locale }) => ({ title: await tTitle(e.payload.tournamentId, locale) }),
+    link: () => esportsUrl('/me/matches'),
+  },
+  {
+    code: 'ESPORTS_WAITLIST_OFFER',
+    events: ['esports_registration.offered'],
+    category: 'tournaments',
+    channels: ['in_app', 'sms'],
+    urgent: true,
+    recipients: (e) => [e.payload.registrantUserId],
+    values: async (e, { locale }) => ({ title: await tTitle(e.payload.tournamentId, locale), until: e.payload.offerExpiresAt }),
+    link: () => esportsUrl('/me/matches'),
+  },
+  {
+    code: 'ESPORTS_CHECKIN_OPEN',
+    events: ['esports_tournament.checkin_opened'],
+    category: 'tournaments',
+    channels: ['in_app', 'sms'],
+    urgent: true,
+    recipients: (e) => es().confirmedPlayers(e.payload.tournamentId),
+    values: async (e, { locale }) => ({ title: await tTitle(e.payload.tournamentId, locale), until: e.payload.closesAt }),
+    link: () => esportsUrl('/me/matches'),
+  },
+  {
+    // Never the room ID or password: the player opens the room page (FR-15).
+    code: 'ESPORTS_ROOM_READY',
+    events: ['esports_match.room_revealed'],
+    category: 'tournaments',
+    channels: ['in_app'],
+    urgent: true,
+    recipients: async (e) => (await es().matchPlayers(e.payload.matchId)).users,
+    values: async (e, { locale }) => ({ title: await tTitle(e.payload.tournamentId, locale), match: (await es().matchPlayers(e.payload.matchId)).seq ?? 1 }),
+    link: (e) => esportsUrl(`/me/matches/${e.payload.matchId}/room`),
+  },
+  {
+    code: 'ESPORTS_RESULTS_POSTED',
+    events: ['esports_match.results_posted'],
+    category: 'tournaments',
+    channels: ['in_app'],
+    recipients: async (e) => (await es().matchPlayers(e.payload.matchId)).users,
+    values: async (e, { locale }) => ({ title: await tTitle(e.payload.tournamentId, locale), match: e.payload.seq, until: e.payload.disputeClosesAt }),
+    link: (e) => esportsUrl(`/me/matches/${e.payload.matchId}/result`),
+  },
+  {
+    code: 'ESPORTS_DISPUTE_DECIDED',
+    events: ['esports_result.dispute_resolved'],
+    category: 'tournaments',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.raisedBy],
+    values: async (e, { locale }) => ({ title: await tTitle(e.payload.tournamentId, locale), outcome: e.payload.outcome === 'corrected' ? (locale === 'bn' ? 'ফলাফল সংশোধন করা হয়েছে' : 'the results were corrected') : locale === 'bn' ? 'ফলাফল অপরিবর্তিত' : 'the results stand' }),
+    link: (e) => esportsUrl(`/me/matches/${e.payload.matchId}/result`),
+  },
+  {
+    code: 'ESPORTS_CANCELLED',
+    events: ['esports_tournament.cancelled'],
+    category: 'tournaments',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => es().allEntrants(e.payload.tournamentId),
+    values: async (e, { locale }) => ({ title: await tTitle(e.payload.tournamentId, locale) }),
+    link: () => esportsUrl('/me/matches'),
+  },
+  {
+    code: 'ESPORTS_PRIZE_CREDITED',
+    events: ['esports_prize.credited'],
+    category: 'money',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.userId],
+    values: async (e, { locale }) => ({ amount: e.payload.amount, title: await tTitle(e.payload.tournamentId, locale) }),
+    link: () => esportsUrl('/me/winnings'),
+  },
+  {
+    code: 'ESPORTS_DISPUTE_OPENED',
+    events: ['esports_result.disputed'],
+    category: 'staff_ops',
+    channels: ['in_app'],
+    recipients: () => directory.withPermission('manage_esports'),
+    values: async (e) => ({ title: await tTitle(e.payload.tournamentId, 'en') }),
+    link: () => '/admin/esports?tab=disputes',
   },
   // ---------------- M07: payees (category money: in-app and SMS mandatory) and finance staff
   {

@@ -14,6 +14,7 @@ const paymentsS = require('../modules/payments/payments.schemas');
 const payoutsS = require('../modules/payouts/payouts.schemas');
 const kycS = require('../modules/kyc/kyc.schemas');
 const modS = require('../modules/moderation/moderation.schemas');
+const esS = require('../modules/esports/esports.schemas');
 
 /**
  * Every route (M01, M02, M03, M04, M06, M07, M08), registered with its request and response schemas and the stable error
@@ -469,6 +470,147 @@ function register(registry) {
     } });
   p({ method: 'post', path: '/admin/submissions/{id}/reopen', tags: ['moderation'], summary: 'Master: reopen a decided submission for review, with a reason (step-up moderation.override, critical audit)', security: adminBearer,
     request: { ...subP, headers: stepUpHeader, ...body(modS.reopenBody) }, responses: { 200: json(modS.Detail), ...errors({ ...MOD, 403: MOD[403].concat('STEP_UP_REQUIRED'), 404: ['NOT_FOUND'], 409: ['INVALID_STATE'], ...VALIDATION }) } });
+
+  // ------------------------------------------------------------------ M21 Esports (step 1)
+  const esId = { params: esS.idParam };
+  const ES = { ...ADMIN_AUTH };
+  const esIdem = z.object({ 'idempotency-key': z.string().meta({ description: '8–80 letters, digits, - or _. Retries with the same key and body replay the first response' }) });
+  const ES_IDEM = { 400: ['IDEMPOTENCY_KEY_REQUIRED', 'IDEMPOTENCY_KEY_INVALID'], 409: ['IDEMPOTENCY_IN_PROGRESS'], 422: ['VALIDATION_FAILED', 'IDEMPOTENCY_KEY_REUSED'] };
+  const esMoney = { headers: stepUpHeader };
+  const NF = { 404: ['NOT_FOUND'] };
+  const image = (description) => ({ description, content: { 'image/jpeg': { schema: z.string() }, 'image/png': { schema: z.string() } } });
+
+  // public
+  p({ method: 'get', path: '/esports/games', tags: ['esports'], summary: 'Games with their modes, maps and points presets (M03 catalogue)', responses: { 200: json(z.object({ items: z.array(z.object({}).loose()) })) } });
+  p({ method: 'get', path: '/esports/tournaments', tags: ['esports'], summary: 'Published tournaments, by start time (filters: game key, mode, tier, status, featured; cursor)',
+    request: { query: esS.listQuery }, responses: { 200: json(esS.TournamentList), ...errors(VALIDATION) } });
+  p({ method: 'get', path: '/esports/tournaments/{id}', tags: ['esports'], summary: 'A tournament by slug or id: prize table, schedule, slots taken, streams',
+    request: { params: esS.slugParam }, responses: { 200: json(esS.Tournament), ...errors({ ...NF, ...VALIDATION }) } });
+  p({ method: 'get', path: '/esports/tournaments/{id}/standings', tags: ['esports'], summary: 'Standings with tie-breakers (points, wins, kills, latest placement, registration time)',
+    request: esId, responses: { 200: json(esS.Standings), ...errors({ ...NF, ...VALIDATION }) } });
+  p({ method: 'post', path: '/esports/tournaments/{id}/registrations', tags: ['esports'], summary: 'Register (gate join_esports; every player needs a verified UID): a slot held for esports.payment_hold_minutes with an M06 payment, or the waitlist when full (FR-08 to FR-10)', security: bearer,
+    request: { ...esId, headers: esIdem, ...body(esS.registerBody) },
+    responses: {
+      201: json(esS.Registered, 'Created'),
+      ...errors({ ...COMMON_AUTH, ...ES_IDEM, 403: ['PHONE_REQUIRED', 'ACCOUNT_SUSPENDED', 'ACCOUNT_BANNED', 'ESPORTS_GAME_PROFILE_REQUIRED', 'ESPORTS_UID_BANNED', 'ESPORTS_NOT_IN_SQUAD', 'ESPORTS_SQUAD_CAPTAIN_ONLY'], ...NF, 409: ['ESPORTS_REGISTRATION_CLOSED', 'ESPORTS_ALREADY_REGISTERED', 'IDEMPOTENCY_IN_PROGRESS'], 422: ES_IDEM[422].concat('ESPORTS_SQUAD_SIZE_INVALID') }),
+    } });
+  p({ method: 'get', path: '/esports/matches/{id}', tags: ['esports'], summary: 'A match: status and its posted results', request: esId, responses: { 200: json(esS.Match), ...errors({ ...NF, ...VALIDATION }) } });
+  p({ method: 'get', path: '/esports/leaderboards', tags: ['esports'], summary: 'Top players for a game: rolling (decayed) or a season; the formula is in the response (FR-27, FR-28)',
+    request: { query: esS.leaderboardQuery }, responses: { 200: json(esS.Leaderboard), ...errors({ ...NF, ...VALIDATION }) } });
+  p({ method: 'get', path: '/esports/top-players', tags: ['esports'], summary: 'Best rolling ranks across games (home pages)', responses: { 200: json(esS.TopPlayers) } });
+  p({ method: 'get', path: '/esports/players/{handle}', tags: ['esports'], summary: 'A player by username or id: games, IGNs, masked UIDs, ranks, wins, kills (FR-32)',
+    request: { params: esS.handleParam }, responses: { 200: json(esS.Player), ...errors({ ...NF, ...VALIDATION }) } });
+
+  // player
+  p({ method: 'post', path: '/me/esports/uploads', tags: ['esports'], summary: 'Upload a screenshot (raw JPEG or PNG, checked by its first bytes); returns a key for a profile or evidence', security: bearer,
+    request: { body: image('The screenshot itself') }, responses: { 201: json(esS.Upload, 'Created'), ...errors({ ...COMMON_AUTH, 413: ['FILE_TOO_LARGE', 'PAYLOAD_TOO_LARGE'], 415: ['FILE_TYPE_NOT_ALLOWED', 'FILE_TYPE_MISMATCH'], 422: ['FILE_EMPTY'], 429: ['UPLOAD_RATE_LIMITED'] }) } });
+  p({ method: 'get', path: '/me/esports/profiles', tags: ['esports'], summary: 'My game UIDs and their review status', security: bearer, responses: { 200: json(esS.ProfileList), ...errors(COMMON_AUTH) } });
+  p({ method: 'post', path: '/me/esports/profiles', tags: ['esports'], summary: 'Add a UID and IGN with a screenshot; reviewed on the Moderation desk (FR-02, FR-03)', security: bearer,
+    request: body(esS.profileBody), responses: { 201: json(esS.Profile, 'Created'), ...errors({ ...COMMON_AUTH, 403: ['ESPORTS_UID_BANNED'], 409: ['ESPORTS_UID_TAKEN', 'ESPORTS_PROFILE_EXISTS'], 422: ['VALIDATION_FAILED', 'ESPORTS_GAME_UNKNOWN', 'ESPORTS_UID_FORMAT', 'ESPORTS_IGN_INVALID', 'ESPORTS_UPLOAD_INVALID'] }) } });
+  p({ method: 'post', path: '/me/esports/profiles/{id}/unlink', tags: ['esports'], summary: 'Remove a UID (not while it is in an active entry); leaves that game\'s squad', security: bearer,
+    request: esId, responses: { 200: json(esS.Profile), ...errors({ ...COMMON_AUTH, ...NF, 409: ['ESPORTS_PROFILE_IN_USE'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/esports/squads', tags: ['esports'], summary: 'My squads and invites', security: bearer, responses: { 200: json(esS.SquadList), ...errors(COMMON_AUTH) } });
+  p({ method: 'post', path: '/me/esports/squads', tags: ['esports'], summary: 'Create a squad (needs a verified UID for the game; one squad per game)', security: bearer,
+    request: body(esS.squadBody), responses: { 201: json(esS.Squad, 'Created'), ...errors({ ...COMMON_AUTH, 403: ['ESPORTS_GAME_PROFILE_REQUIRED'], 409: ['ESPORTS_ALREADY_IN_SQUAD', 'ESPORTS_SQUAD_NAME_TAKEN'], 422: ['VALIDATION_FAILED', 'ESPORTS_GAME_UNKNOWN'] }) } });
+  p({ method: 'post', path: '/me/esports/squads/join', tags: ['esports'], summary: 'Join with an invite code', security: bearer,
+    request: body(esS.joinBody), responses: { 200: json(esS.Squad), ...errors({ ...COMMON_AUTH, 403: ['ESPORTS_GAME_PROFILE_REQUIRED'], 404: ['ESPORTS_SQUAD_INVITE_UNKNOWN'], 409: ['ESPORTS_ALREADY_IN_SQUAD', 'ESPORTS_SQUAD_FULL'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/esports/squads/{id}/invites', tags: ['esports'], summary: 'Invite a player by username (captain)', security: bearer,
+    request: { ...esId, ...body(esS.inviteBody) }, responses: { 200: json(esS.Squad), ...errors({ ...COMMON_AUTH, 403: ['ESPORTS_SQUAD_CAPTAIN_ONLY'], ...NF, 409: ['ESPORTS_SQUAD_FULL'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/esports/squads/{id}/leave', tags: ['esports'], summary: 'Leave a squad (the captaincy passes on; the last member out disbands it)', security: bearer,
+    request: esId, responses: { 200: json(esS.Left), ...errors({ ...COMMON_AUTH, 403: ['ESPORTS_NOT_IN_SQUAD'], ...NF, ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/esports/squads/{id}/captain', tags: ['esports'], summary: 'Hand the captaincy to a member (captain)', security: bearer,
+    request: { ...esId, ...body(esS.captainBody) }, responses: { 200: json(esS.Squad), ...errors({ ...COMMON_AUTH, 403: ['ESPORTS_SQUAD_CAPTAIN_ONLY', 'ESPORTS_NOT_IN_SQUAD'], ...NF, ...VALIDATION }) } });
+  p({ method: 'delete', path: '/me/esports/squads/{id}/members/{userId}', tags: ['esports'], summary: 'Remove a member (captain)', security: bearer,
+    request: { params: esS.memberParams }, responses: { 200: json(esS.Squad), ...errors({ ...COMMON_AUTH, 403: ['ESPORTS_SQUAD_CAPTAIN_ONLY', 'ESPORTS_NOT_IN_SQUAD'], ...NF, ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/esports/squad-invites/{id}/accept', tags: ['esports'], summary: 'Accept a squad invite', security: bearer,
+    request: esId, responses: { 200: json(esS.Squad), ...errors({ ...COMMON_AUTH, 403: ['ESPORTS_GAME_PROFILE_REQUIRED'], 404: ['ESPORTS_SQUAD_INVITE_UNKNOWN', 'NOT_FOUND'], 409: ['ESPORTS_ALREADY_IN_SQUAD', 'ESPORTS_SQUAD_FULL'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/esports/squad-invites/{id}/decline', tags: ['esports'], summary: 'Decline a squad invite', security: bearer,
+    request: esId, responses: { 200: json(esS.Squad), ...errors({ ...COMMON_AUTH, 404: ['ESPORTS_SQUAD_INVITE_UNKNOWN', 'NOT_FOUND'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/esports/registrations', tags: ['esports'], summary: 'My entries, with their tournament, matches and any payment still to make', security: bearer,
+    responses: { 200: json(esS.RegistrationList), ...errors(COMMON_AUTH) } });
+  p({ method: 'post', path: '/me/esports/registrations/{id}/accept-offer', tags: ['esports'], summary: 'Take a waitlist slot offer (pay within the hold, Q124)', security: bearer,
+    request: { ...esId, headers: esIdem }, responses: { 200: json(esS.Registered), ...errors({ ...COMMON_AUTH, ...ES_IDEM, ...NF, 409: ['ESPORTS_REGISTRATION_STATE', 'ESPORTS_OFFER_EXPIRED', 'ESPORTS_REGISTRATION_CLOSED', 'SLOTS_FULL', 'IDEMPOTENCY_IN_PROGRESS'] }) } });
+  p({ method: 'post', path: '/me/esports/registrations/{id}/withdraw', tags: ['esports'], summary: 'Withdraw: before registration closes the fee is refunded (esports.withdraw_refund_pct); after, it is forfeited (Q122)', security: bearer,
+    request: esId, responses: { 200: json(esS.Registration), ...errors({ ...COMMON_AUTH, ...NF, 409: ['ESPORTS_REGISTRATION_STATE'], ...VALIDATION }) } });
+  p({ method: 'put', path: '/me/esports/registrations/{id}/prize-split', tags: ['esports'], summary: 'Declare the prize split (captain, before the first match; whole percents summing to 100)', security: bearer,
+    request: { ...esId, ...body(esS.splitBody) }, responses: { 200: json(esS.Registration), ...errors({ ...COMMON_AUTH, ...NF, 409: ['ESPORTS_REGISTRATION_STATE', 'ESPORTS_SPLIT_LOCKED'], 422: ['VALIDATION_FAILED', 'SPLIT_INVALID'] }) } });
+  p({ method: 'post', path: '/me/esports/registrations/{id}/check-in', tags: ['esports'], summary: 'Check in for the stage (within the window); the entry is checked in when enough players are', security: bearer,
+    request: esId, responses: { 200: json(esS.Registration), ...errors({ ...COMMON_AUTH, ...NF, 403: ['ESPORTS_NOT_IN_MATCH'], 409: ['ESPORTS_REGISTRATION_STATE', 'ESPORTS_CHECKIN_CLOSED'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/esports/matches/{id}/room', tags: ['esports'], summary: 'The room ID and password: checked-in players only, from the reveal time; audited, rate-limited, no-store (FR-15, FR-16)', security: bearer,
+    request: esId, responses: { 200: json(esS.Room), ...errors({ ...COMMON_AUTH, ...NF, 403: ['ESPORTS_NOT_CHECKED_IN'], 409: ['ESPORTS_ROOM_NOT_REVEALED', 'ESPORTS_ROOM_NOT_SET'], ...RATE, ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/esports/matches/{id}/evidence', tags: ['esports'], summary: 'Add evidence for a match: a screenshot (upload key) or a video link', security: bearer,
+    request: { ...esId, ...body(esS.evidenceBody) }, responses: { 201: json(esS.Evidence, 'Created'), ...errors({ ...COMMON_AUTH, ...NF, 403: ['ESPORTS_NOT_IN_MATCH'], 422: ['VALIDATION_FAILED', 'ESPORTS_UPLOAD_INVALID', 'STREAM_URL_INVALID'] }) } });
+  p({ method: 'post', path: '/me/esports/matches/{id}/disputes', tags: ['esports'], summary: 'Dispute posted results within the window, with evidence (FR-20; built in until M17)', security: bearer,
+    request: { ...esId, ...body(esS.disputeBody) }, responses: { 201: json(esS.Dispute, 'Created'), ...errors({ ...COMMON_AUTH, ...NF, 403: ['ESPORTS_NOT_IN_MATCH'], 409: ['ESPORTS_DISPUTE_WINDOW_CLOSED', 'ESPORTS_DISPUTE_LIMIT'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/esports/winnings', tags: ['esports'], summary: 'My withdrawable winnings and prize history', security: bearer, responses: { 200: json(esS.Winnings), ...errors(COMMON_AUTH) } });
+
+  // M07 on-demand withdrawal (M21-FR-26)
+  const wd = z.object({ id: z.uuid(), code: z.string(), amount: z.number().int(), status: z.string(), createdAt: dateTimeOf(), paidAt: dateTimeOf().nullable() }).meta({ id: 'Withdrawal' });
+  p({ method: 'get', path: '/me/withdrawals', tags: ['payouts'], summary: 'My withdrawals of winnings', security: bearer, responses: { 200: json(z.object({ items: z.array(wd) })), ...errors(COMMON_AUTH) } });
+  p({ method: 'get', path: '/me/withdrawals/available', tags: ['payouts'], summary: 'What I can withdraw now (minimum and today\'s limit applied)', security: bearer,
+    responses: { 200: json(z.object({ amount: z.number().int(), withdrawable: z.number().int(), dailyLeft: z.number().int(), minimum: z.number().int() }).meta({ id: 'WithdrawalAvailable' })), ...errors(COMMON_AUTH) } });
+  p({ method: 'post', path: '/me/withdrawals', tags: ['payouts'], summary: 'Withdraw my esports winnings to my verified bKash / Nagad account (gate withdraw_winnings: NID KYC; minimum and daily limit)', security: bearer,
+    request: { headers: esIdem },
+    responses: { 201: json(z.object({}).loose().meta({ description: 'The payout (kind withdrawal)' }), 'Created'), ...errors({ ...COMMON_AUTH, ...ES_IDEM, 403: ['KYC_REQUIRED', 'KYC_PENDING', 'ACCOUNT_SUSPENDED', 'ACCOUNT_BANNED'], 409: ['WITHDRAW_OPEN', 'WITHDRAW_NOTHING', 'PAYOUT_ACCOUNT_REQUIRED', 'IDEMPOTENCY_IN_PROGRESS'], 422: ES_IDEM[422].concat('WITHDRAW_BELOW_MINIMUM', 'WITHDRAW_DAILY_LIMIT') }) } });
+
+  // staff
+  p({ method: 'get', path: '/admin/esports/tournaments', tags: ['esports'], summary: 'Tournaments in every status (manage_esports or enter_results); status is a comma list', security: adminBearer,
+    request: { query: esS.adminListQuery }, responses: { 200: json(esS.TournamentList), ...errors({ ...ES, ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/esports/tournaments', tags: ['esports'], summary: 'Create a draft: game, mode, format, tier, fee, slots, minimum, prize table, kill reward, points (preset or custom), schedule, rules (FR-06)', security: adminBearer,
+    request: body(esS.tournamentBody), responses: { 201: json(esS.Tournament, 'Created'), ...errors({ ...ES, 422: ['VALIDATION_FAILED', 'ESPORTS_GAME_UNKNOWN', 'POINTS_INVALID'] }) } });
+  p({ method: 'get', path: '/admin/esports/tournaments/{id}', tags: ['esports'], summary: 'A tournament with its staff fields (snapshot, settlement, submission)', security: adminBearer,
+    request: esId, responses: { 200: json(esS.Tournament), ...errors({ ...ES, ...NF, ...VALIDATION }) } });
+  p({ method: 'patch', path: '/admin/esports/tournaments/{id}', tags: ['esports'], summary: 'Edit: a draft takes the whole body; after submit only title, rules and featured (ESPORTS_PRIZE_TABLE_LOCKED)', security: adminBearer,
+    request: { ...esId, ...body(esS.tournamentPatch) }, responses: { 200: json(esS.Tournament), ...errors({ ...ES, ...NF, 409: ['ESPORTS_PRIZE_TABLE_LOCKED', 'ESPORTS_TOURNAMENT_STATE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/esports/tournaments/{id}/submit', tags: ['esports'], summary: 'Send for review on the Moderation desk (kind esports_tournament; another reviewer approves, FR-07)', security: adminBearer,
+    request: esId, responses: { 200: json(esS.Tournament), ...errors({ ...ES, ...NF, 409: ['ESPORTS_TOURNAMENT_STATE'], 422: ['PRIZE_TABLE_REQUIRED', 'PRIZE_PLACES_INVALID', 'PRIZE_AMOUNT_INVALID', 'MIN_ABOVE_MAX', 'ENTRY_UNIT_INVALID', 'SLOTS_ABOVE_LOBBY', 'SCHEDULE_INVALID', 'POINTS_INVALID'] }) } });
+  p({ method: 'post', path: '/admin/esports/tournaments/{id}/cancel', tags: ['esports'], summary: 'Cancel with a reason (step-up esports.money): every paid entry refunded 100% (FR-30)', security: adminBearer,
+    request: { ...esId, ...esMoney, ...body(esS.cancelBody) }, responses: { 200: json(esS.Tournament), ...errors({ ...ES, 403: ES[403].concat('STEP_UP_REQUIRED'), ...NF, 409: ['ESPORTS_TOURNAMENT_STATE'], ...VALIDATION }) } });
+  p({ method: 'put', path: '/admin/esports/tournaments/{id}/streams', tags: ['esports'], summary: 'Replace the stream links (https on YouTube, Facebook, TikTok) and mark them live (FR-29)', security: adminBearer,
+    request: { ...esId, ...body(esS.streamsBody) }, responses: { 200: json(esS.Tournament), ...errors({ ...ES, ...NF, 422: ['VALIDATION_FAILED', 'STREAM_URL_INVALID'] }) } });
+  p({ method: 'get', path: '/admin/esports/tournaments/{id}/checkins', tags: ['esports'], summary: 'The check-in board: entries, players, who checked in, the waitlist', security: adminBearer,
+    request: esId, responses: { 200: json(esS.Board), ...errors({ ...ES, ...NF, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/esports/tournaments/{id}/finalise-preview', tags: ['esports'], summary: 'Awards by final rank, shares, and the ledger outcome (subsidy or revenue)', security: adminBearer,
+    request: esId, responses: { 200: json(esS.Preview), ...errors({ ...ES, ...NF, ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/esports/tournaments/{id}/finalise', tags: ['esports'], summary: 'Finalise and credit prizes through the M06 pool settlement (step-up esports.money; escrow ends at zero, FR-23 to FR-25)', security: adminBearer,
+    request: { ...esId, ...esMoney }, responses: { 200: json(esS.Tournament), ...errors({ ...ES, 403: ES[403].concat('STEP_UP_REQUIRED'), ...NF, 409: ['ESPORTS_NOT_FINALISABLE', 'ESCROW_FROZEN'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/esports/registrations/{id}/check-in', tags: ['esports'], summary: 'Check a player in by hand (audited; edge case 7)', security: adminBearer,
+    request: { ...esId, ...body(esS.staffCheckinBody) }, responses: { 200: json(esS.Registration), ...errors({ ...ES, ...NF, 403: ES[403].concat('ESPORTS_NOT_IN_MATCH'), 409: ['ESPORTS_REGISTRATION_STATE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/esports/registrations/{id}/disqualify', tags: ['esports'], summary: 'Disqualify an entry: out of the standings, prize forfeited (reversed if credited and unwithdrawn), optional UID ban (FR-22)', security: adminBearer,
+    request: { ...esId, ...body(esS.dqBody) }, responses: { 200: json(esS.Disqualified), ...errors({ ...ES, ...NF, 409: ['ESPORTS_ALREADY_DISQUALIFIED', 'ESPORTS_TOURNAMENT_STATE'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/esports/matches/{id}', tags: ['esports'], summary: 'A match for staff: entries, draft and posted results, disputes', security: adminBearer,
+    request: esId, responses: { 200: json(esS.Match), ...errors({ ...ES, ...NF, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/esports/matches/{id}/room', tags: ['esports'], summary: 'The room panel: versions, reveal time, number of views (no secret)', security: adminBearer,
+    request: esId, responses: { 200: json(esS.RoomPanel), ...errors({ ...ES, ...NF, ...VALIDATION }) } });
+  p({ method: 'put', path: '/admin/esports/matches/{id}/room', tags: ['esports'], summary: 'Set the room ID and password (encrypted; reveal at starts_at − esports.room_reveal_minutes unless given)', security: adminBearer,
+    request: { ...esId, ...body(esS.roomBody) }, responses: { 200: json(esS.RoomPanel), ...errors({ ...ES, ...NF, 409: ['ESPORTS_MATCH_STATE', 'ESPORTS_TOURNAMENT_STATE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/esports/matches/{id}/room/rotate', tags: ['esports'], summary: 'Rotate leaked credentials: a new version, pushed at once to checked-in players (FR-17)', security: adminBearer,
+    request: { ...esId, ...body(esS.rotateBody) }, responses: { 200: json(esS.RoomPanel), ...errors({ ...ES, ...NF, 409: ['ESPORTS_ROOM_NOT_SET'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/esports/matches/{id}/room/reveal-now', tags: ['esports'], summary: 'Reveal now to checked-in players', security: adminBearer,
+    request: esId, responses: { 200: json(esS.RoomPanel), ...errors({ ...ES, ...NF, 409: ['ESPORTS_ROOM_NOT_SET'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/esports/matches/{id}/room/view', tags: ['esports'], summary: 'Read the secret as staff (audited view, no-store)', security: adminBearer,
+    request: esId, responses: { 200: json(esS.StaffRoom), ...errors({ ...ES, ...NF, 409: ['ESPORTS_ROOM_NOT_SET'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/esports/matches/{id}/room/views', tags: ['esports'], summary: 'Who saw which version of the room, and when (FR-16)', security: adminBearer,
+    request: esId, responses: { 200: json(esS.Views), ...errors({ ...ES, ...VALIDATION }) } });
+  p({ method: 'put', path: '/admin/esports/matches/{id}/results', tags: ['esports'], summary: 'Enter results as a draft (enter_results): placement and kills per player (FR-18)', security: adminBearer,
+    request: { ...esId, ...body(esS.resultsBody) },
+    responses: { 200: json(esS.Match), ...errors({ ...ES, ...NF, 409: ['ESPORTS_MATCH_STATE'], 422: ['VALIDATION_FAILED', 'ESPORTS_RESULT_ENTRY_UNKNOWN', 'ESPORTS_PLACEMENT_INVALID', 'ESPORTS_PLACEMENT_DUPLICATE', 'ESPORTS_KILLS_MISMATCH'] }) } });
+  p({ method: 'post', path: '/admin/esports/matches/{id}/results/post', tags: ['esports'], summary: 'Post results: visible, the dispute window opens; missing entries count as not played (FR-20)', security: adminBearer,
+    request: esId, responses: { 200: json(esS.Match), ...errors({ ...ES, ...NF, 409: ['ESPORTS_MATCH_STATE', 'ESPORTS_TOO_EARLY'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/esports/matches/{id}/cancel', tags: ['esports'], summary: 'Cancel a match (lobby crash); the standings use the other matches', security: adminBearer,
+    request: { ...esId, ...body(esS.cancelBody) }, responses: { 200: json(esS.Match), ...errors({ ...ES, ...NF, 409: ['ESPORTS_MATCH_STATE'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/esports/disputes', tags: ['esports'], summary: 'Result disputes (open first)', security: adminBearer,
+    request: { query: esS.disputesQuery }, responses: { 200: json(esS.DisputeList), ...errors({ ...ES, ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/esports/disputes/{id}/resolve', tags: ['esports'], summary: 'Resolve a dispute: reject, or correct the results; the match then continues or becomes final', security: adminBearer,
+    request: { ...esId, ...body(esS.resolveBody) },
+    responses: { 200: json(esS.Dispute), ...errors({ ...ES, ...NF, 409: ['ESPORTS_DISPUTE_NOT_OPEN'], 422: ['VALIDATION_FAILED', 'ESPORTS_RESULT_ENTRY_UNKNOWN', 'ESPORTS_PLACEMENT_INVALID', 'ESPORTS_PLACEMENT_DUPLICATE', 'ESPORTS_KILLS_MISMATCH'] }) } });
+  p({ method: 'get', path: '/admin/esports/uid-bans', tags: ['esports'], summary: 'UID bans', security: adminBearer, request: { query: esS.bansQuery }, responses: { 200: json(esS.BanList), ...errors({ ...ES, ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/esports/uid-bans', tags: ['esports'], summary: 'Ban a UID: profiles banned, open entries disqualified with no refund (FR-04)', security: adminBearer,
+    request: body(esS.banBody), responses: { 201: json(esS.Ban, 'Created'), ...errors({ ...ES, 422: ['VALIDATION_FAILED', 'ESPORTS_GAME_UNKNOWN'] }) } });
+  p({ method: 'post', path: '/admin/esports/uid-bans/{id}/lift', tags: ['esports'], summary: 'Lift a ban (the player can add the UID again)', security: adminBearer,
+    request: { ...esId, ...body(esS.liftBody) }, responses: { 200: json(esS.Ban), ...errors({ ...ES, ...NF, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/esports/profiles/{id}/screenshot', tags: ['esports'], summary: 'A UID screenshot for the Moderation desk (approve_listings or manage_esports; audited, no-store)', security: adminBearer,
+    request: esId, responses: { 200: image('The screenshot'), ...errors({ ...ES, ...NF, ...VALIDATION }) } });
 }
 
 function dateTimeOf() {

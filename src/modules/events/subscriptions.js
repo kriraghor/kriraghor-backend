@@ -24,6 +24,9 @@ function registerAll() {
   require('../moderation/moderation.consumers').registerModerationConsumers();
   require('../kyc/kyc.moderation').registerKycModeration();
 
+  // M21: M05 decisions for game profiles and tournaments, payment failures, sanctions.
+  require('../esports/esports.moderation').registerEsportsConsumers();
+
   // M01 ← M02: the member role follows the NID review.
   require('../users/kyc.consumers').registerKycConsumers();
 

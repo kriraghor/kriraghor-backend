@@ -1,6 +1,6 @@
 {
-  "seedVersion": 4,
-  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*).",
+  "seedVersion": 5,
+  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*).",
   "templates": [
     {
       "code": "AUDIT_CRITICAL",
@@ -2553,6 +2553,516 @@
           "name": "kind",
           "type": "text",
           "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_UID_VERIFIED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "UID verified",
+      "body": "Your game UID is verified. You can join tournaments now.",
+      "variables": []
+    },
+    {
+      "code": "ESPORTS_UID_VERIFIED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "UID যাচাই হয়েছে",
+      "body": "আপনার গেম UID যাচাই হয়েছে। এখন টুর্নামেন্টে যোগ দিতে পারবেন।",
+      "variables": []
+    },
+    {
+      "code": "ESPORTS_UID_REJECTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "UID not accepted",
+      "body": "We could not verify your game UID: {{reason}}. Add it again with a clear screenshot.",
+      "variables": [
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_UID_REJECTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "UID গ্রহণ হয়নি",
+      "body": "আপনার গেম UID যাচাই করা যায়নি: {{reason}}। পরিষ্কার স্ক্রিনশট দিয়ে আবার যোগ করুন।",
+      "variables": [
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_SQUAD_INVITE",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Squad invite",
+      "body": "You are invited to join {{squad}}.",
+      "variables": [
+        {
+          "name": "squad",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_SQUAD_INVITE",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "স্কোয়াডে আমন্ত্রণ",
+      "body": "{{squad}}-এ যোগ দিতে আপনাকে আমন্ত্রণ জানানো হয়েছে।",
+      "variables": [
+        {
+          "name": "squad",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_REG_CONFIRMED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "You are in",
+      "body": "Your entry for {{title}} is confirmed. Check in before the first match.",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_REG_CONFIRMED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আপনি আছেন",
+      "body": "{{title}}-এ আপনার এন্ট্রি নিশ্চিত। প্রথম ম্যাচের আগে চেক-ইন করুন।",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_WAITLIST_OFFER",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "A slot opened",
+      "body": "A slot in {{title}} is yours until {{until}}. Pay to take it.",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "until",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_WAITLIST_OFFER",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "একটি স্লট খালি",
+      "body": "{{title}}-এর একটি স্লট {{until}} পর্যন্ত আপনার। নিতে পেমেন্ট করুন।",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "until",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_WAITLIST_OFFER",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: a slot in {{title}} is yours until {{until}}. Open the app to pay.",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "until",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_WAITLIST_OFFER",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{title}}-এর একটি স্লট {{until}} পর্যন্ত আপনার। পেমেন্ট করতে অ্যাপ খুলুন।",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "until",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_CHECKIN_OPEN",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Check-in is open",
+      "body": "Check in for {{title}} before {{until}}, or your slot is lost.",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "until",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_CHECKIN_OPEN",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "চেক-ইন চালু",
+      "body": "{{until}}-এর আগে {{title}}-এ চেক-ইন করুন, নইলে স্লট হারাবেন।",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "until",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_CHECKIN_OPEN",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: check in for {{title}} before {{until}}.",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "until",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_CHECKIN_OPEN",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{until}}-এর আগে {{title}}-এ চেক-ইন করুন।",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "until",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_ROOM_READY",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Room ready",
+      "body": "The room for {{title}}, match {{match}}, is ready. Open the app to see it.",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "match",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_ROOM_READY",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "রুম প্রস্তুত",
+      "body": "{{title}}, ম্যাচ {{match}}-এর রুম প্রস্তুত। দেখতে অ্যাপ খুলুন।",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "match",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_RESULTS_POSTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Results posted",
+      "body": "Results for {{title}}, match {{match}}, are up. Dispute by {{until}} if something is wrong.",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "match",
+          "type": "number"
+        },
+        {
+          "name": "until",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_RESULTS_POSTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "ফলাফল প্রকাশিত",
+      "body": "{{title}}, ম্যাচ {{match}}-এর ফলাফল এসেছে। ভুল থাকলে {{until}}-এর মধ্যে আপত্তি জানান।",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "match",
+          "type": "number"
+        },
+        {
+          "name": "until",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_DISPUTE_DECIDED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Dispute decided",
+      "body": "Your dispute for {{title}} is decided: {{outcome}}.",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_DISPUTE_DECIDED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আপত্তির সিদ্ধান্ত",
+      "body": "{{title}}-এ আপনার আপত্তির সিদ্ধান্ত: {{outcome}}।",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_CANCELLED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Tournament cancelled",
+      "body": "{{title}} is cancelled. Paid entries are refunded in full.",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_CANCELLED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "টুর্নামেন্ট বাতিল",
+      "body": "{{title}} বাতিল হয়েছে। পরিশোধিত এন্ট্রির পুরো টাকা ফেরত দেওয়া হবে।",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_CANCELLED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{title}} is cancelled. Your entry fee is refunded in full.",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_CANCELLED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{title}} বাতিল। আপনার এন্ট্রি ফি পুরো ফেরত দেওয়া হবে।",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_PRIZE_CREDITED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Prize credited",
+      "body": "You won {{amount}} in {{title}}. It is in your winnings.",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_PRIZE_CREDITED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পুরস্কার জমা",
+      "body": "{{title}}-এ আপনি {{amount}} জিতেছেন। এটি আপনার জেতা টাকায় জমা হয়েছে।",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_PRIZE_CREDITED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: you won {{amount}} in {{title}}. Withdraw it from the app.",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_PRIZE_CREDITED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{title}}-এ আপনি {{amount}} জিতেছেন। অ্যাপ থেকে তুলুন।",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_DISPUTE_OPENED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Result disputed",
+      "body": "A player disputed a result in {{title}}.",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_DISPUTE_OPENED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "ফলাফলে আপত্তি",
+      "body": "{{title}}-এ একজন খেলোয়াড় ফলাফলে আপত্তি জানিয়েছেন।",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
         }
       ]
     }

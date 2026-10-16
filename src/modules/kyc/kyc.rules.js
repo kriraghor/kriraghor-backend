@@ -46,13 +46,8 @@ function dobBlock(dob, now, minAge) {
 
 const ALLOWED = ['image/jpeg', 'image/png', 'application/pdf'];
 
-/** The real type from the first bytes (never trust the declared Content-Type alone). */
-function sniffMime(buf) {
-  if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'image/jpeg';
-  if (buf.length >= 4 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return 'image/png';
-  if (buf.length >= 4 && buf.subarray(0, 4).toString('latin1') === '%PDF') return 'application/pdf';
-  return null;
-}
+// The type from the first bytes (shared with M21 screenshots).
+const { sniffMime } = require('../../common/filetype');
 
 /** null when the upload is acceptable; otherwise the error code. */
 function fileBlock({ declared, sniffed, size, max }) {

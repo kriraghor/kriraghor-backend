@@ -189,7 +189,7 @@ async function applyResult(attemptId, result, { source }) {
       const hold = await escrow.openHold(payment, { transaction, capturedAt: now });
       const grace = settings.get('payments.unknown_grace_minutes') * 60000;
       const late = now.getTime() > new Date(payment.expiresAt).getTime() + grace;
-      const decision = purposes.get(payment.purpose).onCaptured({ payment, late });
+      const decision = await purposes.get(payment.purpose).onCaptured({ payment, late, transaction });
       await events.publish(transaction, {
         name: 'payment.succeeded',
         aggregateType: 'payment',

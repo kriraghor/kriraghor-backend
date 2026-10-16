@@ -7,7 +7,7 @@ const { uuid7 } = require('../common/uuid7');
 const { toPoisha } = require('../common/money');
 
 const ROLE_STATUSES = ['applied', 'documents_pending', 'in_review', 'changes_requested', 'active', 'rejected', 'suspended', 'withdrawn'];
-const PERMS = ['approve_listings', 'approve_documents', 'resolve_reports', 'refund_small', 'view_payouts', 'release_payouts', 'edit_fees', 'manage_staff', 'manage_users', 'manage_catalog', 'manage_esports'];
+const PERMS = ['approve_listings', 'approve_documents', 'resolve_reports', 'refund_small', 'view_payouts', 'release_payouts', 'edit_fees', 'manage_staff', 'manage_users', 'manage_catalog', 'manage_esports', 'enter_results'];
 
 const uuidPk = { type: DataTypes.UUID, primaryKey: true, defaultValue: DataTypes.UUIDV4 };
 
@@ -833,7 +833,7 @@ Payout.init(
     code: { type: DataTypes.STRING(20), allowNull: false },
     batchId: DataTypes.UUID,
     payeeId: { type: DataTypes.UUID, allowNull: false },
-    kind: { type: DataTypes.ENUM('earning', 'refund'), allowNull: false, defaultValue: 'earning' },
+    kind: { type: DataTypes.ENUM('earning', 'refund', 'withdrawal'), allowNull: false, defaultValue: 'earning' },
     refundId: DataTypes.UUID,
     payoutAccountId: DataTypes.UUID,
     periodStart: DataTypes.DATE(3),
@@ -1142,7 +1142,16 @@ Submission.hasMany(SubmissionCheck, { as: 'checks', foreignKey: 'submissionId' }
 Submission.hasMany(ReviewClaim, { as: 'claims', foreignKey: 'submissionId' });
 Submission.belongsTo(ReviewRubric, { as: 'rubric', foreignKey: 'rubricId' });
 
+// ---- M21 esports (models in ./esports.js) ----
+const esports = require('./esports');
+esports.EsportsTournament.belongsTo(EsportsGame, { as: 'game', foreignKey: 'gameId' });
+esports.EsportsTournament.belongsTo(EsportsMode, { as: 'mode', foreignKey: 'modeId' });
+esports.EsportsMatch.belongsTo(EsportsMap, { as: 'map', foreignKey: 'mapId' });
+esports.EsportsGameProfile.belongsTo(EsportsGame, { as: 'game', foreignKey: 'gameId' });
+esports.EsportsGameProfile.belongsTo(User, { as: 'user', foreignKey: 'userId' });
+
 module.exports = {
+  ...esports,
   sequelize,
   User,
   UserRole,

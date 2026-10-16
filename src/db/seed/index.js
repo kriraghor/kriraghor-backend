@@ -120,7 +120,16 @@ async function seedModeration(transaction) {
     inserted += 1;
   }
   for (const r of moderationSeed.reasons) {
-    if (await RejectionReason.findByPk(r.code, { transaction })) continue;
+    const existing = await RejectionReason.findByPk(r.code, { transaction });
+    if (existing) {
+      // Additive only: a reason gains the kinds of newly built modules; nothing is ever removed.
+      const missing = r.kinds.filter((k) => !existing.kinds.includes(k));
+      if (missing.length) {
+        await existing.update({ kinds: [...existing.kinds, ...missing] }, { transaction });
+        inserted += 1;
+      }
+      continue;
+    }
     await RejectionReason.create({ requiresText: false, ...r }, { transaction });
     inserted += 1;
   }

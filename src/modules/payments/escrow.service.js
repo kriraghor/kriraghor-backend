@@ -187,10 +187,12 @@ async function releaseDue({ limit = 200 } = {}) {
  * prizes to winners, any shortfall from prize_subsidy_expense, the remainder to fee_revenue. Idempotent
  * per group: a second call returns the first result. `prizes` = [{ payeeId, amount }].
  */
-async function settlePool({ purpose, groupRef, prizes, actor = null }) {
+async function settlePool({ purpose, groupRef, prizes, actor = null }, { transaction: outer } = {}) {
   const def = purposes.get(purpose);
   if (!def.pooled) throw new Error(`Purpose ${purpose} is not pooled`);
-  return sequelize.transaction(async (transaction) => {
+  // M21 settles inside its finalise transaction (awards, shares and the posting commit together).
+  const run = (fn) => (outer ? fn(outer) : sequelize.transaction(fn));
+  return run(async (transaction) => {
     const holds = await EscrowHold.findAll({ where: { purpose, groupRef }, order: [['id', 'ASC']], transaction, lock: transaction.LOCK.UPDATE });
     if (holds.some((h) => h.status === 'frozen')) throw blocked('ESCROW_FROZEN');
     const open = holds.filter((h) => rules.OPEN.has(h.status)).map((h) => ({ hold: h, id: h.id, available: rules.available(h) }));
@@ -217,6 +219,31 @@ async function settlePool({ purpose, groupRef, prizes, actor = null }) {
     });
     return { collected: s.collected, paid: s.paid, subsidy: s.subsidy, fee: s.remainder, transactionId: posted.id };
   });
+}
+
+/**
+ * M21 §6.7 (Q123): a prize credited from a pool is taken back from the winner's unwithdrawn balance
+ * and becomes platform revenue (Dr payable:user / Cr fee_revenue:{vertical}). Idempotent by key; the
+ * ledger refuses it (LEDGER_INSUFFICIENT_BALANCE) when the money was already withdrawn.
+ */
+async function reversePoolCredit({ purpose, groupRef, payeeId, amount, key, actor = null }, { transaction }) {
+  const def = purposes.get(purpose);
+  if (!def.pooled) throw new Error(`Purpose ${purpose} is not pooled`);
+  return ledger.post(
+    {
+      kind: 'escrow.pool_reverse',
+      refType: 'escrow_group',
+      refId: groupRef,
+      idempotencyKey: `escrow.pool_reverse:${key}`,
+      lines: [
+        { account: `payable:user:${payeeId}`, debit: amount },
+        { account: `fee_revenue:${def.vertical}`, credit: amount },
+      ],
+      postedBy: actor?.id ?? null,
+      memo: `Prize reversed (${groupRef})`,
+    },
+    { transaction }
+  );
 }
 
 function serialize(h) {
@@ -268,4 +295,4 @@ async function getOne(id) {
   return serialize(hold);
 }
 
-module.exports = { openHold, releaseInTx, releaseManually, takeForRefund, freeze, unfreeze, releaseDue, settlePool, list, getOne, serialize, lockHold };
+module.exports = { openHold, releaseInTx, releaseManually, takeForRefund, freeze, unfreeze, releaseDue, settlePool, reversePoolCredit, list, getOne, serialize, lockHold };

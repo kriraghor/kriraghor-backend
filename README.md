@@ -14,7 +14,8 @@ The specification for every module is in [`../kriraghor-docs/modules`](../krirag
 | **M06 Payments, ledger and escrow** | ✅ Step 1: [`src/modules/payments`](src/modules/payments): payment intents with Idempotency-Key, SSLCommerz adapter (and a built-in simulator for dev and tests), server-side verification, replay-safe IPN, append-only double-entry ledger with the balance enforced by a deferred constraint trigger, escrow holds (release, freeze, pool settlement for M21), refunds with the staff cap and master step-up, daily reconciliation, nightly invariants, finance desk API. bKash and Nagad direct, off-platform collections, COD, split shares and fee invoices come later |
 | **M07 Payouts** | ✅ Step 1: [`src/modules/payouts`](src/modules/payouts): bKash and Nagad payout accounts (code to the registered phone, encrypted, masked, checked by finance against the NID name), payout runs from the ledger (daily, weekly ground and shop, idempotent, each payable entry once), fee-receivable netting and the minimum, holds (`PayoutHoldService` for M17 and M18), release with step-up and two-master approval above the threshold, manual sending with an audited 60-second number reveal, paid / failed / retry / cancel, refund payouts for M06 `manual_required`, payee summary and CSV statements. Disbursement APIs, bank and BEFTN, statements PDF and withdrawals (M21) come later |
 | **M02 KYC (lite)** | ✅ [`src/modules/kyc`](src/modules/kyc): the member NID (front, back, selfie; number, DOB, legal name) uploaded through the API (type by magic bytes, size, SHA-256), encrypted fields, duplicate-NID and reused-image checks, the document panel API (`approve_documents`: audited file viewer, audited 60-second reveal), review through M05 (kind `document`), M01 consumers that move the member role and copy the verified identity, the `withdraw_winnings` gate, retention purge. Business-role documents and virus scanning come later |
-| **M05 Moderation (lite)** | ✅ [`src/modules/moderation`](src/modules/moderation): `SubmissionService` (versions, supersede, checks, SLA), subject adapters by kind and permission, the claim lock (TTL, heartbeat, hard cap, force release), server-stored rubric ticks, decisions with reasons per kind, master override of a failing hard check and reopen (step-up `moderation.override`), `submission.applied` with the apply watchdog, SLA breach alerts, sanctions withdraw open submissions. First kind: `document` (M02). Websocket queue push, diff view and the other kinds come later (M21 next) |
+| **M05 Moderation (lite)** | ✅ [`src/modules/moderation`](src/modules/moderation): `SubmissionService` (versions, supersede, checks, SLA), subject adapters by kind and permission, the claim lock (TTL, heartbeat, hard cap, force release), server-stored rubric ticks, decisions with reasons per kind, master override of a failing hard check and reopen (step-up `moderation.override`), `submission.applied` with the apply watchdog, SLA breach alerts, sanctions withdraw open submissions. First kind: `document` (M02). M21 adds `game_profile` and `esports_tournament`. Websocket queue push, diff view and the other kinds come later |
+| **M21 Esports (step 1)** | ✅ [`src/modules/esports`](src/modules/esports): game UIDs (screenshot, M05 review, bans), squads, tournaments (`single_match`, `series`; M05 review, no self-approval, prize table locked), registration (row-locked slots, M06 `esports_entry` pool, waitlist offers, refunds, auto-cancel below the minimum), check-in, encrypted versioned room credentials revealed only to checked-in players (socket and API, every view audited), results with disputes (built in until M17), disqualification, finalise through `escrow.settlePool` with step-up `esports.money`, rankings, and M07 withdrawals. Jobs: `esports.tick` (every minute), `esports.rankings-recompute` (03:00 Dhaka). Group stages, auto-finalise and cheating reports are step 2 |
 | Everything else | Not started |
 
 ## Quick start
@@ -107,6 +108,8 @@ See [`postman/M01-acceptance-checklist.md`](postman/M01-acceptance-checklist.md)
 
 **M07 (payouts, the Phase 2 exit check)** runs unattended: `node postman/run-m07.js` (two masters, a payer and a payee with a released ৳100 charge; account, run, four-eyes, reveal, paid; 21 requests, 38 assertions). Checklist: [`postman/M07-acceptance-checklist.md`](postman/M07-acceptance-checklist.md).
 
+**M21 (esports step 1)** runs unattended: `node postman/run-m21.js` (masters A and B, two players; a local test clock moves the stored times between steps; UID review, authoring and review, paid registration, check-in, room reveal and audited views, results, a dispute, finalise with step-up, winnings, leaderboard, the KYC gate on withdrawal; 60 requests, 91 assertions). Checklist: [`postman/M21-acceptance-checklist.md`](postman/M21-acceptance-checklist.md).
+
 **M08 (notifications, the Phase 1 exit check)** runs unattended: `node postman/run-m08.js` (two masters with emails, a member and an in-process worker; 14 requests, 26 assertions). Checklist: [`postman/M08-acceptance-checklist.md`](postman/M08-acceptance-checklist.md).
 
 **M04 (audit log and events)** runs unattended the same way: `node postman/run-m04.js` (it also runs a small in-process worker for the relay, consumers and exports). Checklist: [`postman/M04-acceptance-checklist.md`](postman/M04-acceptance-checklist.md).
@@ -173,7 +176,8 @@ src/
    ├─ payments/           M06 intents, attempts, IPN, refunds, ledger (rules + service), escrow, reconciliation, invariants
    ├─ payouts/            M07 payout accounts, runs, holds, approvals, manual disbursement, refund payouts (rules + service)
    ├─ kyc/                M02 NID uploads, submissions, document panel, retention (rules + service), M05 adapter (kyc.moderation.js); M01 follows through users/kyc.consumers.js
-   └─ moderation/         M05 submissions, adapters, claims, rubric, decisions, override, reopen, jobs (rules + service)
+   ├─ moderation/         M05 submissions, adapters, claims, rubric, decisions, override, reopen, jobs (rules + service)
+   └─ esports/            M21 profiles, squads, tournaments, registrations, rooms, results, prizes, rankings, lifecycle tick, M05 adapters and M06 hook (rules + services)
 src/providers/payments/   SSLCommerz adapter and the SSLCommerz-compatible simulator (dev and tests only)
 scripts/                  release.js (migrate + reference seed), create-master.js (first master, CLI only), openapi.js (writes openapi.json)
 src/db/seed/              Reference seed (versioned JSON: settings, esports catalogue, message templates)
@@ -343,6 +347,25 @@ Every process (api, realtime, worker) refuses to start until every seeded settin
 | `POST /admin/submissions/:id/reopen` | master, step-up `moderation.override` | A decided submission back to the queue (critical audit) |
 
 **Adding a kind:** widen the `submissions.kind` CHECK in a migration, seed its rubric and reasons in `moderation.v1.json`, register an adapter (`moderation.adapters.register({ kind, permission, checks, ownerWithdraw, lockedChecks })`), call `moderation.submit` from your module, and apply decisions in consumers of `submission.approved` / `.changes_requested` / `.rejected`, acknowledging with `submission.applied` (see `kyc/kyc.moderation.js`).
+
+## API (M21)
+
+| Endpoint | Access | Notes |
+|---|---|---|
+| `GET /esports/games` · `/tournaments` · `/tournaments/:slugOrId` · `/:id/standings` · `/matches/:id` | public | Catalogue, published tournaments (filters, cursor), detail with the prize table and schedule, standings, posted results |
+| `GET /esports/leaderboards` · `/top-players` · `/players/:handle` | public | Rolling or season rankings (the formula is in the response), the home strip, a player page (UIDs masked) |
+| `POST /esports/tournaments/:id/registrations` | gate `join_esports`, `Idempotency-Key` | Solo (`players`) or squad (`squadId`, `players`, `substitutes`); returns the M06 pay link, or `waitlisted` |
+| `POST /me/esports/uploads` · `GET|POST /me/esports/profiles` · `/profiles/:id/unlink` | signed in | Raw JPEG or PNG screenshot (first bytes checked), then a UID for review |
+| `/me/esports/squads` (create, join by code, invite, leave, captain, remove) · `/squad-invites/:id/accept|decline` | signed in | One active squad per game; size = team size + `max_subs` |
+| `GET /me/esports/registrations` · `POST /registrations/:id/accept-offer|withdraw|check-in` · `PUT /prize-split` | the entry's players | Offers, withdraw (refund before close), check-in in the window, the captain's split |
+| `GET /me/esports/matches/:id/room` | checked-in players | `no-store`, rate-limited, audited; `409 ESPORTS_ROOM_NOT_REVEALED` before `reveal_at` |
+| `POST /me/esports/matches/:id/evidence|disputes` · `GET /me/esports/winnings` | the match's players | Evidence and disputes in the window; prizes and the withdrawable balance |
+| `GET|POST /me/withdrawals` · `/available` | gate `withdraw_winnings` (NID KYC) for POST, `Idempotency-Key` | An M07 payout of kind `withdrawal` (minimum, daily limit, one open) |
+| `/admin/esports/tournaments` (list, create, get, PATCH, `submit`, `streams`, `checkins`, `finalise-preview`) | `manage_esports` (list and matches also `enter_results`) | Drafts go to M05 (`esports_tournament`); the prize table locks on approval |
+| `POST /admin/esports/tournaments/:id/cancel` · `/finalise` | `manage_esports`, step-up `esports.money` | Cancel with 100% refunds; finalise through `escrow.settlePool` (idempotent) |
+| `/admin/esports/matches/:id` · `/room` (GET, PUT, `rotate`, `reveal-now`, `view`, `views`) · `/cancel` | `manage_esports` | Credentials are never returned except through `view` (no-store, logged and audited like a player read) |
+| `PUT /admin/esports/matches/:id/results` · `POST /results/post` | `manage_esports` or `enter_results` | Draft rows, then post (opens the dispute window) |
+| `GET /admin/esports/disputes` · `POST /disputes/:id/resolve` · `POST /registrations/:id/check-in|disqualify` · `/uid-bans` · `/profiles/:id/screenshot` | `manage_esports` (screenshot also `approve_listings`) | Reject or correct; staff check-in; DQ (prize forfeit or reversal); bans; the audited screenshot |
 
 ## Differences from the M01 spec
 

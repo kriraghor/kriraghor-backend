@@ -27,6 +27,7 @@ const paymentRoutes = require('./modules/payments/payments.routes');
 const payoutRoutes = require('./modules/payouts/payouts.routes');
 const kycRoutes = require('./modules/kyc/kyc.routes');
 const moderationRoutes = require('./modules/moderation/moderation.routes');
+const esportsRoutes = require('./modules/esports/esports.routes');
 
 // ADR-004: customer and admin origins (exact or one-label wildcard). Unknown origins get no CORS headers.
 const allowedOrigin = compile([...config.corsOrigins, ...config.adminOrigins]);
@@ -78,9 +79,12 @@ function createApp() {
   api.use('/me/payments', paymentRoutes.meRouter);
   api.use('/me/payout-accounts', payoutRoutes.meAccounts);
   api.use('/me/payouts', payoutRoutes.mePayouts);
+  api.use('/me/withdrawals', payoutRoutes.meWithdrawals);
   api.use('/me/verification', kycRoutes.meVerification);
   api.use('/me/documents', kycRoutes.meDocuments);
   api.use('/me/submissions', moderationRoutes.meSubmissions);
+  api.use('/me/esports', esportsRoutes.meRouter);
+  api.use('/esports', esportsRoutes.publicRouter);
   api.use('/payments', paymentRoutes.payerRouter);
   api.use('/webhooks', paymentRoutes.webhookRouter);
   api.use('/me', meRoutes);
@@ -104,6 +108,7 @@ function createApp() {
   api.use('/admin/payout-accounts', payoutRoutes.adminAccounts);
   api.use('/admin/kyc', kycRoutes.adminKyc);
   api.use('/admin/submissions', moderationRoutes.adminRouter);
+  api.use('/admin/esports', esportsRoutes.adminRouter);
   api.use('/admin', adminRoutes);
   app.use(config.apiPrefix, api);
 

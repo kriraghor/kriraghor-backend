@@ -20,6 +20,8 @@ const payouts = require('../modules/payouts/payouts.service');
 const payoutHolds = require('../modules/payouts/holds.service');
 const kyc = require('../modules/kyc/kyc.service');
 const moderation = require('../modules/moderation/moderation.service');
+const esportsLifecycle = require('../modules/esports/esports.lifecycle');
+const esportsRankings = require('../modules/esports/rankings.service');
 const { purgeExpired: purgeIdempotencyKeys } = require('../common/idempotency');
 const logger = require('../common/logger');
 
@@ -203,6 +205,23 @@ const JOBS = [
     queue: QUEUES.MODERATION,
     every: 60 * 1000,
     run: async () => moderation.watchApplies(),
+  },
+  // ---------------- M21 esports (§10). Idempotent: every step is guarded by status.
+  {
+    // Registration open/close (auto-cancel below the minimum), check-in open/close, hold and offer
+    // expiry, room reveal, live, dispute windows. Per-entity delayed jobs come in step 2.
+    name: 'esports.tick',
+    queue: QUEUES.ESPORTS,
+    every: 60 * 1000,
+    run: async () => esportsLifecycle.tick(),
+  },
+  {
+    // FR-28: rankings rebuilt nightly (finalising a tournament also rebuilds its game at once).
+    name: 'esports.rankings-recompute',
+    queue: QUEUES.ESPORTS,
+    pattern: '0 3 * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => esportsRankings.recomputeAll(),
   },
   {
     name: 'idempotency.purge',

@@ -16,6 +16,7 @@ const QUEUES = Object.freeze({
   PAYOUTS: 'payouts', // M07 schedule runs and hold expiry
   KYC: 'kyc', // M02 retention purge
   MODERATION: 'moderation', // M05 claim expiry, SLA breaches, apply watchdog
+  ESPORTS: 'esports', // M21 lifecycle tick, rankings
 });
 
 const prefix = `${config.redis.prefix}:bull`;

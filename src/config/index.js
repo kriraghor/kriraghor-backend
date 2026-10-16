@@ -65,6 +65,7 @@ const schema = z.object({
 
   // Public app URLs used in notification emails (M08).
   WEB_APP_URL: z.string().default('http://localhost:3000'),
+  ESPORTS_APP_URL: z.string().default('http://localhost:3001'),
   ADMIN_APP_URL: z.string().default('http://localhost:3002'),
 
   // M06 payments. The API's public origin builds the gateway's IPN and return URLs.
@@ -180,7 +181,7 @@ module.exports = {
     createBuckets: env.S3_CREATE_BUCKETS,
   },
   storage: { driver: env.NODE_ENV === 'test' ? 'memory' : env.STORAGE_DRIVER },
-  apps: { web: env.WEB_APP_URL.replace(/\/$/, ''), admin: env.ADMIN_APP_URL.replace(/\/$/, '') },
+  apps: { web: env.WEB_APP_URL.replace(/\/$/, ''), esports: env.ESPORTS_APP_URL.replace(/\/$/, ''), admin: env.ADMIN_APP_URL.replace(/\/$/, '') },
   apiPublicUrl: apiPublic,
   payments: {
     provider: env.PAYMENT_PROVIDER,

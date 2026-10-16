@@ -6,7 +6,8 @@
  * fee_revenue account), its escrow account, whether its holds are pooled (settled together by
  * group_ref, M21 §6.5) and the hook M06 calls when money is captured:
  *
- *   onCaptured({ payment, late }) → 'accept' | 'reject'
+ *   onCaptured({ payment, late, transaction }) → 'accept' | 'reject' (may be async; runs inside the
+ *   capture transaction, so the purpose can confirm its own record atomically)
  *
  * 'reject' (for example a slot hold that expired and was taken, §12 #2) triggers an automatic full
  * `late_capture` refund (FR-05). Purpose modules register their hook with register(); until they

@@ -30,5 +30,6 @@ module.exports = {
     './src/modules/kyc/kyc.rules.js': FULL,
     // M05 SLA, claim lock, rubric, checks and decisions.
     './src/modules/moderation/moderation.rules.js': FULL,
+    './src/modules/esports/esports.rules.js': FULL,
   },
 };

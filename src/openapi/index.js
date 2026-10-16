@@ -46,6 +46,7 @@ function buildOpenApi() {
       { name: 'payouts', description: 'Payout accounts, payout runs, approvals and manual disbursement (M07)' },
       { name: 'kyc', description: 'Identity verification: NID upload, the document panel and the member checklist (M02)' },
       { name: 'moderation', description: 'Submissions, the Moderation desk: claim, rubric, decisions, SLA (M05)' },
+      { name: 'esports', description: 'Esports tournaments: UIDs, squads, registration, check-in, rooms, results, prizes, leaderboards (M21)' },
     ],
   });
 }
