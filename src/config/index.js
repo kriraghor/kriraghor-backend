@@ -31,13 +31,8 @@ const schema = z.object({
   DATABASE_URL: z.string().optional(),
   DB_HOST: z.string().default('127.0.0.1'),
   DB_PORT: z.coerce.number().int().default(5432),
-<<<<<<< HEAD
   DB_NAME: z.string().default('kriraghor'),
   DB_USER: z.string().default('kriraghor'),
-=======
-  DB_NAME: z.string().default('postgres'),
-  DB_USER: z.string().default('postgres'),
->>>>>>> origin/feat/0b-platform
   DB_PASSWORD: z.string().default(''),
   DB_LOGGING: bool.default(false),
   DB_POOL_MAX: z.coerce.number().int().positive().default(10),

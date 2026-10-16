@@ -1,14 +1,5 @@
 'use strict';
 
-<<<<<<< HEAD
-/**
- * M01 Identity & Access + minimal M04 audit log.
- * PostgreSQL (ADR-005): UUID ids, TIMESTAMPTZ(3) in UTC, JSONB; "enum" columns are VARCHAR with a
- * CHECK (migration-helpers/pg-v1). staff_permissions keeps one row per (user, permission) and uses
- * revoked_at for soft revocation (history lives in audit_logs).
- */
-=======
->>>>>>> origin/feat/0b-platform
 const ROLES = ['member', 'player', 'pro', 'ground_owner', 'shop_owner', 'organiser', 'gym_owner', 'staff', 'master_admin'];
 const ROLE_STATUS = ['applied', 'documents_pending', 'in_review', 'changes_requested', 'active', 'rejected', 'suspended', 'withdrawn'];
 const PERMS = ['approve_listings', 'approve_documents', 'resolve_reports', 'refund_small', 'view_payouts', 'release_payouts', 'edit_fees', 'manage_staff', 'manage_users', 'manage_catalog'];
@@ -17,13 +8,8 @@ module.exports = {
   async up(queryInterface, Sequelize) {
     const h = require('../migration-helpers/pg-v1')(Sequelize);
     const { DataTypes } = Sequelize;
-<<<<<<< HEAD
     const now = { type: 'TIMESTAMP(3) WITH TIME ZONE', allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP(3)') };
     const uuid = { type: DataTypes.UUID, allowNull: false };
-=======
-    const now = { type: DataTypes.DATE(3), allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP') };
-    const uuid = { type: DataTypes.CHAR(36), allowNull: false };
->>>>>>> origin/feat/0b-platform
 
     await h.createTable(queryInterface, 'users', {
       id: { ...uuid, primaryKey: true },
@@ -37,7 +23,6 @@ module.exports = {
       dob: { type: DataTypes.DATEONLY, allowNull: true },
       nid_hash: { type: DataTypes.CHAR(64), allowNull: true, unique: true },
       nid_last4: { type: DataTypes.CHAR(4), allowNull: true },
-<<<<<<< HEAD
       locale: { type: h.ENUM('en', 'bn'), allowNull: false, defaultValue: 'en' },
       kyc_status: { type: h.ENUM('unverified', 'pending', 'verified', 'rejected'), allowNull: false, defaultValue: 'unverified' },
       status: { type: h.ENUM('active', 'suspended', 'banned', 'closed'), allowNull: false, defaultValue: 'active' },
@@ -50,21 +35,7 @@ module.exports = {
       created_at: now,
       updated_at: now,
     });
-=======
-      locale: { type: DataTypes.ENUM('en', 'bn'), allowNull: false, defaultValue: 'en' },
-      kyc_status: { type: DataTypes.ENUM('unverified', 'pending', 'verified', 'rejected'), allowNull: false, defaultValue: 'unverified' },
-      status: { type: DataTypes.ENUM('active', 'suspended', 'banned', 'closed'), allowNull: false, defaultValue: 'active' },
-      authz_version: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
-      last_panel_role: { type: DataTypes.ENUM(...ROLES), allowNull: true },
-      failed_login_count: { type: DataTypes.SMALLINT, allowNull: false, defaultValue: 0 },
-      locked_until: { type: DataTypes.DATE(3), allowNull: true },
-      last_login_at: { type: DataTypes.DATE(3), allowNull: true },
-      closed_at: { type: DataTypes.DATE(3), allowNull: true },
-      created_at: now,
-      updated_at: now,
-    });
-    
->>>>>>> origin/feat/0b-platform
+
     await queryInterface.sequelize.query(
       'ALTER TABLE users ADD CONSTRAINT chk_users_identifier CHECK (phone IS NOT NULL OR email IS NOT NULL)'
     );
@@ -72,15 +43,9 @@ module.exports = {
     await h.createTable(queryInterface, 'user_roles', {
       id: { ...uuid, primaryKey: true },
       user_id: { ...uuid, references: { model: 'users', key: 'id' }, onDelete: 'RESTRICT' },
-<<<<<<< HEAD
       role: { type: h.ENUM(...ROLES), allowNull: false },
       status: { type: h.ENUM(...ROLE_STATUS), allowNull: false, defaultValue: 'applied' },
       meta: { type: DataTypes.JSONB, allowNull: true },
-=======
-      role: { type: DataTypes.ENUM(...ROLES), allowNull: false },
-      status: { type: DataTypes.ENUM(...ROLE_STATUS), allowNull: false, defaultValue: 'applied' },
-      meta: { type: DataTypes.JSON, allowNull: true },
->>>>>>> origin/feat/0b-platform
       attempt: { type: DataTypes.SMALLINT, allowNull: false, defaultValue: 1 },
       applied_at: now,
       activated_at: { type: 'TIMESTAMP(3) WITH TIME ZONE', allowNull: true },
@@ -121,15 +86,9 @@ module.exports = {
       target: { type: DataTypes.STRING(191), allowNull: false },
       purpose: { type: h.ENUM('signup', 'login', 'reset', 'phone_change_old', 'phone_change_new', 'email_verify'), allowNull: false },
       code_hash: { type: DataTypes.CHAR(64), allowNull: false },
-<<<<<<< HEAD
       expires_at: { type: 'TIMESTAMP(3) WITH TIME ZONE', allowNull: false },
       attempts: { type: DataTypes.SMALLINT, allowNull: false, defaultValue: 0 },
       consumed_at: { type: 'TIMESTAMP(3) WITH TIME ZONE', allowNull: true },
-=======
-      expires_at: { type: DataTypes.DATE(3), allowNull: false },
-      attempts: { type: DataTypes.SMALLINT, allowNull: false, defaultValue: 0 },
-      consumed_at: { type: DataTypes.DATE(3), allowNull: true },
->>>>>>> origin/feat/0b-platform
       ip: { type: DataTypes.STRING(45), allowNull: true },
       created_at: now,
     });
@@ -188,12 +147,8 @@ module.exports = {
     });
     await queryInterface.addIndex('user_sanctions', ['user_id', 'lifted_at'], { name: 'ix_sanctions_user_open' });
 
-<<<<<<< HEAD
     // Single-use step-up tokens (scope-bound). Stored by jti so reuse is rejected.
     await h.createTable(queryInterface, 'step_up_tokens', {
-=======
-    await queryInterface.createTable('step_up_tokens', {
->>>>>>> origin/feat/0b-platform
       jti: { ...uuid, primaryKey: true },
       user_id: { ...uuid, references: { model: 'users', key: 'id' }, onDelete: 'RESTRICT' },
       session_id: uuid,
@@ -203,16 +158,10 @@ module.exports = {
       created_at: now,
     });
 
-<<<<<<< HEAD
     // Minimal M04 audit log (append-only; the app DB user should have INSERT/SELECT only in production).
     await h.createTable(queryInterface, 'audit_logs', {
       id: { type: DataTypes.BIGINT, autoIncrement: true, primaryKey: true },
       actor_id: { type: DataTypes.UUID, allowNull: true },
-=======
-    await queryInterface.createTable('audit_logs', {
-      id: { type: DataTypes.BIGINT, autoIncrement: true, primaryKey: true },
-      actor_id: { type: DataTypes.CHAR(36), allowNull: true },
->>>>>>> origin/feat/0b-platform
       actor_role: { type: DataTypes.STRING(32), allowNull: true },
       action: { type: DataTypes.STRING(80), allowNull: false },
       entity_type: { type: DataTypes.STRING(40), allowNull: true },
