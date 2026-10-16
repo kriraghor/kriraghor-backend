@@ -36,10 +36,14 @@ const auditEntry = (id) => require('../audit/audit.admin.service').getOne(id);
 const paymentFacts = (id) => require('../payments/payments.service').facts(id);
 const refundFacts = (id) => require('../payments/refunds.service').facts(id);
 const documentFacts = (id) => require('../kyc/kyc.service').facts(id);
+// M05 reason codes for the document kind (moderation.v1.json), worded for the member.
 const KYC_REASONS = {
-  en: { blurry: 'the photos are not clear enough', name_mismatch: 'the name does not match the NID', not_nid: 'this is not a National ID', under_age: 'you are below the minimum age', duplicate_nid: 'this NID is already on another account', other: 'see the note from our team' },
-  bn: { blurry: 'ছবিগুলো যথেষ্ট পরিষ্কার নয়', name_mismatch: 'নাম NID-এর সাথে মেলে না', not_nid: 'এটি জাতীয় পরিচয়পত্র নয়', under_age: 'আপনার বয়স সর্বনিম্ন সীমার নিচে', duplicate_nid: 'এই NID অন্য অ্যাকাউন্টে আছে', other: 'আমাদের টিমের নোট দেখুন' },
+  en: { docs_mismatch_nid: 'the details do not match the NID', unreadable: 'the photos are unclear or cut off', expired: 'the NID looks expired', duplicate: 'this NID is already on another account', info_incomplete: 'some required information is missing', breaks_rules: 'it breaks our rules', other: 'see the note from our team' },
+  bn: { docs_mismatch_nid: 'তথ্য NID-এর সাথে মেলে না', unreadable: 'ছবি অস্পষ্ট বা কাটা', expired: 'NID-এর মেয়াদ শেষ মনে হচ্ছে', duplicate: 'এই NID অন্য অ্যাকাউন্টে আছে', info_incomplete: 'প্রয়োজনীয় তথ্য নেই', breaks_rules: 'এটি আমাদের নিয়ম ভঙ্গ করে', other: 'আমাদের টিমের নোট দেখুন' },
 };
+const reviewersOf = (kind) => directory.withPermission(require('../moderation/moderation.adapters').get(kind).permission);
+const KIND_LABELS = { en: { document: 'identity document' }, bn: { document: 'পরিচয় ডকুমেন্ট' } };
+const kindLabel = (kind, locale) => KIND_LABELS[locale]?.[kind] ?? KIND_LABELS.en[kind] ?? kind;
 const payoutFacts = (id) => require('../payouts/payouts.service').facts(id);
 const accountFacts = (id) => require('../payouts/payout-accounts.service').facts(id);
 const settingsHours = () => require('../settings/settings.service').get('risk.payout_change_hold_hours');
@@ -346,7 +350,37 @@ const CATALOGUE = [
     channels: ['in_app'],
     recipients: () => directory.withPermission('approve_documents'),
     values: async (e) => ({ masked: (await documentFacts(e.payload.documentId)).numberMasked }),
-    link: (e) => `/admin/kyc?id=${e.payload.documentId}`,
+    link: () => '/admin/moderation?kind=document',
+  },
+  // ---------------- M05: reviewers and masters (member messages stay with the subject module)
+  {
+    code: 'MOD_SLA_BREACH',
+    events: ['submission.sla_breached'],
+    category: 'staff_ops',
+    channels: ['in_app', 'email'],
+    recipients: (e) => reviewersOf(e.payload.kind),
+    values: (e, { locale }) => ({ kind: kindLabel(e.payload.kind, locale), hours: Math.max(1, Math.round(e.payload.overdueMinutes / 60)), url: adminUrl(`/admin/moderation?id=${e.payload.submissionId}`) }),
+    link: (e) => `/admin/moderation?id=${e.payload.submissionId}`,
+  },
+  {
+    code: 'MOD_APPLY_FAILED',
+    events: ['submission.apply_failed'],
+    category: 'staff_ops',
+    channels: ['in_app', 'email'],
+    urgent: true,
+    recipients: () => directory.masters(),
+    values: (e, { locale }) => ({ kind: kindLabel(e.payload.kind, locale), attempts: e.payload.attempts, url: adminUrl(`/admin/moderation?id=${e.payload.submissionId}`) }),
+    link: (e) => `/admin/moderation?id=${e.payload.submissionId}`,
+  },
+  {
+    // The reviewer holding the lock when the submitter resubmitted or withdrew.
+    code: 'MOD_CLAIM_LOST',
+    events: ['submission.withdrawn'],
+    category: 'staff_ops',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.claimedBy].filter(Boolean),
+    values: (e, { locale }) => ({ kind: kindLabel(e.payload.kind, locale) }),
+    link: () => '/admin/moderation',
   },
   // ---------------- M07: payees (category money: in-app and SMS mandatory) and finance staff
   {

@@ -1008,6 +1008,100 @@ DocumentFile.init(
   { sequelize, modelName: 'DocumentFile', tableName: 'document_files', updatedAt: false }
 );
 
+// ---------------- M05 moderation (§7).
+class RejectionReason extends Model {}
+RejectionReason.init(
+  {
+    code: { type: DataTypes.STRING(40), primaryKey: true },
+    labelEn: { type: DataTypes.STRING(120), allowNull: false },
+    labelBn: { type: DataTypes.STRING(160), allowNull: false },
+    kinds: { type: DataTypes.JSON, allowNull: false },
+    requiresText: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    sort: { type: DataTypes.SMALLINT, allowNull: false, defaultValue: 0 },
+    isActive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+    createdAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'RejectionReason', tableName: 'rejection_reasons', updatedAt: false }
+);
+
+class ReviewRubric extends Model {}
+ReviewRubric.init(
+  {
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
+    kind: { type: DataTypes.STRING(30), allowNull: false },
+    version: { type: DataTypes.INTEGER, allowNull: false },
+    items: { type: DataTypes.JSON, allowNull: false },
+    isActive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    createdBy: DataTypes.UUID,
+    createdAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'ReviewRubric', tableName: 'review_rubrics', updatedAt: false }
+);
+
+class Submission extends Model {}
+Submission.init(
+  {
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
+    kind: { type: DataTypes.STRING(30), allowNull: false },
+    subjectId: { type: DataTypes.UUID, allowNull: false },
+    version: { type: DataTypes.INTEGER, allowNull: false },
+    previousSubmissionId: DataTypes.UUID,
+    isEdit: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    mode: { type: DataTypes.ENUM('pre', 'post'), allowNull: false, defaultValue: 'pre' },
+    payload: { type: DataTypes.JSON, allowNull: false },
+    title: { type: DataTypes.STRING(200), allowNull: false },
+    submittedBy: { type: DataTypes.UUID, allowNull: false },
+    submittedAt: { type: DataTypes.DATE(3), allowNull: false, defaultValue: DataTypes.NOW },
+    status: { type: DataTypes.ENUM('pending_review', 'changes_requested', 'approved', 'rejected', 'withdrawn', 'superseded'), allowNull: false, defaultValue: 'pending_review' },
+    slaDueAt: { type: DataTypes.DATE(3), allowNull: false },
+    breachNotifiedAt: DataTypes.DATE(3),
+    rubricId: DataTypes.UUID,
+    rubricResult: DataTypes.JSON,
+    decidedBy: DataTypes.UUID,
+    decidedAt: DataTypes.DATE(3),
+    reasonCode: DataTypes.STRING(40),
+    reasonText: DataTypes.STRING(500),
+    checkOverrideBy: DataTypes.UUID,
+    checkOverrideReason: DataTypes.STRING(500),
+    appliedAt: DataTypes.DATE(3),
+    applyAttempts: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+    createdAt: DataTypes.DATE(3),
+    updatedAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'Submission', tableName: 'submissions' }
+);
+
+class SubmissionCheck extends Model {}
+SubmissionCheck.init(
+  {
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
+    submissionId: { type: DataTypes.UUID, allowNull: false },
+    runNo: { type: DataTypes.INTEGER, allowNull: false },
+    key: { type: DataTypes.STRING(60), allowNull: false },
+    severity: { type: DataTypes.ENUM('hard', 'soft'), allowNull: false },
+    result: { type: DataTypes.ENUM('pass', 'warn', 'fail', 'pending', 'not_computed'), allowNull: false },
+    detail: DataTypes.STRING(300),
+    computedAt: { type: DataTypes.DATE(3), allowNull: false, defaultValue: DataTypes.NOW },
+  },
+  { sequelize, modelName: 'SubmissionCheck', tableName: 'submission_checks', timestamps: false }
+);
+
+class ReviewClaim extends Model {}
+ReviewClaim.init(
+  {
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
+    submissionId: { type: DataTypes.UUID, allowNull: false },
+    staffId: { type: DataTypes.UUID, allowNull: false },
+    claimedAt: { type: DataTypes.DATE(3), allowNull: false, defaultValue: DataTypes.NOW },
+    expiresAt: { type: DataTypes.DATE(3), allowNull: false },
+    hardExpiresAt: { type: DataTypes.DATE(3), allowNull: false },
+    ticks: { type: DataTypes.JSON, allowNull: false, defaultValue: [] },
+    releasedAt: DataTypes.DATE(3),
+    releasedReason: DataTypes.ENUM('manual', 'decided', 'ttl', 'superseded', 'permission', 'force', 'withdrawn'),
+  },
+  { sequelize, modelName: 'ReviewClaim', tableName: 'review_claims', timestamps: false }
+);
+
 User.hasMany(UserRole, { as: 'roles', foreignKey: 'userId' });
 UserRole.belongsTo(User, { as: 'user', foreignKey: 'userId' });
 User.hasMany(Session, { as: 'sessions', foreignKey: 'userId' });
@@ -1044,6 +1138,9 @@ Payout.belongsTo(PayoutBatch, { as: 'batch', foreignKey: 'batchId' });
 PayoutBatch.hasMany(Payout, { as: 'payouts', foreignKey: 'batchId' });
 VerificationDocument.hasMany(DocumentFile, { as: 'files', foreignKey: 'documentId' });
 DocumentFile.belongsTo(VerificationDocument, { as: 'document', foreignKey: 'documentId' });
+Submission.hasMany(SubmissionCheck, { as: 'checks', foreignKey: 'submissionId' });
+Submission.hasMany(ReviewClaim, { as: 'claims', foreignKey: 'submissionId' });
+Submission.belongsTo(ReviewRubric, { as: 'rubric', foreignKey: 'rubricId' });
 
 module.exports = {
   sequelize,
@@ -1095,4 +1192,9 @@ module.exports = {
   DocumentRequirement,
   VerificationDocument,
   DocumentFile,
+  RejectionReason,
+  ReviewRubric,
+  Submission,
+  SubmissionCheck,
+  ReviewClaim,
 };

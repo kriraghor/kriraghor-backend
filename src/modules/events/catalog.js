@@ -6,7 +6,7 @@
  * invalid payloads before commit. Payloads carry IDs, codes, amounts, statuses and timestamps only:
  * no phone, NID, DOB, email or names (consumers read details through the producer's service).
  *
- * Built so far: M01, M02, M03, M04, M06, M07. Each later module adds its events here when it is built.
+ * Built so far: M01, M02, M03, M04, M05, M06, M07. Each later module adds its events here when it is built.
  */
 const { z } = require('zod');
 
@@ -20,6 +20,7 @@ const paymentClosed = z.object({ paymentId: uuid, purpose: z.string(), purposeId
 const refundEvent = z.object({ refundId: uuid, paymentId: uuid, amount: poisha, purpose: z.string(), purposeId: uuid, payerId: uuid });
 const docEvent = z.object({ documentId: uuid, userId: uuid, docType: z.string().max(30) });
 const payoutEvent = z.object({ payoutId: uuid, code: z.string(), payeeId: uuid, amount: poisha });
+const subEvent = z.object({ submissionId: uuid, kind: z.string().max(30), subjectId: uuid, version: z.number().int(), submittedBy: uuid });
 const catalogItem = z.object({ table: z.string(), id: uuid, key: z.string(), version: z.number().int().optional(), isActive: z.boolean().optional() });
 
 const EVENTS = {
@@ -130,6 +131,16 @@ const EVENTS = {
   'document.rejected': { module: 'M02', version: 1, schema: docEvent.extend({ reasonCode: z.string().max(40) }) },
   'document.duplicate_nid_detected': { module: 'M02', version: 1, schema: z.object({ documentId: uuid, userId: uuid, otherAccounts: z.number().int() }) },
   'verification.passed': { module: 'M02', version: 1, schema: z.object({ userId: uuid, role: z.string().max(32) }) },
+
+  // ---------------- M05 Moderation (ids, kinds and codes only: the payload stays in the submission) ----------------
+  'submission.created': { module: 'M05', version: 1, schema: subEvent.extend({ isEdit: z.boolean(), mode: z.enum(['pre', 'post']), slaDueAt: iso }) },
+  'submission.approved': { module: 'M05', version: 1, schema: subEvent.extend({ decidedBy: uuid, overridden: z.boolean() }) },
+  'submission.changes_requested': { module: 'M05', version: 1, schema: subEvent.extend({ decidedBy: uuid, reasonCode: z.string().max(40) }) },
+  'submission.rejected': { module: 'M05', version: 1, schema: subEvent.extend({ decidedBy: uuid, reasonCode: z.string().max(40) }) },
+  'submission.withdrawn': { module: 'M05', version: 1, schema: subEvent.extend({ byOwner: z.boolean(), superseded: z.boolean(), claimedBy: uuid.nullable() }) },
+  'submission.sla_breached': { module: 'M05', version: 1, schema: subEvent.extend({ overdueMinutes: z.number().int(), claimedBy: uuid.nullable() }) },
+  'submission.apply_failed': { module: 'M05', version: 1, schema: subEvent.extend({ attempts: z.number().int() }) },
+  'submission.applied': { module: 'M05', version: 1, schema: subEvent },
 };
 
 /** FR-19: `<aggregate>.<past_tense_verb>`, snake_case. Irregular past tenses are listed. */

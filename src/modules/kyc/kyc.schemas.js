@@ -5,10 +5,8 @@
  * request and the audited reveal response only; everything else carries `•••• 1234`.
  */
 const { z } = require('zod');
-const rules = require('./kyc.rules');
 
 const dateTime = z.iso.datetime({ offset: true });
-const limit = (max, def) => z.coerce.number().int().min(1).max(max).default(def);
 const DOC_STATUSES = ['in_review', 'changes_requested', 'approved', 'rejected', 'superseded', 'withdrawn'];
 
 const idParam = z.object({ id: z.uuid() });
@@ -27,14 +25,7 @@ const submitBody = z.object({
   consent: z.literal(true).meta({ description: 'Agreement to the Privacy Policy and Terms for identity checks' }),
 });
 
-const adminListQuery = z.object({ status: z.enum(DOC_STATUSES).default('in_review'), cursor: z.uuid().optional(), limit: limit(100, 50) });
 const revealBody = z.object({ reason: z.string().trim().min(3).max(300) });
-const decideBody = z.object({
-  decision: z.enum(['approve', 'changes_requested', 'reject']),
-  rubric: z.object({ nameMatches: z.boolean(), readable: z.boolean(), notExpired: z.boolean() }).partial().optional(),
-  reasonCode: z.enum(rules.REASONS).optional(),
-  note: z.string().trim().max(500).optional(),
-});
 
 // ---------------- responses
 const File = z.object({ id: z.uuid(), slot: z.string(), mime: z.string(), sizeBytes: z.number().int(), purged: z.boolean() });
@@ -74,8 +65,6 @@ const Verification = z
   .meta({ id: 'Verification' });
 const Uploaded = z.object({ fileId: z.uuid(), slot: z.string(), mime: z.string(), sizeBytes: z.number().int() }).meta({ id: 'DocumentFileUploaded' });
 const Check = z.object({ key: z.string(), ok: z.boolean(), blocks: z.boolean(), detail: z.string().nullable().optional() });
-const QueueRow = Document.extend({ user: z.object({ id: z.uuid(), displayName: z.string().nullable() }), failedChecks: z.array(z.string()) });
-const Queue = z.object({ items: z.array(QueueRow), nextCursor: z.string().nullable(), counts: z.record(z.string(), z.number().int()) }).meta({ id: 'KycQueue' });
 const Review = Document.extend({
   fields: z.object({ legalName: z.string(), dob: z.string(), numberMasked: z.string() }),
   checks: z.array(Check),
@@ -83,9 +72,8 @@ const Review = Document.extend({
   user: z.object({ id: z.uuid(), displayName: z.string().nullable(), kycStatus: z.string().nullable(), phoneVerified: z.boolean(), accountStatus: z.string().nullable() }),
   history: z.array(z.object({ id: z.uuid(), version: z.number().int(), status: z.string(), reasonCode: z.string().nullable(), submittedAt: dateTime, decidedAt: dateTime.nullable() })),
 }).meta({ id: 'KycReview' });
-const Decided = Document.extend({ checks: z.array(Check) }).meta({ id: 'KycDecided' });
 const Reveal = z
   .object({ documentId: z.uuid(), number: z.string(), normalised: z.string(), showForSeconds: z.number().int() })
   .meta({ id: 'KycNidReveal', description: 'The full NID number for 60 seconds. Audited (critical); never stored or logged; do not cache.' });
 
-module.exports = { idParam, fileParams, verificationQuery, uploadQuery, submitBody, adminListQuery, revealBody, decideBody, Document, Verification, Uploaded, Queue, Review, Decided, Reveal };
+module.exports = { idParam, fileParams, verificationQuery, uploadQuery, submitBody, revealBody, Document, Verification, Uploaded, Review, Reveal };

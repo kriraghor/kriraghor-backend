@@ -13,7 +13,8 @@ The specification for every module is in [`../kriraghor-docs/modules`](../krirag
 | **M08 Notifications core** | ✅ [`src/modules/notifications`](src/modules/notifications): catalogue router on M04 events, versioned EN/BN templates, preferences with mandatory categories, quiet hours, Redis SMS rate limits, dedupe, retries, in-app (bell, realtime), email and sandbox SMS, masked SMS log, OTP through M08. Push, broadcasts and the real SMS gateway come later (M21, Q59). **Phase 1 exit check passes** |
 | **M06 Payments, ledger and escrow** | ✅ Step 1: [`src/modules/payments`](src/modules/payments): payment intents with Idempotency-Key, SSLCommerz adapter (and a built-in simulator for dev and tests), server-side verification, replay-safe IPN, append-only double-entry ledger with the balance enforced by a deferred constraint trigger, escrow holds (release, freeze, pool settlement for M21), refunds with the staff cap and master step-up, daily reconciliation, nightly invariants, finance desk API. bKash and Nagad direct, off-platform collections, COD, split shares and fee invoices come later |
 | **M07 Payouts** | ✅ Step 1: [`src/modules/payouts`](src/modules/payouts): bKash and Nagad payout accounts (code to the registered phone, encrypted, masked, checked by finance against the NID name), payout runs from the ledger (daily, weekly ground and shop, idempotent, each payable entry once), fee-receivable netting and the minimum, holds (`PayoutHoldService` for M17 and M18), release with step-up and two-master approval above the threshold, manual sending with an audited 60-second number reveal, paid / failed / retry / cancel, refund payouts for M06 `manual_required`, payee summary and CSV statements. Disbursement APIs, bank and BEFTN, statements PDF and withdrawals (M21) come later |
-| **M02 KYC (lite)** | ✅ [`src/modules/kyc`](src/modules/kyc): the member NID (front, back, selfie; number, DOB, legal name) uploaded through the API (type by magic bytes, size, SHA-256), encrypted fields, duplicate-NID and reused-image checks, the KYC desk API (`approve_documents`: masked queue, audited file viewer, audited 60-second reveal, rubric and decisions), M01 consumers that move the member role and copy the verified identity, the `withdraw_winnings` gate, retention purge. Business-role documents, virus scanning and M05 queueing come later |
+| **M02 KYC (lite)** | ✅ [`src/modules/kyc`](src/modules/kyc): the member NID (front, back, selfie; number, DOB, legal name) uploaded through the API (type by magic bytes, size, SHA-256), encrypted fields, duplicate-NID and reused-image checks, the document panel API (`approve_documents`: audited file viewer, audited 60-second reveal), review through M05 (kind `document`), M01 consumers that move the member role and copy the verified identity, the `withdraw_winnings` gate, retention purge. Business-role documents and virus scanning come later |
+| **M05 Moderation (lite)** | ✅ [`src/modules/moderation`](src/modules/moderation): `SubmissionService` (versions, supersede, checks, SLA), subject adapters by kind and permission, the claim lock (TTL, heartbeat, hard cap, force release), server-stored rubric ticks, decisions with reasons per kind, master override of a failing hard check and reopen (step-up `moderation.override`), `submission.applied` with the apply watchdog, SLA breach alerts, sanctions withdraw open submissions. First kind: `document` (M02). Websocket queue push, diff view and the other kinds come later (M21 next) |
 | Everything else | Not started |
 
 ## Quick start
@@ -100,7 +101,9 @@ See [`postman/M01-acceptance-checklist.md`](postman/M01-acceptance-checklist.md)
 
 **M06 (payments, ledger and escrow)** runs unattended: `node postman/run-m06.js` (master, payer and payee; the simulator plays the gateway; 23 requests, 41 assertions). Checklist: [`postman/M06-acceptance-checklist.md`](postman/M06-acceptance-checklist.md).
 
-**M02 (KYC lite)** runs unattended: `node postman/run-m02.js` (a master and a member; uploads from `postman/fixtures`; 19 requests, 29 assertions). Checklist: [`postman/M02-acceptance-checklist.md`](postman/M02-acceptance-checklist.md).
+**M02 (KYC lite)** runs unattended: `node postman/run-m02.js` (a master and a member; uploads from `postman/fixtures`; reviewed through M05; 21 requests, 33 assertions). Checklist: [`postman/M02-acceptance-checklist.md`](postman/M02-acceptance-checklist.md).
+
+**M05 (moderation lite)** runs unattended: `node postman/run-m05.js` (master A, reviewer B, two members with submitted NIDs; claim, rubric, reasons, reopen with step-up; 28 requests, 47 assertions). Checklist: [`postman/M05-acceptance-checklist.md`](postman/M05-acceptance-checklist.md).
 
 **M07 (payouts, the Phase 2 exit check)** runs unattended: `node postman/run-m07.js` (two masters, a payer and a payee with a released ৳100 charge; account, run, four-eyes, reveal, paid; 21 requests, 38 assertions). Checklist: [`postman/M07-acceptance-checklist.md`](postman/M07-acceptance-checklist.md).
 
@@ -169,7 +172,8 @@ src/
    ├─ notifications/      M08 catalogue, router, templates, prefs, delivery (in-app, email, SMS), bell API, delivery log
    ├─ payments/           M06 intents, attempts, IPN, refunds, ledger (rules + service), escrow, reconciliation, invariants
    ├─ payouts/            M07 payout accounts, runs, holds, approvals, manual disbursement, refund payouts (rules + service)
-   └─ kyc/                M02 NID uploads, submissions, KYC desk, retention (rules + service); M01 follows through users/kyc.consumers.js
+   ├─ kyc/                M02 NID uploads, submissions, document panel, retention (rules + service), M05 adapter (kyc.moderation.js); M01 follows through users/kyc.consumers.js
+   └─ moderation/         M05 submissions, adapters, claims, rubric, decisions, override, reopen, jobs (rules + service)
 src/providers/payments/   SSLCommerz adapter and the SSLCommerz-compatible simulator (dev and tests only)
 scripts/                  release.js (migrate + reference seed), create-master.js (first master, CLI only), openapi.js (writes openapi.json)
 src/db/seed/              Reference seed (versioned JSON: settings, esports catalogue, message templates)
@@ -323,10 +327,22 @@ Every process (api, realtime, worker) refuses to start until every seeded settin
 | `GET /me/verification` | member | Checklist (phone, NID), badge, unlocks and limits; `?locale=bn` |
 | `POST /me/documents/files?slot=front|back|selfie` | member | Raw body (JPEG, PNG or PDF), checked by its first bytes; rate-limited per account |
 | `POST /me/documents` · `GET /me/documents/:id/files/:fileId` | member | Submit the NID (number, DOB, legal name, three file ids, consent); view your own upload |
-| `GET /admin/kyc/documents` · `/:id` · `/:id/files/:fileId` | `approve_documents` | Masked queue and review panel; every file view audited |
-| `POST /admin/kyc/documents/:id/reveal-nid` · `/decide` | `approve_documents` | Reveal with a reason (critical audit, 60 s); approve (full rubric) / changes / reject (reason) |
+| `GET /admin/kyc/documents/:id` · `/:id/files/:fileId` | `approve_documents` | The document panel on the Moderation desk; every file view audited |
+| `POST /admin/kyc/documents/:id/reveal-nid` | `approve_documents` | Reveal with a reason (critical audit, 60 s). Decisions are M05's (`/admin/submissions`) |
 
 **Who reads the result:** M01 moves the member role from the M02 events; other modules call `kyc.getVerifiedIdentity(userId)` or use the gate (`requireGate('withdraw_winnings')`). `NID_HMAC_SECRET` keys the NID hash: never rotate it without re-hashing.
+
+## API (M05)
+
+| Endpoint | Access | Notes |
+|---|---|---|
+| `GET /me/submissions` · `POST /me/submissions/:id/withdraw` | signed in | My submissions with reasons; withdraw where the kind allows it |
+| `GET /admin/submissions` · `/stats` · `/:id` | `approve_documents` or `approve_listings` (per kind; masters all) | Queue (oldest deadline first; `status`, `kind`, `claimed`, `overdue`, `q`), KPIs, detail; a kind you may not review is `404` |
+| `POST /admin/submissions/:id/claim` · `/heartbeat` · `/release` · `PUT /:id/ticks` | same | The lock (`ALREADY_CLAIMED` names the holder), keep it, release it (`force` for masters), rubric ticks |
+| `POST /admin/submissions/:id/decide` | same, `Idempotency-Key` | approve / request_changes / reject; `override` (master, step-up `moderation.override`) approves over a failing hard check |
+| `POST /admin/submissions/:id/reopen` | master, step-up `moderation.override` | A decided submission back to the queue (critical audit) |
+
+**Adding a kind:** widen the `submissions.kind` CHECK in a migration, seed its rubric and reasons in `moderation.v1.json`, register an adapter (`moderation.adapters.register({ kind, permission, checks, ownerWithdraw, lockedChecks })`), call `moderation.submit` from your module, and apply decisions in consumers of `submission.approved` / `.changes_requested` / `.rejected`, acknowledging with `submission.applied` (see `kyc/kyc.moderation.js`).
 
 ## Differences from the M01 spec
 

@@ -1,6 +1,6 @@
 {
-  "seedVersion": 6,
-  "source": "M03 §6.4 with the v3 business rules (Oct 2026), M21 §6.1 and M01 §6.4; v2 adds the M04 events.* and audit.* operations keys; v3 the M08 notify.* keys; v4 the M06 payments.* and refunds.retry_max keys; v5 the M07 payouts.min_amount_poisha, auto_release_max_poisha, run_hour and daily_enabled keys, and payments.test_charge_max_poisha 100000 (৳1,000, so a test charge can clear the ৳100 payout minimum; existing databases keep their value); v6 the M02 kyc.uploads_per_hour and kyc.orphan_upload_hours keys. Money in poisha, percentages as numbers.",
+  "seedVersion": 7,
+  "source": "M03 §6.4 with the v3 business rules (Oct 2026), M21 §6.1 and M01 §6.4; v2 adds the M04 events.* and audit.* operations keys; v3 the M08 notify.* keys; v4 the M06 payments.* and refunds.retry_max keys; v5 the M07 payouts.min_amount_poisha, auto_release_max_poisha, run_hour and daily_enabled keys, and payments.test_charge_max_poisha 100000 (৳1,000, so a test charge can clear the ৳100 payout minimum; existing databases keep their value); v6 the M02 kyc.uploads_per_hour and kyc.orphan_upload_hours keys; v7 the M05 moderation.review_sla_warn_hours, claim_max_min, heartbeat_sec, apply_timeout_minutes and apply_max_attempts keys. Money in poisha, percentages as numbers.",
   "settings": [
     { "key": "fees.ground_booking_pct", "category": "fees", "type": "decimal", "value": 5, "unit": "%", "min": 0, "max": 20, "approval": "four_eyes", "public": true, "en": "Ground booking fee", "bn": "মাঠ বুকিং ফি", "why": "Charged on the full booking value and deducted from the online money at release." },
     { "key": "fees.shop_commission_pct", "category": "fees", "type": "decimal", "value": 5, "unit": "%", "min": 0, "max": 25, "approval": "four_eyes", "en": "Shop commission on new gear", "bn": "নতুন পণ্যে দোকানের কমিশন" },
@@ -106,6 +106,11 @@
 
     { "key": "moderation.review_sla_hours", "category": "moderation", "type": "int", "value": 24, "unit": "hours", "min": 1, "max": 168, "en": "Review within", "bn": "পর্যালোচনার সময়সীমা" },
     { "key": "moderation.claim_ttl_min", "category": "moderation", "type": "int", "value": 30, "unit": "min", "min": 5, "max": 240, "en": "A claimed review item is released after", "bn": "দাবি করা আইটেম ছেড়ে দেওয়া হয়" },
+    { "key": "moderation.review_sla_warn_hours", "category": "moderation", "type": "int", "value": 4, "unit": "hours", "min": 1, "max": 48, "en": "Warn when a review has less than this left", "bn": "এর কম সময় বাকি থাকলে সতর্কতা" },
+    { "key": "moderation.claim_max_min", "category": "moderation", "type": "int", "value": 120, "unit": "min", "min": 10, "max": 480, "en": "Longest a reviewer can hold an item", "bn": "একজন রিভিউয়ার সর্বোচ্চ কতক্ষণ ধরে রাখতে পারেন" },
+    { "key": "moderation.heartbeat_sec", "category": "moderation", "type": "int", "value": 60, "unit": "sec", "min": 15, "max": 300, "en": "Review lock heartbeat", "bn": "রিভিউ লকের হার্টবিট" },
+    { "key": "moderation.apply_timeout_minutes", "category": "moderation", "type": "int", "value": 5, "unit": "min", "min": 1, "max": 60, "en": "Re-send an approval not applied after", "bn": "প্রয়োগ না হলে অনুমোদন আবার পাঠানো" },
+    { "key": "moderation.apply_max_attempts", "category": "moderation", "type": "int", "value": 5, "min": 1, "max": 20, "en": "Approval re-sends before alerting", "bn": "সতর্ক করার আগে কতবার অনুমোদন আবার পাঠানো হবে" },
     { "key": "moderation.used_listing_mode", "category": "moderation", "type": "enum", "value": "post", "options": ["pre", "post"], "en": "Used listings are reviewed before or after going live", "bn": "ব্যবহৃত বিজ্ঞাপন চালুর আগে না পরে পর্যালোচনা" },
 
     { "key": "refunds.staff_limit_poisha", "category": "money_limits", "type": "money", "value": 1000000, "unit": "poisha", "min": 0, "max": 1000000000, "approval": "four_eyes", "en": "Largest refund a staff member can make", "bn": "স্টাফের সর্বোচ্চ রিফান্ড" },

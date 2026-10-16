@@ -20,6 +20,10 @@ function registerAll() {
   // M07: refund payouts and account-suspension holds.
   require('../payouts/payouts.consumers').registerPayoutConsumers();
 
+  // M05: applied acknowledgements and sanctions; M02 applies document decisions from M05.
+  require('../moderation/moderation.consumers').registerModerationConsumers();
+  require('../kyc/kyc.moderation').registerKycModeration();
+
   // M01 ← M02: the member role follows the NID review.
   require('../users/kyc.consumers').registerKycConsumers();
 

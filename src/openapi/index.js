@@ -44,7 +44,8 @@ function buildOpenApi() {
       { name: 'notifications', description: 'The bell, notification preferences and delivery logs (M08)' },
       { name: 'payments', description: 'Payments, refunds, escrow, ledger and reconciliation (M06)' },
       { name: 'payouts', description: 'Payout accounts, payout runs, approvals and manual disbursement (M07)' },
-      { name: 'kyc', description: 'Identity verification: NID upload, review desk and the member checklist (M02)' },
+      { name: 'kyc', description: 'Identity verification: NID upload, the document panel and the member checklist (M02)' },
+      { name: 'moderation', description: 'Submissions, the Moderation desk: claim, rubric, decisions, SLA (M05)' },
     ],
   });
 }

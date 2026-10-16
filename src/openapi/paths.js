@@ -13,6 +13,7 @@ const notifyS = require('../modules/notifications/notify.schemas');
 const paymentsS = require('../modules/payments/payments.schemas');
 const payoutsS = require('../modules/payouts/payouts.schemas');
 const kycS = require('../modules/kyc/kyc.schemas');
+const modS = require('../modules/moderation/moderation.schemas');
 
 /**
  * Every route (M01, M02, M03, M04, M06, M07, M08), registered with its request and response schemas and the stable error
@@ -428,17 +429,46 @@ function register(registry) {
   p({ method: 'get', path: '/me/documents/{id}/files/{fileId}', tags: ['kyc'], summary: 'View my own upload (no-store)', security: bearer,
     request: kycFileP, responses: { 200: binary('The file'), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], 410: ['FILE_PURGED'], ...VALIDATION }) } });
 
-  p({ method: 'get', path: '/admin/kyc/documents', tags: ['kyc'], summary: 'KYC desk queue (approve_documents): masked, with failed checks and counts per status', security: adminBearer,
-    request: { query: kycS.adminListQuery }, responses: { 200: json(kycS.Queue), ...errors({ ...KYC_STAFF, ...VALIDATION }) } });
-  p({ method: 'get', path: '/admin/kyc/documents/{id}', tags: ['kyc'], summary: 'One document for review: legal name, DOB, masked number, checks, files and history', security: adminBearer,
+  p({ method: 'get', path: '/admin/kyc/documents/{id}', tags: ['kyc'], summary: 'The document panel on the Moderation desk: legal name, DOB, masked number, checks, files and history', security: adminBearer,
     request: kycDocP, responses: { 200: json(kycS.Review), ...errors({ ...KYC_STAFF, 404: ['NOT_FOUND'], ...VALIDATION }) } });
   p({ method: 'get', path: '/admin/kyc/documents/{id}/files/{fileId}', tags: ['kyc'], summary: 'View one image or PDF (inline, no-store, sandboxed). Every view is audited (FR-12)', security: adminBearer,
     request: kycFileP, responses: { 200: binary('The file'), ...errors({ ...KYC_STAFF, 404: ['NOT_FOUND'], 410: ['FILE_PURGED'], ...VALIDATION }) } });
   p({ method: 'post', path: '/admin/kyc/documents/{id}/reveal-nid', tags: ['kyc'], summary: 'Show the full NID number for 60 seconds, with a reason (critical audit, FR-13)', security: adminBearer,
     request: { ...kycDocP, ...body(kycS.revealBody) }, responses: { 200: json(kycS.Reveal), ...errors({ ...KYC_STAFF, 403: KYC_STAFF[403].concat('SELF_REVIEW_FORBIDDEN'), 404: ['NOT_FOUND'], ...VALIDATION }) } });
-  p({ method: 'post', path: '/admin/kyc/documents/{id}/decide', tags: ['kyc'], summary: 'Approve (all rubric checks), request changes or reject (reason). Approval makes the member role active (FR-09, FR-10)', security: adminBearer,
-    request: { ...kycDocP, ...body(kycS.decideBody) },
-    responses: { 200: json(kycS.Decided), ...errors({ ...KYC_STAFF, 403: KYC_STAFF[403].concat('SELF_REVIEW_FORBIDDEN'), 404: ['NOT_FOUND'], 409: ['DOC_NOT_IN_REVIEW', 'CHECKS_FAILED'], 422: ['VALIDATION_FAILED', 'RUBRIC_INCOMPLETE', 'REASON_REQUIRED'] }) } });
+
+  // ------------------------------------------------------------------ M05 Moderation (lite: the document kind)
+  const subP = { params: modS.idParam };
+  const MOD = { ...ADMIN_AUTH };
+  const modIdem = z.object({ 'idempotency-key': z.string().meta({ description: '8–80 letters, digits, - or _. Retries with the same key and body replay the first response' }) });
+  const MOD_IDEM = { 400: ['IDEMPOTENCY_KEY_REQUIRED', 'IDEMPOTENCY_KEY_INVALID'], 409: ['IDEMPOTENCY_IN_PROGRESS'], 422: ['VALIDATION_FAILED', 'IDEMPOTENCY_KEY_REUSED'] };
+
+  p({ method: 'get', path: '/me/submissions', tags: ['moderation'], summary: 'My submissions and their decisions, with the reason and note (FR-14)', security: bearer,
+    request: { query: modS.mineQuery }, responses: { 200: json(modS.OwnList), ...errors({ ...COMMON_AUTH, ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/submissions/{id}/withdraw', tags: ['moderation'], summary: 'Withdraw my open submission (kinds that allow it; documents are replaced by resubmitting)', security: bearer,
+    request: subP, responses: { 200: json(modS.Own), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], 409: ['INVALID_STATE', 'WITHDRAW_NOT_ALLOWED'], ...VALIDATION }) } });
+
+  p({ method: 'get', path: '/admin/submissions', tags: ['moderation'], summary: 'The Moderation queue: kinds I may review, oldest deadline first, with SLA and lock (FR-07, FR-17)', security: adminBearer,
+    request: { query: modS.listQuery }, responses: { 200: json(modS.Queue), ...errors({ ...MOD, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/submissions/stats', tags: ['moderation'], summary: 'Desk KPIs: in the queue, overdue, claimed by me, decided today (Asia/Dhaka)', security: adminBearer,
+    responses: { 200: json(modS.Stats), ...errors(MOD) } });
+  p({ method: 'get', path: '/admin/submissions/{id}', tags: ['moderation'], summary: 'One submission: payload summary, latest checks, rubric, my ticks, reasons for the kind and version history. A kind I may not review is 404', security: adminBearer,
+    request: subP, responses: { 200: json(modS.Detail), ...errors({ ...MOD, 404: ['NOT_FOUND'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/submissions/{id}/claim', tags: ['moderation'], summary: 'Claim the review lock (moderation.claim_ttl_min, capped at moderation.claim_max_min); checks re-run (FR-05, FR-08)', security: adminBearer,
+    request: subP, responses: { 200: json(modS.Detail), ...errors({ ...MOD, 403: MOD[403].concat('SELF_REVIEW_FORBIDDEN'), 404: ['NOT_FOUND'], 409: ['ALREADY_CLAIMED', 'INVALID_STATE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/submissions/{id}/heartbeat', tags: ['moderation'], summary: 'Keep my lock while the review pane is open (every moderation.heartbeat_sec)', security: adminBearer,
+    request: subP, responses: { 200: json(modS.Heartbeat), ...errors({ ...MOD, 403: MOD[403].concat('CLAIM_REQUIRED'), 404: ['NOT_FOUND'], 409: ['CLAIM_EXPIRED'], ...VALIDATION }) } });
+  p({ method: 'put', path: '/admin/submissions/{id}/ticks', tags: ['moderation'], summary: 'Save my rubric ticks on the server (FR-09)', security: adminBearer,
+    request: { ...subP, ...body(modS.ticksBody) }, responses: { 200: json(modS.Ticks), ...errors({ ...MOD, 403: MOD[403].concat('CLAIM_REQUIRED'), 404: ['NOT_FOUND'], 409: ['CLAIM_EXPIRED'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/submissions/{id}/release', tags: ['moderation'], summary: 'Release my lock; a master may force-release another reviewer’s lock (audited)', security: adminBearer,
+    request: { ...subP, ...body(modS.releaseBody) }, responses: { 200: json(modS.Released), ...errors({ ...MOD, 403: MOD[403].concat('CLAIM_REQUIRED'), 404: ['NOT_FOUND'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/submissions/{id}/decide', tags: ['moderation'], summary: 'Approve (every rubric tick, no failing hard check), request changes or reject (a reason for the kind). A master may approve over a failing check with step-up moderation.override and a reason (Q46)', security: adminBearer,
+    request: { ...subP, headers: modIdem.extend({ 'x-step-up': z.string().optional().meta({ description: 'Required with override' }) }), ...body(modS.decideBody) },
+    responses: {
+      200: json(modS.Detail),
+      ...errors({ ...MOD, ...MOD_IDEM, 403: MOD[403].concat('SELF_REVIEW_FORBIDDEN', 'CLAIM_REQUIRED', 'STEP_UP_REQUIRED'), 404: ['NOT_FOUND'], 409: ['INVALID_STATE', 'CLAIM_EXPIRED', 'IDEMPOTENCY_IN_PROGRESS'], 422: MOD_IDEM[422].concat('RUBRIC_INCOMPLETE', 'CHECK_FAILED', 'CHECK_LOCKED', 'REASON_REQUIRED', 'REASON_NOT_ALLOWED_FOR_KIND') }),
+    } });
+  p({ method: 'post', path: '/admin/submissions/{id}/reopen', tags: ['moderation'], summary: 'Master: reopen a decided submission for review, with a reason (step-up moderation.override, critical audit)', security: adminBearer,
+    request: { ...subP, headers: stepUpHeader, ...body(modS.reopenBody) }, responses: { 200: json(modS.Detail), ...errors({ ...MOD, 403: MOD[403].concat('STEP_UP_REQUIRED'), 404: ['NOT_FOUND'], 409: ['INVALID_STATE'], ...VALIDATION }) } });
 }
 
 function dateTimeOf() {

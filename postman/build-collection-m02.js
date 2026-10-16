@@ -28,13 +28,17 @@ const upload = (name, slot, file, mime, opts) => {
   return r;
 };
 
-const RUBRIC = { nameMatches: true, readable: true, notExpired: true };
+const RUBRIC = ['name_matches', 'readable', 'not_edited', 'face_matches'];
+const idem = (item) => {
+  item.request.header.push({ key: 'Idempotency-Key', value: 'pm-{{$guid}}' });
+  return item;
+};
 
 const collection = {
   info: {
     name: 'Kriraghor API: M02 KYC',
     description: [
-      'A member uploads the NID front, back and a selfie, then submits the number, date of birth and legal name; the master reviews it on the KYC desk (masked data, an audited file view, an audited 60-second reveal) and approves it with the full rubric; the member role becomes active and the identity fields are copied to the account.',
+      'A member uploads the NID front, back and a selfie, then submits the number, date of birth and legal name; the master claims it on the M05 Moderation desk, reads the document panel (masked data, an audited file view, an audited 60-second reveal), ticks the rubric and approves it; the member role becomes active and the identity fields are copied to the account.',
       'Unattended: `node postman/run-m02.js` (kriraghor_test database; fixtures in postman/fixtures).',
       'Rebuild this file with: node postman/build-collection-m02.js',
     ].join('\n\n'),
@@ -49,6 +53,7 @@ const collection = {
     ['backId', ''],
     ['selfieId', ''],
     ['documentId', ''],
+    ['submissionId', ''],
   ].map(([key, value]) => ({ key, value })),
   item: [
     {
@@ -86,11 +91,16 @@ const collection = {
       ],
     },
     {
-      name: '2. KYC desk',
+      name: '2. Moderation desk (M05) with the document panel',
       item: [
-        req('Queue', 'GET', '/admin/kyc/documents', {
+        req('Queue (documents)', 'GET', '/admin/submissions?kind=document', {
           expect: { status: 200 },
-          checks: [['one waiting, masked, checks passed', "j.items.length === 1 && j.items[0].id === pm.collectionVariables.get('documentId') && j.items[0].failedChecks.length === 0 && !JSON.stringify(j).includes('19901234567890123')"]],
+          save: { submissionId: 'items.0.id' },
+          checks: [['one waiting', "j.items.length === 1 && j.items[0].kind === 'document' && j.items[0].status === 'pending_review' && !JSON.stringify(j).includes('19901234567890123')"]],
+        }),
+        req('Claim it', 'POST', '/admin/submissions/{{submissionId}}/claim', {
+          expect: { status: 200 },
+          checks: [['mine, checks passed, masked payload', "j.claim.mine === true && j.checks.every((c) => c.result !== 'fail') && j.payload.documentId === pm.collectionVariables.get('documentId') && j.payload.numberMasked === '•••• 0123'"]],
         }),
         req('Review panel', 'GET', '/admin/kyc/documents/{{documentId}}', {
           expect: { status: 200 },
@@ -106,12 +116,13 @@ const collection = {
           expect: { status: 200 },
           checks: [['full number for 60 s', "j.normalised === '19901234567890123' && j.showForSeconds === 60"]],
         }),
-        req('Approve without the rubric (expect 422)', 'POST', '/admin/kyc/documents/{{documentId}}/decide', { body: { decision: 'approve' }, expect: { status: 422, code: 'RUBRIC_INCOMPLETE' } }),
-        req('Approve with the full rubric', 'POST', '/admin/kyc/documents/{{documentId}}/decide', {
-          body: { decision: 'approve', rubric: RUBRIC },
+        idem(req('Approve without the rubric (expect 422)', 'POST', '/admin/submissions/{{submissionId}}/decide', { body: { decision: 'approve' }, expect: { status: 422, code: 'RUBRIC_INCOMPLETE' } })),
+        req('Tick the rubric', 'PUT', '/admin/submissions/{{submissionId}}/ticks', { body: { ticks: RUBRIC }, expect: { status: 200 }, checks: [['nothing missing', 'j.missing.length === 0']] }),
+        idem(req('Approve', 'POST', '/admin/submissions/{{submissionId}}/decide', {
+          body: { decision: 'approve' },
           expect: { status: 200 },
           checks: [['approved', "j.status === 'approved'"]],
-        }),
+        })),
         req('Audit: one file view and the critical reveal', 'GET', '/admin/audit-logs?action=document.file_viewed,document.nid_revealed', {
           expect: { status: 200 },
           checks: [['two rows, reveal critical', "j.items.length === 2 && j.items.some((i) => i.action === 'document.nid_revealed' && i.severity === 'critical')"]],

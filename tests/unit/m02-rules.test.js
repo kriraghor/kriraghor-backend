@@ -78,34 +78,32 @@ describe('M02 files (magic bytes, size, slots)', () => {
   });
 });
 
-describe('M02 checks and decisions (§6.3, FR-09)', () => {
+describe('M02 checks (§6.3) and the M05 adapter (FR-08)', () => {
   it('flags duplicates (blocking) and reused files (warning)', () => {
-    const clean = R.checks({ duplicateUsers: 0, reusedFiles: 0 });
+    const clean = R.checks({ verifiedHolders: 0, pendingHolders: 0, reusedFiles: 0 });
     expect(clean.every((c) => c.ok)).toBe(true);
-    const bad = R.checks({ duplicateUsers: 1, reusedFiles: 2 });
-    expect(bad.find((c) => c.key === 'nid_unique')).toMatchObject({ ok: false, blocks: true, detail: 'On 1 other account(s)' });
+    const bad = R.checks({ verifiedHolders: 1, pendingHolders: 2, reusedFiles: 2 });
+    expect(bad.find((c) => c.key === 'nid_unique')).toMatchObject({ ok: false, blocks: true, detail: 'Verified on 1 other account(s)' });
+    expect(bad.find((c) => c.key === 'nid_pending_elsewhere')).toMatchObject({ ok: false, blocks: true, detail: 'Waiting for review on 2 other account(s)' });
+    expect(R.LOCKED_CHECKS).toEqual(['nid_unique']);
     expect(bad.find((c) => c.key === 'file_reused')).toMatchObject({ ok: false, blocks: false });
   });
 
-  const ok = R.checks({ duplicateUsers: 0, reusedFiles: 0 });
-  const rubric = { nameMatches: true, readable: true, notExpired: true };
-
-  it('approves only an open document with a full rubric and passing blocking checks', () => {
-    expect(R.decisionBlock({ decision: 'approve', status: 'in_review', checks: ok, rubric })).toBeNull();
-    expect(R.decisionBlock({ decision: 'approve', status: 'approved', checks: ok, rubric })).toBe('DOC_NOT_IN_REVIEW');
-    expect(R.decisionBlock({ decision: 'approve', status: 'in_review', checks: ok, rubric: { ...rubric, readable: false } })).toBe('RUBRIC_INCOMPLETE');
-    expect(R.decisionBlock({ decision: 'approve', status: 'in_review', checks: ok })).toBe('RUBRIC_INCOMPLETE');
-    expect(R.decisionBlock({ decision: 'approve', status: 'in_review', checks: R.checks({ duplicateUsers: 1, reusedFiles: 0 }), rubric })).toBe('CHECKS_FAILED');
-    // A warning never blocks.
-    expect(R.decisionBlock({ decision: 'approve', status: 'in_review', checks: R.checks({ duplicateUsers: 0, reusedFiles: 3 }), rubric })).toBeNull();
-  });
-
-  it('needs a known reason to request changes or reject', () => {
-    expect(R.decisionBlock({ decision: 'reject', status: 'in_review', checks: ok, reasonCode: 'duplicate_nid' })).toBeNull();
-    expect(R.decisionBlock({ decision: 'changes_requested', status: 'in_review', checks: ok, reasonCode: 'blurry' })).toBeNull();
-    expect(R.decisionBlock({ decision: 'reject', status: 'in_review', checks: ok })).toBe('REASON_REQUIRED');
-    expect(R.decisionBlock({ decision: 'reject', status: 'in_review', checks: ok, reasonCode: 'because' })).toBe('REASON_REQUIRED');
-    expect(R.DOC_STATUS).toEqual({ approve: 'approved', changes_requested: 'changes_requested', reject: 'rejected' });
+  // Decisions are M05's (moderation.rules); M02 maps its checks onto M05 rows.
+  it('maps checks to M05 severities and results, and gives each user one stable subject per document type', () => {
+    const { toModeration, subjectIdFor } = require('../../src/modules/kyc/kyc.moderation');
+    expect(toModeration(R.checks({ verifiedHolders: 1, pendingHolders: 0, reusedFiles: 2 })).map((c) => [c.key, c.severity, c.result])).toEqual([
+      ['nid_format', 'hard', 'pass'],
+      ['age_ok', 'hard', 'pass'],
+      ['nid_unique', 'hard', 'fail'],
+      ['nid_pending_elsewhere', 'hard', 'pass'],
+      ['file_type', 'soft', 'pass'],
+      ['file_reused', 'soft', 'warn'],
+    ]);
+    const u = '0190f3a2-0000-7000-8000-000000000001';
+    expect(subjectIdFor(u, 'nid')).toBe(subjectIdFor(u, 'nid', ''));
+    expect(subjectIdFor(u, 'nid')).not.toBe(subjectIdFor(u, 'trade_license'));
+    expect(subjectIdFor(u, 'nid')).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
   });
 });
 
@@ -117,6 +115,7 @@ describe('M02 member role (§6.2) and badge (§6.4)', () => {
     expect(R.memberMove('changes_requested', 'in_review')).toEqual({ role: 'changes_requested', kyc: 'unverified' });
     expect(R.memberMove('rejected', 'in_review')).toEqual({ role: 'rejected', kyc: 'rejected' });
     expect(R.memberMove('approved', 'active')).toBeNull();
+    expect(R.memberMove('approved', 'rejected')).toEqual({ role: 'active', kyc: 'verified' });
     expect(R.memberMove('submitted', 'suspended')).toBeNull();
     expect(R.memberMove('rejected', 'rejected')).toBeNull();
   });
@@ -125,7 +124,6 @@ describe('M02 member role (§6.2) and badge (§6.4)', () => {
     expect(R.badge([{ status: 'approved' }, { status: 'approved' }])).toBe('fully_verified');
     expect(R.badge([{ status: 'approved' }, { status: 'in_review' }])).toBe('documents_in_review');
     expect(R.badge([{ status: 'approved' }, { status: 'missing' }])).toBe('verification_needed');
-    expect(R.RUBRIC).toEqual(['nameMatches', 'readable', 'notExpired']);
     expect(R.ALLOWED).toHaveLength(3);
     expect(R.MEMBER_AFTER.approved.kyc).toBe('verified');
   });

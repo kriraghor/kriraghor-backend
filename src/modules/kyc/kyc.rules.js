@@ -71,34 +71,24 @@ function slotsBlock(slots, files = {}) {
   return null;
 }
 
-// ---------------------------------------------------------------- automatic checks (§6.3) and decisions (FR-09)
+// ---------------------------------------------------------------- automatic checks (§6.3; M05 runs them on every claim)
 
-/** The checks shown to the reviewer. `blocks` checks must pass before approval. */
-function checks({ duplicateUsers, reusedFiles }) {
+/**
+ * The checks shown to the reviewer. `blocks` checks must pass before approval. An NID already verified
+ * on another account can never be overridden (M01 keeps nid_hash unique: LOCKED_CHECKS); one only
+ * waiting for review elsewhere can be, by a master (M05 Q46), when this member is the real holder.
+ */
+function checks({ verifiedHolders, pendingHolders, reusedFiles }) {
   return [
     { key: 'nid_format', ok: true, blocks: true },
     { key: 'age_ok', ok: true, blocks: true },
-    { key: 'nid_unique', ok: duplicateUsers === 0, blocks: true, detail: duplicateUsers ? `On ${duplicateUsers} other account(s)` : null },
+    { key: 'nid_unique', ok: verifiedHolders === 0, blocks: true, detail: verifiedHolders ? `Verified on ${verifiedHolders} other account(s)` : null },
+    { key: 'nid_pending_elsewhere', ok: pendingHolders === 0, blocks: true, detail: pendingHolders ? `Waiting for review on ${pendingHolders} other account(s)` : null },
     { key: 'file_type', ok: true, blocks: false, detail: 'Type and size checked; virus scan not yet available' },
     { key: 'file_reused', ok: reusedFiles === 0, blocks: false, detail: reusedFiles ? `${reusedFiles} file(s) also uploaded by another account` : null },
   ];
 }
-
-const RUBRIC = ['nameMatches', 'readable', 'notExpired'];
-const REASONS = ['blurry', 'name_mismatch', 'not_nid', 'under_age', 'duplicate_nid', 'other'];
-
-/** Why a decision cannot be taken (null when it can). */
-function decisionBlock({ decision, status, checks: list, rubric = {}, reasonCode }) {
-  if (status !== 'in_review') return 'DOC_NOT_IN_REVIEW';
-  if (decision === 'approve') {
-    if (!RUBRIC.every((k) => rubric[k] === true)) return 'RUBRIC_INCOMPLETE';
-    if (list.some((c) => c.blocks && !c.ok)) return 'CHECKS_FAILED';
-    return null;
-  }
-  return REASONS.includes(reasonCode) ? null : 'REASON_REQUIRED';
-}
-
-const DOC_STATUS = { approve: 'approved', changes_requested: 'changes_requested', reject: 'rejected' };
+const LOCKED_CHECKS = ['nid_unique'];
 
 // ---------------------------------------------------------------- the member role (M01) and the badge (§6.2, §6.4)
 
@@ -113,7 +103,8 @@ const MEMBER_AFTER = {
 /** Member statuses a KYC event may move from (an active or suspended member is never moved by M02). */
 const MEMBER_FROM = {
   submitted: ['applied', 'documents_pending', 'in_review', 'changes_requested', 'rejected'],
-  approved: ['applied', 'documents_pending', 'in_review', 'changes_requested'],
+  // rejected: a master reopened a rejection and approved it (M05 FR-21).
+  approved: ['applied', 'documents_pending', 'in_review', 'changes_requested', 'rejected'],
   changes_requested: ['applied', 'documents_pending', 'in_review'],
   rejected: ['applied', 'documents_pending', 'in_review'],
 };
@@ -128,9 +119,7 @@ function badge(items) {
 
 module.exports = {
   ALLOWED,
-  RUBRIC,
-  REASONS,
-  DOC_STATUS,
+  LOCKED_CHECKS,
   MEMBER_AFTER,
   normaliseNid,
   maskNid,
@@ -141,7 +130,6 @@ module.exports = {
   fileBlock,
   slotsBlock,
   checks,
-  decisionBlock,
   memberMove,
   badge,
 };

@@ -84,9 +84,18 @@ const ACTIONS = {
   'document.approved': A('M02', 'notice', 'Approved an identity document', 'পরিচয় ডকুমেন্ট অনুমোদিত'),
   'document.changes_requested': A('M02', 'notice', 'Asked for changes to an identity document ({after.reasonCode})', 'পরিচয় ডকুমেন্টে পরিবর্তন চাওয়া হয়েছে ({after.reasonCode})'),
   'document.rejected': A('M02', 'notice', 'Rejected an identity document ({after.reasonCode})', 'পরিচয় ডকুমেন্ট বাতিল ({after.reasonCode})'),
+  'document.withdrawn': A('M02', 'info', 'Withdrew an identity document under review', 'যাচাইয়ের পরিচয় ডকুমেন্ট প্রত্যাহার'),
   'document.file_viewed': A('M02', 'notice', 'Viewed the {meta.slot} image of an identity document', 'পরিচয় ডকুমেন্টের {meta.slot} ছবি দেখা'),
   'document.nid_revealed': A('M02', 'critical', 'Viewed a full NID number (ending {meta.last4}): {reason}', 'পুরো NID নম্বর দেখা (শেষ {meta.last4}): {reason}'),
   'document.files_purged': A('M02', 'info', 'Deleted {meta.decided} reviewed and {meta.orphans} unused document images (retention)', '{meta.decided}টি যাচাই করা ও {meta.orphans}টি অব্যবহৃত ছবি মুছে ফেলা (সংরক্ষণের মেয়াদ)'),
+
+  // ---------------- M05 Moderation ----------------
+  'submission.claimed': A('M05', 'info', 'Claimed a submission for review', 'যাচাইয়ের জন্য নেওয়া'),
+  'submission.released_forced': A('M05', 'notice', 'Released another reviewer’s lock', 'অন্য রিভিউয়ারের লক ছাড়ানো'),
+  'submission.decided': A('M05', 'notice', 'Decided a submission: {after.status}', 'জমা সিদ্ধান্ত: {after.status}'),
+  'submission.check_overridden': A('M05', 'critical', 'Approved despite a failing check: {reason}', 'ব্যর্থ যাচাই উপেক্ষা করে অনুমোদন: {reason}'),
+  'submission.reopened': A('M05', 'critical', 'Reopened a decided submission: {reason}', 'সিদ্ধান্ত হওয়া জমা আবার খোলা: {reason}'),
+  'submission.withdrawn': A('M05', 'info', 'Withdrew a submission', 'জমা প্রত্যাহার'),
 
   // ---------------- M07 Payouts ----------------
   'payout_account.added': A('M07', 'notice', 'Added a {after.type} payout account ending {after.last4}', '{after.type} পেআউট অ্যাকাউন্ট যোগ (শেষ {after.last4})'),
