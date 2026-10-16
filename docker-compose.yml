@@ -3,13 +3,18 @@ name: kriraghor
 # Local dependencies only (the app runs on the host with npm run dev). Image versions are pinned.
 services:
   postgres:
+<<<<<<< HEAD
     image: postgres:17.11-alpine
+=======
+    image: postgres:16-alpine
+>>>>>>> origin/feat/0b-platform
     container_name: kriraghor-postgres
     environment:
       POSTGRES_DB: kriraghor
       POSTGRES_USER: kriraghor
       POSTGRES_PASSWORD: kriraghor
       TZ: UTC
+<<<<<<< HEAD
       PGTZ: UTC
     ports:
       # Host port 55432: 5432/5433 are often taken by locally installed PostgreSQL servers.
@@ -20,6 +25,14 @@ services:
       - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "kriraghor", "-d", "kriraghor"]
+=======
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kriraghor -d kriraghor"]
+>>>>>>> origin/feat/0b-platform
       interval: 5s
       retries: 20
 
@@ -64,6 +77,10 @@ services:
       retries: 20
 
 volumes:
+<<<<<<< HEAD
   pg-data:
+=======
+  postgres-data:
+>>>>>>> origin/feat/0b-platform
   redis-data:
   s3-data:

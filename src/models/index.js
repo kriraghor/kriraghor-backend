@@ -202,7 +202,10 @@ class AuditLog extends Model {}
 AuditLog.init(
   {
     id: { type: DataTypes.BIGINT, autoIncrement: true, primaryKey: true },
+<<<<<<< HEAD
     actorType: { type: DataTypes.ENUM('user', 'staff', 'master', 'system', 'provider'), allowNull: false, defaultValue: 'system' },
+=======
+>>>>>>> origin/feat/0b-platform
     actorId: DataTypes.UUID,
     actorRole: DataTypes.STRING(32),
     action: { type: DataTypes.STRING(80), allowNull: false },
@@ -976,6 +979,7 @@ Payout.belongsTo(PayoutAccount, { as: 'account', foreignKey: 'payoutAccountId' }
 Payout.belongsTo(PayoutBatch, { as: 'batch', foreignKey: 'batchId' });
 PayoutBatch.hasMany(Payout, { as: 'payouts', foreignKey: 'batchId' });
 
+<<<<<<< HEAD
 module.exports = {
   sequelize,
   User,
@@ -1024,3 +1028,6 @@ module.exports = {
   PayoutApproval,
   PayoutReveal,
 };
+=======
+module.exports = { sequelize, User, UserRole, Session, OtpCode, StaffMember, StaffPermission, UserSanction, StepUpToken, AuditLog, OAuthIdentity };
+>>>>>>> origin/feat/0b-platform
