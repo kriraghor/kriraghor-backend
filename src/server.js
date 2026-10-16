@@ -10,6 +10,7 @@ const { startOpsServer } = require('./common/ops-server');
 const { closeAllRedis } = require('./common/redis');
 const { sequelize } = require('./models');
 const settings = require('./modules/settings/settings.service');
+const { seedReference } = require('./db/seed');
 const { createApp } = require('./app');
 
 function runCliCommand(args) {
@@ -34,7 +35,11 @@ async function runReleaseSteps() {
   logger.info('Running database migrations...');
   await runCliCommand([cliPath, 'db:migrate']);
 
-  logger.info('Loading platform settings from reference JSON...');
+  logger.info('Seeding reference data from JSON...');
+  await seedReference();
+  logger.info('Reference data seeded successfully.');
+
+  logger.info('Loading platform settings into cache...');
   await settings.load();
   logger.info('Platform settings loaded successfully.');
 }
@@ -49,7 +54,6 @@ async function main() {
 
   await runReleaseSteps();
 
-  // M03 boot check: refuse to start before the release step has seeded every setting.
   await settings.bootCheck();
   await settings.subscribe();
 
