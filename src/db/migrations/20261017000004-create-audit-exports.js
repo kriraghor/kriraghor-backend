@@ -7,10 +7,10 @@
  */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    const h = require('../migration-helpers/pg-v1')(Sequelize);
+    const h = require('../migration-helpers/pg-v2')(Sequelize);
     const { DataTypes } = Sequelize;
     const now = { type: 'TIMESTAMP(3) WITH TIME ZONE', allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP(3)') };
-    await h.createTable(queryInterface, 'audit_exports', {
+    await h.ensureTable(queryInterface, 'audit_exports', {
       id: { type: DataTypes.UUID, primaryKey: true },
       requested_by: { type: DataTypes.UUID, allowNull: false, references: { model: 'users', key: 'id' }, onDelete: 'RESTRICT' },
       filters: { type: DataTypes.JSONB, allowNull: false },
@@ -23,7 +23,7 @@ module.exports = {
       created_at: now,
       updated_at: now,
     });
-    await queryInterface.addIndex('audit_exports', ['requested_by', 'created_at'], { name: 'ix_audit_exports_requester' });
+    await h.ensureIndex(queryInterface, 'audit_exports', ['requested_by', 'created_at'], { name: 'ix_audit_exports_requester' });
   },
 
   async down(queryInterface) {

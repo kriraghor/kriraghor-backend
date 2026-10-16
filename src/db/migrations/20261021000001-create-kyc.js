@@ -16,7 +16,7 @@ const DOC_TYPES = ['nid'];
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-    const h = require('../migration-helpers/pg-v1')(Sequelize);
+    const h = require('../migration-helpers/pg-v2')(Sequelize);
     const { DataTypes } = Sequelize;
     const TS = 'TIMESTAMP(3) WITH TIME ZONE';
     const now = { type: TS, allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP(3)') };
@@ -24,7 +24,7 @@ module.exports = {
     const optUuid = { type: DataTypes.UUID, allowNull: true };
     const user = { references: { model: 'users', key: 'id' }, onDelete: 'RESTRICT' };
 
-    await h.createTable(queryInterface, 'document_requirements', {
+    await h.ensureTable(queryInterface, 'document_requirements', {
       id: { ...uuid, primaryKey: true },
       role: { type: DataTypes.STRING(32), allowNull: false },
       doc_type: { type: DataTypes.STRING(30), allowNull: true },
@@ -43,14 +43,14 @@ module.exports = {
       created_at: now,
       updated_at: now,
     });
-    await queryInterface.sequelize.query(
-      'ALTER TABLE document_requirements ADD CONSTRAINT ck_document_requirements_kind CHECK ((doc_type IS NULL) <> (derived_key IS NULL))'
+    await h.ensureCheck(queryInterface, 'document_requirements', 'ck_document_requirements_kind',
+      'CHECK ((doc_type IS NULL) <> (derived_key IS NULL))'
     );
-    await queryInterface.sequelize.query(
+    await h.ensureIndexSql(queryInterface, 'uq_document_requirements_active',
       "CREATE UNIQUE INDEX uq_document_requirements_active ON document_requirements (role, COALESCE(doc_type, derived_key)) WHERE is_active"
     );
 
-    await h.createTable(queryInterface, 'verification_documents', {
+    await h.ensureTable(queryInterface, 'verification_documents', {
       id: { ...uuid, primaryKey: true },
       user_id: { ...uuid, ...user },
       doc_type: { type: h.ENUM(...DOC_TYPES), allowNull: false },
@@ -70,21 +70,21 @@ module.exports = {
       created_at: now,
       updated_at: now,
     });
-    await queryInterface.addIndex('verification_documents', ['user_id', 'doc_type', 'subject_key'], {
+    await h.ensureIndex(queryInterface, 'verification_documents', ['user_id', 'doc_type', 'subject_key'], {
       unique: true,
       name: 'uq_verification_documents_current',
       where: { is_current: true },
     });
-    await queryInterface.addIndex('verification_documents', ['user_id', 'doc_type', 'subject_key'], {
+    await h.ensureIndex(queryInterface, 'verification_documents', ['user_id', 'doc_type', 'subject_key'], {
       unique: true,
       name: 'uq_verification_documents_one_open',
       where: { status: 'in_review' },
     });
-    await queryInterface.addIndex('verification_documents', ['user_id', 'doc_type', 'subject_key', 'version'], { unique: true, name: 'uq_verification_documents_version' });
-    await queryInterface.addIndex('verification_documents', ['status', 'created_at'], { name: 'ix_verification_documents_status' });
-    await queryInterface.addIndex('verification_documents', ['nid_hash'], { name: 'ix_verification_documents_nid_hash' });
+    await h.ensureIndex(queryInterface, 'verification_documents', ['user_id', 'doc_type', 'subject_key', 'version'], { unique: true, name: 'uq_verification_documents_version' });
+    await h.ensureIndex(queryInterface, 'verification_documents', ['status', 'created_at'], { name: 'ix_verification_documents_status' });
+    await h.ensureIndex(queryInterface, 'verification_documents', ['nid_hash'], { name: 'ix_verification_documents_nid_hash' });
 
-    await h.createTable(queryInterface, 'document_files', {
+    await h.ensureTable(queryInterface, 'document_files', {
       id: { ...uuid, primaryKey: true },
       user_id: { ...uuid, ...user },
       document_id: { ...optUuid, references: { model: 'verification_documents', key: 'id' }, onDelete: 'RESTRICT' },
@@ -98,10 +98,10 @@ module.exports = {
       purged_at: { type: TS, allowNull: true },
       created_at: now,
     });
-    await queryInterface.sequelize.query('ALTER TABLE document_files ADD CONSTRAINT ck_document_files_size CHECK (size_bytes > 0 AND size_bytes <= 20971520)');
-    await queryInterface.addIndex('document_files', ['document_id'], { name: 'ix_document_files_document' });
-    await queryInterface.addIndex('document_files', ['sha256'], { name: 'ix_document_files_sha256' });
-    await queryInterface.addIndex('document_files', ['user_id', 'created_at'], { name: 'ix_document_files_user' });
+    await h.ensureCheck(queryInterface, 'document_files', 'ck_document_files_size', 'CHECK (size_bytes > 0 AND size_bytes <= 20971520)');
+    await h.ensureIndex(queryInterface, 'document_files', ['document_id'], { name: 'ix_document_files_document' });
+    await h.ensureIndex(queryInterface, 'document_files', ['sha256'], { name: 'ix_document_files_sha256' });
+    await h.ensureIndex(queryInterface, 'document_files', ['user_id', 'created_at'], { name: 'ix_document_files_user' });
   },
 
   async down(queryInterface) {

@@ -17,6 +17,7 @@ module.exports = {
       await queryInterface.addIndex('users', ['username'], { unique: true, name: 'uq_users_username' });
     } catch (e) {
       // Index already exists
+      void e;
     }
     
     // 3. Safely update identifier check constraint
@@ -46,6 +47,7 @@ module.exports = {
       });
     } catch (e) {
       // Table already exists
+      void e;
     }
 
     // 5. Safely handle oauth_identities indexes

@@ -13,17 +13,17 @@
  */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    const h = require('../migration-helpers/pg-v1')(Sequelize);
+    const h = require('../migration-helpers/pg-v2')(Sequelize);
     const { DataTypes } = Sequelize;
     const q = (sql) => queryInterface.sequelize.query(sql);
 
-    await h.addColumn(queryInterface, 'audit_logs', 'actor_type', { type: h.ENUM('user', 'staff', 'master', 'system', 'provider'), allowNull: false, defaultValue: 'system' });
-    await h.addColumn(queryInterface, 'audit_logs', 'module', { type: DataTypes.STRING(8), allowNull: false, defaultValue: 'M01' });
-    await h.addColumn(queryInterface, 'audit_logs', 'entity_code', { type: DataTypes.STRING(40), allowNull: true });
-    await h.addColumn(queryInterface, 'audit_logs', 'reason', { type: DataTypes.TEXT, allowNull: true });
-    await h.addColumn(queryInterface, 'audit_logs', 'severity', { type: h.ENUM('info', 'notice', 'critical'), allowNull: false, defaultValue: 'info' });
-    await h.addColumn(queryInterface, 'audit_logs', 'step_up', { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false });
-    await h.addColumn(queryInterface, 'audit_logs', 'session_id', { type: DataTypes.UUID, allowNull: true });
+    await h.ensureColumn(queryInterface, 'audit_logs', 'actor_type', { type: h.ENUM('user', 'staff', 'master', 'system', 'provider'), allowNull: false, defaultValue: 'system' });
+    await h.ensureColumn(queryInterface, 'audit_logs', 'module', { type: DataTypes.STRING(8), allowNull: false, defaultValue: 'M01' });
+    await h.ensureColumn(queryInterface, 'audit_logs', 'entity_code', { type: DataTypes.STRING(40), allowNull: true });
+    await h.ensureColumn(queryInterface, 'audit_logs', 'reason', { type: DataTypes.TEXT, allowNull: true });
+    await h.ensureColumn(queryInterface, 'audit_logs', 'severity', { type: h.ENUM('info', 'notice', 'critical'), allowNull: false, defaultValue: 'info' });
+    await h.ensureColumn(queryInterface, 'audit_logs', 'step_up', { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false });
+    await h.ensureColumn(queryInterface, 'audit_logs', 'session_id', { type: DataTypes.UUID, allowNull: true });
 
     // Backfill rows written before M04 (no triggers yet).
     await q(
@@ -33,9 +33,9 @@ module.exports = {
     await q("UPDATE audit_logs SET severity = 'critical' WHERE meta->>'severity' = 'critical'");
     await q("UPDATE audit_logs SET step_up = TRUE WHERE (meta->>'stepUp')::boolean IS TRUE");
 
-    await queryInterface.addIndex('audit_logs', ['created_at'], { name: 'ix_audit_created' });
+    await h.ensureIndex(queryInterface, 'audit_logs', ['created_at'], { name: 'ix_audit_created' });
 
-    await h.appendOnly(queryInterface, 'audit_logs');
+    await h.ensureAppendOnly(queryInterface, 'audit_logs');
   },
 
   async down(queryInterface, Sequelize) {

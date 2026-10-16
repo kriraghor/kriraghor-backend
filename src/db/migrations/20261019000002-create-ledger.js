@@ -15,13 +15,13 @@ const APPEND_ONLY = ['ledger_accounts', 'ledger_transactions', 'ledger_entries']
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-    const h = require('../migration-helpers/pg-v1')(Sequelize);
+    const h = require('../migration-helpers/pg-v2')(Sequelize);
     const { DataTypes } = Sequelize;
     const q = (sql) => queryInterface.sequelize.query(sql);
     const now = { type: 'TIMESTAMP(3) WITH TIME ZONE', allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP(3)') };
     const uuid = { type: DataTypes.UUID, allowNull: false };
 
-    await h.createTable(queryInterface, 'ledger_accounts', {
+    await h.ensureTable(queryInterface, 'ledger_accounts', {
       id: { ...uuid, primaryKey: true },
       code: { type: DataTypes.STRING(120), allowNull: false, unique: true },
       type: { type: h.ENUM('asset', 'liability', 'revenue', 'expense', 'equity'), allowNull: false },
@@ -29,9 +29,9 @@ module.exports = {
       vertical: { type: DataTypes.STRING(20), allowNull: true },
       created_at: now,
     });
-    await queryInterface.addIndex('ledger_accounts', ['owner_user_id'], { name: 'ix_ledger_accounts_owner' });
+    await h.ensureIndex(queryInterface, 'ledger_accounts', ['owner_user_id'], { name: 'ix_ledger_accounts_owner' });
 
-    await h.createTable(queryInterface, 'ledger_transactions', {
+    await h.ensureTable(queryInterface, 'ledger_transactions', {
       id: { ...uuid, primaryKey: true },
       kind: { type: DataTypes.STRING(40), allowNull: false },
       ref_type: { type: DataTypes.STRING(30), allowNull: false },
@@ -44,10 +44,10 @@ module.exports = {
       posted_by: { type: DataTypes.UUID, allowNull: true },
       posted_at: now,
     });
-    await queryInterface.addIndex('ledger_transactions', ['ref_type', 'ref_id'], { name: 'ix_ledger_txn_ref' });
-    await queryInterface.addIndex('ledger_transactions', ['posted_at'], { name: 'ix_ledger_txn_posted' });
+    await h.ensureIndex(queryInterface, 'ledger_transactions', ['ref_type', 'ref_id'], { name: 'ix_ledger_txn_ref' });
+    await h.ensureIndex(queryInterface, 'ledger_transactions', ['posted_at'], { name: 'ix_ledger_txn_posted' });
 
-    await h.createTable(queryInterface, 'ledger_entries', {
+    await h.ensureTable(queryInterface, 'ledger_entries', {
       id: { type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true },
       txn_id: uuid,
       account_id: { ...uuid, references: { model: 'ledger_accounts', key: 'id' }, onDelete: 'RESTRICT' },
@@ -55,14 +55,14 @@ module.exports = {
       debit_poisha: { type: DataTypes.BIGINT, allowNull: false, defaultValue: 0 },
       credit_poisha: { type: DataTypes.BIGINT, allowNull: false, defaultValue: 0 },
     });
-    await queryInterface.addIndex('ledger_entries', ['account_id', 'id'], { name: 'ix_ledger_entries_account' });
-    await queryInterface.addIndex('ledger_entries', ['txn_id'], { name: 'ix_ledger_entries_txn' });
-    await queryInterface.addIndex('ledger_entries', ['escrow_hold_id'], { name: 'ix_ledger_entries_hold' });
-    await q(
-      'ALTER TABLE ledger_entries ADD CONSTRAINT ck_ledger_entries_sides CHECK (debit_poisha >= 0 AND credit_poisha >= 0 AND ((debit_poisha = 0) <> (credit_poisha = 0)))'
+    await h.ensureIndex(queryInterface, 'ledger_entries', ['account_id', 'id'], { name: 'ix_ledger_entries_account' });
+    await h.ensureIndex(queryInterface, 'ledger_entries', ['txn_id'], { name: 'ix_ledger_entries_txn' });
+    await h.ensureIndex(queryInterface, 'ledger_entries', ['escrow_hold_id'], { name: 'ix_ledger_entries_hold' });
+    await h.ensureCheck(queryInterface, 'ledger_entries', 'ck_ledger_entries_sides',
+      'CHECK (debit_poisha >= 0 AND credit_poisha >= 0 AND ((debit_poisha = 0) <> (credit_poisha = 0)))'
     );
 
-    await q(
+    await h.ensureConstraintSql(queryInterface, 'ledger_entries', 'fk_ledger_entries_txn',
       'ALTER TABLE ledger_entries ADD CONSTRAINT fk_ledger_entries_txn FOREIGN KEY (txn_id) REFERENCES ledger_transactions (id) ' +
         'ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED'
     );
@@ -85,12 +85,15 @@ BEGIN
   RETURN NULL;
 END $$`);
     for (const table of ['ledger_entries', 'ledger_transactions']) {
-      await q(
+      await h.ensureTrigger(
+        queryInterface,
+        table,
+        `trg_${table}_balanced`,
         `CREATE CONSTRAINT TRIGGER trg_${table}_balanced AFTER INSERT ON ${table} DEFERRABLE INITIALLY DEFERRED ` +
           'FOR EACH ROW EXECUTE FUNCTION kg_ledger_check_txn()'
       );
     }
-    for (const table of APPEND_ONLY) await h.appendOnly(queryInterface, table);
+    for (const table of APPEND_ONLY) await h.ensureAppendOnly(queryInterface, table);
   },
 
   async down(queryInterface, Sequelize) {

@@ -7,16 +7,16 @@
  */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    const h = require('../migration-helpers/pg-v1')(Sequelize);
+    const h = require('../migration-helpers/pg-v2')(Sequelize);
     const { DataTypes } = Sequelize;
-    await queryInterface.createTable('audit_chain', {
+    await h.ensureTable(queryInterface, 'audit_chain', {
       seq: { type: DataTypes.BIGINT, primaryKey: true },
       audit_log_id: { type: DataTypes.BIGINT, allowNull: false, unique: true, references: { model: 'audit_logs', key: 'id' }, onDelete: 'RESTRICT' },
       prev_hash: { type: DataTypes.CHAR(64), allowNull: true },
       row_hash: { type: DataTypes.CHAR(64), allowNull: false },
       sealed_at: { type: 'TIMESTAMP(3) WITH TIME ZONE', allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP(3)') },
     });
-    await h.appendOnly(queryInterface, 'audit_chain');
+    await h.ensureAppendOnly(queryInterface, 'audit_chain');
   },
 
   async down(queryInterface, Sequelize) {

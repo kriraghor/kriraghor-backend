@@ -10,14 +10,14 @@
  */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    const h = require('../migration-helpers/pg-v1')(Sequelize);
+    const h = require('../migration-helpers/pg-v2')(Sequelize);
     const { DataTypes } = Sequelize;
     const now = { type: 'TIMESTAMP(3) WITH TIME ZONE', allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP(3)') };
     const uuid = { type: DataTypes.UUID, allowNull: false };
     const userFk = { ...uuid, references: { model: 'users', key: 'id' }, onDelete: 'RESTRICT' };
     const CHANNELS = ['in_app', 'sms', 'email', 'push'];
 
-    await h.createTable(queryInterface, 'notifications', {
+    await h.ensureTable(queryInterface, 'notifications', {
       id: { ...uuid, primaryKey: true },
       user_id: userFk,
       code: { type: DataTypes.STRING(60), allowNull: false },
@@ -35,10 +35,10 @@ module.exports = {
       archived_at: { type: 'TIMESTAMP(3) WITH TIME ZONE', allowNull: true },
       created_at: now,
     });
-    await queryInterface.addIndex('notifications', ['user_id', 'read_at', 'created_at'], { name: 'ix_notifications_user_unread' });
-    await queryInterface.addIndex('notifications', ['user_id', 'created_at'], { name: 'ix_notifications_user' });
+    await h.ensureIndex(queryInterface, 'notifications', ['user_id', 'read_at', 'created_at'], { name: 'ix_notifications_user_unread' });
+    await h.ensureIndex(queryInterface, 'notifications', ['user_id', 'created_at'], { name: 'ix_notifications_user' });
 
-    await h.createTable(queryInterface, 'notification_prefs', {
+    await h.ensureTable(queryInterface, 'notification_prefs', {
       user_id: { ...userFk, primaryKey: true },
       category: { type: DataTypes.STRING(30), allowNull: false, primaryKey: true },
       channel: { type: h.ENUM(...CHANNELS), allowNull: false, primaryKey: true },
@@ -46,7 +46,7 @@ module.exports = {
       updated_at: now,
     });
 
-    await h.createTable(queryInterface, 'message_templates', {
+    await h.ensureTable(queryInterface, 'message_templates', {
       id: { ...uuid, primaryKey: true },
       code: { type: DataTypes.STRING(60), allowNull: false },
       channel: { type: h.ENUM(...CHANNELS), allowNull: false },
@@ -60,10 +60,10 @@ module.exports = {
       created_by: { type: DataTypes.UUID, allowNull: true },
       created_at: now,
     });
-    await queryInterface.addIndex('message_templates', ['code', 'channel', 'locale', 'version'], { unique: true, name: 'uq_message_templates_version' });
-    await queryInterface.addIndex('message_templates', ['code', 'channel', 'locale'], { unique: true, name: 'uq_message_templates_active', where: { is_active: true } });
+    await h.ensureIndex(queryInterface, 'message_templates', ['code', 'channel', 'locale', 'version'], { unique: true, name: 'uq_message_templates_version' });
+    await h.ensureIndex(queryInterface, 'message_templates', ['code', 'channel', 'locale'], { unique: true, name: 'uq_message_templates_active', where: { is_active: true } });
 
-    await h.createTable(queryInterface, 'notification_deliveries', {
+    await h.ensureTable(queryInterface, 'notification_deliveries', {
       id: { ...uuid, primaryKey: true },
       notification_id: { ...uuid, references: { model: 'notifications', key: 'id' }, onDelete: 'RESTRICT' },
       user_id: userFk,
@@ -79,10 +79,10 @@ module.exports = {
       created_at: now,
       updated_at: now,
     });
-    await queryInterface.addIndex('notification_deliveries', ['status', 'deliver_at'], { name: 'ix_deliveries_due' });
-    await queryInterface.addIndex('notification_deliveries', ['user_id', 'created_at'], { name: 'ix_deliveries_user' });
+    await h.ensureIndex(queryInterface, 'notification_deliveries', ['status', 'deliver_at'], { name: 'ix_deliveries_due' });
+    await h.ensureIndex(queryInterface, 'notification_deliveries', ['user_id', 'created_at'], { name: 'ix_deliveries_user' });
 
-    await h.createTable(queryInterface, 'sms_log', {
+    await h.ensureTable(queryInterface, 'sms_log', {
       id: { ...uuid, primaryKey: true },
       delivery_id: { type: DataTypes.UUID, allowNull: true, references: { model: 'notification_deliveries', key: 'id' }, onDelete: 'RESTRICT' },
       route: { type: h.ENUM('otp', 'trans'), allowNull: false },
@@ -99,8 +99,8 @@ module.exports = {
       requested_at: now,
       dlr_at: { type: 'TIMESTAMP(3) WITH TIME ZONE', allowNull: true },
     });
-    await queryInterface.addIndex('sms_log', ['gateway', 'gateway_message_id'], { unique: true, name: 'uq_sms_log_gateway_id' });
-    await queryInterface.addIndex('sms_log', ['to_phone_hash', 'requested_at'], { name: 'ix_sms_log_phone' });
+    await h.ensureIndex(queryInterface, 'sms_log', ['gateway', 'gateway_message_id'], { unique: true, name: 'uq_sms_log_gateway_id' });
+    await h.ensureIndex(queryInterface, 'sms_log', ['to_phone_hash', 'requested_at'], { name: 'ix_sms_log_phone' });
   },
 
   async down(queryInterface) {

@@ -15,13 +15,15 @@ const SOURCES = ['fees_screen', 'simulator', 'risk_desk', 'api'];
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-    const h = require('../migration-helpers/pg-v1')(Sequelize);
+    // pg-v2: every statement below is safe to re-run against a database that already has these
+    // objects (createTable is CREATE TABLE IF NOT EXISTS, and the CHECKs would otherwise collide).
+    const h = require('../migration-helpers/pg-v2')(Sequelize);
     const { DataTypes } = Sequelize;
     const now = { type: 'TIMESTAMP(3) WITH TIME ZONE', allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP(3)') };
     const uuid = { type: DataTypes.UUID, allowNull: false };
     const uuidNull = { type: DataTypes.UUID, allowNull: true };
 
-    await h.createTable(queryInterface, 'platform_settings', {
+    await h.ensureTable(queryInterface, 'platform_settings', {
       key: { type: DataTypes.STRING(80), primaryKey: true, allowNull: false },
       category: { type: DataTypes.STRING(30), allowNull: false },
       value: { type: DataTypes.JSONB, allowNull: false },
@@ -41,9 +43,9 @@ module.exports = {
       created_at: now,
       updated_at: now,
     });
-    await queryInterface.addIndex('platform_settings', ['category'], { name: 'ix_platform_settings_category' });
+    await h.ensureIndex(queryInterface, 'platform_settings', ['category'], { name: 'ix_platform_settings_category' });
 
-    await h.createTable(queryInterface, 'settings_change_requests', {
+    await h.ensureTable(queryInterface, 'settings_change_requests', {
       id: { ...uuid, primaryKey: true },
       status: { type: h.ENUM(...REQUEST_STATUS), allowNull: false, defaultValue: 'proposed' },
       source: { type: h.ENUM(...SOURCES), allowNull: false, defaultValue: 'fees_screen' },
@@ -61,13 +63,13 @@ module.exports = {
       created_at: now,
       updated_at: now,
     });
-    await queryInterface.addIndex('settings_change_requests', ['status', 'effective_at'], { name: 'ix_settings_cr_status_effective' });
+    await h.ensureIndex(queryInterface, 'settings_change_requests', ['status', 'effective_at'], { name: 'ix_settings_cr_status_effective' });
     // M03-FR-12: a four-eyes approver is never the proposer (NULL approver passes).
-    await queryInterface.sequelize.query(
-      'ALTER TABLE settings_change_requests ADD CONSTRAINT chk_settings_cr_four_eyes CHECK (approved_by IS NULL OR approved_by <> proposed_by)'
+    await h.ensureCheck(queryInterface, 'settings_change_requests', 'chk_settings_cr_four_eyes',
+      'CHECK (approved_by IS NULL OR approved_by <> proposed_by)'
     );
 
-    await h.createTable(queryInterface, 'settings_history', {
+    await h.ensureTable(queryInterface, 'settings_history', {
       id: { ...uuid, primaryKey: true },
       key: { type: DataTypes.STRING(80), allowNull: false, references: { model: 'platform_settings', key: 'key' }, onDelete: 'RESTRICT' },
       version: { type: DataTypes.INTEGER, allowNull: false },
@@ -80,9 +82,10 @@ module.exports = {
       reason: { type: DataTypes.TEXT, allowNull: true },
       created_at: now,
     });
-    await queryInterface.addIndex('settings_history', ['key', 'version'], { unique: true, name: 'uq_settings_history_key_version' });
-    await queryInterface.sequelize.query('CREATE INDEX ix_settings_history_key_effective ON settings_history ("key", effective_at DESC)');
-    await h.appendOnly(queryInterface, 'settings_history');
+    await h.ensureIndex(queryInterface, 'settings_history', ['key', 'version'], { unique: true, name: 'uq_settings_history_key_version' });
+    await h.ensureIndexSql(queryInterface, 'ix_settings_history_key_effective',
+      'CREATE INDEX ix_settings_history_key_effective ON settings_history ("key", effective_at DESC)');
+    await h.ensureAppendOnly(queryInterface, 'settings_history');
   },
 
   async down(queryInterface, Sequelize) {

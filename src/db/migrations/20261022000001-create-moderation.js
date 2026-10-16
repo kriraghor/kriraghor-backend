@@ -14,7 +14,7 @@ const STATUSES = ['pending_review', 'changes_requested', 'approved', 'rejected',
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-    const h = require('../migration-helpers/pg-v1')(Sequelize);
+    const h = require('../migration-helpers/pg-v2')(Sequelize);
     const { DataTypes } = Sequelize;
     const TS = 'TIMESTAMP(3) WITH TIME ZONE';
     const now = { type: TS, allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP(3)') };
@@ -22,7 +22,7 @@ module.exports = {
     const optUuid = { type: DataTypes.UUID, allowNull: true };
     const user = { references: { model: 'users', key: 'id' }, onDelete: 'RESTRICT' };
 
-    await h.createTable(queryInterface, 'rejection_reasons', {
+    await h.ensureTable(queryInterface, 'rejection_reasons', {
       code: { type: DataTypes.STRING(40), primaryKey: true },
       label_en: { type: DataTypes.STRING(120), allowNull: false },
       label_bn: { type: DataTypes.STRING(160), allowNull: false },
@@ -33,7 +33,7 @@ module.exports = {
       created_at: now,
     });
 
-    await h.createTable(queryInterface, 'review_rubrics', {
+    await h.ensureTable(queryInterface, 'review_rubrics', {
       id: { ...uuid, primaryKey: true },
       kind: { type: h.ENUM(...KINDS), allowNull: false },
       version: { type: DataTypes.INTEGER, allowNull: false },
@@ -42,10 +42,10 @@ module.exports = {
       created_by: optUuid,
       created_at: now,
     });
-    await queryInterface.addConstraint('review_rubrics', { fields: ['kind', 'version'], type: 'unique', name: 'uq_review_rubrics_version' });
-    await queryInterface.addIndex('review_rubrics', ['kind'], { unique: true, name: 'uq_review_rubrics_active', where: { is_active: true } });
+    await h.ensureConstraint(queryInterface, 'review_rubrics', { fields: ['kind', 'version'], type: 'unique', name: 'uq_review_rubrics_version' });
+    await h.ensureIndex(queryInterface, 'review_rubrics', ['kind'], { unique: true, name: 'uq_review_rubrics_active', where: { is_active: true } });
 
-    await h.createTable(queryInterface, 'submissions', {
+    await h.ensureTable(queryInterface, 'submissions', {
       id: { ...uuid, primaryKey: true },
       kind: { type: h.ENUM(...KINDS), allowNull: false },
       subject_id: uuid,
@@ -74,20 +74,20 @@ module.exports = {
       created_at: now,
       updated_at: now,
     });
-    await queryInterface.sequelize.query(
-      "ALTER TABLE submissions ADD CONSTRAINT ck_submissions_reason CHECK (status NOT IN ('changes_requested', 'rejected') OR reason_code IS NOT NULL)"
+    await h.ensureCheck(queryInterface, 'submissions', 'ck_submissions_reason',
+      "CHECK (status NOT IN ('changes_requested', 'rejected') OR reason_code IS NOT NULL)"
     );
-    await queryInterface.sequelize.query('ALTER TABLE submissions ADD CONSTRAINT ck_submissions_version CHECK (version >= 1)');
-    await queryInterface.addConstraint('submissions', { fields: ['kind', 'subject_id', 'version'], type: 'unique', name: 'uq_submissions_version' });
-    await queryInterface.addIndex('submissions', ['kind', 'subject_id'], {
+    await h.ensureCheck(queryInterface, 'submissions', 'ck_submissions_version', 'CHECK (version >= 1)');
+    await h.ensureConstraint(queryInterface, 'submissions', { fields: ['kind', 'subject_id', 'version'], type: 'unique', name: 'uq_submissions_version' });
+    await h.ensureIndex(queryInterface, 'submissions', ['kind', 'subject_id'], {
       unique: true,
       name: 'uq_submissions_one_open',
       where: { status: ['pending_review', 'changes_requested'] },
     });
-    await queryInterface.addIndex('submissions', ['status', 'kind', 'sla_due_at'], { name: 'ix_submissions_queue' });
-    await queryInterface.addIndex('submissions', ['submitted_by', 'created_at'], { name: 'ix_submissions_owner' });
+    await h.ensureIndex(queryInterface, 'submissions', ['status', 'kind', 'sla_due_at'], { name: 'ix_submissions_queue' });
+    await h.ensureIndex(queryInterface, 'submissions', ['submitted_by', 'created_at'], { name: 'ix_submissions_owner' });
 
-    await h.createTable(queryInterface, 'submission_checks', {
+    await h.ensureTable(queryInterface, 'submission_checks', {
       id: { ...uuid, primaryKey: true },
       submission_id: { ...uuid, references: { model: 'submissions', key: 'id' }, onDelete: 'RESTRICT' },
       run_no: { type: DataTypes.INTEGER, allowNull: false },
@@ -97,9 +97,9 @@ module.exports = {
       detail: { type: DataTypes.STRING(300), allowNull: true },
       computed_at: now,
     });
-    await queryInterface.addConstraint('submission_checks', { fields: ['submission_id', 'run_no', 'key'], type: 'unique', name: 'uq_submission_checks_run_key' });
+    await h.ensureConstraint(queryInterface, 'submission_checks', { fields: ['submission_id', 'run_no', 'key'], type: 'unique', name: 'uq_submission_checks_run_key' });
 
-    await h.createTable(queryInterface, 'review_claims', {
+    await h.ensureTable(queryInterface, 'review_claims', {
       id: { ...uuid, primaryKey: true },
       submission_id: { ...uuid, references: { model: 'submissions', key: 'id' }, onDelete: 'RESTRICT' },
       staff_id: { ...uuid, ...user },
@@ -110,8 +110,8 @@ module.exports = {
       released_at: { type: TS, allowNull: true },
       released_reason: { type: h.ENUM('manual', 'decided', 'ttl', 'superseded', 'permission', 'force', 'withdrawn'), allowNull: true },
     });
-    await queryInterface.addIndex('review_claims', ['submission_id'], { unique: true, name: 'uq_review_claims_active', where: { released_at: null } });
-    await queryInterface.addIndex('review_claims', ['expires_at'], { name: 'ix_review_claims_expiry', where: { released_at: null } });
+    await h.ensureIndex(queryInterface, 'review_claims', ['submission_id'], { unique: true, name: 'uq_review_claims_active', where: { released_at: null } });
+    await h.ensureIndex(queryInterface, 'review_claims', ['expires_at'], { name: 'ix_review_claims_expiry', where: { released_at: null } });
   },
 
   async down(queryInterface) {

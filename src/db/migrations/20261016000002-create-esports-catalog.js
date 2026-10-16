@@ -8,7 +8,7 @@
  */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    const h = require('../migration-helpers/pg-v1')(Sequelize);
+    const h = require('../migration-helpers/pg-v2')(Sequelize);
     const { DataTypes } = Sequelize;
     const now = { type: 'TIMESTAMP(3) WITH TIME ZONE', allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP(3)') };
     const uuid = { type: DataTypes.UUID, allowNull: false };
@@ -28,7 +28,7 @@ module.exports = {
     });
     const gameFk = { ...uuid, references: { model: 'esports_games', key: 'id' }, onDelete: 'RESTRICT' };
 
-    await h.createTable(queryInterface, 'esports_games', {
+    await h.ensureTable(queryInterface, 'esports_games', {
       ...base(),
       publisher: { type: DataTypes.STRING(80), allowNull: true },
       platform: { type: h.ENUM('mobile', 'pc', 'console'), allowNull: false, defaultValue: 'mobile' },
@@ -39,9 +39,9 @@ module.exports = {
       icon: { type: DataTypes.STRING(255), allowNull: true },
       ...audit(),
     });
-    await queryInterface.addIndex('esports_games', ['key'], { unique: true, name: 'uq_esports_games_key' });
+    await h.ensureIndex(queryInterface, 'esports_games', ['key'], { unique: true, name: 'uq_esports_games_key' });
 
-    await h.createTable(queryInterface, 'esports_modes', {
+    await h.ensureTable(queryInterface, 'esports_modes', {
       ...base(),
       game_id: gameFk,
       team_size: { type: DataTypes.SMALLINT, allowNull: false },
@@ -50,19 +50,19 @@ module.exports = {
       max_subs: { type: DataTypes.SMALLINT, allowNull: false, defaultValue: 0 },
       ...audit(),
     });
-    await queryInterface.addIndex('esports_modes', ['game_id', 'key'], { unique: true, name: 'uq_esports_modes_game_key' });
-    await queryInterface.sequelize.query(
-      'ALTER TABLE esports_modes ADD CONSTRAINT chk_esports_modes_capacity CHECK (team_size >= 1 AND max_teams >= 1 AND max_teams * team_size <= max_players)'
+    await h.ensureIndex(queryInterface, 'esports_modes', ['game_id', 'key'], { unique: true, name: 'uq_esports_modes_game_key' });
+    await h.ensureCheck(queryInterface, 'esports_modes', 'chk_esports_modes_capacity',
+      'CHECK (team_size >= 1 AND max_teams >= 1 AND max_teams * team_size <= max_players)'
     );
 
-    await h.createTable(queryInterface, 'esports_maps', {
+    await h.ensureTable(queryInterface, 'esports_maps', {
       ...base(),
       game_id: gameFk,
       ...audit(),
     });
-    await queryInterface.addIndex('esports_maps', ['game_id', 'key'], { unique: true, name: 'uq_esports_maps_game_key' });
+    await h.ensureIndex(queryInterface, 'esports_maps', ['game_id', 'key'], { unique: true, name: 'uq_esports_maps_game_key' });
 
-    await h.createTable(queryInterface, 'esports_points_presets', {
+    await h.ensureTable(queryInterface, 'esports_points_presets', {
       ...base(),
       game_id: gameFk,
       placement_points: { type: DataTypes.JSONB, allowNull: false },
@@ -70,7 +70,7 @@ module.exports = {
       version: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
       ...audit(),
     });
-    await queryInterface.addIndex('esports_points_presets', ['game_id', 'key', 'version'], { unique: true, name: 'uq_esports_presets_game_key_version' });
+    await h.ensureIndex(queryInterface, 'esports_points_presets', ['game_id', 'key', 'version'], { unique: true, name: 'uq_esports_presets_game_key_version' });
   },
 
   async down(queryInterface) {

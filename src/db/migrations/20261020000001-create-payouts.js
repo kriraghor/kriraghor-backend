@@ -19,7 +19,7 @@ const OTP_AFTER = [...OTP_BEFORE, 'payout_account'];
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-    const h = require('../migration-helpers/pg-v1')(Sequelize);
+    const h = require('../migration-helpers/pg-v2')(Sequelize);
     const { DataTypes } = Sequelize;
     const TS = 'TIMESTAMP(3) WITH TIME ZONE';
     const now = { type: TS, allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP(3)') };
@@ -28,7 +28,7 @@ module.exports = {
     const poisha = { type: DataTypes.BIGINT, allowNull: false, defaultValue: 0 };
     const user = { references: { model: 'users', key: 'id' }, onDelete: 'RESTRICT' };
 
-    await h.createTable(queryInterface, 'payout_accounts', {
+    await h.ensureTable(queryInterface, 'payout_accounts', {
       id: { ...uuid, primaryKey: true },
       user_id: { ...uuid, ...user },
       type: { type: h.ENUM('bkash', 'nagad'), allowNull: false },
@@ -46,12 +46,12 @@ module.exports = {
       created_at: now,
       updated_at: now,
     });
-    await queryInterface.addIndex('payout_accounts', ['user_id'], { unique: true, name: 'uq_payout_accounts_one_active', where: { status: 'active' } });
-    await queryInterface.addIndex('payout_accounts', ['user_id', 'created_at'], { name: 'ix_payout_accounts_user' });
-    await queryInterface.addIndex('payout_accounts', ['account_no_hash'], { name: 'ix_payout_accounts_hash' });
-    await queryInterface.addIndex('payout_accounts', ['status', 'created_at'], { name: 'ix_payout_accounts_status' });
+    await h.ensureIndex(queryInterface, 'payout_accounts', ['user_id'], { unique: true, name: 'uq_payout_accounts_one_active', where: { status: 'active' } });
+    await h.ensureIndex(queryInterface, 'payout_accounts', ['user_id', 'created_at'], { name: 'ix_payout_accounts_user' });
+    await h.ensureIndex(queryInterface, 'payout_accounts', ['account_no_hash'], { name: 'ix_payout_accounts_hash' });
+    await h.ensureIndex(queryInterface, 'payout_accounts', ['status', 'created_at'], { name: 'ix_payout_accounts_status' });
 
-    await h.createTable(queryInterface, 'payout_batches', {
+    await h.ensureTable(queryInterface, 'payout_batches', {
       id: { ...uuid, primaryKey: true },
       schedule: { type: h.ENUM('daily', 'ground_weekly', 'shop_weekly', 'manual', 'refund'), allowNull: false },
       window_end: { type: TS, allowNull: false },
@@ -61,9 +61,9 @@ module.exports = {
       created_at: now,
       updated_at: now,
     });
-    await queryInterface.addConstraint('payout_batches', { fields: ['schedule', 'window_end'], type: 'unique', name: 'uq_payout_batches_window' });
+    await h.ensureConstraint(queryInterface, 'payout_batches', { fields: ['schedule', 'window_end'], type: 'unique', name: 'uq_payout_batches_window' });
 
-    await h.createTable(queryInterface, 'payouts', {
+    await h.ensureTable(queryInterface, 'payouts', {
       id: { ...uuid, primaryKey: true },
       code: { type: DataTypes.STRING(20), allowNull: false, unique: true },
       batch_id: { ...optUuid, references: { model: 'payout_batches', key: 'id' }, onDelete: 'RESTRICT' },
@@ -95,20 +95,20 @@ module.exports = {
       created_at: now,
       updated_at: now,
     });
-    await queryInterface.sequelize.query(
-      'ALTER TABLE payouts ADD CONSTRAINT ck_payouts_amounts CHECK (amount_poisha > 0 AND gross_poisha >= 0 AND deductions_poisha >= 0 AND netting_poisha >= 0)'
+    await h.ensureCheck(queryInterface, 'payouts', 'ck_payouts_amounts',
+      'CHECK (amount_poisha > 0 AND gross_poisha >= 0 AND deductions_poisha >= 0 AND netting_poisha >= 0)'
     );
-    await queryInterface.addIndex('payouts', ['payee_id'], {
+    await h.ensureIndex(queryInterface, 'payouts', ['payee_id'], {
       unique: true,
       name: 'uq_payouts_one_open_earning',
       where: { kind: 'earning', status: ['scheduled', 'needs_approval', 'on_hold'] },
     });
-    await queryInterface.addIndex('payouts', ['refund_id'], { unique: true, name: 'uq_payouts_refund', where: { refund_id: { [Sequelize.Op.ne]: null } } });
-    await queryInterface.addIndex('payouts', ['status', 'created_at'], { name: 'ix_payouts_status' });
-    await queryInterface.addIndex('payouts', ['payee_id', 'created_at'], { name: 'ix_payouts_payee' });
-    await queryInterface.addIndex('payouts', ['batch_id'], { name: 'ix_payouts_batch' });
+    await h.ensureIndex(queryInterface, 'payouts', ['refund_id'], { unique: true, name: 'uq_payouts_refund', where: { refund_id: { [Sequelize.Op.ne]: null } } });
+    await h.ensureIndex(queryInterface, 'payouts', ['status', 'created_at'], { name: 'ix_payouts_status' });
+    await h.ensureIndex(queryInterface, 'payouts', ['payee_id', 'created_at'], { name: 'ix_payouts_payee' });
+    await h.ensureIndex(queryInterface, 'payouts', ['batch_id'], { name: 'ix_payouts_batch' });
 
-    await h.createTable(queryInterface, 'payout_items', {
+    await h.ensureTable(queryInterface, 'payout_items', {
       id: { ...uuid, primaryKey: true },
       payout_id: { ...uuid, references: { model: 'payouts', key: 'id' }, onDelete: 'RESTRICT' },
       source_type: { type: h.ENUM('escrow_hold', 'pool', 'reversal', 'fee_netting', 'refund'), allowNull: false },
@@ -121,15 +121,15 @@ module.exports = {
       status: { type: h.ENUM('included', 'returned'), allowNull: false, defaultValue: 'included' },
       created_at: now,
     });
-    await queryInterface.addIndex('payout_items', ['ledger_entry_id'], {
+    await h.ensureIndex(queryInterface, 'payout_items', ['ledger_entry_id'], {
       unique: true,
       name: 'uq_payout_items_entry_once',
       where: { status: 'included', ledger_entry_id: { [Sequelize.Op.ne]: null } },
     });
-    await queryInterface.addIndex('payout_items', ['payout_id'], { name: 'ix_payout_items_payout' });
-    await queryInterface.addIndex('payout_items', ['source_type', 'source_id'], { name: 'ix_payout_items_source' });
+    await h.ensureIndex(queryInterface, 'payout_items', ['payout_id'], { name: 'ix_payout_items_payout' });
+    await h.ensureIndex(queryInterface, 'payout_items', ['source_type', 'source_id'], { name: 'ix_payout_items_source' });
 
-    await h.createTable(queryInterface, 'payout_holds', {
+    await h.ensureTable(queryInterface, 'payout_holds', {
       id: { ...uuid, primaryKey: true },
       scope: { type: h.ENUM('payee', 'payout', 'item_source'), allowNull: false },
       payee_id: { ...uuid, ...user },
@@ -146,30 +146,30 @@ module.exports = {
       lifted_at: { type: TS, allowNull: true },
       lift_reason: { type: DataTypes.STRING(300), allowNull: true },
     });
-    await queryInterface.addConstraint('payout_holds', { fields: ['type', 'ref_id'], type: 'unique', name: 'uq_payout_holds_type_ref' });
-    await queryInterface.addIndex('payout_holds', ['payee_id'], { name: 'ix_payout_holds_active', where: { lifted_at: null } });
-    await queryInterface.addIndex('payout_holds', ['type', 'until'], { name: 'ix_payout_holds_expiry', where: { lifted_at: null } });
+    await h.ensureConstraint(queryInterface, 'payout_holds', { fields: ['type', 'ref_id'], type: 'unique', name: 'uq_payout_holds_type_ref' });
+    await h.ensureIndex(queryInterface, 'payout_holds', ['payee_id'], { name: 'ix_payout_holds_active', where: { lifted_at: null } });
+    await h.ensureIndex(queryInterface, 'payout_holds', ['type', 'until'], { name: 'ix_payout_holds_expiry', where: { lifted_at: null } });
 
-    await h.createTable(queryInterface, 'payout_approvals', {
+    await h.ensureTable(queryInterface, 'payout_approvals', {
       id: { ...uuid, primaryKey: true },
       payout_id: { ...uuid, references: { model: 'payouts', key: 'id' }, onDelete: 'RESTRICT' },
       approver_id: { ...uuid, ...user },
       step: { type: DataTypes.SMALLINT, allowNull: false },
       approved_at: now,
     });
-    await queryInterface.sequelize.query('ALTER TABLE payout_approvals ADD CONSTRAINT ck_payout_approvals_step CHECK (step IN (1, 2))');
-    await queryInterface.addConstraint('payout_approvals', { fields: ['payout_id', 'step'], type: 'unique', name: 'uq_payout_approvals_step' });
-    await queryInterface.addConstraint('payout_approvals', { fields: ['payout_id', 'approver_id'], type: 'unique', name: 'uq_payout_approvals_approver' });
+    await h.ensureCheck(queryInterface, 'payout_approvals', 'ck_payout_approvals_step', 'CHECK (step IN (1, 2))');
+    await h.ensureConstraint(queryInterface, 'payout_approvals', { fields: ['payout_id', 'step'], type: 'unique', name: 'uq_payout_approvals_step' });
+    await h.ensureConstraint(queryInterface, 'payout_approvals', { fields: ['payout_id', 'approver_id'], type: 'unique', name: 'uq_payout_approvals_approver' });
 
-    await h.createTable(queryInterface, 'payout_reveals', {
+    await h.ensureTable(queryInterface, 'payout_reveals', {
       id: { ...uuid, primaryKey: true },
       payout_id: { ...uuid, references: { model: 'payouts', key: 'id' }, onDelete: 'RESTRICT' },
       account_id: { ...uuid, references: { model: 'payout_accounts', key: 'id' }, onDelete: 'RESTRICT' },
       staff_id: { ...uuid, ...user },
       revealed_at: now,
     });
-    await queryInterface.addIndex('payout_reveals', ['payout_id'], { name: 'ix_payout_reveals_payout' });
-    await h.appendOnly(queryInterface, 'payout_reveals');
+    await h.ensureIndex(queryInterface, 'payout_reveals', ['payout_id'], { name: 'ix_payout_reveals_payout' });
+    await h.ensureAppendOnly(queryInterface, 'payout_reveals');
 
     await h.replaceEnumCheck(queryInterface, 'otp_codes', 'purpose', OTP_AFTER);
   },

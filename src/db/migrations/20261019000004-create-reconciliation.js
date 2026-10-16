@@ -6,12 +6,12 @@
  */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    const h = require('../migration-helpers/pg-v1')(Sequelize);
+    const h = require('../migration-helpers/pg-v2')(Sequelize);
     const { DataTypes } = Sequelize;
     const now = { type: 'TIMESTAMP(3) WITH TIME ZONE', allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP(3)') };
     const uuid = { type: DataTypes.UUID, allowNull: false };
 
-    await h.createTable(queryInterface, 'reconciliation_runs', {
+    await h.ensureTable(queryInterface, 'reconciliation_runs', {
       id: { ...uuid, primaryKey: true },
       provider: { type: h.ENUM('sslcommerz', 'bkash', 'nagad'), allowNull: false },
       business_date: { type: DataTypes.DATEONLY, allowNull: false },
@@ -22,9 +22,9 @@ module.exports = {
       started_at: now,
       finished_at: { type: 'TIMESTAMP(3) WITH TIME ZONE', allowNull: true },
     });
-    await queryInterface.addIndex('reconciliation_runs', ['provider', 'business_date'], { unique: true, name: 'uq_recon_runs_day' });
+    await h.ensureIndex(queryInterface, 'reconciliation_runs', ['provider', 'business_date'], { unique: true, name: 'uq_recon_runs_day' });
 
-    await h.createTable(queryInterface, 'reconciliation_items', {
+    await h.ensureTable(queryInterface, 'reconciliation_items', {
       id: { ...uuid, primaryKey: true },
       run_id: { ...uuid, references: { model: 'reconciliation_runs', key: 'id' }, onDelete: 'RESTRICT' },
       type: {
@@ -44,8 +44,8 @@ module.exports = {
       note: { type: DataTypes.STRING(500), allowNull: true },
       created_at: now,
     });
-    await queryInterface.addIndex('reconciliation_items', ['run_id', 'type'], { name: 'ix_recon_items_run' });
-    await queryInterface.addIndex('reconciliation_items', ['payment_id'], { name: 'ix_recon_items_payment' });
+    await h.ensureIndex(queryInterface, 'reconciliation_items', ['run_id', 'type'], { name: 'ix_recon_items_run' });
+    await h.ensureIndex(queryInterface, 'reconciliation_items', ['payment_id'], { name: 'ix_recon_items_payment' });
   },
 
   async down(queryInterface) {

@@ -11,13 +11,13 @@
  */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    const h = require('../migration-helpers/pg-v1')(Sequelize);
+    const h = require('../migration-helpers/pg-v2')(Sequelize);
     const { DataTypes } = Sequelize;
     const now = { type: 'TIMESTAMP(3) WITH TIME ZONE', allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP(3)') };
     const uuid = { type: DataTypes.UUID, allowNull: false };
     const poisha = { type: DataTypes.BIGINT, allowNull: false, defaultValue: 0 };
 
-    await h.createTable(queryInterface, 'escrow_holds', {
+    await h.ensureTable(queryInterface, 'escrow_holds', {
       id: { ...uuid, primaryKey: true },
       purpose: { type: DataTypes.STRING(30), allowNull: false },
       purpose_id: uuid,
@@ -47,12 +47,12 @@ module.exports = {
       created_at: now,
       updated_at: now,
     });
-    await queryInterface.addIndex('escrow_holds', ['purpose', 'purpose_id'], { name: 'ix_escrow_purpose' });
-    await queryInterface.addIndex('escrow_holds', ['group_ref'], { name: 'ix_escrow_group' });
-    await queryInterface.addIndex('escrow_holds', ['status', 'release_at'], { name: 'ix_escrow_due' });
-    await queryInterface.addIndex('escrow_holds', ['payee_id'], { name: 'ix_escrow_payee' });
-    await queryInterface.sequelize.query(
-      'ALTER TABLE escrow_holds ADD CONSTRAINT ck_escrow_amounts CHECK (held_poisha >= 0 AND released_poisha >= 0 AND refunded_poisha >= 0 ' +
+    await h.ensureIndex(queryInterface, 'escrow_holds', ['purpose', 'purpose_id'], { name: 'ix_escrow_purpose' });
+    await h.ensureIndex(queryInterface, 'escrow_holds', ['group_ref'], { name: 'ix_escrow_group' });
+    await h.ensureIndex(queryInterface, 'escrow_holds', ['status', 'release_at'], { name: 'ix_escrow_due' });
+    await h.ensureIndex(queryInterface, 'escrow_holds', ['payee_id'], { name: 'ix_escrow_payee' });
+    await h.ensureCheck(queryInterface, 'escrow_holds', 'ck_escrow_amounts',
+      'CHECK (held_poisha >= 0 AND released_poisha >= 0 AND refunded_poisha >= 0 ' +
         'AND fee_taken_poisha >= 0 AND released_poisha + refunded_poisha <= held_poisha AND fee_taken_poisha <= released_poisha)'
     );
   },

@@ -153,7 +153,7 @@ src/
 ├─ realtime.js            realtime entrypoint (Socket.IO + Redis adapter)
 ├─ worker.js              worker entrypoint (BullMQ)
 ├─ config/                Env validation (zod) + sequelize-cli config
-├─ db/migrations/         Schema (sequelize-cli)
+├─ db/migrations/         Schema (sequelize-cli). Helpers in db/migration-helpers: pg-v1 is frozen, pg-v2 is the re-runnable (`ensure*`) set new migrations should use
 ├─ models/                Sequelize models + associations
 ├─ common/                errors, validation, identifiers, crypto, enums, logger, origins, redis, lifecycle, ops-server, metrics
 ├─ jobs/                  queue registry, job catalogue, worker runtime

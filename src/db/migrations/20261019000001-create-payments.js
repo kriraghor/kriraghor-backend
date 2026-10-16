@@ -13,20 +13,19 @@
  */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    const h = require('../migration-helpers/pg-v1')(Sequelize);
+    const h = require('../migration-helpers/pg-v2')(Sequelize);
     const { DataTypes } = Sequelize;
-    const q = (sql) => queryInterface.sequelize.query(sql);
     const now = { type: 'TIMESTAMP(3) WITH TIME ZONE', allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP(3)') };
     const uuid = { type: DataTypes.UUID, allowNull: false };
     const poisha = { type: DataTypes.BIGINT, allowNull: false, defaultValue: 0 };
     const PROVIDERS = ['sslcommerz', 'bkash', 'nagad'];
 
-    await h.createTable(queryInterface, 'id_sequences', {
+    await h.ensureTable(queryInterface, 'id_sequences', {
       name: { type: DataTypes.STRING(40), primaryKey: true },
       next: { type: DataTypes.BIGINT, allowNull: false, defaultValue: 0 },
     });
 
-    await h.createTable(queryInterface, 'idempotency_keys', {
+    await h.ensureTable(queryInterface, 'idempotency_keys', {
       scope: { type: DataTypes.STRING(60), primaryKey: true },
       user_id: { ...uuid, primaryKey: true },
       key: { type: DataTypes.STRING(80), primaryKey: true },
@@ -36,9 +35,9 @@ module.exports = {
       created_at: now,
       expires_at: { type: 'TIMESTAMP(3) WITH TIME ZONE', allowNull: false },
     });
-    await queryInterface.addIndex('idempotency_keys', ['expires_at'], { name: 'ix_idempotency_expires' });
+    await h.ensureIndex(queryInterface, 'idempotency_keys', ['expires_at'], { name: 'ix_idempotency_expires' });
 
-    await h.createTable(queryInterface, 'payments', {
+    await h.ensureTable(queryInterface, 'payments', {
       id: { ...uuid, primaryKey: true },
       code: { type: DataTypes.STRING(20), allowNull: false, unique: true },
       purpose: { type: DataTypes.STRING(30), allowNull: false },
@@ -67,18 +66,18 @@ module.exports = {
       created_at: now,
       updated_at: now,
     });
-    await queryInterface.addIndex('payments', ['payer_id', 'idempotency_key'], { unique: true, name: 'uq_payments_idempotency' });
-    await queryInterface.addIndex('payments', ['provider', 'provider_trx_id'], { unique: true, name: 'uq_payments_provider_trx' });
-    await queryInterface.addIndex('payments', ['purpose', 'purpose_id'], { name: 'ix_payments_purpose' });
-    await queryInterface.addIndex('payments', ['payer_id', 'created_at'], { name: 'ix_payments_payer' });
-    await queryInterface.addIndex('payments', ['status', 'expires_at'], { name: 'ix_payments_status_expiry' });
-    await q(
-      'ALTER TABLE payments ADD CONSTRAINT ck_payments_amount CHECK (amount_poisha > 0), ' +
-        'ADD CONSTRAINT ck_payments_captured CHECK (captured_poisha >= 0), ' +
-        'ADD CONSTRAINT ck_payments_refunded CHECK (refunded_poisha >= 0 AND refunded_poisha <= captured_poisha)'
+    await h.ensureIndex(queryInterface, 'payments', ['payer_id', 'idempotency_key'], { unique: true, name: 'uq_payments_idempotency' });
+    await h.ensureIndex(queryInterface, 'payments', ['provider', 'provider_trx_id'], { unique: true, name: 'uq_payments_provider_trx' });
+    await h.ensureIndex(queryInterface, 'payments', ['purpose', 'purpose_id'], { name: 'ix_payments_purpose' });
+    await h.ensureIndex(queryInterface, 'payments', ['payer_id', 'created_at'], { name: 'ix_payments_payer' });
+    await h.ensureIndex(queryInterface, 'payments', ['status', 'expires_at'], { name: 'ix_payments_status_expiry' });
+    await h.ensureCheck(queryInterface, 'payments', 'ck_payments_amount', 'CHECK (amount_poisha > 0)');
+    await h.ensureCheck(queryInterface, 'payments', 'ck_payments_captured', 'CHECK (captured_poisha >= 0)');
+    await h.ensureCheck(queryInterface, 'payments', 'ck_payments_refunded',
+      'CHECK (refunded_poisha >= 0 AND refunded_poisha <= captured_poisha)'
     );
 
-    await h.createTable(queryInterface, 'payment_attempts', {
+    await h.ensureTable(queryInterface, 'payment_attempts', {
       id: { ...uuid, primaryKey: true },
       payment_id: { ...uuid, references: { model: 'payments', key: 'id' }, onDelete: 'RESTRICT' },
       provider: { type: h.ENUM(...PROVIDERS), allowNull: false },
@@ -91,10 +90,10 @@ module.exports = {
       started_at: now,
       finished_at: { type: 'TIMESTAMP(3) WITH TIME ZONE', allowNull: true },
     });
-    await queryInterface.addIndex('payment_attempts', ['payment_id', 'started_at'], { name: 'ix_attempts_payment' });
-    await queryInterface.addIndex('payment_attempts', ['payment_id'], { unique: true, name: 'uq_attempts_one_inflight', where: { status: 'in_flight' } });
+    await h.ensureIndex(queryInterface, 'payment_attempts', ['payment_id', 'started_at'], { name: 'ix_attempts_payment' });
+    await h.ensureIndex(queryInterface, 'payment_attempts', ['payment_id'], { unique: true, name: 'uq_attempts_one_inflight', where: { status: 'in_flight' } });
 
-    await h.createTable(queryInterface, 'provider_webhook_events', {
+    await h.ensureTable(queryInterface, 'provider_webhook_events', {
       id: { ...uuid, primaryKey: true },
       provider: { type: h.ENUM(...PROVIDERS), allowNull: false },
       provider_event_id: { type: DataTypes.STRING(120), allowNull: false },
@@ -105,9 +104,9 @@ module.exports = {
       processed_at: { type: 'TIMESTAMP(3) WITH TIME ZONE', allowNull: true },
       result: { type: DataTypes.STRING(30), allowNull: true },
     });
-    await queryInterface.addIndex('provider_webhook_events', ['provider', 'provider_event_id'], { unique: true, name: 'uq_webhook_provider_event' });
+    await h.ensureIndex(queryInterface, 'provider_webhook_events', ['provider', 'provider_event_id'], { unique: true, name: 'uq_webhook_provider_event' });
 
-    await h.createTable(queryInterface, 'refunds', {
+    await h.ensureTable(queryInterface, 'refunds', {
       id: { ...uuid, primaryKey: true },
       payment_id: { ...uuid, references: { model: 'payments', key: 'id' }, onDelete: 'RESTRICT' },
       amount_poisha: { type: DataTypes.BIGINT, allowNull: false },
@@ -134,9 +133,9 @@ module.exports = {
       updated_at: now,
       completed_at: { type: 'TIMESTAMP(3) WITH TIME ZONE', allowNull: true },
     });
-    await queryInterface.addIndex('refunds', ['payment_id'], { name: 'ix_refunds_payment' });
-    await queryInterface.addIndex('refunds', ['status', 'created_at'], { name: 'ix_refunds_status' });
-    await q('ALTER TABLE refunds ADD CONSTRAINT ck_refunds_amount CHECK (amount_poisha > 0)');
+    await h.ensureIndex(queryInterface, 'refunds', ['payment_id'], { name: 'ix_refunds_payment' });
+    await h.ensureIndex(queryInterface, 'refunds', ['status', 'created_at'], { name: 'ix_refunds_status' });
+    await h.ensureCheck(queryInterface, 'refunds', 'ck_refunds_amount', 'CHECK (amount_poisha > 0)');
   },
 
   async down(queryInterface) {
