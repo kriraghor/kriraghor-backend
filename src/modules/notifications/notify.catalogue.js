@@ -3,7 +3,7 @@
 /**
  * Notification catalogue (M08 §6.6), as code. Each entry maps a domain event to recipients, channels
  * and template variables. Template texts are versioned rows in message_templates (EN and BN for
- * every default channel; a contract test checks it). Built so far: the M01, M03, M04, M06 and M07 events.
+ * every default channel; a contract test checks it). Built so far: the M01, M02, M03, M04, M06 and M07 events.
  *
  * Entry: { code, events[], category, channels[], urgent, roleContext?(e), recipients(e) → userIds,
  *          values(e, { locale, userId }) → template values, link(e) → in-app link }
@@ -35,6 +35,11 @@ const settingsRequest = (id) => require('../settings/change-request.service').ge
 const auditEntry = (id) => require('../audit/audit.admin.service').getOne(id);
 const paymentFacts = (id) => require('../payments/payments.service').facts(id);
 const refundFacts = (id) => require('../payments/refunds.service').facts(id);
+const documentFacts = (id) => require('../kyc/kyc.service').facts(id);
+const KYC_REASONS = {
+  en: { blurry: 'the photos are not clear enough', name_mismatch: 'the name does not match the NID', not_nid: 'this is not a National ID', under_age: 'you are below the minimum age', duplicate_nid: 'this NID is already on another account', other: 'see the note from our team' },
+  bn: { blurry: 'ছবিগুলো যথেষ্ট পরিষ্কার নয়', name_mismatch: 'নাম NID-এর সাথে মেলে না', not_nid: 'এটি জাতীয় পরিচয়পত্র নয়', under_age: 'আপনার বয়স সর্বনিম্ন সীমার নিচে', duplicate_nid: 'এই NID অন্য অ্যাকাউন্টে আছে', other: 'আমাদের টিমের নোট দেখুন' },
+};
 const payoutFacts = (id) => require('../payouts/payouts.service').facts(id);
 const accountFacts = (id) => require('../payouts/payout-accounts.service').facts(id);
 const settingsHours = () => require('../settings/settings.service').get('risk.payout_change_hold_hours');
@@ -314,6 +319,34 @@ const CATALOGUE = [
     recipients: () => directory.withPermission('view_payouts'),
     values: async (e) => ({ checks: e.payload.failed.join(', '), url: adminUrl('/admin/finance?tab=ledger') }),
     link: () => '/admin/finance?tab=ledger',
+  },
+  // ---------------- M02: identity verification (approval and rejection reach the member through ROLE_ACTIVATED / ROLE_REJECTED)
+  {
+    code: 'DOCUMENT_SUBMITTED',
+    events: ['document.submitted'],
+    category: 'moderation',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.userId],
+    values: () => ({}),
+    link: () => '/account/verification',
+  },
+  {
+    code: 'DOCUMENT_CHANGES_REQUESTED',
+    events: ['document.changes_requested'],
+    category: 'moderation',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.userId],
+    values: (e, { locale }) => ({ reason: KYC_REASONS[locale]?.[e.payload.reasonCode] ?? KYC_REASONS.en[e.payload.reasonCode] ?? e.payload.reasonCode }),
+    link: () => '/account/verification',
+  },
+  {
+    code: 'KYC_REVIEW_NEEDED',
+    events: ['document.submitted'],
+    category: 'staff_ops',
+    channels: ['in_app'],
+    recipients: () => directory.withPermission('approve_documents'),
+    values: async (e) => ({ masked: (await documentFacts(e.payload.documentId)).numberMasked }),
+    link: (e) => `/admin/kyc?id=${e.payload.documentId}`,
   },
   // ---------------- M07: payees (category money: in-app and SMS mandatory) and finance staff
   {

@@ -48,6 +48,9 @@ const schema = z.object({
     .string()
     .refine((v) => Buffer.from(v, 'base64').length === 32, 'DATA_ENCRYPTION_KEY must be 32 bytes, base64-encoded'),
   OTP_HASH_SECRET: z.string().min(16),
+  // M02: keyed hash of normalised NID numbers (duplicate detection across accounts). Never rotate casually:
+  // every stored nid_hash depends on it.
+  NID_HMAC_SECRET: z.string().min(16),
 
   SMS_DRIVER: z.enum(['console', 'memory']).default('console'),
   PASSWORD_BREACH_CHECK: bool.default(false),
@@ -106,7 +109,7 @@ if (env.NODE_ENV === 'production' && env.PAYMENTS_SIMULATOR) {
 const apiPublic = env.API_PUBLIC_URL.replace(/\/$/, '');
 const simulator = env.PAYMENTS_SIMULATOR;
 
-if (env.NODE_ENV === 'production' && /change-me/.test(env.JWT_ACCESS_SECRET + env.JWT_SPECIAL_SECRET + env.OTP_HASH_SECRET + env.CSRF_SECRET)) {
+if (env.NODE_ENV === 'production' && /change-me/.test(env.JWT_ACCESS_SECRET + env.JWT_SPECIAL_SECRET + env.OTP_HASH_SECRET + env.CSRF_SECRET + env.NID_HMAC_SECRET)) {
   throw new Error('Refusing to start in production with placeholder secrets.');
 }
 
@@ -151,6 +154,7 @@ module.exports = {
   },
   // OTP, login, session and staff limits live in platform_settings (M03 auth.*), read via modules/auth/limits.js.
   otp: { hashSecret: env.OTP_HASH_SECRET, length: 6 },
+  kyc: { nidHashSecret: env.NID_HMAC_SECRET },
   passwordBreachCheck: env.PASSWORD_BREACH_CHECK,
   crypto: {
     dataKey: Buffer.from(env.DATA_ENCRYPTION_KEY, 'base64'),

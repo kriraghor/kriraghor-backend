@@ -1,0 +1,32 @@
+{
+  "seedVersion": 1,
+  "source": "M02 §6.1, lite (Oct 2026): the member (NID) requirements. Business-role documents are added with M09, M11, M12 and M22. Rows are inserted only when (role, type) is missing, so a master's edits survive.",
+  "requirements": [
+    {
+      "role": "member",
+      "derivedKey": "phone_verified",
+      "required": "always",
+      "labelEn": "Phone number",
+      "labelBn": "ফোন নম্বর",
+      "whyEn": "Confirmed by a code at sign-up",
+      "whyBn": "সাইন আপের সময় কোড দিয়ে নিশ্চিত",
+      "sort": 1
+    },
+    {
+      "role": "member",
+      "docType": "nid",
+      "required": "always",
+      "fileSlots": ["front", "back", "selfie"],
+      "fieldSchema": [
+        { "key": "legalName", "type": "text", "min": 3, "max": 120 },
+        { "key": "number", "type": "digits", "len": [10, 13, 17] },
+        { "key": "dob", "type": "date" }
+      ],
+      "labelEn": "National ID (NID)",
+      "labelBn": "জাতীয় পরিচয়পত্র (NID)",
+      "whyEn": "Front, back and a selfie holding it. Needed to book, buy, hire, sell and withdraw winnings.",
+      "whyBn": "সামনে, পেছনে এবং হাতে ধরে একটি সেলফি। বুকিং, কেনা, হায়ার, বিক্রি ও পুরস্কার তোলার জন্য দরকার।",
+      "sort": 2
+    }
+  ]
+}

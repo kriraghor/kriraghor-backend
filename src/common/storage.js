@@ -62,4 +62,14 @@ async function getPrivate(key) {
   return { body: res.Body, contentType: res.ContentType };
 }
 
-module.exports = { putPrivate, getPrivate, _memory: memory };
+/** Delete an object from the private bucket (M02 retention purge). Missing objects are fine. */
+async function deletePrivate(key) {
+  if (config.storage.driver === 'memory') {
+    memory.delete(key);
+    return;
+  }
+  const { DeleteObjectCommand } = require('@aws-sdk/client-s3');
+  await s3().send(new DeleteObjectCommand({ Bucket: config.s3.privateBucket, Key: key }));
+}
+
+module.exports = { putPrivate, getPrivate, deletePrivate, _memory: memory };

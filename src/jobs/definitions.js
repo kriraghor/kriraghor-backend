@@ -18,6 +18,7 @@ const reconciliation = require('../modules/payments/reconciliation.service');
 const paymentJobs = require('../modules/payments/payments.jobs');
 const payouts = require('../modules/payouts/payouts.service');
 const payoutHolds = require('../modules/payouts/holds.service');
+const kyc = require('../modules/kyc/kyc.service');
 const { purgeExpired: purgeIdempotencyKeys } = require('../common/idempotency');
 const logger = require('../common/logger');
 
@@ -167,6 +168,16 @@ const JOBS = [
     queue: QUEUES.PAYOUTS,
     every: 15 * 60 * 1000,
     run: async () => payoutHolds.expireDue(),
+  },
+  // ---------------- M02 KYC (§10)
+  {
+    // FR-17: images of decided documents after kyc.raw_image_retention_days, unused uploads after
+    // kyc.orphan_upload_hours. Idempotent: purged files are skipped.
+    name: 'kyc.retention-purge',
+    queue: QUEUES.KYC,
+    pattern: '30 3 * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => kyc.purgeDue(),
   },
   {
     name: 'idempotency.purge',

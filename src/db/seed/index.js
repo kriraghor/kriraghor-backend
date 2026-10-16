@@ -9,7 +9,8 @@
 const settingsSeed = require('./reference/settings.v1.json');
 const esportsSeed = require('./reference/esports.v1.json');
 const templatesSeed = require('./reference/templates.v1.json');
-const { sequelize, PlatformSetting, SettingsHistory, EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset, MessageTemplate } = require('../../models');
+const kycSeed = require('./reference/kyc-requirements.v1.json');
+const { sequelize, PlatformSetting, SettingsHistory, EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset, MessageTemplate, DocumentRequirement } = require('../../models');
 
 const SEED_REASON = `Seed settings v${settingsSeed.seedVersion}`;
 
@@ -97,12 +98,25 @@ async function seedTemplates(transaction) {
   return inserted;
 }
 
+/** M02 document requirements, only when (role, type or derived key) is missing. */
+async function seedKycRequirements(transaction) {
+  let inserted = 0;
+  for (const r of kycSeed.requirements) {
+    const where = { role: r.role, isActive: true, ...(r.docType ? { docType: r.docType } : { derivedKey: r.derivedKey }) };
+    if (await DocumentRequirement.findOne({ where, transaction })) continue;
+    await DocumentRequirement.create({ ...r, isActive: true, version: 1 }, { transaction });
+    inserted += 1;
+  }
+  return inserted;
+}
+
 async function seedReference() {
   return sequelize.transaction(async (transaction) => ({
     settings: await seedSettings(transaction),
     esports: await seedEsports(transaction),
     templates: await seedTemplates(transaction),
+    kycRequirements: await seedKycRequirements(transaction),
   }));
 }
 
-module.exports = { seedReference, seedSettings, seedEsports, seedTemplates, settingRow, SETTING_KEYS, settingsSeed, esportsSeed, templatesSeed };
+module.exports = { seedReference, seedSettings, seedEsports, seedTemplates, seedKycRequirements, kycSeed, settingRow, SETTING_KEYS, settingsSeed, esportsSeed, templatesSeed };

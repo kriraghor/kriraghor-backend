@@ -26,5 +26,7 @@ module.exports = {
     './src/modules/payments/refunds.rules.js': FULL,
     // M07 payout amounts, holds, approvals and schedules.
     './src/modules/payouts/payouts.rules.js': FULL,
+    // M02 NID format, age, file types, checks, decisions and the member role.
+    './src/modules/kyc/kyc.rules.js': FULL,
   },
 };
