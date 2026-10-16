@@ -1,8 +1,6 @@
-<<<<<<< HEAD
-# Lint, tests against PostgreSQL + Redis, OpenAPI drift check, then image build, Trivy, GHCR and the
-# staging image-tag PR, all from the reusable workflow in kriraghor-infra (ADR-003).
-=======
->>>>>>> origin/feat/0b-platform
+# Lint, the unit and e2e tests against PostgreSQL and Redis, the OpenAPI drift check, then the image
+# build and a Trivy scan that fails on fixable HIGH or CRITICAL findings.
+
 name: ci
 
 on:
@@ -12,15 +10,80 @@ on:
 
 permissions:
   contents: read
-  packages: write
+
+# A newer run for the same ref makes the in-flight one obsolete.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Throwaway test credentials, never used outside CI. Every key here is required by src/config/index.js,
+# which validates the environment on import and aborts the process when one is missing.
+env:
+  NODE_ENV: test
+  DATABASE_URL: postgres://kriraghor:kriraghor@127.0.0.1:5432/kriraghor_test?sslmode=disable
+  REDIS_URL: redis://127.0.0.1:6379
+  JWT_ACCESS_SECRET: test_jwt_access_secret_key_123456789
+  JWT_SPECIAL_SECRET: test_jwt_special_secret_key_123456789
+  CSRF_SECRET: test_csrf_secret_that_is_at-least-32-chars
+  # Base64 of exactly 32 bytes, as the DATA_ENCRYPTION_KEY check requires.
+  DATA_ENCRYPTION_KEY: MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=
+  OTP_HASH_SECRET: test_otp_hash_secret_key_123456789
+  NID_HMAC_SECRET: test_nid_hmac_secret_123456789
 
 jobs:
-  test:
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7.1.0
+        with:
+          # Matches the builder image in the Dockerfile.
+          node-version: 24.16.0
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+  openapi:
+    name: OpenAPI drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24.16.0
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Fails when openapi.json no longer matches the zod route schemas (ADR-002).
+      - name: Check openapi.json is up to date
+        run: npm run openapi -- --check
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
 
     services:
       postgres:
-        image: postgres:16-alpine
+        # Pinned to the major used by docker-compose.yml and ADR-005, so CI matches local and production.
+        image: postgres:17.11-alpine
         env:
           POSTGRES_DB: kriraghor_test
           POSTGRES_USER: kriraghor
@@ -28,10 +91,10 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U kriraghor -d kriraghor_test"
           --health-interval 10s
           --health-timeout 5s
-          --health-retries 5
+          --health-retries 10
 
       redis:
         image: redis:7.4-alpine
@@ -41,31 +104,56 @@ jobs:
           --health-cmd "redis-cli ping"
           --health-interval 10s
           --health-timeout 5s
-          --health-retries 5
+          --health-retries 10
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7.1.0
         with:
-          node-version: 24
+          node-version: 24.16.0
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Run Lint
-        run: npm run lint
-
-      - name: Run Tests
-        env:
-          DATABASE_URL: postgres://kriraghor:kriraghor@127.0.0.1:5432/kriraghor_test?sslmode=disable
-          REDIS_URL: redis://127.0.0.1:6379
-          NODE_ENV: test
-          JWT_ACCESS_SECRET: test_jwt_access_secret_key_123456789
-          JWT_SPECIAL_SECRET: test_jwt_special_secret_key_123456789
-          DATA_ENCRYPTION_KEY: MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=
-          OTP_HASH_SECRET: test_otp_hash_secret_key_123456789
+      # global-setup.js re-runs the migrations and the reference seed against an empty database.
+      - name: Run tests
         run: npm test
+
+  image:
+    name: Build and scan image
+    needs: [lint, openapi, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v4.4.1
+
+      - name: Build image
+        uses: docker/build-push-action@v7.4.0
+        with:
+          context: .
+          # Loaded into the local daemon so the Trivy step can scan the exact image just built.
+          push: false
+          load: true
+          tags: kriraghor-backend:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: kriraghor-backend:ci
+          format: table
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          # Only findings that actually have a fix available gate the build.
+          ignore-unfixed: true
+          exit-code: '1'
