@@ -11,6 +11,13 @@ module.exports = {
     const now = { type: 'TIMESTAMP(3) WITH TIME ZONE', allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP(3)') };
     const uuid = { type: DataTypes.UUID, allowNull: false };
 
+    // Idempotency safety: Drop existing constraints if they already exist to prevent "already exists" errors on re-run
+    await queryInterface.sequelize.query('ALTER TABLE IF EXISTS users DROP CONSTRAINT IF EXISTS ck_users_locale;');
+    await queryInterface.sequelize.query('ALTER TABLE IF EXISTS users DROP CONSTRAINT IF EXISTS ck_users_kyc_status;');
+    await queryInterface.sequelize.query('ALTER TABLE IF EXISTS users DROP CONSTRAINT IF EXISTS ck_users_status;');
+    await queryInterface.sequelize.query('ALTER TABLE IF EXISTS users DROP CONSTRAINT IF EXISTS ck_users_last_panel_role;');
+    await queryInterface.sequelize.query('ALTER TABLE IF EXISTS users DROP CONSTRAINT IF EXISTS chk_users_identifier;');
+
     await h.createTable(queryInterface, 'users', {
       id: { ...uuid, primaryKey: true },
       phone: { type: DataTypes.STRING(16), allowNull: true, unique: true },
@@ -40,6 +47,10 @@ module.exports = {
       'ALTER TABLE users ADD CONSTRAINT chk_users_identifier CHECK (phone IS NOT NULL OR email IS NOT NULL)'
     );
 
+    // Drop user_roles existing constraint safety check
+    await queryInterface.sequelize.query('ALTER TABLE IF EXISTS user_roles DROP CONSTRAINT IF EXISTS ck_user_roles_role;');
+    await queryInterface.sequelize.query('ALTER TABLE IF EXISTS user_roles DROP CONSTRAINT IF EXISTS ck_user_roles_status;');
+
     await h.createTable(queryInterface, 'user_roles', {
       id: { ...uuid, primaryKey: true },
       user_id: { ...uuid, references: { model: 'users', key: 'id' }, onDelete: 'RESTRICT' },
@@ -55,6 +66,10 @@ module.exports = {
       created_at: now,
       updated_at: now,
     });
+    
+    // Drop and re-add index safely
+    try { await queryInterface.removeIndex('user_roles', 'uq_user_roles_user_role'); } catch (e) { void e; }
+    try { await queryInterface.removeIndex('user_roles', 'ix_user_roles_role_status'); } catch (e) { void e; }
     await queryInterface.addIndex('user_roles', ['user_id', 'role'], { unique: true, name: 'uq_user_roles_user_role' });
     await queryInterface.addIndex('user_roles', ['role', 'status'], { name: 'ix_user_roles_role_status' });
 
@@ -78,6 +93,8 @@ module.exports = {
       created_at: now,
       updated_at: now,
     });
+    try { await queryInterface.removeIndex('sessions', 'ix_sessions_user_active'); } catch (e) { void e; }
+    try { await queryInterface.removeIndex('sessions', 'ix_sessions_family'); } catch (e) { void e; }
     await queryInterface.addIndex('sessions', ['user_id', 'revoked_at'], { name: 'ix_sessions_user_active' });
     await queryInterface.addIndex('sessions', ['family_id'], { name: 'ix_sessions_family' });
 
@@ -92,6 +109,8 @@ module.exports = {
       ip: { type: DataTypes.STRING(45), allowNull: true },
       created_at: now,
     });
+    try { await queryInterface.removeIndex('otp_codes', 'ix_otp_target_purpose_created'); } catch (e) { void e; }
+    try { await queryInterface.removeIndex('otp_codes', 'ix_otp_ip_created'); } catch (e) { void e; }
     await queryInterface.addIndex('otp_codes', ['target', 'purpose', 'created_at'], { name: 'ix_otp_target_purpose_created' });
     await queryInterface.addIndex('otp_codes', ['ip', 'created_at'], { name: 'ix_otp_ip_created' });
 
@@ -123,7 +142,10 @@ module.exports = {
       created_at: now,
       updated_at: now,
     });
+    try { await queryInterface.removeIndex('staff_permissions', 'uq_staff_perm_user_perm'); } catch (e) { void e; }
     await queryInterface.addIndex('staff_permissions', ['user_id', 'permission'], { unique: true, name: 'uq_staff_perm_user_perm' });
+    
+    await queryInterface.sequelize.query('ALTER TABLE staff_permissions DROP CONSTRAINT IF EXISTS chk_staff_perm_grantable;');
     await queryInterface.sequelize.query(
       "ALTER TABLE staff_permissions ADD CONSTRAINT chk_staff_perm_grantable CHECK (permission NOT IN ('edit_fees','manage_staff'))"
     );
@@ -145,6 +167,7 @@ module.exports = {
       created_at: now,
       updated_at: now,
     });
+    try { await queryInterface.removeIndex('user_sanctions', 'ix_sanctions_user_open'); } catch (e) { void e; }
     await queryInterface.addIndex('user_sanctions', ['user_id', 'lifted_at'], { name: 'ix_sanctions_user_open' });
 
     // Single-use step-up tokens (scope-bound). Stored by jti so reuse is rejected.
@@ -174,6 +197,9 @@ module.exports = {
       request_id: { type: DataTypes.STRING(64), allowNull: true },
       created_at: now,
     });
+    try { await queryInterface.removeIndex('audit_logs', 'ix_audit_entity'); } catch (e) { void e; }
+    try { await queryInterface.removeIndex('audit_logs', 'ix_audit_actor'); } catch (e) { void e; }
+    try { await queryInterface.removeIndex('audit_logs', 'ix_audit_action'); } catch (e) { void e; }
     await queryInterface.addIndex('audit_logs', ['entity_type', 'entity_id', 'created_at'], { name: 'ix_audit_entity' });
     await queryInterface.addIndex('audit_logs', ['actor_id', 'created_at'], { name: 'ix_audit_actor' });
     await queryInterface.addIndex('audit_logs', ['action', 'created_at'], { name: 'ix_audit_action' });
