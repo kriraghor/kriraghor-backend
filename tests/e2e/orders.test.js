@@ -182,7 +182,7 @@ describe('M13 shop orders', () => {
     expect(lost.body.code).toBe('INSUFFICIENT_STOCK');
     expect((await variantRow(A.variant('42'))).held).toBe(1);
     if (won === r1) {
-      const again = await checkout(b1, { idem });
+      const again = await checkout(b1, { idem, expectedTotal: 268000 }); // the same body: the cart is empty after the order
       expect(again.body.order.id).toBe(r1.body.order.id);
     }
     expect(await models.Order.count()).toBe(1);
