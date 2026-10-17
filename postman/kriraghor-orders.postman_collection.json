@@ -1,0 +1,2776 @@
+{
+  "info": {
+    "name": "Kriraghor API: M13 Orders (step 1, shop orders)",
+    "description": "Two live shops (M12): A sells turf boots at ৳2,600, B at ৳1,200. A buyer with a verified phone (gate buy) puts 2 × A and 1 × B in the cart; the quote has a sub-order per shop with ৳80 delivery each inside Dhaka (৳150 outside); checkout holds the stock and starts one payment split into two escrow holds (M06).\n\nPaid through the simulator: shop A accepts (the address shows only now), ships with a tracking number and marks delivered; the buyer confirms and A is paid ৳5,020 (5% on the ৳5,200 items, none on delivery). Shop B rejects: its ৳1,280 split is refunded from its own hold.\n\nA second order is \"not received\": an M17 dispute freezes its hold; the desk decides half (৳1,340 back, A keeps ৳1,273 after ৳67). A master cancels a third with step-up; a fourth expires unaccepted; the buyer cancels a fifth before the shop accepts. The ledger invariants hold throughout.\n\nRequests named \"Runner\" go to the local test runner (pay through the simulator, run the tick, read the ledger).\n\nUnattended: `node postman/run-m13.js` (kriraghor_test database).\n\nRebuild this file with: node postman/build-collection-m13.js",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000/api/v1"
+    },
+    {
+      "key": "controlUrl",
+      "value": ""
+    },
+    {
+      "key": "orderCode",
+      "value": ""
+    },
+    {
+      "key": "paymentId",
+      "value": ""
+    },
+    {
+      "key": "subA",
+      "value": ""
+    },
+    {
+      "key": "subB",
+      "value": ""
+    },
+    {
+      "key": "order2",
+      "value": ""
+    },
+    {
+      "key": "payment2",
+      "value": ""
+    },
+    {
+      "key": "sub2",
+      "value": ""
+    },
+    {
+      "key": "disputeCode",
+      "value": ""
+    },
+    {
+      "key": "version",
+      "value": ""
+    },
+    {
+      "key": "order3",
+      "value": ""
+    },
+    {
+      "key": "payment3",
+      "value": ""
+    },
+    {
+      "key": "sub3",
+      "value": ""
+    },
+    {
+      "key": "order4",
+      "value": ""
+    },
+    {
+      "key": "payment4",
+      "value": ""
+    },
+    {
+      "key": "sub4",
+      "value": ""
+    },
+    {
+      "key": "order5",
+      "value": ""
+    },
+    {
+      "key": "payment5",
+      "value": ""
+    },
+    {
+      "key": "sub5",
+      "value": ""
+    },
+    {
+      "key": "orderRun",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. The cart and the quote (FR-01 to FR-03)",
+      "item": [
+        {
+          "name": "Not your own shop (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 OWN_ITEM', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('OWN_ITEM');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{shopAToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"qty\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/cart/items/{{vA42}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "cart",
+                "items",
+                "{{vA42}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "More than the stock (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 INSUFFICIENT_STOCK', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('INSUFFICIENT_STOCK');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"qty\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/cart/items/{{vA42}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "cart",
+                "items",
+                "{{vA42}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Two of A in EU 42",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"qty\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/cart/items/{{vA42}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "cart",
+                "items",
+                "{{vA42}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "One of B in EU 42",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"two shops, three items, ৳6,400\", () => { pm.expect(j.shops.length === 2 && j.count === 3 && j.items === 640000 && j.ready === true).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"qty\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/cart/items/{{vB42}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "cart",
+                "items",
+                "{{vB42}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Quote outside Dhaka: ৳150 per shop",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"delivery ৳300, total ৳6,700\", () => { pm.expect(j.delivery === 30000 && j.total === 670000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"areaId\": \"{{areaOutside}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/checkout/quote",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "checkout",
+                "quote"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Quote in Dhanmondi: ৳80 per shop",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"two sub-orders\", () => { pm.expect(j.subOrders.map((s) => s.total).join(',') === '528000,128000').to.eql(true); });",
+                  "pm.test(\"total ৳6,560, no price changes\", () => { pm.expect(j.total === 656000 && j.changes.length === 0).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"areaId\": \"{{areaDhaka}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/checkout/quote",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "checkout",
+                "quote"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Checkout and payment (FR-04 to FR-07, M06 splits)",
+      "item": [
+        {
+          "name": "A stale total is refused (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 PRICE_CHANGED', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('PRICE_CHANGED');",
+                  "});",
+                  "pm.test(\"the new quote\", () => { pm.expect(j.quote.total === 656000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ship\": {\n    \"name\": \"Tanvir Hasan\",\n    \"phone\": \"01711000111\",\n    \"areaId\": \"{{areaDhaka}}\",\n    \"line\": \"House 12, Road 5, Dhanmondi\"\n  },\n  \"expectedTotal\": 650000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/checkout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "checkout"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Place the order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'order.code'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('orderCode', v); }",
+                  "if (ok && j) { const v = get(j, 'payment.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('paymentId', v); }",
+                  "if (ok && j) { const v = get(j, 'order.subOrders.0.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('subA', v); }",
+                  "if (ok && j) { const v = get(j, 'order.subOrders.1.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('subB', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-order-one-{{orderRun}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ship\": {\n    \"name\": \"Tanvir Hasan\",\n    \"phone\": \"01711000111\",\n    \"areaId\": \"{{areaDhaka}}\",\n    \"line\": \"House 12, Road 5, Dhanmondi\"\n  },\n  \"expectedTotal\": 656000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/checkout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "checkout"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Replay with the same key: the same order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-order-one-{{orderRun}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ship\": {\n    \"name\": \"Tanvir Hasan\",\n    \"phone\": \"01711000111\",\n    \"areaId\": \"{{areaDhaka}}\",\n    \"line\": \"House 12, Road 5, Dhanmondi\"\n  },\n  \"expectedTotal\": 656000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/checkout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "checkout"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Pending payment, phone masked",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"pending\", () => { pm.expect(j.order.status === 'pending_payment' && j.order.shipTo.phoneLast4 === '0111' && j.payment.payUrl.includes('/pay/')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/orders/{{orderCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "orders",
+                "{{orderCode}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: pay through the simulator",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/pay?paymentId={{paymentId}}",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "pay"
+              ],
+              "query": [
+                {
+                  "key": "paymentId",
+                  "value": "{{paymentId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Placed; each sub-order has its deadline",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"placed\", () => { pm.expect(j.order.status === 'placed' && j.order.subOrders.every((s) => s.status === 'placed' && s.acceptBy)).to.eql(true); });",
+                  "pm.test(\"no payment link\", () => { pm.expect(j.payment === null).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/orders/{{orderCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "orders",
+                "{{orderCode}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The cart is empty",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"empty\", () => { pm.expect(j.count === 0).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "cart"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Shop A fulfils, the buyer confirms (FR-08 to FR-14)",
+      "item": [
+        {
+          "name": "To accept: the area, not the address (FR-10)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"one, no address\", () => { pm.expect(j.items.length === 1 && j.items[0].shipTo === null && j.items[0].area !== null).to.eql(true); });",
+                  "pm.test(\"net ৳5,020\", () => { pm.expect(j.items[0].money.commission === 26000 && j.items[0].money.net === 502000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{shopAToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/shop/sub-orders?tab=to_accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shop",
+                "sub-orders"
+              ],
+              "query": [
+                {
+                  "key": "tab",
+                  "value": "to_accept"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Another shop cannot accept it (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 NOT_YOUR_SHOP', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('NOT_YOUR_SHOP');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{shopBToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/shop/sub-orders/{{subA}}/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shop",
+                "sub-orders",
+                "{{subA}}",
+                "accept"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The buyer is not a shop (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/shop/sub-orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shop",
+                "sub-orders"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Shipping before accepting (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 ORDER_STATE', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('ORDER_STATE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{shopAToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courierName\": \"Pathao\",\n  \"trackingNo\": \"PTH-1001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shop/sub-orders/{{subA}}/ship",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shop",
+                "sub-orders",
+                "{{subA}}",
+                "ship"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Accept: the address shows",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"address\", () => { pm.expect(j.status === 'accepted' && j.shipTo.phone === '+8801711000111' && j.shipTo.line.startsWith('House 12')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{shopAToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/shop/sub-orders/{{subA}}/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shop",
+                "sub-orders",
+                "{{subA}}",
+                "accept"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A bad tracking number (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{shopAToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courierName\": \"Pathao\",\n  \"trackingNo\": \"x\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shop/sub-orders/{{subA}}/ship",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shop",
+                "sub-orders",
+                "{{subA}}",
+                "ship"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ship with Pathao",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"shipped\", () => { pm.expect(j.status === 'shipped' && j.courier.trackingNo === 'PTH-1001').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{shopAToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courierName\": \"Pathao\",\n  \"trackingNo\": \"PTH-1001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shop/sub-orders/{{subA}}/ship",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shop",
+                "sub-orders",
+                "{{subA}}",
+                "ship"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Mark delivered",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"auto-complete set\", () => { pm.expect(j.status === 'delivered' && Boolean(j.completeBy)).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{shopAToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/shop/sub-orders/{{subA}}/delivered",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shop",
+                "sub-orders",
+                "{{subA}}",
+                "delivered"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The buyer can confirm or report it",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"can\", () => { pm.expect(j.order.subOrders[0].can.received === true && j.order.subOrders[0].can.notReceived === true).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/orders/{{orderCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "orders",
+                "{{orderCode}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Received",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"completed\", () => { pm.expect(j.order.subOrders[0].status === 'completed').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/sub-orders/{{subA}}/received",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "sub-orders",
+                "{{subA}}",
+                "received"
+              ]
+            }
+          }
+        },
+        {
+          "name": "B rejects its sub-order (out of stock)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"refunded ৳1,280\", () => { pm.expect(j.status === 'rejected' && j.money.refunded === 128000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{shopBToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"out_of_stock\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shop/sub-orders/{{subB}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shop",
+                "sub-orders",
+                "{{subB}}",
+                "reject"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The order is complete",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"completed\", () => { pm.expect(j.order.status === 'completed').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/orders/{{orderCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "orders",
+                "{{orderCode}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: ledger: A has ৳5,020, B nothing, fee ৳260",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"balanced\", () => { pm.expect(j.invariantsOk === true).to.eql(true); });",
+                  "pm.test(\"payables\", () => { pm.expect(j.payableA === 502000 && j.payableB === 0 && j.feeRevenue === 26000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/check",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "check"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Settlement",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"one completed, ৳5,020 net\", () => { pm.expect(j.completed.count === 1 && j.completed.net === 502000 && j.inEscrow.count === 0).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{shopAToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/shop/settlement",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shop",
+                "settlement"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Not received: an M17 dispute (category not_received)",
+      "item": [
+        {
+          "name": "One of A in EU 43",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"qty\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/cart/items/{{vA43}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "cart",
+                "items",
+                "{{vA43}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Order two",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'order.code'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('order2', v); }",
+                  "if (ok && j) { const v = get(j, 'payment.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('payment2', v); }",
+                  "if (ok && j) { const v = get(j, 'order.subOrders.0.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('sub2', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ship\": {\n    \"name\": \"Tanvir Hasan\",\n    \"phone\": \"01711000111\",\n    \"areaId\": \"{{areaDhaka}}\",\n    \"line\": \"House 12, Road 5, Dhanmondi\"\n  },\n  \"expectedTotal\": 268000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/checkout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "checkout"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: pay order two",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/pay?paymentId={{payment2}}",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "pay"
+              ],
+              "query": [
+                {
+                  "key": "paymentId",
+                  "value": "{{payment2}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Accept order two",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{shopAToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/shop/sub-orders/{{sub2}}/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shop",
+                "sub-orders",
+                "{{sub2}}",
+                "accept"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ship order two",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{shopAToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courierName\": \"Steadfast\",\n  \"trackingNo\": \"SF-889201\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shop/sub-orders/{{sub2}}/ship",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shop",
+                "sub-orders",
+                "{{sub2}}",
+                "ship"
+              ]
+            }
+          }
+        },
+        {
+          "name": "What the buyer can open",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"not_received ৳2,680\", () => { pm.expect(j.items[0].category === 'not_received' && j.items[0].held === 268000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/disputes/options?sourceType=sub_order&sourceId={{sub2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "disputes",
+                "options"
+              ],
+              "query": [
+                {
+                  "key": "sourceType",
+                  "value": "sub_order"
+                },
+                {
+                  "key": "sourceId",
+                  "value": "{{sub2}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Not received",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'dispute.code'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('disputeCode', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"awaiting the shop\", () => { pm.expect(j.dispute.status === 'awaiting_response' && j.dispute.policyKey === 'order.not_received').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"statement\": \"Steadfast says delivered; nothing came to the flat\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/sub-orders/{{sub2}}/not-received",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "sub-orders",
+                "{{sub2}}",
+                "not-received"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Received is blocked while disputed (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 ORDER_STATE', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('ORDER_STATE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/sub-orders/{{sub2}}/received",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "sub-orders",
+                "{{sub2}}",
+                "received"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The shop answers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{shopAToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Steadfast has a signed slip from the guard\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/disputes/{{disputeCode}}/respond",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "disputes",
+                "{{disputeCode}}",
+                "respond"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The desk claims it: previews without delivery fee",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'dispute.version'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('version', v); }",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"half: ৳1,340 back, fee ৳67\", () => { pm.expect(j.previews.half.refund === 134000 && j.previews.half.fee === 6700).to.eql(true); });",
+                  "pm.test(\"none: fee on items only\", () => { pm.expect(j.previews.none.feeBase === 260000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/disputes/{{disputeCode}}/claim",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "disputes",
+                "{{disputeCode}}",
+                "claim"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Decide half",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"resolved\", () => { pm.expect(j.dispute.status === 'resolved' && j.dispute.refund === 134000 && j.dispute.fee === 6700).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"outcome\": \"half\",\n  \"reason\": \"No proof of hand-over at the flat\",\n  \"version\": {{version}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/disputes/{{disputeCode}}/decide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "disputes",
+                "{{disputeCode}}",
+                "decide"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: ledger: A has ৳6,293, fee ৳327",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"balanced\", () => { pm.expect(j.invariantsOk === true).to.eql(true); });",
+                  "pm.test(\"payable\", () => { pm.expect(j.payableA === 629300 && j.feeRevenue === 32700).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/check",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "check"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Staff, deadlines and cancellations",
+      "item": [
+        {
+          "name": "One of A in EU 43 again",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"qty\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/cart/items/{{vA43}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "cart",
+                "items",
+                "{{vA43}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Order three",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'order.code'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('order3', v); }",
+                  "if (ok && j) { const v = get(j, 'payment.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('payment3', v); }",
+                  "if (ok && j) { const v = get(j, 'order.subOrders.0.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('sub3', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ship\": {\n    \"name\": \"Tanvir Hasan\",\n    \"phone\": \"01711000111\",\n    \"areaId\": \"{{areaDhaka}}\",\n    \"line\": \"House 12, Road 5, Dhanmondi\"\n  },\n  \"expectedTotal\": 268000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/checkout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "checkout"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: pay order three",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/pay?paymentId={{payment3}}",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "pay"
+              ],
+              "query": [
+                {
+                  "key": "paymentId",
+                  "value": "{{payment3}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff: find it by sub-order code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"one\", () => { pm.expect(j.items.length === 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/orders?code={{order3}}-A",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "orders"
+              ],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "{{order3}}-A"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff: the order with its escrow hold, no phone",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"holding ৳2,680\", () => { pm.expect(j.subOrders[0].escrow.held === 268000 && j.subOrders[0].escrow.status === 'holding').to.eql(true); });",
+                  "pm.test(\"no phone\", () => { pm.expect(!JSON.stringify(j).includes('01711000111')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/orders/{{order3}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "orders",
+                "{{order3}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A master cancels it for the platform (step-up)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const q = String(pm.variables.get('stepUpQueueA') || '').split(',').filter(Boolean);",
+                  "if (q.length) { pm.variables.set('stepUpToken', q.shift()); pm.environment.set('stepUpQueueA', q.join(',')); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"cancelled, refunded\", () => { pm.expect(j.subOrders[0].status === 'cancelled' && j.subOrders[0].money.refunded === 268000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "X-Step-Up",
+                "value": "{{stepUpToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"The shop is closed this week\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/orders/sub-orders/{{sub3}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "orders",
+                "sub-orders",
+                "{{sub3}}",
+                "cancel"
+              ]
+            }
+          }
+        },
+        {
+          "name": "One of A in EU 42",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"qty\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/cart/items/{{vA42}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "cart",
+                "items",
+                "{{vA42}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Order four",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'order.code'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('order4', v); }",
+                  "if (ok && j) { const v = get(j, 'payment.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('payment4', v); }",
+                  "if (ok && j) { const v = get(j, 'order.subOrders.0.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('sub4', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ship\": {\n    \"name\": \"Tanvir Hasan\",\n    \"phone\": \"01711000111\",\n    \"areaId\": \"{{areaDhaka}}\",\n    \"line\": \"House 12, Road 5, Dhanmondi\"\n  },\n  \"expectedTotal\": 268000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/checkout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "checkout"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: pay order four",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/pay?paymentId={{payment4}}",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "pay"
+              ],
+              "query": [
+                {
+                  "key": "paymentId",
+                  "value": "{{payment4}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: the accept deadline passes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"expired one\", () => { pm.expect(j.tick.expired === 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/expire?subOrderId={{sub4}}",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "expire"
+              ],
+              "query": [
+                {
+                  "key": "subOrderId",
+                  "value": "{{sub4}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Expired and refunded",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"expired\", () => { pm.expect(j.order.status === 'cancelled' && j.order.subOrders[0].status === 'expired' && j.order.subOrders[0].money.refunded === 268000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/orders/{{order4}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "orders",
+                "{{order4}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "One of B",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"qty\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/cart/items/{{vB42}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "cart",
+                "items",
+                "{{vB42}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Order five",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'order.code'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('order5', v); }",
+                  "if (ok && j) { const v = get(j, 'payment.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('payment5', v); }",
+                  "if (ok && j) { const v = get(j, 'order.subOrders.0.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('sub5', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ship\": {\n    \"name\": \"Tanvir Hasan\",\n    \"phone\": \"01711000111\",\n    \"areaId\": \"{{areaDhaka}}\",\n    \"line\": \"House 12, Road 5, Dhanmondi\"\n  },\n  \"expectedTotal\": 128000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/checkout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "checkout"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: pay order five",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/pay?paymentId={{payment5}}",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "pay"
+              ],
+              "query": [
+                {
+                  "key": "paymentId",
+                  "value": "{{payment5}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "The buyer cancels before B accepts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"cancelled\", () => { pm.expect(j.order.subOrders[0].status === 'cancelled' && j.order.subOrders[0].money.refunded === 128000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"changed_mind\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/sub-orders/{{sub5}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "sub-orders",
+                "{{sub5}}",
+                "cancel"
+              ]
+            }
+          }
+        },
+        {
+          "name": "My orders",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"five\", () => { pm.expect(j.items.length === 5).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "orders"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: ledger still balanced",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"balanced\", () => { pm.expect(j.invariantsOk === true).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/check",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "check"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.collectionVariables.get('orderRun')) pm.collectionVariables.set('orderRun', pm.variables.replaceIn('{{$guid}}'));"
+        ]
+      }
+    }
+  ]
+}

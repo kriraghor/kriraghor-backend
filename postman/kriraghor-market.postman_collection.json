@@ -2340,7 +2340,7 @@
                   "pm.test(\"EU 44 not purchasable\", () => { pm.expect(j.variants.find((v) => v.attributes.eu_size === '44').purchasable === false).to.eql(true); });",
                   "pm.test(\"EU 42 low with 2 left\", () => { pm.expect((() => { const v = j.variants.find((x) => x.attributes.eu_size === '42'); return v.stock.code === 'low' && v.stock.available === 2; })()).to.eql(true); });",
                   "pm.test(\"specs labelled\", () => { pm.expect(j.specs.some((s) => s.key === 'stud_type' && s.valueEn === 'Turf (TF)')).to.eql(true); });",
-                  "pm.test(\"checkout comes with M13\", () => { pm.expect(j.checkoutOpen === false).to.eql(true); });"
+                  "pm.test(\"checkout open (M13)\", () => { pm.expect(j.checkoutOpen === true).to.eql(true); });"
                 ]
               }
             }

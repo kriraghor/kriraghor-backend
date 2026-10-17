@@ -182,7 +182,7 @@ const collection = {
             ['EU 44 not purchasable', "j.variants.find((v) => v.attributes.eu_size === '44').purchasable === false"],
             ['EU 42 low with 2 left', "(() => { const v = j.variants.find((x) => x.attributes.eu_size === '42'); return v.stock.code === 'low' && v.stock.available === 2; })()"],
             ['specs labelled', "j.specs.some((s) => s.key === 'stud_type' && s.valueEn === 'Turf (TF)')"],
-            ['checkout comes with M13', 'j.checkoutOpen === false'],
+            ['checkout open (M13)', 'j.checkoutOpen === true'],
           ],
         }),
         owner('Variant history of EU 43', 'GET', '/shop/variants/{{v43}}/movements', { expect: { status: 200 }, checks: [['receive and opening', "j.items.map((m) => m.reasonCode).join(',') === 'received,opening'"]] }),
