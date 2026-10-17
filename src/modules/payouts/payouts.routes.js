@@ -4,6 +4,7 @@
  * M07 routes (§9).
  *   meAccounts     /me/payout-accounts      payee: list, send the confirmation code, add (OTP)
  *   mePayouts      /me/payouts              payee: summary, list, detail, CSV statement
+ *   meWithdrawals  /me/withdrawals          esports winnings on demand (gate withdraw_winnings, M21-FR-26)
  *   adminPayouts   /admin/payouts           finance desk: list, detail, release, approve, reveal,
  *                                           mark paid / failed, retry, cancel, hold, lift hold
  *   adminBatches   /admin/payout-batches    runs and "run now" (master)
@@ -15,9 +16,10 @@ const { Router } = require('express');
 const { validate } = require('../../common/validate');
 const { requireIdempotencyKey } = require('../../common/idempotency');
 const { PERMISSIONS } = require('../../common/enums');
-const { authenticate, authenticateAdmin, requireStaff, requireMaster, requireStepUp, requireAnyPermission } = require('../../middlewares/auth');
+const { authenticate, authenticateAdmin, requireStaff, requireMaster, requireStepUp, requireAnyPermission, requireGate } = require('../../middlewares/auth');
 const accounts = require('./payout-accounts.service');
 const payouts = require('./payouts.service');
+const withdrawals = require('./withdrawals.service');
 const s = require('./payouts.schemas');
 
 const idParam = validate(s.idParam, 'params');
@@ -28,6 +30,12 @@ meAccounts.use(authenticate);
 meAccounts.get('/', async (req, res) => res.json(await accounts.listMine(req.user.id)));
 meAccounts.post('/otp', async (req, res) => res.status(202).json(await accounts.sendCode(req.user, req)));
 meAccounts.post('/', validate(s.accountAdd), async (req, res) => res.status(201).json(await accounts.add(req.user, req.body, req)));
+
+const meWithdrawals = Router();
+meWithdrawals.use(authenticate);
+meWithdrawals.get('/', async (req, res) => res.json(await withdrawals.list(req.user.id)));
+meWithdrawals.get('/available', async (req, res) => res.json(await withdrawals.available(req.user.id)));
+meWithdrawals.post('/', requireGate('withdraw_winnings'), requireIdempotencyKey('payouts.withdraw'), async (req, res) => res.status(201).json(await withdrawals.create(req.user, req)));
 
 const mePayouts = Router();
 mePayouts.use(authenticate);
@@ -78,4 +86,4 @@ adminAccounts.get('/', canView, validate(s.accountsQuery, 'query'), async (req, 
 adminAccounts.post('/:id/verify', canRelease, idParam, validate(s.verifyBody), async (req, res) => res.json(await accounts.verify(req.user, req.params.id, req.body, req)));
 adminAccounts.post('/:id/reject', canRelease, idParam, validate(s.rejectBody), async (req, res) => res.json(await accounts.reject(req.user, req.params.id, req.body, req)));
 
-module.exports = { meAccounts, mePayouts, adminPayouts, adminBatches, adminAccounts };
+module.exports = { meWithdrawals, meAccounts, mePayouts, adminPayouts, adminBatches, adminAccounts };

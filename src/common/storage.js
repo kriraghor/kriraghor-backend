@@ -8,7 +8,7 @@ const config = require('../config');
 
 const memory = new Map();
 let client;
-let bucketReady = false;
+const ready = new Set();
 
 function s3() {
   if (!client) {
@@ -42,13 +42,35 @@ async function putPrivate(key, body, contentType) {
   const { PutObjectCommand } = require('@aws-sdk/client-s3');
   // SeaweedFS answers a missing bucket with a 500 InternalError rather than NoSuchBucket, so where
   // bucket creation is allowed (local, k3d) the bucket is ensured once per process before the first write.
-  if (config.s3.createBuckets && !bucketReady) {
-    await ensureBucket(config.s3.privateBucket);
-    bucketReady = true;
-  }
+  await bucketFor(config.s3.privateBucket);
   await s3().send(new PutObjectCommand({ Bucket: config.s3.privateBucket, Key: key, Body: body, ContentType: contentType }));
   return { key };
 }
+
+async function bucketFor(bucket) {
+  if (config.s3.createBuckets && !ready.has(bucket)) {
+    await ensureBucket(bucket);
+    ready.add(bucket);
+  }
+}
+
+/**
+ * Store an object in the public bucket (ground photos). Keys are never reused, so the object can be
+ * cached for a year. Anyone can read it at publicUrl(key): never put private data here.
+ */
+async function putPublic(key, body, contentType) {
+  if (config.storage.driver === 'memory') {
+    memory.set(`public:${key}`, { body: Buffer.from(body), contentType });
+    return { key, url: publicUrl(key) };
+  }
+  const { PutObjectCommand } = require('@aws-sdk/client-s3');
+  await bucketFor(config.s3.publicBucket);
+  await s3().send(new PutObjectCommand({ Bucket: config.s3.publicBucket, Key: key, Body: body, ContentType: contentType, CacheControl: 'public, max-age=31536000, immutable' }));
+  return { key, url: publicUrl(key) };
+}
+
+/** The public URL of an object in the public bucket. */
+const publicUrl = (key) => `${config.s3.publicBaseUrl}/${key}`;
 
 /** Read an object from the private bucket as { body: Readable | Buffer, contentType }. */
 async function getPrivate(key) {
@@ -72,4 +94,4 @@ async function deletePrivate(key) {
   await s3().send(new DeleteObjectCommand({ Bucket: config.s3.privateBucket, Key: key }));
 }
 
-module.exports = { putPrivate, getPrivate, deletePrivate, _memory: memory };
+module.exports = { putPrivate, getPrivate, deletePrivate, putPublic, publicUrl, _memory: memory };

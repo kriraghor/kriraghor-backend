@@ -7,6 +7,9 @@ const logger = require('../common/logger');
 const { compile } = require('../common/origins');
 const { socketConnections } = require('../common/metrics');
 const { AUDIENCES, verifyAccessToken } = require('../modules/auth/access.service');
+const { PUBLIC_ROOM } = require('../common/realtime');
+
+const MAX_PUBLIC_ROOMS = 10;
 
 const allowedOrigin = compile([...config.corsOrigins, ...config.adminOrigins]);
 
@@ -21,6 +24,9 @@ const rooms = {
  * Handshake: auth.token (access token) and auth.audience ("api" by default, "admin" from the
  * admin portal). The token goes through the same checks as HTTP requests (access.service).
  * The socket is disconnected when the token expires; the client reconnects with a fresh one.
+ * Without a token the socket is a guest: no user room, public rooms only (M21 tournament pages).
+ * Clients may join public rooms (esports_tournament:{id}, esports_match:{id}) with `subscribe`;
+ * nothing else can be joined from the client.
  */
 function createRealtimeServer(httpServer, { adapter } = {}) {
   const io = new Server(httpServer, {
@@ -38,6 +44,12 @@ function createRealtimeServer(httpServer, { adapter } = {}) {
     try {
       const { token, audience = AUDIENCES.API } = socket.handshake.auth ?? {};
       if (!Object.values(AUDIENCES).includes(audience)) throw new Error('bad audience');
+      if (!token && audience === AUDIENCES.API) {
+        socket.data.userId = null;
+        socket.data.audience = audience;
+        socket.data.exp = null;
+        return next();
+      }
       const { principal, auth } = await verifyAccessToken(token, audience);
       socket.data.userId = principal.id;
       socket.data.audience = audience;
@@ -53,18 +65,30 @@ function createRealtimeServer(httpServer, { adapter } = {}) {
 
   io.on('connection', (socket) => {
     socketConnections.inc();
-    socket.join(rooms.user(socket.data.userId));
+    if (socket.data.userId) socket.join(rooms.user(socket.data.userId));
     if (socket.data.audience === AUDIENCES.ADMIN) socket.join(rooms.staff);
     socket.emit('ready', { userId: socket.data.userId, rooms: [...socket.rooms].filter((r) => r !== socket.id) });
 
-    const ttl = Math.max(0, socket.data.exp - Date.now());
-    const expiry = setTimeout(() => {
-      socket.emit('auth.expired');
-      socket.disconnect(true);
-    }, ttl);
+    const expiry = socket.data.exp
+      ? setTimeout(() => {
+          socket.emit('auth.expired');
+          socket.disconnect(true);
+        }, Math.max(0, socket.data.exp - Date.now()))
+      : null;
+
+    // Public rooms only, and a few at a time; the ack says whether it worked.
+    socket.on('subscribe', (room, ack) => {
+      const joined = [...socket.rooms].filter((r) => PUBLIC_ROOM.test(r)).length;
+      const ok = typeof room === 'string' && PUBLIC_ROOM.test(room) && joined < MAX_PUBLIC_ROOMS;
+      if (ok) socket.join(room);
+      if (typeof ack === 'function') ack({ ok });
+    });
+    socket.on('unsubscribe', (room) => {
+      if (typeof room === 'string' && PUBLIC_ROOM.test(room)) socket.leave(room);
+    });
 
     socket.on('disconnect', () => {
-      clearTimeout(expiry);
+      if (expiry) clearTimeout(expiry);
       socketConnections.dec();
     });
   });

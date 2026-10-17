@@ -20,6 +20,10 @@ const payouts = require('../modules/payouts/payouts.service');
 const payoutHolds = require('../modules/payouts/holds.service');
 const kyc = require('../modules/kyc/kyc.service');
 const moderation = require('../modules/moderation/moderation.service');
+const esportsLifecycle = require('../modules/esports/esports.lifecycle');
+const esportsRankings = require('../modules/esports/rankings.service');
+const bookings = require('../modules/bookings/bookings.service');
+const analytics = require('../modules/analytics/facts.service');
 const { purgeExpired: purgeIdempotencyKeys } = require('../common/idempotency');
 const logger = require('../common/logger');
 
@@ -203,6 +207,58 @@ const JOBS = [
     queue: QUEUES.MODERATION,
     every: 60 * 1000,
     run: async () => moderation.watchApplies(),
+  },
+  // ---------------- M21 esports (§10). Idempotent: every step is guarded by status.
+  {
+    // Registration open/close (auto-cancel below the minimum), check-in open/close, hold and offer
+    // expiry, room reveal, live, dispute windows. Per-entity delayed jobs come in step 2.
+    name: 'esports.tick',
+    queue: QUEUES.ESPORTS,
+    every: 60 * 1000,
+    run: async () => esportsLifecycle.tick(),
+  },
+  {
+    // FR-28: rankings rebuilt nightly (finalising a tournament also rebuilds its game at once).
+    name: 'esports.rankings-recompute',
+    queue: QUEUES.ESPORTS,
+    pattern: '0 3 * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => esportsRankings.recomputeAll(),
+  },
+  // ---------------- M10 bookings (§10). Idempotent: every step locks the row and checks its status.
+  {
+    // Holds past their time; checked-in bookings at their end; never-checked-in bookings
+    // booking.auto_complete_after_hours after the end (full release, Q68); start reminders; venue
+    // balances not recorded after booking.balance_unrecorded_days.
+    name: 'bookings.tick',
+    queue: QUEUES.BOOKINGS,
+    every: 60 * 1000,
+    run: async () => bookings.tick(),
+  },
+  // ---------------- M19 analytics (§10). Idempotent: upserts and REFRESH … CONCURRENTLY under an advisory lock.
+  {
+    // FR-10: refresh the day-grained summaries (asOf). The interval is analytics.mview_refresh_minutes,
+    // read when the schedulers are registered (a change applies at the next deploy).
+    name: 'analytics.refresh-mviews',
+    queue: QUEUES.ANALYTICS,
+    every: () => settings.get('analytics.mview_refresh_minutes') * 60 * 1000,
+    run: async () => analytics.refreshViews(),
+  },
+  {
+    // FR-09: re-read the last analytics.reconcile_days through the owning services; repair, log, alert.
+    name: 'analytics.reconcile',
+    queue: QUEUES.ANALYTICS,
+    pattern: '0 3 * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => analytics.reconcile(),
+  },
+  {
+    // Occupancy (open and booked half-hours) for the last 2 and next 14 days, so hours changes count.
+    name: 'analytics.court-days',
+    queue: QUEUES.ANALYTICS,
+    pattern: '30 2 * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => ({ rebuilt: await analytics.rebuildRecentCourtDays() }),
   },
   {
     name: 'idempotency.purge',

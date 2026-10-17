@@ -1,6 +1,6 @@
 {
-  "seedVersion": 4,
-  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*).",
+  "seedVersion": 8,
+  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code.",
   "templates": [
     {
       "code": "AUDIT_CRITICAL",
@@ -2553,6 +2553,1662 @@
           "name": "kind",
           "type": "text",
           "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_UID_VERIFIED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "UID verified",
+      "body": "Your game UID is verified. You can join tournaments now.",
+      "variables": []
+    },
+    {
+      "code": "ESPORTS_UID_VERIFIED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "UID যাচাই হয়েছে",
+      "body": "আপনার গেম UID যাচাই হয়েছে। এখন টুর্নামেন্টে যোগ দিতে পারবেন।",
+      "variables": []
+    },
+    {
+      "code": "ESPORTS_UID_REJECTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "UID not accepted",
+      "body": "We could not verify your game UID: {{reason}}. Add it again with a clear screenshot.",
+      "variables": [
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_UID_REJECTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "UID গ্রহণ হয়নি",
+      "body": "আপনার গেম UID যাচাই করা যায়নি: {{reason}}। পরিষ্কার স্ক্রিনশট দিয়ে আবার যোগ করুন।",
+      "variables": [
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_SQUAD_INVITE",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Squad invite",
+      "body": "You are invited to join {{squad}}.",
+      "variables": [
+        {
+          "name": "squad",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_SQUAD_INVITE",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "স্কোয়াডে আমন্ত্রণ",
+      "body": "{{squad}}-এ যোগ দিতে আপনাকে আমন্ত্রণ জানানো হয়েছে।",
+      "variables": [
+        {
+          "name": "squad",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_REG_CONFIRMED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "You are in",
+      "body": "Your entry for {{title}} is confirmed. Check in before the first match.",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_REG_CONFIRMED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আপনি আছেন",
+      "body": "{{title}}-এ আপনার এন্ট্রি নিশ্চিত। প্রথম ম্যাচের আগে চেক-ইন করুন।",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_WAITLIST_OFFER",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "A slot opened",
+      "body": "A slot in {{title}} is yours until {{until}}. Pay to take it.",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "until",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_WAITLIST_OFFER",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "একটি স্লট খালি",
+      "body": "{{title}}-এর একটি স্লট {{until}} পর্যন্ত আপনার। নিতে পেমেন্ট করুন।",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "until",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_WAITLIST_OFFER",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: a slot in {{title}} is yours until {{until}}. Open the app to pay.",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "until",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_WAITLIST_OFFER",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{title}}-এর একটি স্লট {{until}} পর্যন্ত আপনার। পেমেন্ট করতে অ্যাপ খুলুন।",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "until",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_CHECKIN_OPEN",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Check-in is open",
+      "body": "Check in for {{title}} before {{until}}, or your slot is lost.",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "until",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_CHECKIN_OPEN",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "চেক-ইন চালু",
+      "body": "{{until}}-এর আগে {{title}}-এ চেক-ইন করুন, নইলে স্লট হারাবেন।",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "until",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_CHECKIN_OPEN",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: check in for {{title}} before {{until}}.",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "until",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_CHECKIN_OPEN",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{until}}-এর আগে {{title}}-এ চেক-ইন করুন।",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "until",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_ROOM_READY",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Room ready",
+      "body": "The room for {{title}}, match {{match}}, is ready. Open the app to see it.",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "match",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_ROOM_READY",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "রুম প্রস্তুত",
+      "body": "{{title}}, ম্যাচ {{match}}-এর রুম প্রস্তুত। দেখতে অ্যাপ খুলুন।",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "match",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_RESULTS_POSTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Results posted",
+      "body": "Results for {{title}}, match {{match}}, are up. Dispute by {{until}} if something is wrong.",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "match",
+          "type": "number"
+        },
+        {
+          "name": "until",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_RESULTS_POSTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "ফলাফল প্রকাশিত",
+      "body": "{{title}}, ম্যাচ {{match}}-এর ফলাফল এসেছে। ভুল থাকলে {{until}}-এর মধ্যে আপত্তি জানান।",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "match",
+          "type": "number"
+        },
+        {
+          "name": "until",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_DISPUTE_DECIDED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Dispute decided",
+      "body": "Your dispute for {{title}} is decided: {{outcome}}.",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_DISPUTE_DECIDED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আপত্তির সিদ্ধান্ত",
+      "body": "{{title}}-এ আপনার আপত্তির সিদ্ধান্ত: {{outcome}}।",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_CANCELLED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Tournament cancelled",
+      "body": "{{title}} is cancelled. Paid entries are refunded in full.",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_CANCELLED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "টুর্নামেন্ট বাতিল",
+      "body": "{{title}} বাতিল হয়েছে। পরিশোধিত এন্ট্রির পুরো টাকা ফেরত দেওয়া হবে।",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_CANCELLED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{title}} is cancelled. Your entry fee is refunded in full.",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_CANCELLED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{title}} বাতিল। আপনার এন্ট্রি ফি পুরো ফেরত দেওয়া হবে।",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_PRIZE_CREDITED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Prize credited",
+      "body": "You won {{amount}} in {{title}}. It is in your winnings.",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_PRIZE_CREDITED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পুরস্কার জমা",
+      "body": "{{title}}-এ আপনি {{amount}} জিতেছেন। এটি আপনার জেতা টাকায় জমা হয়েছে।",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_PRIZE_CREDITED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: you won {{amount}} in {{title}}. Withdraw it from the app.",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_PRIZE_CREDITED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{title}}-এ আপনি {{amount}} জিতেছেন। অ্যাপ থেকে তুলুন।",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_DISPUTE_OPENED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Result disputed",
+      "body": "A player disputed a result in {{title}}.",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "ESPORTS_DISPUTE_OPENED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "ফলাফলে আপত্তি",
+      "body": "{{title}}-এ একজন খেলোয়াড় ফলাফলে আপত্তি জানিয়েছেন।",
+      "variables": [
+        {
+          "name": "title",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "BUSINESS_DOC_SUBMITTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Documents received",
+      "body": "Thanks. We check your {{doc}} within a working day and tell you here.",
+      "variables": [
+        {
+          "name": "doc",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "BUSINESS_DOC_SUBMITTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "কাগজ পাওয়া গেছে",
+      "body": "ধন্যবাদ। এক কর্মদিবসের মধ্যে আমরা আপনার {{doc}} যাচাই করে এখানে জানাব।",
+      "variables": [
+        {
+          "name": "doc",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "BUSINESS_DOC_CHANGES_REQUESTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Document needs changes",
+      "body": "We could not accept your {{doc}}: {{reason}}. Please upload it again.",
+      "variables": [
+        {
+          "name": "doc",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "BUSINESS_DOC_CHANGES_REQUESTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "কাগজে পরিবর্তন দরকার",
+      "body": "আপনার {{doc}} গ্রহণ করা যায়নি: {{reason}}। আবার আপলোড করুন।",
+      "variables": [
+        {
+          "name": "doc",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "BUSINESS_DOC_CHANGES_REQUESTED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: we could not accept your {{doc}}. Please upload it again in your account.",
+      "variables": [
+        {
+          "name": "doc",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "BUSINESS_DOC_CHANGES_REQUESTED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: আপনার {{doc}} গ্রহণ করা যায়নি। অ্যাকাউন্টে আবার আপলোড করুন।",
+      "variables": [
+        {
+          "name": "doc",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "BUSINESS_DOC_REVIEW_NEEDED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Owner documents to review",
+      "body": "A ground owner's {{doc}} is waiting on the Moderation desk.",
+      "variables": [
+        {
+          "name": "doc",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "BUSINESS_DOC_REVIEW_NEEDED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "মালিকের কাগজ যাচাই",
+      "body": "মডারেশন ডেস্কে একজন মাঠ মালিকের {{doc}} অপেক্ষায়।",
+      "variables": [
+        {
+          "name": "doc",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "GROUND_LIVE",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Ground approved",
+      "body": "{{name}} is approved and live on Kriraghor.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "url",
+          "type": "text",
+          "maxLen": 200
+        }
+      ]
+    },
+    {
+      "code": "GROUND_LIVE",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "মাঠ অনুমোদিত",
+      "body": "{{name}} অনুমোদিত হয়েছে এবং ক্রীড়াঘরে লাইভ।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "url",
+          "type": "text",
+          "maxLen": 200
+        }
+      ]
+    },
+    {
+      "code": "GROUND_LIVE",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{name}} is approved and live. Manage it on your business desk.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "GROUND_LIVE",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{name}} অনুমোদিত ও লাইভ। বিজনেস ডেস্কে পরিচালনা করুন।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "GROUND_CHANGES_REQUESTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Changes needed",
+      "body": "Staff asked for changes to {{name}}: {{reason}}.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "GROUND_CHANGES_REQUESTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পরিবর্তন দরকার",
+      "body": "{{name}}-এ পরিবর্তন চাওয়া হয়েছে: {{reason}}।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "GROUND_CHANGES_REQUESTED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: please update {{name}} and send it again ({{reason}}).",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "GROUND_CHANGES_REQUESTED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{name}} ঠিক করে আবার পাঠান ({{reason}})।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "GROUND_REJECTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Ground not approved",
+      "body": "{{name}} was not approved: {{reason}}.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "GROUND_REJECTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "মাঠ অনুমোদিত হয়নি",
+      "body": "{{name}} অনুমোদিত হয়নি: {{reason}}।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "GROUND_REJECTED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{name}} was not approved. See your business desk for details.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "GROUND_REJECTED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{name}} অনুমোদিত হয়নি। বিস্তারিত বিজনেস ডেস্কে দেখুন।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "GROUND_PRICING_PUBLISHED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "New prices live",
+      "body": "New prices for {{name}} are live. Bookings already made keep their price.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "GROUND_PRICING_PUBLISHED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "নতুন দাম চালু",
+      "body": "{{name}}-এর নতুন দাম চালু। আগের বুকিংয়ের দাম বদলাবে না।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "GROUND_REVIEW_NEEDED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Ground to review",
+      "body": "A ground ({{name}}) is waiting on the Moderation desk.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "GROUND_REVIEW_NEEDED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "যাচাইয়ের জন্য মাঠ",
+      "body": "মডারেশন ডেস্কে একটি মাঠ ({{name}}) অপেক্ষায়।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_CONFIRMED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Booking confirmed",
+      "body": "{{code}} at {{ground}}, {{start}}. Paid {{paid}} online; {{due}} to pay at the venue. The advance is not refunded if you cancel.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "paid",
+          "type": "money"
+        },
+        {
+          "name": "due",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_CONFIRMED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "বুকিং নিশ্চিত",
+      "body": "{{ground}}-এ {{code}}, {{start}}। অনলাইনে {{paid}} দেওয়া হয়েছে; ভেন্যুতে {{due}} দিতে হবে। বাতিল করলে অগ্রিম ফেরত হয় না।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "paid",
+          "type": "money"
+        },
+        {
+          "name": "due",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_CONFIRMED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: booking {{code}} confirmed, {{ground}}, {{start}}. Pay {{due}} at the venue.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "due",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_CONFIRMED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: বুকিং {{code}} নিশ্চিত, {{ground}}, {{start}}। ভেন্যুতে {{due}} দিন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "due",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_NEW_FOR_OWNER",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "New booking",
+      "body": "{{code}} at {{ground}}, {{start}}. {{paid}} paid online (held until check-in); {{due}} due at the venue.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "paid",
+          "type": "money"
+        },
+        {
+          "name": "due",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_NEW_FOR_OWNER",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "নতুন বুকিং",
+      "body": "{{ground}}-এ {{code}}, {{start}}। অনলাইনে {{paid}} (চেক-ইন পর্যন্ত জমা); ভেন্যুতে {{due}} বাকি।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "paid",
+          "type": "money"
+        },
+        {
+          "name": "due",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_CANCELLED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Booking cancelled",
+      "body": "You cancelled {{code}} at {{ground}}. Refund: {{refund}}. The advance of {{retained}} is kept.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        },
+        {
+          "name": "retained",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_CANCELLED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "বুকিং বাতিল",
+      "body": "আপনি {{ground}}-এর {{code}} বাতিল করেছেন। ফেরত: {{refund}}। অগ্রিম {{retained}} ফেরত হয় না।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        },
+        {
+          "name": "retained",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_CANCELLED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{code}} cancelled. Refund {{refund}} to your payment method.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_CANCELLED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{code}} বাতিল। {{refund}} আপনার পেমেন্ট মাধ্যমে ফেরত যাবে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_CANCELLED_FOR_OWNER",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "A player cancelled",
+      "body": "{{code}} at {{ground}}, {{start}}, was cancelled by the player. You keep {{retained}} before the fee.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "retained",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_CANCELLED_FOR_OWNER",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "খেলোয়াড় বাতিল করেছেন",
+      "body": "{{ground}}-এ {{code}}, {{start}}, খেলোয়াড় বাতিল করেছেন। ফির আগে আপনি {{retained}} পাবেন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "retained",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_OWNER_CANCELLED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Booking cancelled by the venue",
+      "body": "{{code}} at {{ground}}, {{start}}, was cancelled by the venue. You get {{refund}} back in full.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_OWNER_CANCELLED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "ভেন্যু বুকিং বাতিল করেছে",
+      "body": "{{ground}}-এ {{code}}, {{start}}, ভেন্যু বাতিল করেছে। আপনি পুরো {{refund}} ফেরত পাবেন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_OWNER_CANCELLED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{code}} was cancelled by the venue. Full refund {{refund}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_OWNER_CANCELLED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: ভেন্যু {{code}} বাতিল করেছে। পুরো {{refund}} ফেরত।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_REMINDER",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Your booking is soon",
+      "body": "{{code}} at {{ground}} starts {{start}}. Bring {{due}} for the venue.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "due",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_REMINDER",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "বুকিং শিগগিরই",
+      "body": "{{ground}}-এ {{code}} শুরু {{start}}। ভেন্যুর জন্য {{due}} সঙ্গে আনুন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "due",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_REMINDER",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{code}} at {{ground}} starts {{start}}. Pay {{due}} at the venue.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "due",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_REMINDER",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{ground}}-এ {{code}} শুরু {{start}}। ভেন্যুতে {{due}} দিন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "due",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_MOVED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Booking moved",
+      "body": "{{code}} was moved to {{ground}}, same time ({{start}}) and price. If the place changed you can cancel free until the start.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_MOVED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "বুকিং সরানো হয়েছে",
+      "body": "{{code}} {{ground}}-এ সরানো হয়েছে, একই সময় ({{start}}) ও দাম। জায়গা বদলালে শুরুর আগে বিনামূল্যে বাতিল করতে পারবেন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_MOVED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{code}} moved to {{ground}}, {{start}}. Same price.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_MOVED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{code}} {{ground}}-এ সরানো হয়েছে, {{start}}। দাম একই।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_NO_SHOW",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Marked as no-show",
+      "body": "The venue marked {{code}} as a no-show. The advance of {{retained}} is kept; refund: {{refund}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "retained",
+          "type": "money"
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_NO_SHOW",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "নো-শো চিহ্নিত",
+      "body": "ভেন্যু {{code}}-কে নো-শো চিহ্নিত করেছে। অগ্রিম {{retained}} ফেরত হয় না; ফেরত: {{refund}}।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "retained",
+          "type": "money"
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_NO_SHOW",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{code}} marked no-show. Refund {{refund}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_NO_SHOW",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{code}} নো-শো। ফেরত {{refund}}।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ANALYTICS_DRIFT",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Dashboard numbers repaired",
+      "body": "The nightly check repaired {{records}} {{vertical}} records ({{amount}} apart). Look for a missed event.",
+      "variables": [
+        {
+          "name": "vertical",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "records",
+          "type": "number"
+        },
+        {
+          "name": "amount",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ANALYTICS_DRIFT",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "ড্যাশবোর্ডের সংখ্যা ঠিক করা হয়েছে",
+      "body": "রাতের যাচাইয়ে {{vertical}}-এর {{records}}টি রেকর্ড ঠিক করা হয়েছে ({{amount}} পার্থক্য)। কোনো ইভেন্ট বাদ পড়েছে কি না দেখুন।",
+      "variables": [
+        {
+          "name": "vertical",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "records",
+          "type": "number"
+        },
+        {
+          "name": "amount",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ANALYTICS_DRIFT",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Kriraghor: dashboard numbers repaired",
+      "body": "The nightly analytics check repaired {{records}} {{vertical}} records ({{amount}} apart). Check the events and consumers for a missed delivery.",
+      "variables": [
+        {
+          "name": "vertical",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "records",
+          "type": "number"
+        },
+        {
+          "name": "amount",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ANALYTICS_DRIFT",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "ক্রীড়াঘর: ড্যাশবোর্ডের সংখ্যা ঠিক করা হয়েছে",
+      "body": "রাতের অ্যানালিটিক্স যাচাইয়ে {{vertical}}-এর {{records}}টি রেকর্ড ঠিক করা হয়েছে ({{amount}} পার্থক্য)। ইভেন্ট ও কনজিউমার পরীক্ষা করুন।",
+      "variables": [
+        {
+          "name": "vertical",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "records",
+          "type": "number"
+        },
+        {
+          "name": "amount",
+          "type": "money"
         }
       ]
     }

@@ -30,12 +30,12 @@ function sendFile(res, { body, mime }) {
 }
 
 const meVerification = Router();
-meVerification.get('/', authenticate, validate(s.verificationQuery, 'query'), async (req, res) => res.json(await kyc.verification(req.user, req.validQuery.locale)));
+meVerification.get('/', authenticate, validate(s.verificationQuery, 'query'), async (req, res) => res.json(await kyc.verification(req.user, req.validQuery.locale, req.validQuery.role)));
 
 const meDocuments = Router();
 meDocuments.use(authenticate);
 meDocuments.post('/files', validate(s.uploadQuery, 'query'), limits.kycUpload, raw, async (req, res) =>
-  res.status(201).json(await kyc.uploadFile(req.user, { slot: req.validQuery.slot, contentType: req.get('content-type'), body: req.body }))
+  res.status(201).json(await kyc.uploadFile(req.user, { slot: req.validQuery.slot, docType: req.validQuery.docType, contentType: req.get('content-type'), body: req.body }))
 );
 meDocuments.post('/', validate(s.submitBody), async (req, res) => res.status(201).json(await kyc.submit(req.user, req.body, req)));
 meDocuments.get('/:id/files/:fileId', validate(s.fileParams, 'params'), async (req, res) => sendFile(res, await kyc.ownFile(req.user, req.params.id, req.params.fileId)));

@@ -49,6 +49,8 @@ const PERMISSIONS = Object.freeze({
   MANAGE_USERS: 'manage_users',
   MANAGE_CATALOG: 'manage_catalog',
   MANAGE_ESPORTS: 'manage_esports', // M03 esports catalogue, M21 tournaments
+  ENTER_RESULTS: 'enter_results', // M21 match results only
+  VIEW_ANALYTICS: 'view_analytics', // M19 platform overview and its exports (Q104)
   EDIT_FEES: 'edit_fees', // master only
   MANAGE_STAFF: 'manage_staff', // master only
 });

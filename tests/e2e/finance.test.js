@@ -248,6 +248,10 @@ describe('escrow (FR-13, FR-14, §8)', () => {
   });
 
   it('settles an esports pool: prizes, subsidy and fee in one posting (M21 §6.5, FR-25)', async () => {
+    // M06 on its own: these entries have no M21 registration, so stand in for M21's capture hook
+    // (which would reject them). The full M21 flow is tested in esports.test.js.
+    const purposes = require('../../src/modules/payments/payments.purposes');
+    purposes.register('esports_entry', { onCaptured: () => 'accept' });
     const tournament = uuid7();
     const players = [payer, payee, await h.signupUser()];
     for (const [i, pl] of players.entries()) {

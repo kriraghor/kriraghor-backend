@@ -147,6 +147,13 @@ async function withdrawByOwner(principal, id) {
   });
 }
 
+/** The subject module withdraws its subject's open submission (for example an unlinked M21 UID). */
+async function withdrawSubject(kind, subjectId, { transaction }) {
+  const open = await Submission.findAll({ where: { kind, subjectId, status: rules.OPEN }, transaction, lock: transaction.LOCK.UPDATE });
+  for (const s of open) await withdrawInTx(s, { byOwner: false, actor: null, transaction });
+  return open.length;
+}
+
 /** user.suspended / user.banned: open submissions of that user are withdrawn (edge case 6). */
 async function withdrawAllOf(userId, { transaction }) {
   const open = await Submission.findAll({ where: { submittedBy: userId, status: rules.OPEN }, transaction, lock: transaction.LOCK.UPDATE });
@@ -490,6 +497,7 @@ module.exports = {
   getById,
   withdrawByOwner,
   withdrawAllOf,
+  withdrawSubject,
   listMine,
   list,
   stats,

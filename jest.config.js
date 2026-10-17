@@ -30,5 +30,13 @@ module.exports = {
     './src/modules/kyc/kyc.rules.js': FULL,
     // M05 SLA, claim lock, rubric, checks and decisions.
     './src/modules/moderation/moderation.rules.js': FULL,
+    './src/modules/esports/esports.rules.js': FULL,
+    // M09 price formula and limits (shared with M10), listing rules.
+    './src/modules/grounds/pricing.rules.js': FULL,
+    './src/modules/grounds/grounds.rules.js': FULL,
+    // M10 state machine, time guards and the v3 money plans.
+    './src/modules/bookings/bookings.rules.js': FULL,
+    // M19 periods, deltas and KPI formulas.
+    './src/modules/analytics/analytics.rules.js': FULL,
   },
 };

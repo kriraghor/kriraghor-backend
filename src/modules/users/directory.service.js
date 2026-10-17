@@ -6,7 +6,7 @@
  * Contact details never leave the backend (no API returns them through this service).
  */
 const { Op } = require('sequelize');
-const { User, StaffMember, StaffPermission } = require('../../models');
+const { User, UserRole, StaffMember, StaffPermission } = require('../../models');
 
 /** Map userId → { phone, email, emailVerified, locale, status }. Missing users are absent. */
 async function contactFor(userIds, { transaction } = {}) {
@@ -63,4 +63,28 @@ async function nidHashHolders(nidHash, exceptUserId, { transaction } = {}) {
   return User.count({ where: { nidHash, id: { [Op.ne]: exceptUserId } }, transaction });
 }
 
-module.exports = { contactFor, masters, withPermission, accounts, identities, nidHashHolders };
+/** M21: an active account by username (squad invites, public player pages); null when unknown. */
+async function byUsername(username, { transaction } = {}) {
+  if (!username) return null;
+  const u = await User.findOne({ where: { username: String(username).toLowerCase() }, attributes: ['id', 'username', 'displayName', 'status'], transaction });
+  return u ? { id: u.id, username: u.username, displayName: u.displayName, status: u.status } : null;
+}
+
+/** M21 public pages: id → { username, displayName } (never phone, email or legal name). */
+async function publicNames(userIds, { transaction } = {}) {
+  const ids = [...new Set(userIds.filter(Boolean))];
+  if (!ids.length) return new Map();
+  const users = await User.findAll({ where: { id: ids }, attributes: ['id', 'username', 'displayName'], transaction });
+  return new Map(users.map((u) => [u.id, { username: u.username ?? null, displayName: u.displayName }]));
+}
+
+/** M19 live counts: verified members (active member role) and active business roles. */
+async function counts() {
+  const [verifiedMembers, businesses] = await Promise.all([
+    UserRole.count({ where: { role: 'member', status: 'active' } }),
+    UserRole.count({ where: { role: ['ground_owner', 'shop_owner', 'organiser', 'gym_owner'], status: 'active' } }),
+  ]);
+  return { verifiedMembers, businesses };
+}
+
+module.exports = { counts, contactFor, masters, withPermission, accounts, identities, nidHashHolders, byUsername, publicNames };

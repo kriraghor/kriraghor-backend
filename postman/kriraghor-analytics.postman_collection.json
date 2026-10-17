@@ -1,0 +1,1166 @@
+{
+  "info": {
+    "name": "Kriraghor API: M19 Dashboards",
+    "description": "v3 money on a ৳2,000/h ground with a 25% advance. A member books and pays the ৳500 advance; it is played (checked in) today, earning the owner ৳2,000 gross. A second booking is cancelled by the member, earning the kept ৳500. The facts are written from the real events; the views refresh; the owner, member and platform dashboards show the numbers, the charts add up to their tiles, and the ledger fee revenue is ৳125 (৳100 + ৳25). A deleted fact comes back with the nightly reconcile. CSV exports are scoped and audited.\n\nRequests named \"Runner\" go to the local test runner (paying through the simulator, moving a booking in time, settling events and views, the reconcile).\n\nUnattended: `node postman/run-m19.js` (kriraghor_test database).\n\nRebuild this file with: node postman/build-collection-m19.js",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000/api/v1"
+    },
+    {
+      "key": "controlUrl",
+      "value": ""
+    },
+    {
+      "key": "adminAccessToken",
+      "value": ""
+    },
+    {
+      "key": "ownerToken",
+      "value": ""
+    },
+    {
+      "key": "memberToken",
+      "value": ""
+    },
+    {
+      "key": "groundId",
+      "value": ""
+    },
+    {
+      "key": "courtId",
+      "value": ""
+    },
+    {
+      "key": "s1",
+      "value": ""
+    },
+    {
+      "key": "s2",
+      "value": ""
+    },
+    {
+      "key": "b1",
+      "value": ""
+    },
+    {
+      "key": "b1Payment",
+      "value": ""
+    },
+    {
+      "key": "b2",
+      "value": ""
+    },
+    {
+      "key": "b2Payment",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Bookings that feed the facts",
+      "item": [
+        {
+          "name": "Owner dashboard before anything (empty)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"seven buckets, nothing yet\", () => { pm.expect(j.buckets.length === 7 && j.tiles.bookings.value === 0).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard?role=ground_owner&period=7w",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "ground_owner"
+                },
+                {
+                  "key": "period",
+                  "value": "7w"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Hold the advance",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"saves b1\", () => { pm.expect((pm.collectionVariables.set('b1', j.booking.id), true)).to.eql(true); });",
+                  "pm.test(\"saves b1Payment\", () => { pm.expect((pm.collectionVariables.set('b1Payment', j.payment.id), true)).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"groundId\": \"{{groundId}}\",\n  \"courtIds\": [\n    \"{{courtId}}\"\n  ],\n  \"start\": \"{{s1}}\",\n  \"minutes\": 60,\n  \"payment\": \"advance\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings/holds",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings",
+                "holds"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: pay b1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/pay?paymentId={{b1Payment}}",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "pay"
+              ],
+              "query": [
+                {
+                  "key": "paymentId",
+                  "value": "{{b1Payment}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: it is time",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/shift?bookingId={{b1}}",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "shift"
+              ],
+              "query": [
+                {
+                  "key": "bookingId",
+                  "value": "{{b1}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Check in (played)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/ground-bookings/{{b1}}/check-in",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "ground-bookings",
+                "{{b1}}",
+                "check-in"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Hold another",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"saves b2\", () => { pm.expect((pm.collectionVariables.set('b2', j.booking.id), true)).to.eql(true); });",
+                  "pm.test(\"saves b2Payment\", () => { pm.expect((pm.collectionVariables.set('b2Payment', j.payment.id), true)).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"groundId\": \"{{groundId}}\",\n  \"courtIds\": [\n    \"{{courtId}}\"\n  ],\n  \"start\": \"{{s2}}\",\n  \"minutes\": 60,\n  \"payment\": \"advance\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings/holds",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings",
+                "holds"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: pay b2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/pay?paymentId={{b2Payment}}",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "pay"
+              ],
+              "query": [
+                {
+                  "key": "paymentId",
+                  "value": "{{b2Payment}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cancel it (the advance is kept)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedRefund\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/bookings/{{b2}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "bookings",
+                "{{b2}}",
+                "cancel"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: settle events and views",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"refreshed\", () => { pm.expect(j.refreshed === 4).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/settle",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "settle"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Dashboards (FR-01 to FR-07, §6)",
+      "item": [
+        {
+          "name": "Owner overview: revenue gross, bookings, occupancy",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"played booking earns ৳2,000\", () => { pm.expect(j.tiles.revenue.value >= 200000).to.eql(true); });",
+                  "pm.test(\"one counted booking (the cancelled one is not)\", () => { pm.expect(j.tiles.bookings.value === 1 && j.tiles.bookings.note.app === 1).to.eql(true); });",
+                  "pm.test(\"occupancy is a rate\", () => { pm.expect(j.tiles.occupancy.value > 0 && j.tiles.occupancy.value < 1).to.eql(true); });",
+                  "pm.test(\"bookings by day add up to the tile\", () => { pm.expect(j.charts.bookingsByDay.reduce((n, x) => n + x.value, 0) === j.tiles.bookings.value).to.eql(true); });",
+                  "pm.test(\"revenue by ground adds up to the tile\", () => { pm.expect(j.charts.revenueByGround.reduce((n, x) => n + x.value, 0) === j.tiles.revenue.value).to.eql(true); });",
+                  "pm.test(\"asOf and definitions\", () => { pm.expect(!!j.asOf && j.definitions.revenue.includes('before the Kriraghor fee')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard?role=ground_owner&period=7w",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "ground_owner"
+                },
+                {
+                  "key": "period",
+                  "value": "7w"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "A quarter and a year",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"12 months\", () => { pm.expect(j.buckets.length === 12).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard?role=ground_owner&period=yr",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "ground_owner"
+                },
+                {
+                  "key": "period",
+                  "value": "yr"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Wrong period (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 VALIDATION_FAILED', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('VALIDATION_FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard?role=ground_owner&period=week",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "ground_owner"
+                },
+                {
+                  "key": "period",
+                  "value": "week"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Member asks for the owner view (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 ROLE_REQUIRED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('ROLE_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard?role=ground_owner",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "ground_owner"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Member overview: spent online",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"two ৳500 advances\", () => { pm.expect(j.tiles.spent.value === 100000 && j.charts.whereItWent[0].vertical === 'grounds').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard?period=7w",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "7w"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Platform overview (master)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"fee revenue ৳125 (৳100 at check-in, ৳25 on the kept advance)\", () => { pm.expect(j.tiles.feeRevenue.value === 12500).to.eql(true); });",
+                  "pm.test(\"online ৳1,000\", () => { pm.expect(j.tiles.gtv.note.online === 100000).to.eql(true); });",
+                  "pm.test(\"take rate 12.5%\", () => { pm.expect(j.tiles.takeRate.value === 0.125).to.eql(true); });",
+                  "pm.test(\"verified members counted\", () => { pm.expect(j.tiles.verifiedMembers.value >= 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/analytics/overview?period=7w",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "analytics",
+                "overview"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "7w"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "What take rate means (Bangla)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"text\", () => { pm.expect(j.text.includes('÷')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/kpis/take_rate/definition?locale=bn",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "kpis",
+                "take_rate",
+                "definition"
+              ],
+              "query": [
+                {
+                  "key": "locale",
+                  "value": "bn"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Actions, exports, reconcile",
+      "item": [
+        {
+          "name": "Needs your action (owner)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"a list\", () => { pm.expect(Array.isArray(j.items)).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard/actions?role=ground_owner",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard",
+                "actions"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "ground_owner"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Needs your action (staff)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"a list\", () => { pm.expect(Array.isArray(j.items)).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/analytics/actions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "analytics",
+                "actions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "CSV of my bookings",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"a CSV with the booking\", () => { pm.expect(pm.response.headers.get('Content-Type').includes('text/csv') && pm.response.text().includes('2000.00')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard/export?dataset=owner_bookings&period=7w",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard",
+                "export"
+              ],
+              "query": [
+                {
+                  "key": "dataset",
+                  "value": "owner_bookings"
+                },
+                {
+                  "key": "period",
+                  "value": "7w"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Owner CSV as a member (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 ROLE_REQUIRED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('ROLE_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard/export?dataset=owner_bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard",
+                "export"
+              ],
+              "query": [
+                {
+                  "key": "dataset",
+                  "value": "owner_bookings"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Platform CSV (master)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"headers\", () => { pm.expect(pm.response.text().includes('online_gmv_taka')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/analytics/export?dataset=platform_daily&period=7w",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "analytics",
+                "export"
+              ],
+              "query": [
+                {
+                  "key": "dataset",
+                  "value": "platform_daily"
+                },
+                {
+                  "key": "period",
+                  "value": "7w"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: forget one fact",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"deleted\", () => { pm.expect(j.deleted === 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/forget?bookingId={{b1}}",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "forget"
+              ],
+              "query": [
+                {
+                  "key": "bookingId",
+                  "value": "{{b1}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: nightly reconcile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"repaired\", () => { pm.expect(j.repaired >= 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/reconcile",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "reconcile"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The dashboard is whole again",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"the played booking is back\", () => { pm.expect(j.tiles.bookings.value === 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard?role=ground_owner&period=7w",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "ground_owner"
+                },
+                {
+                  "key": "period",
+                  "value": "7w"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

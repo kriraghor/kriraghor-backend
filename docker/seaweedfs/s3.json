@@ -2,8 +2,25 @@
   "identities": [
     {
       "name": "kriraghor-dev",
-      "credentials": [{ "accessKey": "kriraghor", "secretKey": "kriraghor-dev-s3-secret" }],
-      "actions": ["Admin", "Read", "List", "Tagging", "Write"]
+      "credentials": [
+        {
+          "accessKey": "kriraghor",
+          "secretKey": "kriraghor-dev-s3-secret"
+        }
+      ],
+      "actions": [
+        "Admin",
+        "Read",
+        "List",
+        "Tagging",
+        "Write"
+      ]
+    },
+    {
+      "name": "anonymous",
+      "actions": [
+        "Read:kriraghor-public"
+      ]
     }
   ]
 }

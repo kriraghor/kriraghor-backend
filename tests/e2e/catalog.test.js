@@ -52,7 +52,7 @@ describe('admin catalogue (manage_esports or manage_catalog)', () => {
     const other = await staffWith(master, ['approve_documents']);
     const denied = await api().get(`${P}/admin/catalog/esports-maps`).set(h.bearer(other)).expect(403);
     expect(denied.body).toMatchObject({ code: 'PERMISSION_REQUIRED', anyOf: ['manage_esports', 'manage_catalog'] });
-    await api().get(`${P}/admin/catalog/sports`).set(h.bearer(master)).expect(422);
+    await api().get(`${P}/admin/catalog/hire-roles`).set(h.bearer(master)).expect(422);
   });
 
   it('creates rows, rejects taken and changed keys, and enforces mode capacity', async () => {

@@ -1,28 +1,253 @@
 {
   "seedVersion": 1,
-  "source": "M05 §6.2 rubrics and §6.3 rejection reasons, lite (Oct 2026): the document kind (M02 NID). Kinds are added as their modules arrive (M21 game_profile and esports_tournament). Rows are inserted only when missing.",
+  "source": "M05 §6.2 rubrics and §6.3 rejection reasons, lite (Oct 2026): the document kind (M02 NID); game_profile and esports_tournament (M21). Kinds are added as their modules arrive (M21 game_profile and esports_tournament). Rows are inserted only when missing. Ground listings (M09): rubric rb_ground_v1 and the ground kind on the shared reasons, plus location_wrong and not_a_venue.",
   "rubrics": [
     {
       "kind": "document",
       "version": 1,
       "items": [
-        { "key": "name_matches", "labelEn": "The name matches the NID", "labelBn": "নাম NID-এর সাথে মেলে" },
-        { "key": "readable", "labelEn": "Readable, all corners visible", "labelBn": "পড়া যায়, চার কোণা দেখা যায়" },
-        { "key": "not_edited", "labelEn": "Genuine: not expired, not edited", "labelBn": "আসল: মেয়াদোত্তীর্ণ নয়, সম্পাদিত নয়" },
-        { "key": "face_matches", "labelEn": "The selfie face matches the NID photo", "labelBn": "সেলফির মুখ NID-এর ছবির সাথে মেলে" }
+        {
+          "key": "name_matches",
+          "labelEn": "The name matches the NID",
+          "labelBn": "নাম NID-এর সাথে মেলে"
+        },
+        {
+          "key": "readable",
+          "labelEn": "Readable, all corners visible",
+          "labelBn": "পড়া যায়, চার কোণা দেখা যায়"
+        },
+        {
+          "key": "not_edited",
+          "labelEn": "Genuine: not expired, not edited",
+          "labelBn": "আসল: মেয়াদোত্তীর্ণ নয়, সম্পাদিত নয়"
+        },
+        {
+          "key": "face_matches",
+          "labelEn": "The selfie face matches the NID photo",
+          "labelBn": "সেলফির মুখ NID-এর ছবির সাথে মেলে"
+        }
+      ]
+    },
+    {
+      "kind": "game_profile",
+      "version": 1,
+      "items": [
+        {
+          "key": "uid_matches",
+          "labelEn": "The UID in the screenshot matches",
+          "labelBn": "স্ক্রিনশটের UID মেলে"
+        },
+        {
+          "key": "ign_matches",
+          "labelEn": "The in-game name matches",
+          "labelBn": "গেমের নাম মেলে"
+        },
+        {
+          "key": "screenshot_genuine",
+          "labelEn": "A genuine, unedited in-game profile",
+          "labelBn": "আসল, সম্পাদনা ছাড়া গেম প্রোফাইল"
+        }
+      ]
+    },
+    {
+      "kind": "esports_tournament",
+      "version": 1,
+      "items": [
+        {
+          "key": "prizes_ok",
+          "labelEn": "Prize table, fee and slots make sense",
+          "labelBn": "পুরস্কার, ফি ও স্লট যুক্তিসঙ্গত"
+        },
+        {
+          "key": "schedule_ok",
+          "labelEn": "Schedule, maps and check-in are right",
+          "labelBn": "সময়সূচি, ম্যাপ ও চেক-ইন ঠিক আছে"
+        },
+        {
+          "key": "rules_ok",
+          "labelEn": "Rules are clear and allowed",
+          "labelBn": "নিয়ম পরিষ্কার ও অনুমোদিত"
+        }
+      ]
+    },
+    {
+      "kind": "ground",
+      "version": 1,
+      "items": [
+        {
+          "key": "photos_real",
+          "labelEn": "Photos show this ground and match the courts",
+          "labelBn": "ছবিগুলো এই মাঠের এবং কোর্টের সাথে মেলে"
+        },
+        {
+          "key": "location_ok",
+          "labelEn": "Name, address and map pin agree",
+          "labelBn": "নাম, ঠিকানা ও ম্যাপ পিন মেলে"
+        },
+        {
+          "key": "courts_ok",
+          "labelEn": "Courts, sports, surface and hours make sense",
+          "labelBn": "কোর্ট, খেলা, সারফেস ও সময় যুক্তিসঙ্গত"
+        },
+        {
+          "key": "price_ok",
+          "labelEn": "Base price fits the area",
+          "labelBn": "ভিত্তি দাম এলাকার সাথে মানানসই"
+        },
+        {
+          "key": "rules_ok",
+          "labelEn": "Rules and description are fair and allowed",
+          "labelBn": "নিয়ম ও বর্ণনা ন্যায্য ও অনুমোদিত"
+        }
       ]
     }
   ],
   "reasons": [
-    { "code": "photos_unclear", "labelEn": "Photos unclear or not of the item", "labelBn": "ছবি অস্পষ্ট বা জিনিসটির নয়", "kinds": [], "sort": 1 },
-    { "code": "price_wrong", "labelEn": "Price looks wrong", "labelBn": "দাম ঠিক মনে হচ্ছে না", "kinds": [], "sort": 2 },
-    { "code": "docs_mismatch_nid", "labelEn": "Documents do not match the NID", "labelBn": "ডকুমেন্ট NID-এর সাথে মেলে না", "kinds": ["document"], "sort": 3 },
-    { "code": "unreadable", "labelEn": "Document unreadable or cut off", "labelBn": "ডকুমেন্ট পড়া যায় না বা কাটা", "kinds": ["document"], "sort": 4 },
-    { "code": "expired", "labelEn": "Document expired", "labelBn": "ডকুমেন্টের মেয়াদ শেষ", "kinds": ["document"], "sort": 5 },
-    { "code": "duplicate", "labelEn": "Duplicate (already on another account or listing)", "labelBn": "অন্য অ্যাকাউন্ট বা বিজ্ঞাপনে আগে থেকেই আছে", "kinds": ["document"], "sort": 6 },
-    { "code": "missing_credential", "labelEn": "Missing credential for this role", "labelBn": "এই ভূমিকার জন্য প্রয়োজনীয় সনদ নেই", "kinds": [], "sort": 7 },
-    { "code": "info_incomplete", "labelEn": "Required information missing", "labelBn": "প্রয়োজনীয় তথ্য নেই", "kinds": ["document"], "sort": 8 },
-    { "code": "breaks_rules", "labelEn": "Breaks the rules", "labelBn": "নিয়ম ভঙ্গ করে", "kinds": ["document"], "sort": 9 },
-    { "code": "other", "labelEn": "Other (explain)", "labelBn": "অন্যান্য (ব্যাখ্যা দিন)", "kinds": ["document"], "requiresText": true, "sort": 10 }
+    {
+      "code": "photos_unclear",
+      "labelEn": "Photos unclear or not of the item",
+      "labelBn": "ছবি অস্পষ্ট বা জিনিসটির নয়",
+      "kinds": [
+        "ground"
+      ],
+      "sort": 1
+    },
+    {
+      "code": "price_wrong",
+      "labelEn": "Price looks wrong",
+      "labelBn": "দাম ঠিক মনে হচ্ছে না",
+      "kinds": [
+        "ground"
+      ],
+      "sort": 2
+    },
+    {
+      "code": "docs_mismatch_nid",
+      "labelEn": "Documents do not match the NID",
+      "labelBn": "ডকুমেন্ট NID-এর সাথে মেলে না",
+      "kinds": [
+        "document"
+      ],
+      "sort": 3
+    },
+    {
+      "code": "unreadable",
+      "labelEn": "Document unreadable or cut off",
+      "labelBn": "ডকুমেন্ট পড়া যায় না বা কাটা",
+      "kinds": [
+        "document",
+        "game_profile"
+      ],
+      "sort": 4
+    },
+    {
+      "code": "expired",
+      "labelEn": "Document expired",
+      "labelBn": "ডকুমেন্টের মেয়াদ শেষ",
+      "kinds": [
+        "document"
+      ],
+      "sort": 5
+    },
+    {
+      "code": "duplicate",
+      "labelEn": "Duplicate (already on another account or listing)",
+      "labelBn": "অন্য অ্যাকাউন্ট বা বিজ্ঞাপনে আগে থেকেই আছে",
+      "kinds": [
+        "document",
+        "game_profile",
+        "ground"
+      ],
+      "sort": 6
+    },
+    {
+      "code": "missing_credential",
+      "labelEn": "Missing credential for this role",
+      "labelBn": "এই ভূমিকার জন্য প্রয়োজনীয় সনদ নেই",
+      "kinds": [],
+      "sort": 7
+    },
+    {
+      "code": "info_incomplete",
+      "labelEn": "Required information missing",
+      "labelBn": "প্রয়োজনীয় তথ্য নেই",
+      "kinds": [
+        "document",
+        "game_profile",
+        "esports_tournament",
+        "ground"
+      ],
+      "sort": 8
+    },
+    {
+      "code": "breaks_rules",
+      "labelEn": "Breaks the rules",
+      "labelBn": "নিয়ম ভঙ্গ করে",
+      "kinds": [
+        "document",
+        "game_profile",
+        "esports_tournament",
+        "ground"
+      ],
+      "sort": 9
+    },
+    {
+      "code": "other",
+      "labelEn": "Other (explain)",
+      "labelBn": "অন্যান্য (ব্যাখ্যা দিন)",
+      "kinds": [
+        "document",
+        "game_profile",
+        "esports_tournament",
+        "ground"
+      ],
+      "requiresText": true,
+      "sort": 10
+    },
+    {
+      "code": "uid_mismatch",
+      "labelEn": "UID or name does not match the screenshot",
+      "labelBn": "UID বা নাম স্ক্রিনশটের সাথে মেলে না",
+      "kinds": [
+        "game_profile"
+      ],
+      "sort": 11
+    },
+    {
+      "code": "prize_table_wrong",
+      "labelEn": "Prize table or entry fee needs a fix",
+      "labelBn": "পুরস্কার তালিকা বা এন্ট্রি ফি ঠিক করতে হবে",
+      "kinds": [
+        "esports_tournament"
+      ],
+      "sort": 12
+    },
+    {
+      "code": "schedule_wrong",
+      "labelEn": "Schedule or maps need a fix",
+      "labelBn": "সময়সূচি বা ম্যাপ ঠিক করতে হবে",
+      "kinds": [
+        "esports_tournament"
+      ],
+      "sort": 13
+    },
+    {
+      "code": "location_wrong",
+      "labelEn": "Address or map pin is wrong",
+      "labelBn": "ঠিকানা বা ম্যাপ পিন ভুল",
+      "kinds": [
+        "ground"
+      ],
+      "sort": 14
+    },
+    {
+      "code": "not_a_venue",
+      "labelEn": "Not a bookable sports venue",
+      "labelBn": "বুকিংযোগ্য খেলার মাঠ নয়",
+      "kinds": [
+        "ground"
+      ],
+      "sort": 15
+    }
   ]
 }

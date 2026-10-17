@@ -6,7 +6,8 @@
  * fee_revenue account), its escrow account, whether its holds are pooled (settled together by
  * group_ref, M21 §6.5) and the hook M06 calls when money is captured:
  *
- *   onCaptured({ payment, late }) → 'accept' | 'reject'
+ *   onCaptured({ payment, late, transaction }) → 'accept' | 'reject' (may be async; runs inside the
+ *   capture transaction, so the purpose can confirm its own record atomically)
  *
  * 'reject' (for example a slot hold that expired and was taken, §12 #2) triggers an automatic full
  * `late_capture` refund (FR-05). Purpose modules register their hook with register(); until they
@@ -23,6 +24,9 @@ const defaultOnCaptured = ({ late }) => (late ? 'reject' : 'accept');
 const PURPOSES = {
   // M21 entry fees, held per registration and settled per tournament (pool).
   esports_entry: { vertical: 'esports', escrowAccount: 'escrow:esports_entry', pooled: true, testOnly: false, payoutSchedule: 'withdraw' },
+  // M10 ground bookings: the advance or the full price, held per booking and released to the owner at
+  // check-in (or auto-complete) with the fee on the full value (escrow feeBase, v3).
+  ground_booking: { vertical: 'grounds', escrowAccount: 'escrow:ground_booking', pooled: false, testOnly: false, payoutSchedule: 'ground_weekly' },
   // Master test charge (dev and staging only, PAYMENTS_TEST_CHARGES): the Phase 2 exit check.
   test_charge: { vertical: 'test', escrowAccount: 'escrow:test_charge', pooled: false, testOnly: true, payoutSchedule: 'daily' },
 };

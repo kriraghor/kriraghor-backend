@@ -13,6 +13,11 @@
  *
  * The fields are encrypted (common/crypto); responses carry the masked number only. Every file view
  * and the NID reveal are audited (FR-12, FR-13). Images are purged after the retention period (FR-17).
+ *
+ * Business-role documents (lite, with M09): a ground owner sends a trade licence, a deed or lease and
+ * optionally a TIN, each a requirement row of the role with its own fields (field_schema) and one
+ * file. They follow the same versions and M05 review; when every required one is approved,
+ * verification.passed {role} lets M01 activate the role. The member (NID) role must be active first.
  */
 const crypto = require('crypto');
 const { Op } = require('sequelize');
@@ -41,9 +46,13 @@ const ERRORS = {
   FILE_TYPE_MISMATCH: [415, 'The file is not the type it says it is'],
   FILES_INCOMPLETE: [422, 'Add the NID front, the back and a selfie holding it'],
   PHONE_REQUIRED: [409, 'Add and verify your phone number first'],
-  DOC_ALREADY_APPROVED: [409, 'Your NID is already verified'],
+  DOC_ALREADY_APPROVED: [409, 'This document is already verified'],
   SELF_REVIEW_FORBIDDEN: [403, 'You cannot review your own documents'],
   FILE_PURGED: [410, 'This file was deleted after the retention period'],
+  MEMBER_NOT_ACTIVE: [409, 'Verify your NID first'],
+  ROLE_NOT_APPLIED: [409, 'Apply for this business role first'],
+  DOC_TYPE_NOT_REQUIRED: [422, 'This document is not needed for that role'],
+  REVEAL_NOT_AVAILABLE: [409, 'Only an NID number can be revealed'],
 };
 const fail = (code) => new AppError(ERRORS[code][0], code, ERRORS[code][1]);
 
@@ -59,8 +68,16 @@ async function nidRequirement(transaction) {
   return req;
 }
 
-// Front, back, then selfie: the order a reviewer reads an NID in.
-const SLOT_ORDER = ['front', 'back', 'selfie'];
+/** The active requirement of a document type (the NID for members, one business role per type). */
+async function requirementOf(docType, transaction) {
+  if (docType === 'nid') return nidRequirement(transaction);
+  const req = await DocumentRequirement.findOne({ where: { docType, isActive: true }, transaction });
+  if (!req) throw fail('DOC_TYPE_NOT_REQUIRED');
+  return req;
+}
+
+// Front, back, then selfie: the order a reviewer reads an NID in. Business documents have one file.
+const SLOT_ORDER = ['front', 'back', 'selfie', 'document'];
 const bySlot = (a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot);
 
 function serialize(d, { files = [] } = {}) {
@@ -69,8 +86,9 @@ function serialize(d, { files = [] } = {}) {
     docType: d.docType,
     version: d.version,
     status: d.status,
-    numberMasked: d.fieldsPublic.numberMasked,
-    birthYear: d.fieldsPublic.birthYear,
+    numberMasked: d.fieldsPublic.numberMasked ?? null,
+    birthYear: d.fieldsPublic.birthYear ?? null,
+    expiresOn: d.fieldsPublic.expiresOn ?? null,
     reasonCode: d.reasonCode ?? null,
     reasonText: d.reasonText ?? null,
     decidedAt: d.decidedAt ?? null,
@@ -81,15 +99,56 @@ function serialize(d, { files = [] } = {}) {
 
 // ---------------------------------------------------------------- member: checklist (FR-18)
 
+const UNLOCKS = {
+  ground_owner: {
+    en: ['List your grounds and set prices', 'Take bookings with an advance', 'Get paid at check-in'],
+    bn: ['আপনার মাঠ তালিকাভুক্ত করুন ও দাম ঠিক করুন', 'অগ্রিমসহ বুকিং নিন', 'চেক-ইনে টাকা পান'],
+  },
+};
+
+/** GET /me/verification?role=: the checklist of a business role (the member checklist is below). */
+async function roleVerification(principal, role, locale) {
+  const { user } = principal;
+  const bn = locale === 'bn';
+  const reqs = await requirementsFor(role);
+  const current = await VerificationDocument.findAll({ where: { userId: user.id, docType: reqs.map((r) => r.docType).filter(Boolean), isCurrent: true } });
+  const files = current.length ? await DocumentFile.findAll({ where: { documentId: current.map((d) => d.id) } }) : [];
+  const items = reqs.map((r) => {
+    const doc = current.find((d) => d.docType === r.docType);
+    return {
+      key: r.docType,
+      label: bn ? r.labelBn : r.labelEn,
+      why: (bn ? r.whyBn : r.whyEn) ?? null,
+      fileSlots: r.fileSlots,
+      required: r.required,
+      fields: r.fieldSchema.map((f) => ({ key: f.key, type: f.type, required: Boolean(f.required), options: f.options ?? null, label: (bn ? f.labelBn : f.labelEn) ?? f.key })),
+      status: doc?.status ?? 'missing',
+      document: doc ? serialize(doc, { files: files.filter((f) => f.documentId === doc.id) }) : null,
+    };
+  });
+  const required = items.filter((i) => i.required !== 'optional');
+  return {
+    role,
+    memberStatus: principal.roles?.member ?? null,
+    roleStatus: principal.roles?.[role] ?? null,
+    badge: rules.roleBadge(items),
+    progress: { approved: required.filter((i) => i.status === 'approved').length, total: required.length },
+    items,
+    unlocks: UNLOCKS[role]?.[bn ? 'bn' : 'en'] ?? [],
+    limits: [],
+  };
+}
+
 /** GET /me/verification: the member checklist, badge, unlocks and limits (§6.4, §6.5). */
-async function verification(principal, locale = 'en') {
+async function verification(principal, locale = 'en', role = 'member') {
+  if (role !== 'member') return roleVerification(principal, role, locale);
   const { user } = principal;
   const reqs = await requirementsFor('member');
   const current = await VerificationDocument.findOne({ where: { userId: user.id, docType: 'nid', isCurrent: true } });
   const files = current ? await DocumentFile.findAll({ where: { documentId: current.id }, order: [['slot', 'ASC']] }) : [];
   const bn = locale === 'bn';
   const items = reqs.map((r) => {
-    const base = { key: r.docType ?? r.derivedKey, label: bn ? r.labelBn : r.labelEn, why: (bn ? r.whyBn : r.whyEn) ?? null, fileSlots: r.fileSlots };
+    const base = { key: r.docType ?? r.derivedKey, label: bn ? r.labelBn : r.labelEn, why: (bn ? r.whyBn : r.whyEn) ?? null, fileSlots: r.fileSlots, required: r.required, fields: [] };
     if (r.derivedKey === 'phone_verified') return { ...base, status: user.phone && user.phoneVerifiedAt ? 'approved' : 'missing', document: null };
     return { ...base, status: current?.status ?? 'missing', document: current ? serialize(current, { files }) : null };
   });
@@ -97,6 +156,7 @@ async function verification(principal, locale = 'en') {
   return {
     role: 'member',
     memberStatus,
+    roleStatus: memberStatus,
     badge: rules.badge(items),
     progress: { approved: items.filter((i) => i.status === 'approved').length, total: items.length },
     items,
@@ -107,9 +167,9 @@ async function verification(principal, locale = 'en') {
 
 // ---------------------------------------------------------------- member: upload and submit (FR-03 to FR-07, FR-11)
 
-/** POST /me/documents/files?slot=: one file, checked by its first bytes, stored in the private bucket. */
-async function uploadFile(principal, { slot, contentType, body }) {
-  const requirement = await nidRequirement();
+/** POST /me/documents/files?slot=&docType=: one file, checked by its first bytes, stored in the private bucket. */
+async function uploadFile(principal, { slot, docType = 'nid', contentType, body }) {
+  const requirement = await requirementOf(docType);
   if (!requirement.fileSlots.includes(slot)) throw E.validation([{ field: 'slot', message: `One of ${requirement.fileSlots.join(', ')}` }]);
   const buf = Buffer.isBuffer(body) ? body : Buffer.alloc(0);
   const declared = String(contentType ?? '').split(';')[0].trim().toLowerCase();
@@ -122,8 +182,10 @@ async function uploadFile(principal, { slot, contentType, body }) {
   return { fileId: file.id, slot, mime: file.mime, sizeBytes: file.sizeBytes };
 }
 
-/** POST /me/documents: submit the NID for review (a new version). */
-async function submit(principal, { docType, fields, files }, req) {
+/** POST /me/documents: submit the NID or a business document for review (a new version). */
+async function submit(principal, body, req) {
+  if (body.docType !== 'nid') return submitBusiness(principal, body, req);
+  const { docType, fields, files } = body;
   const { user } = principal;
   if (!user.phone || !user.phoneVerifiedAt) throw fail('PHONE_REQUIRED');
   const birthYear = /^\d{4}/.test(fields.dob) ? fields.dob.slice(0, 4) : null;
@@ -192,6 +254,76 @@ async function submit(principal, { docType, fields, files }, req) {
   });
 }
 
+/**
+ * POST /me/documents for a business document (trade licence, deed or lease, TIN). The fields follow
+ * the requirement's field_schema; the number is encrypted with the rest and shown masked.
+ */
+async function submitBusiness(principal, { docType, fields = {}, files = {} }, req) {
+  const { user } = principal;
+  if (principal.roles?.member !== 'active') throw fail('MEMBER_NOT_ACTIVE');
+  const today = rules.dhakaToday(new Date());
+  return sequelize.transaction(async (transaction) => {
+    const requirement = await requirementOf(docType, transaction);
+    const { role } = requirement;
+    if (!principal.roles?.[role] || ['withdrawn', 'suspended'].includes(principal.roles[role])) throw fail('ROLE_NOT_APPLIED');
+    const errors = rules.fieldsBlock(requirement.fieldSchema, fields, today);
+    if (errors) throw E.validation(errors);
+    if (rules.slotsBlock(requirement.fileSlots, files)) throw fail('FILES_INCOMPLETE');
+    const mine = await VerificationDocument.findAll({ where: { userId: user.id, docType, subjectKey: '' }, order: [['version', 'DESC']], transaction, lock: transaction.LOCK.UPDATE });
+    if (mine.some((d) => d.status === 'approved' && d.isCurrent)) throw fail('DOC_ALREADY_APPROVED');
+    const fileIds = Object.values(files);
+    const rows = await DocumentFile.findAll({ where: { id: fileIds, userId: user.id, documentId: null, purgedAt: null }, transaction, lock: transaction.LOCK.UPDATE });
+    if (rows.length !== fileIds.length || rows.some((f) => files[f.slot] !== f.id)) throw fail('FILES_INCOMPLETE');
+
+    for (const d of mine.filter((x) => x.isCurrent)) {
+      await d.update({ isCurrent: false, ...(d.status === 'in_review' ? { status: 'withdrawn' } : {}) }, { transaction });
+    }
+    const clean = Object.fromEntries(
+      Object.entries(fields)
+        .filter(([, v]) => v !== null && v !== undefined && v !== '')
+        .map(([k, v]) => [k, String(v).trim().replace(/\s+/g, ' ')])
+    );
+    const reusedFiles = await DocumentFile.count({ where: { sha256: rows.map((f) => f.sha256), userId: { [Op.ne]: user.id } }, transaction });
+    const doc = await VerificationDocument.create(
+      {
+        userId: user.id,
+        docType,
+        version: (mine[0]?.version ?? 0) + 1,
+        status: 'in_review',
+        isCurrent: true,
+        fieldsEnc: encrypt(JSON.stringify(clean)),
+        fieldsPublic: { numberMasked: clean.number ? rules.maskNid(clean.number) : null, expiresOn: clean.expiresOn ?? null, role },
+        checks: rules.businessChecks({ reusedFiles, expiresOn: clean.expiresOn ?? null, today }),
+      },
+      { transaction }
+    );
+    await DocumentFile.update({ documentId: doc.id }, { where: { id: fileIds }, transaction });
+    await moderation.submit(
+      {
+        kind: 'document',
+        subjectId: subjectIdFor(user.id, docType),
+        payload: { documentId: doc.id, docType, version: doc.version, role, numberMasked: doc.fieldsPublic.numberMasked, expiresOn: doc.fieldsPublic.expiresOn },
+        title: `${requirement.labelEn} · v${doc.version}`,
+        submittedBy: user.id,
+      },
+      { transaction }
+    );
+    await audit.record(
+      { action: 'document.submitted', actor: principal, entityType: 'verification_document', entityId: doc.id, after: { docType, role, version: doc.version, status: doc.status }, req },
+      { transaction }
+    );
+    await events.publish(transaction, {
+      name: 'document.submitted',
+      aggregateType: 'verification_document',
+      aggregateId: doc.id,
+      payload: { documentId: doc.id, userId: user.id, docType, role, version: doc.version },
+      actor: principal,
+      req,
+    });
+    return serialize(doc, { files: rows });
+  });
+}
+
 /** GET /me/documents/:id/files/:fileId: the member's own upload. */
 async function ownFile(principal, documentId, fileId) {
   const file = await DocumentFile.findOne({ where: { id: fileId, documentId, userId: principal.user.id } });
@@ -207,14 +339,21 @@ async function ownFile(principal, documentId, fileId) {
 async function adminGet(id) {
   const d = await VerificationDocument.findByPk(id);
   if (!d) throw E.notFound('Document');
-  const fields = JSON.parse(decrypt(d.fieldsEnc));
+  const raw = JSON.parse(decrypt(d.fieldsEnc));
+  // NID: legal name and DOB (the number stays masked). Business: the typed fields, number masked.
+  const typed = { ...raw };
+  delete typed.number;
+  const fields =
+    d.docType === 'nid'
+      ? { legalName: raw.legalName, dob: raw.dob, numberMasked: d.fieldsPublic.numberMasked }
+      : { ...typed, numberMasked: d.fieldsPublic.numberMasked ?? null, role: d.fieldsPublic.role ?? null };
   const files = await DocumentFile.findAll({ where: { documentId: d.id }, order: [['slot', 'ASC']] });
   const history = await VerificationDocument.findAll({ where: { userId: d.userId, docType: d.docType }, order: [['version', 'DESC']] });
   const who = (await directory.identities([d.userId])).get(d.userId);
   const contact = (await directory.contactFor([d.userId])).get(d.userId);
   return {
     ...serialize(d, { files }),
-    fields: { legalName: fields.legalName, dob: fields.dob, numberMasked: d.fieldsPublic.numberMasked },
+    fields,
     checks: d.checks,
     decidedBy: d.decidedBy ?? null,
     user: { id: d.userId, displayName: who?.displayName ?? null, kycStatus: who?.kycStatus ?? null, phoneVerified: Boolean(contact?.phone), accountStatus: contact?.status ?? null },
@@ -237,6 +376,7 @@ async function revealNid(actor, id, { reason }, req) {
   const d = await VerificationDocument.findByPk(id);
   if (!d) throw E.notFound('Document');
   if (d.userId === actor.id) throw fail('SELF_REVIEW_FORBIDDEN');
+  if (d.docType !== 'nid') throw fail('REVEAL_NOT_AVAILABLE');
   const { numberAsTyped, number } = JSON.parse(decrypt(d.fieldsEnc));
   await audit.record({ action: 'document.nid_revealed', actor, entityType: 'verification_document', entityId: d.id, reason, meta: { last4: number.slice(-4) }, req });
   return { documentId: d.id, number: numberAsTyped, normalised: number, showForSeconds: 60 };
@@ -258,7 +398,12 @@ async function checksFor(documentId, { transaction }) {
   const d = await VerificationDocument.findByPk(documentId, { transaction });
   if (!d) return [];
   const files = await DocumentFile.findAll({ where: { documentId }, attributes: ['sha256'], transaction });
-  const { checks } = await computeChecks({ userId: d.userId, hash: d.nidHash, sha256s: files.map((f) => f.sha256) }, { transaction });
+  let checks;
+  if (d.docType === 'nid') ({ checks } = await computeChecks({ userId: d.userId, hash: d.nidHash, sha256s: files.map((f) => f.sha256) }, { transaction }));
+  else {
+    const reusedFiles = await DocumentFile.count({ where: { sha256: files.map((f) => f.sha256), userId: { [Op.ne]: d.userId } }, transaction });
+    checks = rules.businessChecks({ reusedFiles, expiresOn: d.fieldsPublic.expiresOn ?? null, today: rules.dhakaToday(new Date()) });
+  }
   if (d.status === 'in_review') await d.update({ checks }, { transaction });
   return checks;
 }
@@ -300,14 +445,20 @@ async function applyDecision(submissionId, status, { transaction }) {
     { action: EVENT_FOR[status], actor: null, entityType: 'verification_document', entityId: d.id, before, after: { status, reasonCode: d.reasonCode }, meta: { submissionId: sub.id, decidedBy: sub.decidedBy } },
     { transaction }
   );
-  const payload = { documentId: d.id, userId: d.userId, docType: d.docType, ...(approved ? {} : { reasonCode: sub.reasonCode }) };
+  const role = d.fieldsPublic.role ?? 'member';
+  const payload = { documentId: d.id, userId: d.userId, docType: d.docType, role, ...(approved ? {} : { reasonCode: sub.reasonCode }) };
   await events.publish(transaction, { name: EVENT_FOR[status], aggregateType: 'verification_document', aggregateId: d.id, payload });
-  if (approved) {
+  if (approved && role === 'member') {
     // FR-10: phone verified + NID approved satisfies the member requirements → M01 activates the role.
     const contact = (await directory.contactFor([d.userId], { transaction })).get(d.userId);
     if (contact?.phone) await events.publish(transaction, { name: 'verification.passed', aggregateType: 'user', aggregateId: d.userId, payload: { userId: d.userId, role: 'member' } });
-    await ack();
+  } else if (approved) {
+    // A business role passes once every required document of the role is approved.
+    const reqs = await requirementsFor(role, transaction);
+    const approvedTypes = (await VerificationDocument.findAll({ where: { userId: d.userId, status: 'approved', isCurrent: true }, attributes: ['docType'], transaction })).map((x) => x.docType);
+    if (rules.roleComplete(reqs, approvedTypes)) await events.publish(transaction, { name: 'verification.passed', aggregateType: 'user', aggregateId: d.userId, payload: { userId: d.userId, role } });
   }
+  if (approved) await ack();
   return status;
 }
 
@@ -325,7 +476,7 @@ async function getVerifiedIdentity(userId, { transaction } = {}) {
 async function facts(id) {
   const d = await VerificationDocument.findByPk(id, { attributes: ['docType', 'reasonCode', 'reasonText', 'fieldsPublic'] });
   if (!d) throw E.notFound('Document');
-  return { docType: d.docType, reasonCode: d.reasonCode ?? null, reasonText: d.reasonText ?? null, numberMasked: d.fieldsPublic.numberMasked };
+  return { docType: d.docType, reasonCode: d.reasonCode ?? null, reasonText: d.reasonText ?? null, numberMasked: d.fieldsPublic.numberMasked ?? null, role: d.fieldsPublic.role ?? 'member' };
 }
 
 // ---------------------------------------------------------------- retention (FR-17, job kyc.retention-purge)

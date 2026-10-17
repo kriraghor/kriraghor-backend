@@ -14,9 +14,13 @@ const paymentsS = require('../modules/payments/payments.schemas');
 const payoutsS = require('../modules/payouts/payouts.schemas');
 const kycS = require('../modules/kyc/kyc.schemas');
 const modS = require('../modules/moderation/moderation.schemas');
+const esS = require('../modules/esports/esports.schemas');
+const grS = require('../modules/grounds/grounds.schemas');
+const bkS = require('../modules/bookings/bookings.schemas');
+const anS = require('../modules/analytics/analytics.schemas');
 
 /**
- * Every route (M01, M02, M03, M04, M06, M07, M08), registered with its request and response schemas and the stable error
+ * Every route (M01, M02, M03, M04, M05, M06, M07, M08, M09, M21), registered with its request and response schemas and the stable error
  * codes it can return (ADR-002). When a route is added in a module, add it here: the
  * coverage test fails if an Express route has no OpenAPI entry.
  */
@@ -184,6 +188,13 @@ function register(registry) {
   const CATALOG_AUTH = { ...ADMIN_AUTH, 404: ['NOT_FOUND'], ...VALIDATION };
   p({ method: 'get', path: '/catalog/esports/games', tags: ['catalog'], summary: 'Active esports games with modes, maps and current points presets (cacheable, ETag)',
     responses: { 200: json(z.object({ items: z.array(catalogS.EsportsGameWithChildren) })), 304: { description: 'Not modified' } } });
+  const cached = { 304: { description: 'Not modified' } };
+  p({ method: 'get', path: '/catalog/sports', tags: ['catalog'], summary: 'Active sports (M03 §6.1; rows only, rule schemas come with M14)', responses: { 200: json(catalogS.SportList), ...cached } });
+  p({ method: 'get', path: '/catalog/locations', tags: ['catalog'], summary: 'Divisions with their districts (BBS geocodes)', request: { query: catalogS.locationsQuery }, responses: { 200: json(catalogS.LocationList), ...cached, ...errors(VALIDATION) } });
+  p({ method: 'get', path: '/catalog/areas', tags: ['catalog'], summary: 'Active areas; filter by district, by service (grounds: Dhaka metro, Q15) or by name and aliases (q)',
+    request: { query: catalogS.areasQuery }, responses: { 200: json(catalogS.AreaList), ...cached, ...errors(VALIDATION) } });
+  p({ method: 'get', path: '/catalog/facilities', tags: ['catalog'], summary: 'Ground facilities (floodlights, parking …)', responses: { 200: json(catalogS.FacilityList), ...cached } });
+  p({ method: 'get', path: '/catalog/surfaces', tags: ['catalog'], summary: 'Playing surfaces', responses: { 200: json(catalogS.SurfaceList), ...cached } });
   p({ method: 'get', path: '/admin/catalog/{table}', tags: ['catalog'], summary: 'Every row of a catalogue, inactive rows and all preset versions included (manage_esports or manage_catalog)', security: adminBearer,
     request: { params: catalogS.tableParam, query: catalogS.listQuery }, responses: { 200: json(z.object({ items: z.array(catalogS.CatalogItem) })), ...errors(CATALOG_AUTH) } });
   p({ method: 'post', path: '/admin/catalog/{table}', tags: ['catalog'], summary: 'Add a catalogue row; the body matches the table', security: adminBearer,
@@ -423,9 +434,9 @@ function register(registry) {
   p({ method: 'post', path: '/me/documents/files', tags: ['kyc'], summary: 'Upload one NID image or PDF (raw body: image/jpeg, image/png or application/pdf; checked by its first bytes)', security: bearer,
     request: { query: kycS.uploadQuery, body: binary('The file itself, up to kyc.max_file_bytes') },
     responses: { 201: json(kycS.Uploaded, 'Created'), ...errors({ ...COMMON_AUTH, 413: ['FILE_TOO_LARGE', 'PAYLOAD_TOO_LARGE'], 415: ['FILE_TYPE_NOT_ALLOWED', 'FILE_TYPE_MISMATCH'], 422: ['VALIDATION_FAILED', 'FILE_EMPTY'], 429: ['UPLOAD_RATE_LIMITED'] }) } });
-  p({ method: 'post', path: '/me/documents', tags: ['kyc'], summary: 'Submit my NID for review: number, date of birth, legal name and the three files (FR-05 to FR-07, FR-11)', security: bearer,
+  p({ method: 'post', path: '/me/documents', tags: ['kyc'], summary: 'Submit my NID (number, date of birth, legal name, three files) or a business document of a role I applied for (fields from the requirement, one file)', security: bearer,
     request: body(kycS.submitBody),
-    responses: { 201: json(kycS.Document, 'Created'), ...errors({ ...COMMON_AUTH, 409: ['PHONE_REQUIRED', 'DOC_ALREADY_APPROVED'], 422: ['VALIDATION_FAILED', 'NID_FORMAT_INVALID', 'DOB_INVALID', 'DOB_IN_FUTURE', 'UNDER_MIN_AGE', 'FILES_INCOMPLETE'] }) } });
+    responses: { 201: json(kycS.Document, 'Created'), ...errors({ ...COMMON_AUTH, 409: ['PHONE_REQUIRED', 'DOC_ALREADY_APPROVED', 'MEMBER_NOT_ACTIVE', 'ROLE_NOT_APPLIED'], 422: ['VALIDATION_FAILED', 'NID_FORMAT_INVALID', 'DOB_INVALID', 'DOB_IN_FUTURE', 'UNDER_MIN_AGE', 'FILES_INCOMPLETE', 'DOC_TYPE_NOT_REQUIRED'] }) } });
   p({ method: 'get', path: '/me/documents/{id}/files/{fileId}', tags: ['kyc'], summary: 'View my own upload (no-store)', security: bearer,
     request: kycFileP, responses: { 200: binary('The file'), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], 410: ['FILE_PURGED'], ...VALIDATION }) } });
 
@@ -469,6 +480,287 @@ function register(registry) {
     } });
   p({ method: 'post', path: '/admin/submissions/{id}/reopen', tags: ['moderation'], summary: 'Master: reopen a decided submission for review, with a reason (step-up moderation.override, critical audit)', security: adminBearer,
     request: { ...subP, headers: stepUpHeader, ...body(modS.reopenBody) }, responses: { 200: json(modS.Detail), ...errors({ ...MOD, 403: MOD[403].concat('STEP_UP_REQUIRED'), 404: ['NOT_FOUND'], 409: ['INVALID_STATE'], ...VALIDATION }) } });
+
+  // ------------------------------------------------------------------ M21 Esports (step 1)
+  const esId = { params: esS.idParam };
+  const ES = { ...ADMIN_AUTH };
+  const esIdem = z.object({ 'idempotency-key': z.string().meta({ description: '8–80 letters, digits, - or _. Retries with the same key and body replay the first response' }) });
+  const ES_IDEM = { 400: ['IDEMPOTENCY_KEY_REQUIRED', 'IDEMPOTENCY_KEY_INVALID'], 409: ['IDEMPOTENCY_IN_PROGRESS'], 422: ['VALIDATION_FAILED', 'IDEMPOTENCY_KEY_REUSED'] };
+  const esMoney = { headers: stepUpHeader };
+  const NF = { 404: ['NOT_FOUND'] };
+  const image = (description) => ({ description, content: { 'image/jpeg': { schema: z.string() }, 'image/png': { schema: z.string() } } });
+
+  // public
+  p({ method: 'get', path: '/esports/games', tags: ['esports'], summary: 'Games with their modes, maps and points presets (M03 catalogue)', responses: { 200: json(z.object({ items: z.array(z.object({}).loose()) })) } });
+  p({ method: 'get', path: '/esports/tournaments', tags: ['esports'], summary: 'Published tournaments, by start time (filters: game key, mode, tier, status, featured; cursor)',
+    request: { query: esS.listQuery }, responses: { 200: json(esS.TournamentList), ...errors(VALIDATION) } });
+  p({ method: 'get', path: '/esports/tournaments/{id}', tags: ['esports'], summary: 'A tournament by slug or id: prize table, schedule, slots taken, streams',
+    request: { params: esS.slugParam }, responses: { 200: json(esS.Tournament), ...errors({ ...NF, ...VALIDATION }) } });
+  p({ method: 'get', path: '/esports/tournaments/{id}/standings', tags: ['esports'], summary: 'Standings with tie-breakers (points, wins, kills, latest placement, registration time)',
+    request: esId, responses: { 200: json(esS.Standings), ...errors({ ...NF, ...VALIDATION }) } });
+  p({ method: 'post', path: '/esports/tournaments/{id}/registrations', tags: ['esports'], summary: 'Register (gate join_esports; every player needs a verified UID): a slot held for esports.payment_hold_minutes with an M06 payment, or the waitlist when full (FR-08 to FR-10)', security: bearer,
+    request: { ...esId, headers: esIdem, ...body(esS.registerBody) },
+    responses: {
+      201: json(esS.Registered, 'Created'),
+      ...errors({ ...COMMON_AUTH, ...ES_IDEM, 403: ['PHONE_REQUIRED', 'ACCOUNT_SUSPENDED', 'ACCOUNT_BANNED', 'ESPORTS_GAME_PROFILE_REQUIRED', 'ESPORTS_UID_BANNED', 'ESPORTS_NOT_IN_SQUAD', 'ESPORTS_SQUAD_CAPTAIN_ONLY'], ...NF, 409: ['ESPORTS_REGISTRATION_CLOSED', 'ESPORTS_ALREADY_REGISTERED', 'IDEMPOTENCY_IN_PROGRESS'], 422: ES_IDEM[422].concat('ESPORTS_SQUAD_SIZE_INVALID') }),
+    } });
+  p({ method: 'get', path: '/esports/matches/{id}', tags: ['esports'], summary: 'A match: status and its posted results', request: esId, responses: { 200: json(esS.Match), ...errors({ ...NF, ...VALIDATION }) } });
+  p({ method: 'get', path: '/esports/leaderboards', tags: ['esports'], summary: 'Top players for a game: rolling (decayed) or a season; the formula is in the response (FR-27, FR-28)',
+    request: { query: esS.leaderboardQuery }, responses: { 200: json(esS.Leaderboard), ...errors({ ...NF, ...VALIDATION }) } });
+  p({ method: 'get', path: '/esports/top-players', tags: ['esports'], summary: 'Best rolling ranks across games (home pages)', responses: { 200: json(esS.TopPlayers) } });
+  p({ method: 'get', path: '/esports/players/{handle}', tags: ['esports'], summary: 'A player by username or id: games, IGNs, masked UIDs, ranks, wins, kills (FR-32)',
+    request: { params: esS.handleParam }, responses: { 200: json(esS.Player), ...errors({ ...NF, ...VALIDATION }) } });
+
+  // player
+  p({ method: 'post', path: '/me/esports/uploads', tags: ['esports'], summary: 'Upload a screenshot (raw JPEG or PNG, checked by its first bytes); returns a key for a profile or evidence', security: bearer,
+    request: { body: image('The screenshot itself') }, responses: { 201: json(esS.Upload, 'Created'), ...errors({ ...COMMON_AUTH, 413: ['FILE_TOO_LARGE', 'PAYLOAD_TOO_LARGE'], 415: ['FILE_TYPE_NOT_ALLOWED', 'FILE_TYPE_MISMATCH'], 422: ['FILE_EMPTY'], 429: ['UPLOAD_RATE_LIMITED'] }) } });
+  p({ method: 'get', path: '/me/esports/profiles', tags: ['esports'], summary: 'My game UIDs and their review status', security: bearer, responses: { 200: json(esS.ProfileList), ...errors(COMMON_AUTH) } });
+  p({ method: 'post', path: '/me/esports/profiles', tags: ['esports'], summary: 'Add a UID and IGN with a screenshot; reviewed on the Moderation desk (FR-02, FR-03)', security: bearer,
+    request: body(esS.profileBody), responses: { 201: json(esS.Profile, 'Created'), ...errors({ ...COMMON_AUTH, 403: ['ESPORTS_UID_BANNED'], 409: ['ESPORTS_UID_TAKEN', 'ESPORTS_PROFILE_EXISTS'], 422: ['VALIDATION_FAILED', 'ESPORTS_GAME_UNKNOWN', 'ESPORTS_UID_FORMAT', 'ESPORTS_IGN_INVALID', 'ESPORTS_UPLOAD_INVALID'] }) } });
+  p({ method: 'post', path: '/me/esports/profiles/{id}/unlink', tags: ['esports'], summary: 'Remove a UID (not while it is in an active entry); leaves that game\'s squad', security: bearer,
+    request: esId, responses: { 200: json(esS.Profile), ...errors({ ...COMMON_AUTH, ...NF, 409: ['ESPORTS_PROFILE_IN_USE'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/esports/squads', tags: ['esports'], summary: 'My squads and invites', security: bearer, responses: { 200: json(esS.SquadList), ...errors(COMMON_AUTH) } });
+  p({ method: 'post', path: '/me/esports/squads', tags: ['esports'], summary: 'Create a squad (needs a verified UID for the game; one squad per game)', security: bearer,
+    request: body(esS.squadBody), responses: { 201: json(esS.Squad, 'Created'), ...errors({ ...COMMON_AUTH, 403: ['ESPORTS_GAME_PROFILE_REQUIRED'], 409: ['ESPORTS_ALREADY_IN_SQUAD', 'ESPORTS_SQUAD_NAME_TAKEN'], 422: ['VALIDATION_FAILED', 'ESPORTS_GAME_UNKNOWN'] }) } });
+  p({ method: 'post', path: '/me/esports/squads/join', tags: ['esports'], summary: 'Join with an invite code', security: bearer,
+    request: body(esS.joinBody), responses: { 200: json(esS.Squad), ...errors({ ...COMMON_AUTH, 403: ['ESPORTS_GAME_PROFILE_REQUIRED'], 404: ['ESPORTS_SQUAD_INVITE_UNKNOWN'], 409: ['ESPORTS_ALREADY_IN_SQUAD', 'ESPORTS_SQUAD_FULL'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/esports/squads/{id}/invites', tags: ['esports'], summary: 'Invite a player by username (captain)', security: bearer,
+    request: { ...esId, ...body(esS.inviteBody) }, responses: { 200: json(esS.Squad), ...errors({ ...COMMON_AUTH, 403: ['ESPORTS_SQUAD_CAPTAIN_ONLY'], ...NF, 409: ['ESPORTS_SQUAD_FULL'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/esports/squads/{id}/leave', tags: ['esports'], summary: 'Leave a squad (the captaincy passes on; the last member out disbands it)', security: bearer,
+    request: esId, responses: { 200: json(esS.Left), ...errors({ ...COMMON_AUTH, 403: ['ESPORTS_NOT_IN_SQUAD'], ...NF, ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/esports/squads/{id}/captain', tags: ['esports'], summary: 'Hand the captaincy to a member (captain)', security: bearer,
+    request: { ...esId, ...body(esS.captainBody) }, responses: { 200: json(esS.Squad), ...errors({ ...COMMON_AUTH, 403: ['ESPORTS_SQUAD_CAPTAIN_ONLY', 'ESPORTS_NOT_IN_SQUAD'], ...NF, ...VALIDATION }) } });
+  p({ method: 'delete', path: '/me/esports/squads/{id}/members/{userId}', tags: ['esports'], summary: 'Remove a member (captain)', security: bearer,
+    request: { params: esS.memberParams }, responses: { 200: json(esS.Squad), ...errors({ ...COMMON_AUTH, 403: ['ESPORTS_SQUAD_CAPTAIN_ONLY', 'ESPORTS_NOT_IN_SQUAD'], ...NF, ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/esports/squad-invites/{id}/accept', tags: ['esports'], summary: 'Accept a squad invite', security: bearer,
+    request: esId, responses: { 200: json(esS.Squad), ...errors({ ...COMMON_AUTH, 403: ['ESPORTS_GAME_PROFILE_REQUIRED'], 404: ['ESPORTS_SQUAD_INVITE_UNKNOWN', 'NOT_FOUND'], 409: ['ESPORTS_ALREADY_IN_SQUAD', 'ESPORTS_SQUAD_FULL'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/esports/squad-invites/{id}/decline', tags: ['esports'], summary: 'Decline a squad invite', security: bearer,
+    request: esId, responses: { 200: json(esS.Squad), ...errors({ ...COMMON_AUTH, 404: ['ESPORTS_SQUAD_INVITE_UNKNOWN', 'NOT_FOUND'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/esports/registrations', tags: ['esports'], summary: 'My entries, with their tournament, matches and any payment still to make', security: bearer,
+    responses: { 200: json(esS.RegistrationList), ...errors(COMMON_AUTH) } });
+  p({ method: 'post', path: '/me/esports/registrations/{id}/accept-offer', tags: ['esports'], summary: 'Take a waitlist slot offer (pay within the hold, Q124)', security: bearer,
+    request: { ...esId, headers: esIdem }, responses: { 200: json(esS.Registered), ...errors({ ...COMMON_AUTH, ...ES_IDEM, ...NF, 409: ['ESPORTS_REGISTRATION_STATE', 'ESPORTS_OFFER_EXPIRED', 'ESPORTS_REGISTRATION_CLOSED', 'SLOTS_FULL', 'IDEMPOTENCY_IN_PROGRESS'] }) } });
+  p({ method: 'post', path: '/me/esports/registrations/{id}/withdraw', tags: ['esports'], summary: 'Withdraw: before registration closes the fee is refunded (esports.withdraw_refund_pct); after, it is forfeited (Q122)', security: bearer,
+    request: esId, responses: { 200: json(esS.Registration), ...errors({ ...COMMON_AUTH, ...NF, 409: ['ESPORTS_REGISTRATION_STATE'], ...VALIDATION }) } });
+  p({ method: 'put', path: '/me/esports/registrations/{id}/prize-split', tags: ['esports'], summary: 'Declare the prize split (captain, before the first match; whole percents summing to 100)', security: bearer,
+    request: { ...esId, ...body(esS.splitBody) }, responses: { 200: json(esS.Registration), ...errors({ ...COMMON_AUTH, ...NF, 409: ['ESPORTS_REGISTRATION_STATE', 'ESPORTS_SPLIT_LOCKED'], 422: ['VALIDATION_FAILED', 'SPLIT_INVALID'] }) } });
+  p({ method: 'post', path: '/me/esports/registrations/{id}/check-in', tags: ['esports'], summary: 'Check in for the stage (within the window); the entry is checked in when enough players are', security: bearer,
+    request: esId, responses: { 200: json(esS.Registration), ...errors({ ...COMMON_AUTH, ...NF, 403: ['ESPORTS_NOT_IN_MATCH'], 409: ['ESPORTS_REGISTRATION_STATE', 'ESPORTS_CHECKIN_CLOSED'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/esports/matches/{id}/room', tags: ['esports'], summary: 'The room ID and password: checked-in players only, from the reveal time; audited, rate-limited, no-store (FR-15, FR-16)', security: bearer,
+    request: esId, responses: { 200: json(esS.Room), ...errors({ ...COMMON_AUTH, ...NF, 403: ['ESPORTS_NOT_CHECKED_IN'], 409: ['ESPORTS_ROOM_NOT_REVEALED', 'ESPORTS_ROOM_NOT_SET'], ...RATE, ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/esports/matches/{id}/evidence', tags: ['esports'], summary: 'Add evidence for a match: a screenshot (upload key) or a video link', security: bearer,
+    request: { ...esId, ...body(esS.evidenceBody) }, responses: { 201: json(esS.Evidence, 'Created'), ...errors({ ...COMMON_AUTH, ...NF, 403: ['ESPORTS_NOT_IN_MATCH'], 422: ['VALIDATION_FAILED', 'ESPORTS_UPLOAD_INVALID', 'STREAM_URL_INVALID'] }) } });
+  p({ method: 'post', path: '/me/esports/matches/{id}/disputes', tags: ['esports'], summary: 'Dispute posted results within the window, with evidence (FR-20; built in until M17)', security: bearer,
+    request: { ...esId, ...body(esS.disputeBody) }, responses: { 201: json(esS.Dispute, 'Created'), ...errors({ ...COMMON_AUTH, ...NF, 403: ['ESPORTS_NOT_IN_MATCH'], 409: ['ESPORTS_DISPUTE_WINDOW_CLOSED', 'ESPORTS_DISPUTE_LIMIT'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/esports/winnings', tags: ['esports'], summary: 'My withdrawable winnings and prize history', security: bearer, responses: { 200: json(esS.Winnings), ...errors(COMMON_AUTH) } });
+
+  // M07 on-demand withdrawal (M21-FR-26)
+  const wd = z.object({ id: z.uuid(), code: z.string(), amount: z.number().int(), status: z.string(), createdAt: dateTimeOf(), paidAt: dateTimeOf().nullable() }).meta({ id: 'Withdrawal' });
+  p({ method: 'get', path: '/me/withdrawals', tags: ['payouts'], summary: 'My withdrawals of winnings', security: bearer, responses: { 200: json(z.object({ items: z.array(wd) })), ...errors(COMMON_AUTH) } });
+  p({ method: 'get', path: '/me/withdrawals/available', tags: ['payouts'], summary: 'What I can withdraw now (minimum and today\'s limit applied)', security: bearer,
+    responses: { 200: json(z.object({ amount: z.number().int(), withdrawable: z.number().int(), dailyLeft: z.number().int(), minimum: z.number().int() }).meta({ id: 'WithdrawalAvailable' })), ...errors(COMMON_AUTH) } });
+  p({ method: 'post', path: '/me/withdrawals', tags: ['payouts'], summary: 'Withdraw my esports winnings to my verified bKash / Nagad account (gate withdraw_winnings: NID KYC; minimum and daily limit)', security: bearer,
+    request: { headers: esIdem },
+    responses: { 201: json(z.object({}).loose().meta({ description: 'The payout (kind withdrawal)' }), 'Created'), ...errors({ ...COMMON_AUTH, ...ES_IDEM, 403: ['KYC_REQUIRED', 'KYC_PENDING', 'ACCOUNT_SUSPENDED', 'ACCOUNT_BANNED'], 409: ['WITHDRAW_OPEN', 'WITHDRAW_NOTHING', 'PAYOUT_ACCOUNT_REQUIRED', 'IDEMPOTENCY_IN_PROGRESS'], 422: ES_IDEM[422].concat('WITHDRAW_BELOW_MINIMUM', 'WITHDRAW_DAILY_LIMIT') }) } });
+
+  // staff
+  p({ method: 'get', path: '/admin/esports/tournaments', tags: ['esports'], summary: 'Tournaments in every status (manage_esports or enter_results); status is a comma list', security: adminBearer,
+    request: { query: esS.adminListQuery }, responses: { 200: json(esS.TournamentList), ...errors({ ...ES, ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/esports/tournaments', tags: ['esports'], summary: 'Create a draft: game, mode, format, tier, fee, slots, minimum, prize table, kill reward, points (preset or custom), schedule, rules (FR-06)', security: adminBearer,
+    request: body(esS.tournamentBody), responses: { 201: json(esS.Tournament, 'Created'), ...errors({ ...ES, 422: ['VALIDATION_FAILED', 'ESPORTS_GAME_UNKNOWN', 'POINTS_INVALID'] }) } });
+  p({ method: 'get', path: '/admin/esports/tournaments/{id}', tags: ['esports'], summary: 'A tournament with its staff fields (snapshot, settlement, submission)', security: adminBearer,
+    request: esId, responses: { 200: json(esS.Tournament), ...errors({ ...ES, ...NF, ...VALIDATION }) } });
+  p({ method: 'patch', path: '/admin/esports/tournaments/{id}', tags: ['esports'], summary: 'Edit: a draft takes the whole body; after submit only title, rules and featured (ESPORTS_PRIZE_TABLE_LOCKED)', security: adminBearer,
+    request: { ...esId, ...body(esS.tournamentPatch) }, responses: { 200: json(esS.Tournament), ...errors({ ...ES, ...NF, 409: ['ESPORTS_PRIZE_TABLE_LOCKED', 'ESPORTS_TOURNAMENT_STATE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/esports/tournaments/{id}/submit', tags: ['esports'], summary: 'Send for review on the Moderation desk (kind esports_tournament; another reviewer approves, FR-07)', security: adminBearer,
+    request: esId, responses: { 200: json(esS.Tournament), ...errors({ ...ES, ...NF, 409: ['ESPORTS_TOURNAMENT_STATE'], 422: ['PRIZE_TABLE_REQUIRED', 'PRIZE_PLACES_INVALID', 'PRIZE_AMOUNT_INVALID', 'MIN_ABOVE_MAX', 'ENTRY_UNIT_INVALID', 'SLOTS_ABOVE_LOBBY', 'SCHEDULE_INVALID', 'POINTS_INVALID'] }) } });
+  p({ method: 'post', path: '/admin/esports/tournaments/{id}/cancel', tags: ['esports'], summary: 'Cancel with a reason (step-up esports.money): every paid entry refunded 100% (FR-30)', security: adminBearer,
+    request: { ...esId, ...esMoney, ...body(esS.cancelBody) }, responses: { 200: json(esS.Tournament), ...errors({ ...ES, 403: ES[403].concat('STEP_UP_REQUIRED'), ...NF, 409: ['ESPORTS_TOURNAMENT_STATE'], ...VALIDATION }) } });
+  p({ method: 'put', path: '/admin/esports/tournaments/{id}/streams', tags: ['esports'], summary: 'Replace the stream links (https on YouTube, Facebook, TikTok) and mark them live (FR-29)', security: adminBearer,
+    request: { ...esId, ...body(esS.streamsBody) }, responses: { 200: json(esS.Tournament), ...errors({ ...ES, ...NF, 422: ['VALIDATION_FAILED', 'STREAM_URL_INVALID'] }) } });
+  p({ method: 'get', path: '/admin/esports/tournaments/{id}/checkins', tags: ['esports'], summary: 'The check-in board: entries, players, who checked in, the waitlist', security: adminBearer,
+    request: esId, responses: { 200: json(esS.Board), ...errors({ ...ES, ...NF, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/esports/tournaments/{id}/finalise-preview', tags: ['esports'], summary: 'Awards by final rank, shares, and the ledger outcome (subsidy or revenue)', security: adminBearer,
+    request: esId, responses: { 200: json(esS.Preview), ...errors({ ...ES, ...NF, ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/esports/tournaments/{id}/finalise', tags: ['esports'], summary: 'Finalise and credit prizes through the M06 pool settlement (step-up esports.money; escrow ends at zero, FR-23 to FR-25)', security: adminBearer,
+    request: { ...esId, ...esMoney }, responses: { 200: json(esS.Tournament), ...errors({ ...ES, 403: ES[403].concat('STEP_UP_REQUIRED'), ...NF, 409: ['ESPORTS_NOT_FINALISABLE', 'ESCROW_FROZEN'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/esports/registrations/{id}/check-in', tags: ['esports'], summary: 'Check a player in by hand (audited; edge case 7)', security: adminBearer,
+    request: { ...esId, ...body(esS.staffCheckinBody) }, responses: { 200: json(esS.Registration), ...errors({ ...ES, ...NF, 403: ES[403].concat('ESPORTS_NOT_IN_MATCH'), 409: ['ESPORTS_REGISTRATION_STATE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/esports/registrations/{id}/disqualify', tags: ['esports'], summary: 'Disqualify an entry: out of the standings, prize forfeited (reversed if credited and unwithdrawn), optional UID ban (FR-22)', security: adminBearer,
+    request: { ...esId, ...body(esS.dqBody) }, responses: { 200: json(esS.Disqualified), ...errors({ ...ES, ...NF, 409: ['ESPORTS_ALREADY_DISQUALIFIED', 'ESPORTS_TOURNAMENT_STATE'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/esports/matches/{id}', tags: ['esports'], summary: 'A match for staff: entries, draft and posted results, disputes', security: adminBearer,
+    request: esId, responses: { 200: json(esS.Match), ...errors({ ...ES, ...NF, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/esports/matches/{id}/room', tags: ['esports'], summary: 'The room panel: versions, reveal time, number of views (no secret)', security: adminBearer,
+    request: esId, responses: { 200: json(esS.RoomPanel), ...errors({ ...ES, ...NF, ...VALIDATION }) } });
+  p({ method: 'put', path: '/admin/esports/matches/{id}/room', tags: ['esports'], summary: 'Set the room ID and password (encrypted; reveal at starts_at − esports.room_reveal_minutes unless given)', security: adminBearer,
+    request: { ...esId, ...body(esS.roomBody) }, responses: { 200: json(esS.RoomPanel), ...errors({ ...ES, ...NF, 409: ['ESPORTS_MATCH_STATE', 'ESPORTS_TOURNAMENT_STATE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/esports/matches/{id}/room/rotate', tags: ['esports'], summary: 'Rotate leaked credentials: a new version, pushed at once to checked-in players (FR-17)', security: adminBearer,
+    request: { ...esId, ...body(esS.rotateBody) }, responses: { 200: json(esS.RoomPanel), ...errors({ ...ES, ...NF, 409: ['ESPORTS_ROOM_NOT_SET'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/esports/matches/{id}/room/reveal-now', tags: ['esports'], summary: 'Reveal now to checked-in players', security: adminBearer,
+    request: esId, responses: { 200: json(esS.RoomPanel), ...errors({ ...ES, ...NF, 409: ['ESPORTS_ROOM_NOT_SET'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/esports/matches/{id}/room/view', tags: ['esports'], summary: 'Read the secret as staff (audited view, no-store)', security: adminBearer,
+    request: esId, responses: { 200: json(esS.StaffRoom), ...errors({ ...ES, ...NF, 409: ['ESPORTS_ROOM_NOT_SET'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/esports/matches/{id}/room/views', tags: ['esports'], summary: 'Who saw which version of the room, and when (FR-16)', security: adminBearer,
+    request: esId, responses: { 200: json(esS.Views), ...errors({ ...ES, ...VALIDATION }) } });
+  p({ method: 'put', path: '/admin/esports/matches/{id}/results', tags: ['esports'], summary: 'Enter results as a draft (enter_results): placement and kills per player (FR-18)', security: adminBearer,
+    request: { ...esId, ...body(esS.resultsBody) },
+    responses: { 200: json(esS.Match), ...errors({ ...ES, ...NF, 409: ['ESPORTS_MATCH_STATE'], 422: ['VALIDATION_FAILED', 'ESPORTS_RESULT_ENTRY_UNKNOWN', 'ESPORTS_PLACEMENT_INVALID', 'ESPORTS_PLACEMENT_DUPLICATE', 'ESPORTS_KILLS_MISMATCH'] }) } });
+  p({ method: 'post', path: '/admin/esports/matches/{id}/results/post', tags: ['esports'], summary: 'Post results: visible, the dispute window opens; missing entries count as not played (FR-20)', security: adminBearer,
+    request: esId, responses: { 200: json(esS.Match), ...errors({ ...ES, ...NF, 409: ['ESPORTS_MATCH_STATE', 'ESPORTS_TOO_EARLY'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/esports/matches/{id}/cancel', tags: ['esports'], summary: 'Cancel a match (lobby crash); the standings use the other matches', security: adminBearer,
+    request: { ...esId, ...body(esS.cancelBody) }, responses: { 200: json(esS.Match), ...errors({ ...ES, ...NF, 409: ['ESPORTS_MATCH_STATE'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/esports/disputes', tags: ['esports'], summary: 'Result disputes (open first)', security: adminBearer,
+    request: { query: esS.disputesQuery }, responses: { 200: json(esS.DisputeList), ...errors({ ...ES, ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/esports/disputes/{id}/resolve', tags: ['esports'], summary: 'Resolve a dispute: reject, or correct the results; the match then continues or becomes final', security: adminBearer,
+    request: { ...esId, ...body(esS.resolveBody) },
+    responses: { 200: json(esS.Dispute), ...errors({ ...ES, ...NF, 409: ['ESPORTS_DISPUTE_NOT_OPEN'], 422: ['VALIDATION_FAILED', 'ESPORTS_RESULT_ENTRY_UNKNOWN', 'ESPORTS_PLACEMENT_INVALID', 'ESPORTS_PLACEMENT_DUPLICATE', 'ESPORTS_KILLS_MISMATCH'] }) } });
+  p({ method: 'get', path: '/admin/esports/uid-bans', tags: ['esports'], summary: 'UID bans', security: adminBearer, request: { query: esS.bansQuery }, responses: { 200: json(esS.BanList), ...errors({ ...ES, ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/esports/uid-bans', tags: ['esports'], summary: 'Ban a UID: profiles banned, open entries disqualified with no refund (FR-04)', security: adminBearer,
+    request: body(esS.banBody), responses: { 201: json(esS.Ban, 'Created'), ...errors({ ...ES, 422: ['VALIDATION_FAILED', 'ESPORTS_GAME_UNKNOWN'] }) } });
+  p({ method: 'post', path: '/admin/esports/uid-bans/{id}/lift', tags: ['esports'], summary: 'Lift a ban (the player can add the UID again)', security: adminBearer,
+    request: { ...esId, ...body(esS.liftBody) }, responses: { 200: json(esS.Ban), ...errors({ ...ES, ...NF, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/esports/profiles/{id}/screenshot', tags: ['esports'], summary: 'A UID screenshot for the Moderation desk (approve_listings or manage_esports; audited, no-store)', security: adminBearer,
+    request: esId, responses: { 200: image('The screenshot'), ...errors({ ...ES, ...NF, ...VALIDATION }) } });
+
+  // ------------------------------------------------------------------ M09 grounds
+  const grId = { params: grS.idParam };
+  const OWNER = { ...COMMON_AUTH, 403: ['ROLE_REQUIRED', 'KYC_REQUIRED', 'PHONE_REQUIRED', 'NOT_OWNER'], 404: ['NOT_FOUND'] };
+  const photo = (description) => ({ description, content: { 'image/jpeg': { schema: z.string() }, 'image/png': { schema: z.string() }, 'image/webp': { schema: z.string() } } });
+  p({ method: 'get', path: '/grounds', tags: ['grounds'], summary: 'Live grounds: filters, facet counts, sorts cheapest / nearest / newest (FR-25)', request: { query: grS.listQuery }, responses: { 200: json(grS.GroundList), ...errors(VALIDATION) } });
+  p({ method: 'get', path: '/grounds/{slug}', tags: ['grounds'], summary: 'A live ground: facts, courts and hours, facilities, rules, price table, v3 payment line (FR-27; ETag)',
+    request: { params: grS.slugParam }, responses: { 200: json(grS.GroundDetail), 304: { description: 'Not modified' }, ...errors({ 404: ['NOT_FOUND'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/grounds/{id}/quote', tags: ['grounds'], summary: 'Price a slot on public courts: both payment options and the platform fee (FR-13)',
+    request: { ...grId, ...body(grS.publicQuote) }, responses: { 200: json(grS.Quote), ...errors({ 404: ['NOT_FOUND'], 409: ['PRICING_MISSING'], 422: ['VALIDATION_FAILED', 'COURT_UNKNOWN', 'NOT_COMBINABLE', 'LENGTH_INVALID', 'OUTSIDE_HOURS'] }) } });
+
+  p({ method: 'get', path: '/me/grounds', tags: ['grounds'], summary: 'My grounds (ground owner)', security: bearer, responses: { 200: json(grS.OwnerGroundList), ...errors(OWNER) } });
+  p({ method: 'post', path: '/me/grounds', tags: ['grounds'], summary: 'Start a ground: a draft with a first pricing draft (FR-01; gate list_ground)', security: bearer,
+    request: body(grS.createGround), responses: { 201: json(grS.OwnerGround, 'Created'), ...errors({ ...OWNER, 422: ['VALIDATION_FAILED', 'AREA_NOT_SERVED', 'CATALOG_ITEM_UNKNOWN'] }) } });
+  p({ method: 'get', path: '/me/grounds/{id}', tags: ['grounds'], summary: 'My ground: the working copy with photos, courts and hours', security: bearer, request: grId, responses: { 200: json(grS.OwnerGround), ...errors(OWNER) } });
+  p({ method: 'patch', path: '/me/grounds/{id}', tags: ['grounds'], summary: 'Edit my ground; on a live ground, review fields start an edit and the rest apply at once (FR-04)', security: bearer,
+    request: { ...grId, ...body(grS.updateGround) }, responses: { 200: json(grS.OwnerGround), ...errors({ ...OWNER, 409: ['GROUND_IN_REVIEW', 'GROUND_STATE'], 422: ['VALIDATION_FAILED', 'AREA_NOT_SERVED', 'CATALOG_ITEM_UNKNOWN'] }) } });
+  p({ method: 'post', path: '/me/grounds/{id}/submit', tags: ['grounds'], summary: 'Send the ground, or an edit of a live ground, for review (FR-02, FR-03)', security: bearer,
+    request: grId, responses: { 200: json(grS.OwnerGround), ...errors({ ...OWNER, 409: ['GROUND_IN_REVIEW', 'GROUND_STATE', 'NOTHING_TO_REVIEW'], 422: ['GROUND_INCOMPLETE'] }) } });
+  p({ method: 'post', path: '/me/grounds/{id}/withdraw', tags: ['grounds'], summary: 'Take the ground (or its edit) out of review', security: bearer, request: grId, responses: { 200: json(grS.OwnerGround), ...errors({ ...OWNER, 409: ['GROUND_STATE'] }) } });
+  p({ method: 'post', path: '/me/grounds/{id}/pause', tags: ['grounds'], summary: 'Hide a live ground; bookings stay (FR-05)', security: bearer, request: grId, responses: { 200: json(grS.OwnerGround), ...errors({ ...OWNER, 409: ['GROUND_STATE'] }) } });
+  p({ method: 'post', path: '/me/grounds/{id}/resume', tags: ['grounds'], summary: 'Show a paused ground again', security: bearer, request: grId, responses: { 200: json(grS.OwnerGround), ...errors({ ...OWNER, 409: ['GROUND_STATE'] }) } });
+  p({ method: 'post', path: '/me/grounds/{id}/courts', tags: ['grounds'], summary: 'Add a court (pending until approved); hours default to the whole bookable day', security: bearer,
+    request: { ...grId, ...body(grS.createCourt) }, responses: { 201: json(grS.OwnerGround, 'Created'), ...errors({ ...OWNER, 409: ['GROUND_IN_REVIEW', 'GROUND_STATE', 'COURT_NAME_TAKEN'], 422: ['VALIDATION_FAILED', 'CATALOG_ITEM_UNKNOWN'] }) } });
+  p({ method: 'patch', path: '/me/courts/{id}', tags: ['grounds'], summary: 'Edit a court; sports, surface, size and name of an active court need review (FR-04)', security: bearer,
+    request: { ...grId, ...body(grS.updateCourt) }, responses: { 200: json(grS.OwnerGround), ...errors({ ...OWNER, 409: ['GROUND_IN_REVIEW', 'GROUND_STATE', 'COURT_NAME_TAKEN'], 422: ['VALIDATION_FAILED', 'CATALOG_ITEM_UNKNOWN'] }) } });
+  p({ method: 'post', path: '/me/courts/{id}/retire', tags: ['grounds'], summary: 'Retire a court (no upcoming bookings; a live ground keeps one court) (FR-06)', security: bearer,
+    request: grId, responses: { 200: json(grS.OwnerGround), ...errors({ ...OWNER, 409: ['GROUND_IN_REVIEW', 'COURT_HAS_BOOKINGS', 'LAST_COURT'] }) } });
+  p({ method: 'put', path: '/me/courts/{id}/hours', tags: ['grounds'], summary: 'Set a court\'s weekly hours: 7 rows, half-hour aligned, inside the bookable day (FR-07, FR-08)', security: bearer,
+    request: { ...grId, ...body(grS.hoursBody) }, responses: { 200: json(grS.OwnerGround), ...errors({ ...OWNER, 409: ['GROUND_STATE', 'HOURS_CONFLICT'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/grounds/{id}/photos', tags: ['grounds'], summary: 'Upload a photo (raw JPEG, PNG or WebP, checked by its first bytes) to the public bucket', security: bearer,
+    request: { ...grId, body: photo('The photo itself, up to ground.photo_max_bytes') },
+    responses: { 201: json(grS.Photo, 'Created'), ...errors({ ...OWNER, 409: ['GROUND_IN_REVIEW', 'GROUND_STATE', 'PHOTO_LIMIT'], 413: ['FILE_TOO_LARGE', 'PAYLOAD_TOO_LARGE'], 415: ['FILE_TYPE_NOT_ALLOWED', 'FILE_TYPE_MISMATCH'], 422: ['FILE_EMPTY'], 429: ['UPLOAD_RATE_LIMITED'] }) } });
+  p({ method: 'put', path: '/me/grounds/{id}/photos/order', tags: ['grounds'], summary: 'Reorder the photos (first = cover)', security: bearer,
+    request: { ...grId, ...body(grS.photoOrder) }, responses: { 200: json(z.object({ items: z.array(grS.Photo) })), ...errors({ ...OWNER, 409: ['GROUND_IN_REVIEW', 'GROUND_STATE'], 422: ['VALIDATION_FAILED', 'PHOTOS_MISMATCH'] }) } });
+  p({ method: 'post', path: '/me/grounds/{id}/photos/{photoId}/remove', tags: ['grounds'], summary: 'Remove a photo (status; nothing is deleted)', security: bearer,
+    request: { params: grS.photoParams }, responses: { 200: json(z.object({ removed: z.uuid() })), ...errors({ ...OWNER, 409: ['GROUND_IN_REVIEW', 'GROUND_STATE'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/grounds/{id}/pricing', tags: ['grounds'], summary: 'Published and draft pricing, limits, the v3 payment policy, upcoming bookings (FR-11)', security: bearer,
+    request: grId, responses: { 200: json(grS.PricingView), ...errors(OWNER) } });
+  p({ method: 'put', path: '/me/grounds/{id}/pricing/draft', tags: ['grounds'], summary: 'Save the pricing draft (validated on the server; base locked in review) (FR-09)', security: bearer,
+    request: { ...grId, ...body(grS.pricingDraft) }, responses: { 200: json(grS.Rules), ...errors({ ...OWNER, 409: ['GROUND_IN_REVIEW'], 422: ['VALIDATION_FAILED', 'COURT_UNKNOWN'] }) } });
+  p({ method: 'post', path: '/me/grounds/{id}/pricing/draft/discard', tags: ['grounds'], summary: 'Discard the pricing draft (FR-10)', security: bearer,
+    request: grId, responses: { 200: json(z.object({ discarded: z.number().int() })), ...errors({ ...OWNER, 409: ['PRICING_DRAFT_MISSING'] }) } });
+  p({ method: 'post', path: '/me/grounds/{id}/pricing/publish', tags: ['grounds'], summary: 'Publish the draft; optionally the same rules on all my grounds (FR-09, FR-12, FR-14)', security: bearer,
+    request: { ...grId, ...body(grS.publishBody) }, responses: { 200: json(grS.PublishResult), ...errors({ ...OWNER, 409: ['PRICING_DRAFT_MISSING', 'GROUND_IN_REVIEW'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/grounds/{id}/pricing/history', tags: ['grounds'], summary: 'Every published version with its summary (FR-14)', security: bearer, request: grId, responses: { 200: json(grS.History), ...errors(OWNER) } });
+  p({ method: 'get', path: '/me/grounds/{id}/pricing/heatmap', tags: ['grounds'], summary: 'Hourly rates for the next days (06–22), draft or published', security: bearer,
+    request: { ...grId, query: grS.heatmapQuery }, responses: { 200: json(grS.Heatmap), ...errors({ ...OWNER, 409: ['PRICING_MISSING'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/grounds/{id}/pricing/quote', tags: ['grounds'], summary: 'Quote a slot with unsaved changes (FR-13)', security: bearer,
+    request: { ...grId, ...body(grS.ownerQuote) }, responses: { 200: json(grS.Quote), ...errors({ ...OWNER, 409: ['PRICING_MISSING'], 422: ['VALIDATION_FAILED', 'COURT_UNKNOWN', 'NOT_COMBINABLE', 'LENGTH_INVALID', 'OUTSIDE_HOURS'] }) } });
+
+  const STAFF = { ...ADMIN_AUTH, 404: ['NOT_FOUND'], 409: ['GROUND_STATE'], ...VALIDATION };
+  p({ method: 'get', path: '/admin/grounds', tags: ['grounds'], summary: 'Grounds for staff (approve_listings or manage_users): status filter, name or slug search', security: adminBearer, request: { query: grS.staffListQuery }, responses: { 200: json(grS.StaffList), ...errors({ ...ADMIN_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/grounds/{id}', tags: ['grounds'], summary: 'A ground for reviewers: the working copy, the public version and pricing', security: adminBearer, request: grId, responses: { 200: json(grS.StaffGround), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/grounds/{id}/suspend', tags: ['grounds'], summary: 'Suspend a live or paused ground (manage_users)', security: adminBearer, request: { ...grId, ...body(grS.reasonBody) }, responses: { 200: json(grS.StaffResult), ...errors(STAFF) } });
+  p({ method: 'post', path: '/admin/grounds/{id}/restore', tags: ['grounds'], summary: 'Restore a suspended ground (master)', security: adminBearer, request: { ...grId, ...body(grS.reasonBody) }, responses: { 200: json(grS.StaffResult), ...errors(STAFF) } });
+  p({ method: 'post', path: '/admin/grounds/{id}/remove', tags: ['grounds'], summary: 'Remove a ground (master; status, never deleted)', security: adminBearer, request: { ...grId, ...body(grS.reasonBody) }, responses: { 200: json(grS.StaffResult), ...errors(STAFF) } });
+  // ------------------------------------------------------------------ M09 step 2: closures and series
+  const OWNER2 = { ...COMMON_AUTH, 403: ['ROLE_REQUIRED', 'KYC_REQUIRED', 'PHONE_REQUIRED', 'NOT_OWNER', 'REASON_NOT_ALLOWED'], 404: ['NOT_FOUND'] };
+  const CLOSURE_422 = { 422: ['VALIDATION_FAILED', 'NOT_HALF_HOUR', 'CLOSURE_EMPTY', 'CLOSURE_IN_PAST', 'OUT_OF_RANGE', 'COURT_UNKNOWN'] };
+  p({ method: 'post', path: '/me/grounds/{id}/closures/preview', tags: ['grounds'], summary: 'What a closure would clash with: bookings, holds, series weeks, closures (FR-16)', security: bearer,
+    request: { ...grId, ...body(grS.closureBody) }, responses: { 200: json(grS.ClosurePreview), ...errors({ ...OWNER2, 409: ['GROUND_STATE'], ...CLOSURE_422 }) } });
+  p({ method: 'post', path: '/me/grounds/{id}/closures', tags: ['grounds'], summary: 'Close courts for a half-hour aligned period, up to 90 days ahead; nothing partial on a clash (FR-15, FR-16, Q63)', security: bearer,
+    request: { ...grId, ...body(grS.closureBody) }, responses: { 201: json(grS.Closure), ...errors({ ...OWNER2, 409: ['GROUND_STATE', 'CLOSURE_CLASHES'], ...CLOSURE_422 }) } });
+  p({ method: 'get', path: '/me/grounds/{id}/closures', tags: ['grounds'], summary: 'Upcoming or past closures', security: bearer,
+    request: { ...grId, query: grS.closureListQuery }, responses: { 200: json(grS.ClosureList), ...errors({ ...OWNER2, ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/closures/{id}/reopen', tags: ['grounds'], summary: 'Reopen an upcoming closure (FR-17)', security: bearer, request: grId, responses: { 200: json(grS.Closure), ...errors({ ...OWNER2, 409: ['CLOSURE_STATE'] }) } });
+  p({ method: 'post', path: '/me/closures/{id}/end-now', tags: ['grounds'], summary: 'End an in-progress closure at the next half-hour (FR-17)', security: bearer, request: grId, responses: { 200: json(grS.Closure), ...errors({ ...OWNER2, 409: ['CLOSURE_STATE'] }) } });
+  const SERIES_422 = { 422: ['VALIDATION_FAILED', 'SERIES_WEEKS_INVALID', 'SERIES_DAY_MISMATCH', 'LENGTH_INVALID', 'NOT_HALF_HOUR', 'OUT_OF_RANGE', 'COURT_UNKNOWN'] };
+  p({ method: 'post', path: '/me/grounds/{id}/series/preview', tags: ['grounds'], summary: 'Weeks of a weekly series with their clashes and the price per session (FR-19, FR-20)', security: bearer,
+    request: { ...grId, ...body(grS.seriesBody) }, responses: { 200: json(grS.SeriesPreview), ...errors({ ...OWNER2, 409: ['GROUND_NOT_BOOKABLE', 'PRICING_MISSING'], ...SERIES_422 }) } });
+  p({ method: 'post', path: '/me/grounds/{id}/series', tags: ['grounds'], summary: 'Book a weekly series: every week becomes a booking paid at the venue (FR-19 to FR-21, Q64)', security: bearer,
+    request: { ...grId, ...body(grS.seriesBody) }, responses: { 201: json(grS.Series), ...errors({ ...OWNER2, 409: ['GROUND_NOT_BOOKABLE', 'PRICING_MISSING', 'SERIES_CLASHES', 'SLOT_UNAVAILABLE'], ...SERIES_422 }) } });
+  p({ method: 'get', path: '/me/grounds/{id}/series', tags: ['grounds'], summary: 'Series of a ground', security: bearer, request: grId, responses: { 200: json(grS.SeriesList), ...errors(OWNER2) } });
+  p({ method: 'get', path: '/me/series/{id}', tags: ['grounds'], summary: 'A series with its sessions', security: bearer, request: grId, responses: { 200: json(grS.Series), ...errors(OWNER2) } });
+  p({ method: 'post', path: '/me/series/{id}/weeks/{week}/skip', tags: ['grounds'], summary: 'Skip a future week; the court is free (FR-22)', security: bearer,
+    request: { params: grS.weekParams }, responses: { 200: json(grS.Series), ...errors({ ...OWNER2, 409: ['SERIES_STATE', 'BOOKING_STATE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/series/{id}/weeks/{week}/restore', tags: ['grounds'], summary: 'Restore a skipped week if the court is still free (FR-22)', security: bearer,
+    request: { params: grS.weekParams }, responses: { 200: json(grS.Series), ...errors({ ...OWNER2, 409: ['SERIES_STATE', 'BOOKING_STATE', 'SLOT_UNAVAILABLE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/series/{id}/end', tags: ['grounds'], summary: 'End a series: future weeks are cancelled, no penalty, no refund (paid at the venue) (FR-23)', security: bearer,
+    request: { ...grId, ...body(grS.seriesEndBody) }, responses: { 200: json(grS.Series), ...errors({ ...OWNER2, 409: ['SERIES_STATE'], ...VALIDATION }) } });
+
+  // ------------------------------------------------------------------ M10 bookings (v3 money)
+  const bkId = { params: bkS.idParam };
+  const MEMBER = { ...COMMON_AUTH, 404: ['NOT_FOUND'] };
+  const BOWNER = { ...COMMON_AUTH, 403: ['ROLE_REQUIRED', 'KYC_REQUIRED', 'NOT_OWNER'], 404: ['NOT_FOUND'] };
+  p({ method: 'get', path: '/grounds/{id}/availability', tags: ['bookings'], summary: 'Half-hour grid per court for a Dhaka day: open, booked, yours, closed, past, with the hourly rate (FR-01 to FR-03)',
+    request: { ...bkId, query: bkS.availabilityQuery }, responses: { 200: json(bkS.Availability), ...errors({ 404: ['NOT_FOUND'], 422: ['VALIDATION_FAILED', 'OUT_OF_RANGE'] }) } });
+  p({ method: 'post', path: '/bookings/holds', tags: ['bookings'], summary: 'Hold a slot and start paying the advance or the full price (gate book_ground: a verified phone; FR-04 to FR-06)', security: bearer,
+    request: { headers: idem, ...body(bkS.holdBody) },
+    responses: {
+      201: json(bkS.HoldResult),
+      ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'ACCOUNT_SUSPENDED', 'ACCOUNT_BANNED'], 404: ['NOT_FOUND'], 409: ['GROUND_NOT_BOOKABLE', 'SLOT_UNAVAILABLE', 'PRICING_MISSING', 'IDEMPOTENCY_IN_PROGRESS'],
+        422: ['VALIDATION_FAILED', 'OWN_GROUND', 'COURT_UNKNOWN', 'NOT_COMBINABLE', 'NOT_HALF_HOUR', 'TOO_LATE', 'OUT_OF_RANGE', 'LENGTH_INVALID', 'OUTSIDE_HOURS', 'PAYMENT_CHOICE_UNAVAILABLE'], 429: ['HOLD_LIMIT', 'HOLD_RATE_LIMITED'] }),
+    } });
+  p({ method: 'post', path: '/bookings/{id}/pay', tags: ['bookings'], summary: 'The payment link of a booking on hold', security: bearer, request: bkId, responses: { 200: json(bkS.HoldResult), ...errors({ ...MEMBER, 409: ['BOOKING_STATE'] }) } });
+  p({ method: 'post', path: '/bookings/{id}/release', tags: ['bookings'], summary: 'Let a held slot go before paying', security: bearer, request: bkId, responses: { 200: json(bkS.HoldResult), ...errors({ ...MEMBER, 409: ['BOOKING_STATE'] }) } });
+  p({ method: 'get', path: '/me/bookings', tags: ['bookings'], summary: 'My bookings, upcoming or past', security: bearer, request: { query: bkS.myListQuery }, responses: { 200: json(bkS.MyBookings), ...errors({ ...COMMON_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/bookings/{id}', tags: ['bookings'], summary: 'A booking with its cancel terms', security: bearer, request: bkId, responses: { 200: json(bkS.MyBooking), ...errors(MEMBER) } });
+  p({ method: 'post', path: '/me/bookings/{id}/cancel-preview', tags: ['bookings'], summary: 'What cancelling gives back (v3: the advance is retained; above-advance refunded, Q120)', security: bearer,
+    request: bkId, responses: { 200: json(bkS.CancelTerms), ...errors({ ...MEMBER, 409: ['BOOKING_STATE'] }) } });
+  p({ method: 'post', path: '/me/bookings/{id}/cancel', tags: ['bookings'], summary: 'Cancel before the start, confirming the refund shown (FR-10 to FR-12)', security: bearer,
+    request: { ...bkId, ...body(bkS.cancelBody) }, responses: { 200: json(bkS.CancelResult), ...errors({ ...MEMBER, 409: ['BOOKING_STATE', 'ALREADY_STARTED', 'REFUND_CHANGED'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/ground-bookings', tags: ['bookings'], summary: 'The owner\'s day at a ground: courts, hours, bookings, closures (FR-35)', security: bearer,
+    request: { query: bkS.timelineQuery }, responses: { 200: json(bkS.Timeline), ...errors({ ...BOWNER, ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/ground-bookings/{id}', tags: ['bookings'], summary: 'A booking at my ground', security: bearer, request: bkId, responses: { 200: json(bkS.OwnerDetail), ...errors(BOWNER) } });
+  p({ method: 'post', path: '/me/ground-bookings/{id}/check-in', tags: ['bookings'], summary: 'Check in from start − 30 min to the end; releases the online money minus the fee on the full value (FR-13, v3)', security: bearer,
+    request: bkId, responses: { 200: json(bkS.OwnerResult), ...errors({ ...BOWNER, 409: ['BOOKING_STATE', 'NOT_CHECKIN_WINDOW'] }) } });
+  p({ method: 'post', path: '/me/ground-bookings/{id}/no-show', tags: ['bookings'], summary: 'Mark a no-show once late, until auto-complete; the advance is retained (FR-15, Q68)', security: bearer,
+    request: bkId, responses: { 200: json(bkS.OwnerResult), ...errors({ ...BOWNER, 409: ['BOOKING_STATE', 'NOT_LATE_YET', 'NO_SHOW_WINDOW_CLOSED'] }) } });
+  p({ method: 'post', path: '/me/ground-bookings/{id}/extend', tags: ['bookings'], summary: 'Extend by 30 minutes, paid at the venue; the fee is owed (FR-16)', security: bearer,
+    request: bkId, responses: { 200: json(bkS.OwnerResult), ...errors({ ...BOWNER, 409: ['BOOKING_STATE', 'BOOKING_ENDED', 'NEXT_SLOT_TAKEN'], 422: ['OUTSIDE_HOURS'] }) } });
+  p({ method: 'post', path: '/me/ground-bookings/{id}/collect-balance', tags: ['bookings'], summary: 'Record the balance paid at the venue (cash or bKash), the full amount due (FR-17)', security: bearer,
+    request: { ...bkId, ...body(bkS.balanceBody) }, responses: { 200: json(bkS.OwnerResult), ...errors({ ...BOWNER, 409: ['BOOKING_STATE', 'NO_BALANCE_DUE'], 422: ['VALIDATION_FAILED', 'BALANCE_MISMATCH'] }) } });
+  p({ method: 'post', path: '/me/ground-bookings/{id}/cancel', tags: ['bookings'], summary: 'Cancel as the owner before the start: 100% back to the member (FR-19, v3; weather not penalised, Q22)', security: bearer,
+    request: { ...bkId, ...body(bkS.ownerCancelBody) }, responses: { 200: json(bkS.OwnerResult), ...errors({ ...BOWNER, 409: ['BOOKING_STATE', 'ALREADY_STARTED'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/ground-bookings/{id}/move-targets', tags: ['bookings'], summary: 'Free courts at my grounds for the same time (M09 §6.4)', security: bearer, request: bkId, responses: { 200: json(bkS.MoveTargets), ...errors(BOWNER) } });
+  p({ method: 'post', path: '/me/ground-bookings/{id}/move', tags: ['bookings'], summary: 'Move to another court, same time and price; a new ground lets the member cancel free (FR-20)', security: bearer,
+    request: { ...bkId, ...body(bkS.moveBody) }, responses: { 200: json(bkS.OwnerResult), ...errors({ ...BOWNER, 409: ['BOOKING_STATE', 'ALREADY_STARTED', 'SLOT_UNAVAILABLE'], 422: ['VALIDATION_FAILED', 'MOVE_TARGET_INVALID', 'OUTSIDE_HOURS'] }) } });
+  p({ method: 'post', path: '/me/grounds/{id}/walk-ins', tags: ['bookings'], summary: 'Record a walk-in paid in full at the counter; checked in at once when starting soon (FR-18)', security: bearer,
+    request: { ...grId, headers: idem, ...body(bkS.walkInBody) },
+    responses: { 201: json(bkS.OwnerResult), ...errors({ ...BOWNER, 409: ['GROUND_NOT_BOOKABLE', 'PRICING_MISSING', 'SLOT_UNAVAILABLE'], 422: ['VALIDATION_FAILED', 'NOT_HALF_HOUR', 'TOO_LATE', 'OUT_OF_RANGE', 'COURT_UNKNOWN', 'LENGTH_INVALID', 'OUTSIDE_HOURS', 'NOT_COMBINABLE'] }) } });
+  p({ method: 'get', path: '/admin/bookings', tags: ['bookings'], summary: 'Bookings for staff (manage_users or view_payouts)', security: adminBearer, request: { query: bkS.staffListQuery }, responses: { 200: json(bkS.StaffList), ...errors({ ...ADMIN_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/bookings/{id}', tags: ['bookings'], summary: 'A booking with its ledger trail', security: adminBearer, request: bkId, responses: { 200: json(bkS.StaffDetail), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'] }) } });
+  p({ method: 'post', path: '/admin/bookings/{id}/cancel', tags: ['bookings'], summary: 'Cancel for the platform with a full refund (master, step-up escrow.manage)', security: adminBearer,
+    request: { ...bkId, headers: stepUpHeader, ...body(bkS.reasonBody) }, responses: { 200: json(bkS.OwnerResult), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'], 409: ['BOOKING_STATE'], ...VALIDATION }) } });
+  // ------------------------------------------------------------------ M19 dashboards and analytics
+  const csv = { description: 'CSV (UTF-8 with a byte-order mark; taka with two decimals; +06:00 times)', content: { 'text/csv': { schema: z.string() } } };
+  p({ method: 'get', path: '/me/dashboard', tags: ['analytics'], summary: 'My dashboard: member (spent, bookings, where it went) or ground owner (revenue, occupancy, bookings, repeat teams, charts) (FR-01 to FR-07)', security: bearer,
+    request: { query: anS.dashboardQuery }, responses: { 200: json(z.union([anS.MemberDashboard, anS.OwnerDashboard])), ...errors({ ...COMMON_AUTH, 403: ['ROLE_REQUIRED'], 422: ['VALIDATION_FAILED', 'PERIOD_INVALID'] }) } });
+  p({ method: 'get', path: '/me/dashboard/actions', tags: ['analytics'], summary: 'Needs your action, from the owning modules (FR-11)', security: bearer,
+    request: { query: anS.actionsQuery }, responses: { 200: json(anS.Actions), ...errors({ ...COMMON_AUTH, 403: ['ROLE_REQUIRED'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/dashboard/export', tags: ['analytics'], summary: 'CSV of my bookings, revenue by week or payments (FR-22, FR-23; audited; per-hour limit)', security: bearer,
+    request: { query: anS.exportQuery }, responses: { 200: csv, ...errors({ ...COMMON_AUTH, 403: ['ROLE_REQUIRED'], 404: ['DATASET_UNKNOWN'], 422: ['VALIDATION_FAILED', 'EXPORT_TOO_LARGE'], 429: ['EXPORT_LIMIT'] }) } });
+  p({ method: 'get', path: '/kpis/{key}/definition', tags: ['analytics'], summary: 'What a dashboard tile counts, in English or Bangla', request: { params: anS.kpiParam, query: anS.kpiQuery }, responses: { 200: json(anS.KpiDefinition), ...errors({ 404: ['NOT_FOUND'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/analytics/overview', tags: ['analytics'], summary: 'Platform overview: GTV with venue money, fee revenue, take rate, bookings, esports, members, review queue (master or view_analytics)', security: adminBearer,
+    request: { query: anS.platformQuery }, responses: { 200: json(anS.PlatformOverview), ...errors({ ...ADMIN_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/analytics/export', tags: ['analytics'], summary: 'CSV of the platform day table (master or view_analytics)', security: adminBearer,
+    request: { query: anS.platformExportQuery }, responses: { 200: csv, ...errors({ ...ADMIN_AUTH, 404: ['DATASET_UNKNOWN'], 422: ['VALIDATION_FAILED', 'EXPORT_TOO_LARGE'], 429: ['EXPORT_LIMIT'] }) } });
+  p({ method: 'get', path: '/admin/analytics/actions', tags: ['analytics'], summary: 'Needs your action for staff (the review queue)', security: adminBearer, responses: { 200: json(anS.Actions), ...errors(ADMIN_AUTH) } });
 }
 
 function dateTimeOf() {

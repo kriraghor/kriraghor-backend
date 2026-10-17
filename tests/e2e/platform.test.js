@@ -120,8 +120,7 @@ describe('realtime handshake', () => {
     expect(r).toEqual({ ok: true, info: { userId: s.user.id, rooms: [`user:${s.user.id}`] } });
   });
 
-  it('rejects missing, forged and expired tokens', async () => {
-    expect(await open({})).toEqual({ ok: false, code: 'AUTH_REQUIRED' });
+  it('rejects forged and expired tokens (no token at all is a guest)', async () => {
     expect(await open({ token: 'not-a-jwt' })).toEqual({ ok: false, code: 'AUTH_REQUIRED' });
     const s = await h.signupUser();
     const { sid, av } = jwt.decode(s.accessToken);
@@ -134,6 +133,19 @@ describe('realtime handshake', () => {
   it('checks the audience: customer tokens cannot join as admin', async () => {
     const s = await h.signupUser();
     expect(await open({ token: s.accessToken, audience: 'admin' })).toEqual({ ok: false, code: 'TOKEN_AUDIENCE_INVALID' });
+  });
+
+  it('lets a guest join only public esports rooms, a few at a time (M21)', async () => {
+    expect(await open({})).toEqual({ ok: true, info: { userId: null, rooms: [] } });
+    expect(await open({ audience: 'admin' })).toEqual({ ok: false, code: 'AUTH_REQUIRED' });
+    const socket = sockets[0];
+    const sub = (room) => new Promise((resolve) => socket.emit('subscribe', room, resolve));
+    const id = '0190f3a2-0000-7000-8000-000000000001';
+    expect(await sub(`esports_tournament:${id}`)).toEqual({ ok: true });
+    expect(await sub(`user:${id}`)).toEqual({ ok: false });
+    expect(await sub('staff')).toEqual({ ok: false });
+    for (let i = 2; i <= 10; i += 1) expect(await sub(`esports_match:0190f3a2-0000-7000-8000-0000000000${String(i).padStart(2, '0')}`)).toEqual({ ok: true });
+    expect(await sub(`esports_match:0190f3a2-0000-7000-8000-000000000099`)).toEqual({ ok: false });
   });
 
   it('puts admin sockets in the staff room', async () => {
@@ -194,6 +206,15 @@ describe('OpenAPI contract (ADR-002)', () => {
         return [
           ['/me/submissions', m.meSubmissions],
           ['/admin/submissions', m.adminRouter],
+        ];
+      })(),
+      ...(() => {
+        const es = require('../../src/modules/esports/esports.routes');
+        return [
+          ['/esports', es.publicRouter],
+          ['/me/esports', es.meRouter],
+          ['/admin/esports', es.adminRouter],
+          ['/me/withdrawals', require('../../src/modules/payouts/payouts.routes').meWithdrawals],
         ];
       })(),
     ];

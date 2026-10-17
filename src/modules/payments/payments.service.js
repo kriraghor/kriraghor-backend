@@ -189,7 +189,7 @@ async function applyResult(attemptId, result, { source }) {
       const hold = await escrow.openHold(payment, { transaction, capturedAt: now });
       const grace = settings.get('payments.unknown_grace_minutes') * 60000;
       const late = now.getTime() > new Date(payment.expiresAt).getTime() + grace;
-      const decision = purposes.get(payment.purpose).onCaptured({ payment, late });
+      const decision = await purposes.get(payment.purpose).onCaptured({ payment, late, transaction });
       await events.publish(transaction, {
         name: 'payment.succeeded',
         aggregateType: 'payment',
@@ -488,6 +488,19 @@ async function facts(paymentId) {
   return { code: p.code, title: p.title, methodDisplay: p.methodDisplay ?? 'your payment method', payerId: p.payerId };
 }
 
+/** M19 facts: a captured payment with its vertical; null until it captured. */
+function paymentFactOf(p) {
+  if (!p || !p.succeededAt) return null;
+  return { paymentId: p.id, purpose: p.purpose, vertical: purposes.PURPOSES[p.purpose]?.vertical ?? 'other', payerId: p.payerId, amount: p.capturedPoisha || p.amountPoisha, refunded: p.refundedPoisha, capturedAt: p.succeededAt };
+}
+const paymentFact = async (paymentId) => paymentFactOf(await Payment.findByPk(paymentId));
+
+/** M19 reconcile (FactsExporter): payments captured in [since, until). */
+async function exportPaymentFacts({ since, until }) {
+  const rows = await Payment.findAll({ where: { succeededAt: { [Op.gte]: since, [Op.lt]: until } }, order: [['succeededAt', 'ASC']] });
+  return rows.map(paymentFactOf);
+}
+
 /** Refund amounts the payer can still get back (PaymentService.getRefundable, §2.4). */
 async function getRefundable(paymentId) {
   const p = await Payment.findByPk(paymentId);
@@ -497,6 +510,8 @@ async function getRefundable(paymentId) {
 }
 
 module.exports = {
+  paymentFact,
+  exportPaymentFacts,
   createIntent,
   createTestCharge,
   startAttempt,

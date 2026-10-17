@@ -7,7 +7,7 @@ const { uuid7 } = require('../common/uuid7');
 const { toPoisha } = require('../common/money');
 
 const ROLE_STATUSES = ['applied', 'documents_pending', 'in_review', 'changes_requested', 'active', 'rejected', 'suspended', 'withdrawn'];
-const PERMS = ['approve_listings', 'approve_documents', 'resolve_reports', 'refund_small', 'view_payouts', 'release_payouts', 'edit_fees', 'manage_staff', 'manage_users', 'manage_catalog', 'manage_esports'];
+const PERMS = ['approve_listings', 'approve_documents', 'resolve_reports', 'refund_small', 'view_payouts', 'release_payouts', 'edit_fees', 'manage_staff', 'manage_users', 'manage_catalog', 'manage_esports', 'enter_results', 'view_analytics'];
 
 const uuidPk = { type: DataTypes.UUID, primaryKey: true, defaultValue: DataTypes.UUIDV4 };
 
@@ -833,7 +833,7 @@ Payout.init(
     code: { type: DataTypes.STRING(20), allowNull: false },
     batchId: DataTypes.UUID,
     payeeId: { type: DataTypes.UUID, allowNull: false },
-    kind: { type: DataTypes.ENUM('earning', 'refund'), allowNull: false, defaultValue: 'earning' },
+    kind: { type: DataTypes.ENUM('earning', 'refund', 'withdrawal'), allowNull: false, defaultValue: 'earning' },
     refundId: DataTypes.UUID,
     payoutAccountId: DataTypes.UUID,
     periodStart: DataTypes.DATE(3),
@@ -971,7 +971,7 @@ VerificationDocument.init(
   {
     id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
     userId: { type: DataTypes.UUID, allowNull: false },
-    docType: { type: DataTypes.ENUM('nid'), allowNull: false },
+    docType: { type: DataTypes.ENUM('nid', 'trade_license', 'deed_or_lease', 'tin'), allowNull: false },
     subjectKey: { type: DataTypes.STRING(64), allowNull: false, defaultValue: '' },
     version: { type: DataTypes.INTEGER, allowNull: false },
     status: { type: DataTypes.ENUM('in_review', 'changes_requested', 'approved', 'rejected', 'superseded', 'withdrawn'), allowNull: false },
@@ -1142,7 +1142,39 @@ Submission.hasMany(SubmissionCheck, { as: 'checks', foreignKey: 'submissionId' }
 Submission.hasMany(ReviewClaim, { as: 'claims', foreignKey: 'submissionId' });
 Submission.belongsTo(ReviewRubric, { as: 'rubric', foreignKey: 'rubricId' });
 
+// ---- M03 places and sports catalogues (models in ./places.js) ----
+const places = require('./places');
+
+// ---- M09 grounds (models in ./grounds.js) ----
+const grounds = require('./grounds');
+grounds.Ground.belongsTo(places.Area, { as: 'area', foreignKey: 'areaId' });
+grounds.Ground.belongsTo(User, { as: 'owner', foreignKey: 'ownerId' });
+grounds.Court.belongsTo(places.Surface, { as: 'surface', foreignKey: 'surfaceId' });
+
+// ---- M10 bookings (models in ./bookings.js) ----
+const bookings = require('./bookings');
+bookings.Booking.belongsTo(grounds.Ground, { as: 'ground', foreignKey: 'groundId' });
+bookings.Booking.belongsTo(User, { as: 'booker', foreignKey: 'bookerUserId' });
+bookings.Booking.belongsTo(grounds.BookingSeries, { as: 'series', foreignKey: 'seriesId' });
+grounds.BookingSeries.hasMany(bookings.Booking, { as: 'bookings', foreignKey: 'seriesId' });
+
+// ---- M19 analytics read models (./analytics.js) ----
+const analytics = require('./analytics');
+
+// ---- M21 esports (models in ./esports.js) ----
+const esports = require('./esports');
+esports.EsportsTournament.belongsTo(EsportsGame, { as: 'game', foreignKey: 'gameId' });
+esports.EsportsTournament.belongsTo(EsportsMode, { as: 'mode', foreignKey: 'modeId' });
+esports.EsportsMatch.belongsTo(EsportsMap, { as: 'map', foreignKey: 'mapId' });
+esports.EsportsGameProfile.belongsTo(EsportsGame, { as: 'game', foreignKey: 'gameId' });
+esports.EsportsGameProfile.belongsTo(User, { as: 'user', foreignKey: 'userId' });
+
 module.exports = {
+  ...esports,
+  ...places,
+  ...grounds,
+  ...bookings,
+  ...analytics,
   sequelize,
   User,
   UserRole,

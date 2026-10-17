@@ -11,7 +11,8 @@ const esportsSeed = require('./reference/esports.v1.json');
 const templatesSeed = require('./reference/templates.v1.json');
 const kycSeed = require('./reference/kyc-requirements.v1.json');
 const moderationSeed = require('./reference/moderation.v1.json');
-const { sequelize, PlatformSetting, SettingsHistory, EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset, MessageTemplate, DocumentRequirement, ReviewRubric, RejectionReason } = require('../../models');
+const placesSeed = require('./reference/places.v1.json');
+const { sequelize, PlatformSetting, SettingsHistory, EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset, MessageTemplate, DocumentRequirement, ReviewRubric, RejectionReason, Sport, Division, District, Area, Facility, Surface } = require('../../models');
 
 const SEED_REASON = `Seed settings v${settingsSeed.seedVersion}`;
 
@@ -120,10 +121,38 @@ async function seedModeration(transaction) {
     inserted += 1;
   }
   for (const r of moderationSeed.reasons) {
-    if (await RejectionReason.findByPk(r.code, { transaction })) continue;
+    const existing = await RejectionReason.findByPk(r.code, { transaction });
+    if (existing) {
+      // Additive only: a reason gains the kinds of newly built modules; nothing is ever removed.
+      const missing = r.kinds.filter((k) => !existing.kinds.includes(k));
+      if (missing.length) {
+        await existing.update({ kinds: [...existing.kinds, ...missing] }, { transaction });
+        inserted += 1;
+      }
+      continue;
+    }
     await RejectionReason.create({ requiresText: false, ...r }, { transaction });
     inserted += 1;
   }
+  return inserted;
+}
+
+/** M03 sports and places (for M09 and later), only when the key is missing; parents by key. */
+async function seedPlaces(transaction) {
+  let inserted = 0;
+  const add = async (Model, rows, extra = () => ({})) => {
+    for (const r of rows) {
+      const { key, ...rest } = r;
+      inserted += Number((await insertMissing(Model, { key }, { ...rest, ...(await extra(r)) }, transaction))[1]);
+    }
+  };
+  const idOf = async (Model, key) => (await Model.findOne({ where: { key }, transaction })).id;
+  await add(Sport, placesSeed.sports);
+  await add(Division, placesSeed.divisions);
+  await add(District, placesSeed.districts.map(({ division, ...d }) => ({ ...d, divisionKey: division })), async (d) => ({ divisionId: await idOf(Division, d.divisionKey) }));
+  await add(Area, placesSeed.areas.map(({ district, ...a }) => ({ ...a, districtKey: district })), async (a) => ({ districtId: await idOf(District, a.districtKey) }));
+  await add(Facility, placesSeed.facilities);
+  await add(Surface, placesSeed.surfaces);
   return inserted;
 }
 
@@ -134,7 +163,8 @@ async function seedReference() {
     templates: await seedTemplates(transaction),
     kycRequirements: await seedKycRequirements(transaction),
     moderation: await seedModeration(transaction),
+    places: await seedPlaces(transaction),
   }));
 }
 
-module.exports = { seedReference, seedSettings, seedEsports, seedTemplates, seedKycRequirements, kycSeed, seedModeration, moderationSeed, settingRow, SETTING_KEYS, settingsSeed, esportsSeed, templatesSeed };
+module.exports = { seedReference, seedPlaces, placesSeed, seedSettings, seedEsports, seedTemplates, seedKycRequirements, kycSeed, seedModeration, moderationSeed, settingRow, SETTING_KEYS, settingsSeed, esportsSeed, templatesSeed };

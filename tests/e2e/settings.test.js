@@ -361,9 +361,9 @@ describe('boot check and seed (M03 §12, §15)', () => {
   it('seeding twice is a no-op and never overwrites a changed value', async () => {
     const master = await h.createSignedInMaster();
     await propose(master, [{ key: 'esports.room_reveal_minutes', to: 12 }]);
-    expect(await seedReference()).toEqual({ settings: 0, esports: 0, templates: 0, kycRequirements: 0, moderation: 0 });
+    expect(await seedReference()).toEqual({ settings: 0, esports: 0, templates: 0, kycRequirements: 0, moderation: 0, places: 0 });
     expect((await models.PlatformSetting.findByPk('esports.room_reveal_minutes')).value).toBe(12);
-    expect(await models.PlatformSetting.count()).toBe(162);
+    expect(await models.PlatformSetting.count()).toBe(181);
     expect(await models.EsportsGame.count()).toBe(2);
   });
 });

@@ -24,6 +24,14 @@ function registerAll() {
   require('../moderation/moderation.consumers').registerModerationConsumers();
   require('../kyc/kyc.moderation').registerKycModeration();
 
+  // M21: M05 decisions for game profiles and tournaments, payment failures, sanctions.
+  require('../esports/esports.moderation').registerEsportsConsumers();
+  require('../grounds/grounds.moderation').registerGroundsConsumers();
+  // M10: payment failures end holds; suspended or removed grounds cancel their bookings.
+  require('../bookings/bookings.consumers').registerBookingsConsumers();
+  // M19: read models from bookings, closures, series, payments, the ledger and esports.
+  require('../analytics/facts.consumers').registerAnalyticsConsumers();
+
   // M01 ← M02: the member role follows the NID review.
   require('../users/kyc.consumers').registerKycConsumers();
 

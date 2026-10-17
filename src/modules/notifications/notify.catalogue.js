@@ -3,7 +3,7 @@
 /**
  * Notification catalogue (M08 §6.6), as code. Each entry maps a domain event to recipients, channels
  * and template variables. Template texts are versioned rows in message_templates (EN and BN for
- * every default channel; a contract test checks it). Built so far: the M01, M02, M03, M04, M06 and M07 events.
+ * every default channel; a contract test checks it). Built so far: the M01, M02, M03, M04, M05, M06, M07, M09, M10, M19 and M21 events.
  *
  * Entry: { code, events[], category, channels[], urgent, roleContext?(e), recipients(e) → userIds,
  *          values(e, { locale, userId }) → template values, link(e) → in-app link }
@@ -42,8 +42,35 @@ const KYC_REASONS = {
   bn: { docs_mismatch_nid: 'তথ্য NID-এর সাথে মেলে না', unreadable: 'ছবি অস্পষ্ট বা কাটা', expired: 'NID-এর মেয়াদ শেষ মনে হচ্ছে', duplicate: 'এই NID অন্য অ্যাকাউন্টে আছে', info_incomplete: 'প্রয়োজনীয় তথ্য নেই', breaks_rules: 'এটি আমাদের নিয়ম ভঙ্গ করে', other: 'আমাদের টিমের নোট দেখুন' },
 };
 const reviewersOf = (kind) => directory.withPermission(require('../moderation/moderation.adapters').get(kind).permission);
-const KIND_LABELS = { en: { document: 'identity document' }, bn: { document: 'পরিচয় ডকুমেন্ট' } };
+const KIND_LABELS = {
+  en: { document: 'identity document', game_profile: 'game UID', esports_tournament: 'esports tournament', ground: 'ground listing' },
+  bn: { document: 'পরিচয় ডকুমেন্ট', game_profile: 'গেম UID', esports_tournament: 'এস্পোর্টস টুর্নামেন্ট', ground: 'মাঠের তালিকা' },
+};
 const kindLabel = (kind, locale) => KIND_LABELS[locale]?.[kind] ?? KIND_LABELS.en[kind] ?? kind;
+const es = () => require('../esports/esports.facts');
+// M09: grounds and the ground owner's business documents.
+const groundFacts = (id) => require('../grounds/grounds.service').facts(id);
+const vendorUrl = (p) => `${config.apps.vendor}${p}`;
+const isNid = (e) => !e.payload.role || e.payload.role === 'member';
+const DOC_LABELS = {
+  en: { trade_license: 'trade licence', deed_or_lease: 'land deed or lease', tin: 'TIN certificate' },
+  bn: { trade_license: 'ট্রেড লাইসেন্স', deed_or_lease: 'জমির দলিল বা লিজ', tin: 'টিআইএন সনদ' },
+};
+const docLabel = (type, locale) => DOC_LABELS[locale]?.[type] ?? DOC_LABELS.en[type] ?? type;
+const GROUND_REASONS = {
+  en: { photos_unclear: 'the photos are unclear or not of this ground', price_wrong: 'the price looks wrong', duplicate: 'this ground is already listed', info_incomplete: 'some information is missing', breaks_rules: 'it breaks our rules', location_wrong: 'the address or map pin is wrong', not_a_venue: 'it is not a bookable sports venue', other: 'see the note from our team' },
+  bn: { photos_unclear: 'ছবি অস্পষ্ট বা এই মাঠের নয়', price_wrong: 'দাম ঠিক মনে হচ্ছে না', duplicate: 'এই মাঠ আগেই তালিকায় আছে', info_incomplete: 'কিছু তথ্য নেই', breaks_rules: 'এটি আমাদের নিয়ম ভঙ্গ করে', location_wrong: 'ঠিকানা বা ম্যাপ পিন ভুল', not_a_venue: 'এটি বুকিংযোগ্য খেলার মাঠ নয়', other: 'আমাদের টিমের নোট দেখুন' },
+};
+const groundReason = (code, locale) => GROUND_REASONS[locale]?.[code] ?? GROUND_REASONS.en[code] ?? reasonText(code, locale);
+const esportsUrl = (p) => `${config.apps.esports}${p}`;
+const bookingFacts = (id) => require('../bookings/bookings.reads').facts(id);
+const bookingValues = async (e) => {
+  const f = await bookingFacts(e.payload.bookingId);
+  return { code: f.code, ground: f.groundName, start: f.start, paid: f.paidOnline, due: f.dueAtVenue, refund: f.refund, retained: f.retained };
+};
+const toBooker = (e) => (e.payload.bookerUserId ? [e.payload.bookerUserId] : []);
+const myBooking = (e) => `/me/bookings/${e.payload.bookingId}`;
+const tTitle = async (id, locale) => es().title(await es().tournament(id), locale);
 const payoutFacts = (id) => require('../payouts/payouts.service').facts(id);
 const accountFacts = (id) => require('../payouts/payout-accounts.service').facts(id);
 const settingsHours = () => require('../settings/settings.service').get('risk.payout_change_hold_hours');
@@ -330,7 +357,7 @@ const CATALOGUE = [
     events: ['document.submitted'],
     category: 'moderation',
     channels: ['in_app'],
-    recipients: (e) => [e.payload.userId],
+    recipients: (e) => (isNid(e) ? [e.payload.userId] : []),
     values: () => ({}),
     link: () => '/account/verification',
   },
@@ -339,7 +366,7 @@ const CATALOGUE = [
     events: ['document.changes_requested'],
     category: 'moderation',
     channels: ['in_app', 'sms'],
-    recipients: (e) => [e.payload.userId],
+    recipients: (e) => (isNid(e) ? [e.payload.userId] : []),
     values: (e, { locale }) => ({ reason: KYC_REASONS[locale]?.[e.payload.reasonCode] ?? KYC_REASONS.en[e.payload.reasonCode] ?? e.payload.reasonCode }),
     link: () => '/account/verification',
   },
@@ -348,9 +375,83 @@ const CATALOGUE = [
     events: ['document.submitted'],
     category: 'staff_ops',
     channels: ['in_app'],
-    recipients: () => directory.withPermission('approve_documents'),
+    recipients: (e) => (isNid(e) ? directory.withPermission('approve_documents') : []),
     values: async (e) => ({ masked: (await documentFacts(e.payload.documentId)).numberMasked }),
     link: () => '/admin/moderation?kind=document',
+  },
+  // ---------------- M02 business documents (ground owners, with M09)
+  {
+    code: 'BUSINESS_DOC_SUBMITTED',
+    events: ['document.submitted'],
+    category: 'moderation',
+    channels: ['in_app'],
+    recipients: (e) => (isNid(e) ? [] : [e.payload.userId]),
+    values: (e, { locale }) => ({ doc: docLabel(e.payload.docType, locale) }),
+    link: () => '/account/business',
+  },
+  {
+    code: 'BUSINESS_DOC_CHANGES_REQUESTED',
+    events: ['document.changes_requested', 'document.rejected'],
+    category: 'moderation',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => (isNid(e) ? [] : [e.payload.userId]),
+    values: (e, { locale }) => ({ doc: docLabel(e.payload.docType, locale), reason: KYC_REASONS[locale]?.[e.payload.reasonCode] ?? KYC_REASONS.en[e.payload.reasonCode] ?? reasonText(e.payload.reasonCode, locale) }),
+    link: () => '/account/business',
+  },
+  {
+    code: 'BUSINESS_DOC_REVIEW_NEEDED',
+    events: ['document.submitted'],
+    category: 'staff_ops',
+    channels: ['in_app'],
+    recipients: (e) => (isNid(e) ? [] : directory.withPermission('approve_documents')),
+    values: (e, { locale }) => ({ doc: docLabel(e.payload.docType, locale) }),
+    link: () => '/admin/moderation?kind=document',
+  },
+  // ---------------- M09 grounds (the owner; reviewers on the Moderation desk)
+  {
+    code: 'GROUND_LIVE',
+    events: ['ground.published'],
+    category: 'moderation',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e) => ({ name: (await groundFacts(e.payload.groundId)).name, url: vendorUrl(`/grounds/${e.payload.groundId}`) }),
+    link: (e) => `/vendor/grounds/${e.payload.groundId}`,
+  },
+  {
+    code: 'GROUND_CHANGES_REQUESTED',
+    events: ['ground.changes_requested'],
+    category: 'moderation',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e, { locale }) => ({ name: (await groundFacts(e.payload.groundId)).name, reason: groundReason(e.payload.reasonCode, locale) }),
+    link: (e) => `/vendor/grounds/${e.payload.groundId}`,
+  },
+  {
+    code: 'GROUND_REJECTED',
+    events: ['ground.rejected'],
+    category: 'moderation',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e, { locale }) => ({ name: (await groundFacts(e.payload.groundId)).name, reason: groundReason(e.payload.reasonCode, locale) }),
+    link: (e) => `/vendor/grounds/${e.payload.groundId}`,
+  },
+  {
+    code: 'GROUND_PRICING_PUBLISHED',
+    events: ['ground.pricing_published'],
+    category: 'moderation',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e) => ({ name: (await groundFacts(e.payload.groundId)).name }),
+    link: (e) => `/vendor/grounds/${e.payload.groundId}/pricing`,
+  },
+  {
+    code: 'GROUND_REVIEW_NEEDED',
+    events: ['ground.submitted'],
+    category: 'staff_ops',
+    channels: ['in_app'],
+    recipients: () => reviewersOf('ground'),
+    values: async (e) => ({ name: (await groundFacts(e.payload.groundId)).name }),
+    link: () => '/admin/moderation?kind=ground',
   },
   // ---------------- M05: reviewers and masters (member messages stay with the subject module)
   {
@@ -381,6 +482,119 @@ const CATALOGUE = [
     recipients: (e) => [e.payload.claimedBy].filter(Boolean),
     values: (e, { locale }) => ({ kind: kindLabel(e.payload.kind, locale) }),
     link: () => '/admin/moderation',
+  },
+  // ---------------- M21: players (category tournaments; push arrives with the mobile app) and staff
+  {
+    code: 'ESPORTS_UID_VERIFIED',
+    events: ['esports_game_profile.verified'],
+    category: 'tournaments',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.userId],
+    values: () => ({}),
+    link: () => esportsUrl('/me/esports'),
+  },
+  {
+    code: 'ESPORTS_UID_REJECTED',
+    events: ['esports_game_profile.rejected'],
+    category: 'tournaments',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.userId],
+    values: (e) => ({ reason: (e.payload.reasonCode ?? 'other').replace(/_/g, ' ') }),
+    link: () => esportsUrl('/me/esports'),
+  },
+  {
+    code: 'ESPORTS_SQUAD_INVITE',
+    events: ['esports_squad.invited'],
+    category: 'tournaments',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.userId],
+    values: async (e) => ({ squad: await es().squadName(e.payload.squadId) }),
+    link: () => esportsUrl('/me/esports'),
+  },
+  {
+    code: 'ESPORTS_REG_CONFIRMED',
+    events: ['esports_registration.confirmed'],
+    category: 'tournaments',
+    channels: ['in_app'],
+    recipients: (e) => es().entryPeople(e.payload.registrationId),
+    values: async (e, { locale }) => ({ title: await tTitle(e.payload.tournamentId, locale) }),
+    link: () => esportsUrl('/me/matches'),
+  },
+  {
+    code: 'ESPORTS_WAITLIST_OFFER',
+    events: ['esports_registration.offered'],
+    category: 'tournaments',
+    channels: ['in_app', 'sms'],
+    urgent: true,
+    recipients: (e) => [e.payload.registrantUserId],
+    values: async (e, { locale }) => ({ title: await tTitle(e.payload.tournamentId, locale), until: e.payload.offerExpiresAt }),
+    link: () => esportsUrl('/me/matches'),
+  },
+  {
+    code: 'ESPORTS_CHECKIN_OPEN',
+    events: ['esports_tournament.checkin_opened'],
+    category: 'tournaments',
+    channels: ['in_app', 'sms'],
+    urgent: true,
+    recipients: (e) => es().confirmedPlayers(e.payload.tournamentId),
+    values: async (e, { locale }) => ({ title: await tTitle(e.payload.tournamentId, locale), until: e.payload.closesAt }),
+    link: () => esportsUrl('/me/matches'),
+  },
+  {
+    // Never the room ID or password: the player opens the room page (FR-15).
+    code: 'ESPORTS_ROOM_READY',
+    events: ['esports_match.room_revealed'],
+    category: 'tournaments',
+    channels: ['in_app'],
+    urgent: true,
+    recipients: async (e) => (await es().matchPlayers(e.payload.matchId)).users,
+    values: async (e, { locale }) => ({ title: await tTitle(e.payload.tournamentId, locale), match: (await es().matchPlayers(e.payload.matchId)).seq ?? 1 }),
+    link: (e) => esportsUrl(`/me/matches/${e.payload.matchId}/room`),
+  },
+  {
+    code: 'ESPORTS_RESULTS_POSTED',
+    events: ['esports_match.results_posted'],
+    category: 'tournaments',
+    channels: ['in_app'],
+    recipients: async (e) => (await es().matchPlayers(e.payload.matchId)).users,
+    values: async (e, { locale }) => ({ title: await tTitle(e.payload.tournamentId, locale), match: e.payload.seq, until: e.payload.disputeClosesAt }),
+    link: (e) => esportsUrl(`/me/matches/${e.payload.matchId}/result`),
+  },
+  {
+    code: 'ESPORTS_DISPUTE_DECIDED',
+    events: ['esports_result.dispute_resolved'],
+    category: 'tournaments',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.raisedBy],
+    values: async (e, { locale }) => ({ title: await tTitle(e.payload.tournamentId, locale), outcome: e.payload.outcome === 'corrected' ? (locale === 'bn' ? 'ফলাফল সংশোধন করা হয়েছে' : 'the results were corrected') : locale === 'bn' ? 'ফলাফল অপরিবর্তিত' : 'the results stand' }),
+    link: (e) => esportsUrl(`/me/matches/${e.payload.matchId}/result`),
+  },
+  {
+    code: 'ESPORTS_CANCELLED',
+    events: ['esports_tournament.cancelled'],
+    category: 'tournaments',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => es().allEntrants(e.payload.tournamentId),
+    values: async (e, { locale }) => ({ title: await tTitle(e.payload.tournamentId, locale) }),
+    link: () => esportsUrl('/me/matches'),
+  },
+  {
+    code: 'ESPORTS_PRIZE_CREDITED',
+    events: ['esports_prize.credited'],
+    category: 'money',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.userId],
+    values: async (e, { locale }) => ({ amount: e.payload.amount, title: await tTitle(e.payload.tournamentId, locale) }),
+    link: () => esportsUrl('/me/winnings'),
+  },
+  {
+    code: 'ESPORTS_DISPUTE_OPENED',
+    events: ['esports_result.disputed'],
+    category: 'staff_ops',
+    channels: ['in_app'],
+    recipients: () => directory.withPermission('manage_esports'),
+    values: async (e) => ({ title: await tTitle(e.payload.tournamentId, 'en') }),
+    link: () => '/admin/esports?tab=disputes',
   },
   // ---------------- M07: payees (category money: in-app and SMS mandatory) and finance staff
   {
@@ -475,6 +689,91 @@ const CATALOGUE = [
     recipients: () => directory.withPermission('view_payouts'),
     values: async (e) => ({ account: (await accountFacts(e.payload.accountId)).masked }),
     link: () => '/admin/finance?tab=accounts',
+  },
+  // ---------------- M19 analytics
+  {
+    code: 'ANALYTICS_DRIFT',
+    events: ['analytics.drift_detected'],
+    category: 'staff_ops',
+    channels: ['in_app', 'email'],
+    recipients: async () => directory.masters(),
+    values: async (e) => ({ vertical: e.payload.vertical, records: e.payload.records, amount: e.payload.amount }),
+    link: () => '/admin',
+  },
+  // ---------------- M10 bookings (v3: instant confirmation; the advance is not refunded)
+  {
+    code: 'BOOKING_CONFIRMED',
+    events: ['booking.confirmed'],
+    category: 'bookings',
+    channels: ['in_app', 'sms'],
+    recipients: toBooker,
+    values: bookingValues,
+    link: myBooking,
+  },
+  {
+    code: 'BOOKING_NEW_FOR_OWNER',
+    events: ['booking.confirmed'],
+    category: 'bookings',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.ownerId],
+    values: bookingValues,
+    link: () => vendorUrl('/vendor/bookings'),
+  },
+  {
+    code: 'BOOKING_CANCELLED',
+    events: ['booking.cancelled'],
+    category: 'bookings',
+    channels: ['in_app', 'sms'],
+    recipients: toBooker,
+    values: bookingValues,
+    link: myBooking,
+  },
+  {
+    code: 'BOOKING_CANCELLED_FOR_OWNER',
+    events: ['booking.cancelled'],
+    category: 'bookings',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.ownerId],
+    values: bookingValues,
+    link: () => vendorUrl('/vendor/bookings'),
+  },
+  {
+    code: 'BOOKING_OWNER_CANCELLED',
+    events: ['booking.owner_cancelled', 'booking.platform_cancelled'],
+    category: 'bookings',
+    channels: ['in_app', 'sms'],
+    urgent: true,
+    recipients: toBooker,
+    values: bookingValues,
+    link: myBooking,
+  },
+  {
+    code: 'BOOKING_REMINDER',
+    events: ['booking.reminded'],
+    category: 'bookings',
+    channels: ['in_app', 'sms'],
+    recipients: toBooker,
+    values: bookingValues,
+    link: myBooking,
+  },
+  {
+    code: 'BOOKING_MOVED',
+    events: ['booking.moved'],
+    category: 'bookings',
+    channels: ['in_app', 'sms'],
+    urgent: true,
+    recipients: toBooker,
+    values: bookingValues,
+    link: myBooking,
+  },
+  {
+    code: 'BOOKING_NO_SHOW',
+    events: ['booking.no_show_marked'],
+    category: 'bookings',
+    channels: ['in_app', 'sms'],
+    recipients: toBooker,
+    values: bookingValues,
+    link: myBooking,
   },
 ];
 
