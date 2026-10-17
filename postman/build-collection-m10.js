@@ -6,7 +6,7 @@
  *
  * Variables: adminAccessToken (master A), ownerToken / owner2Token (two ground owners; owner A has a
  * live two-court ground at ৳2,000/h flat with a 25% advance), memberToken / member2Token, the slot
- * times s1…s6 and the ids, all set by the runner; controlUrl (the runner: /pay, /shift, /tick, /check).
+ * times s1…s6 and the ids, all set by the runner; controlUrl (the runner: /pay, /shift, /tick[?plusHours], /check).
  * Unattended: `node postman/run-m10.js` (kriraghor_test database).
  */
 const fs = require('fs');
@@ -119,12 +119,13 @@ const collection = {
         pay('b4', 'member2'),
         owner('No-show before the start (expect 409)', 'POST', '/me/ground-bookings/{{b4}}/no-show', { expect: { status: 409, code: 'NOT_LATE_YET' } }),
         control('30 minutes late', 'shift?bookingId={{b4}}&to=late'),
-        owner('Mark no-show: ৳475 / ৳25', 'POST', '/me/ground-bookings/{{b4}}/no-show', { expect: { status: 200 }, checks: [['retained', "j.booking.status === 'no_show' && j.settled.net === 47500 && j.settled.fee === 2500"]] }),
+        owner('Mark no-show: the ৳500 advance waits for the dispute window', 'POST', '/me/ground-bookings/{{b4}}/no-show', { expect: { status: 200 }, checks: [['retained, not yet released', "j.booking.status === 'no_show' && j.settled.retained === 50000 && j.settled.refunded === 0 && Boolean(j.settled.settleDueAt)"]] }),
         hold(member2, 'Hold (never checked in)', 's5', 'advance', 'b5'),
         pay('b5', 'member2'),
         control('26 hours ago', 'shift?bookingId={{b5}}&to=past'),
         control('minute tick', 'tick', { checks: [['auto-completed', 'j.tick.autoCompleted === 1']] }),
         member2('Auto-completed (Q68)', 'GET', '/me/bookings/{{b5}}', { expect: { status: 200 }, checks: [['completed, released ৳500', "j.booking.status === 'completed' && j.booking.money.released === 50000"]] }),
+        control('the no-show dispute window closes (M17): ৳475 / ৳25', 'tick?plusHours=49', { checks: [['no-show settled', 'j.tick.noShowsSettled === 1']] }),
       ],
     },
     {
