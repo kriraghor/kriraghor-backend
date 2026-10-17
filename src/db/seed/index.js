@@ -12,7 +12,8 @@ const templatesSeed = require('./reference/templates.v1.json');
 const kycSeed = require('./reference/kyc-requirements.v1.json');
 const moderationSeed = require('./reference/moderation.v1.json');
 const placesSeed = require('./reference/places.v1.json');
-const { sequelize, PlatformSetting, SettingsHistory, EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset, MessageTemplate, DocumentRequirement, ReviewRubric, RejectionReason, Sport, Division, District, Area, Facility, Surface } = require('../../models');
+const itemsSeed = require('./reference/items.v1.json');
+const { sequelize, PlatformSetting, SettingsHistory, EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset, MessageTemplate, DocumentRequirement, ReviewRubric, RejectionReason, Sport, Division, District, Area, Facility, Surface, ItemCategory, ItemType, ItemTypeField } = require('../../models');
 
 const SEED_REASON = `Seed settings v${settingsSeed.seedVersion}`;
 
@@ -156,6 +157,28 @@ async function seedPlaces(transaction) {
   return inserted;
 }
 
+/** M03 item catalogue for M12 (Q77), only when the key is missing; fields by (type, key). */
+async function seedItems(transaction) {
+  let inserted = 0;
+  const categories = new Map();
+  for (const c of itemsSeed.categories) {
+    const { key, ...rest } = c;
+    const [row, created] = await insertMissing(ItemCategory, { key }, rest, transaction);
+    categories.set(key, row.id);
+    inserted += Number(created);
+  }
+  for (const t of itemsSeed.types) {
+    const { key, category, fields, ...rest } = t;
+    const [row, created] = await insertMissing(ItemType, { key }, { ...rest, categoryId: categories.get(category) }, transaction);
+    inserted += Number(created);
+    for (const f of fields) {
+      const { key: fk, ...field } = f;
+      inserted += Number((await insertMissing(ItemTypeField, { itemTypeId: row.id, key: fk }, field, transaction))[1]);
+    }
+  }
+  return inserted;
+}
+
 async function seedReference() {
   return sequelize.transaction(async (transaction) => ({
     settings: await seedSettings(transaction),
@@ -164,7 +187,8 @@ async function seedReference() {
     kycRequirements: await seedKycRequirements(transaction),
     moderation: await seedModeration(transaction),
     places: await seedPlaces(transaction),
+    items: await seedItems(transaction),
   }));
 }
 
-module.exports = { seedReference, seedPlaces, placesSeed, seedSettings, seedEsports, seedTemplates, seedKycRequirements, kycSeed, seedModeration, moderationSeed, settingRow, SETTING_KEYS, settingsSeed, esportsSeed, templatesSeed };
+module.exports = { seedReference, seedPlaces, placesSeed, seedItems, itemsSeed, seedSettings, seedEsports, seedTemplates, seedKycRequirements, kycSeed, seedModeration, moderationSeed, settingRow, SETTING_KEYS, settingsSeed, esportsSeed, templatesSeed };

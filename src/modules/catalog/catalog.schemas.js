@@ -3,7 +3,7 @@
 const { z } = require('zod');
 
 const dateTime = z.iso.datetime({ offset: true });
-const TABLES = ['esports-games', 'esports-modes', 'esports-maps', 'esports-points-presets', 'sports', 'divisions', 'districts', 'areas', 'facilities', 'surfaces'];
+const TABLES = ['esports-games', 'esports-modes', 'esports-maps', 'esports-points-presets', 'sports', 'divisions', 'districts', 'areas', 'facilities', 'surfaces', 'item-categories', 'item-types', 'item-type-fields'];
 
 const key = z.string().regex(/^[a-z][a-z0-9_]{1,39}$/, 'Lowercase letters, digits and _ (like squad)');
 const names = {
@@ -76,10 +76,44 @@ const area = z.object({
 const facility = z.object({ key, ...names, icon: z.string().trim().max(40).nullable().optional() });
 const surface = z.object({ key, ...names, indoorTypical: z.boolean() });
 
+// ---- M03 §7 item catalogue (M12; Q77) ----
+const label = z.string().trim().min(1).max(80);
+const itemCategory = z.object({
+  key,
+  ...names,
+  sportKey: z.string().regex(/^[a-z_]{2,40}$/).nullable().optional(),
+  shopTypes: z.array(z.string().regex(/^[a-z_]{2,40}$/)).min(1).max(10).meta({ description: 'Shop types that may sell in this category (market.shop_types)' }),
+  isSupplement: z.boolean().optional().meta({ description: 'Products need importer or BSTI details and per-variant expiry (v3)' }),
+  icon: z.string().trim().max(40).nullable().optional(),
+});
+const itemType = z.object({
+  key,
+  ...names,
+  categoryId: z.uuid(),
+  priceFloorPoisha: z.number().int().positive(),
+  priceCeilingPoisha: z.number().int().positive(),
+  placeholderEn: z.string().trim().max(120).nullable().optional(),
+  placeholderBn: z.string().trim().max(120).nullable().optional(),
+});
+const itemTypeField = z.object({
+  itemTypeId: z.uuid(),
+  key,
+  labelEn: label,
+  labelBn: label,
+  kind: z.enum(['select', 'number', 'text', 'date']),
+  options: z.array(z.object({ value: z.string().trim().min(1).max(40), labelEn: label, labelBn: label })).max(60).optional(),
+  unit: z.string().trim().max(16).nullable().optional(),
+  minValue: z.number().nullable().optional(),
+  maxValue: z.number().nullable().optional(),
+  required: z.boolean().optional(),
+  isVariantAxis: z.boolean().optional().meta({ description: 'Each variant of a product picks one option (size, flavour)' }),
+  sort: z.number().int().min(-1000).max(1000).optional(),
+});
+
 /** PATCH bodies: everything optional; key and gameId may be sent but must not change. */
 const patch = (schema) => schema.partial().refine((b) => Object.keys(b).length > 0, 'Nothing to change');
 
-const CREATE = { 'esports-games': game, 'esports-modes': mode, 'esports-maps': map, 'esports-points-presets': preset, sports: sport, divisions: division, districts: district, areas: area, facilities: facility, surfaces: surface };
+const CREATE = { 'esports-games': game, 'esports-modes': mode, 'esports-maps': map, 'esports-points-presets': preset, sports: sport, divisions: division, districts: district, areas: area, facilities: facility, surfaces: surface, 'item-categories': itemCategory, 'item-types': itemType, 'item-type-fields': itemTypeField };
 const UPDATE = Object.fromEntries(Object.entries(CREATE).map(([t, sch]) => [t, patch(sch)]));
 
 // ---------------- responses ----------------
@@ -122,7 +156,7 @@ module.exports = {
   UPDATE,
   tableParam: z.object({ table: z.enum(TABLES) }),
   tableIdParam: z.object({ table: z.enum(TABLES), id: z.uuid() }),
-  listQuery: z.object({ gameId: z.uuid().optional(), divisionId: z.uuid().optional(), districtId: z.uuid().optional() }),
+  listQuery: z.object({ gameId: z.uuid().optional(), divisionId: z.uuid().optional(), districtId: z.uuid().optional(), categoryId: z.uuid().optional(), itemTypeId: z.uuid().optional() }),
   locationsQuery: z.object({ divisionId: z.uuid().optional() }),
   areasQuery: z.object({ districtId: z.uuid().optional(), service: z.enum(['grounds', 'delivery']).optional(), q: z.string().trim().min(1).max(60).optional() }),
   SportList: list(Sport, 'SportList'),

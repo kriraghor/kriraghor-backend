@@ -100,6 +100,63 @@
           "labelBn": "নিয়ম ও বর্ণনা ন্যায্য ও অনুমোদিত"
         }
       ]
+    },
+    {
+      "kind": "shop",
+      "version": 1,
+      "items": [
+        {
+          "key": "name_ok",
+          "labelEn": "Shop name is real and not misleading",
+          "labelBn": "দোকানের নাম আসল এবং বিভ্রান্তিকর নয়"
+        },
+        {
+          "key": "type_ok",
+          "labelEn": "Shop type matches what it sells",
+          "labelBn": "দোকানের ধরন বিক্রির পণ্যের সাথে মেলে"
+        },
+        {
+          "key": "address_ok",
+          "labelEn": "Area and address agree",
+          "labelBn": "এলাকা ও ঠিকানা মেলে"
+        },
+        {
+          "key": "about_ok",
+          "labelEn": "About text is fair and allowed",
+          "labelBn": "বিবরণ ন্যায্য ও অনুমোদিত"
+        }
+      ]
+    },
+    {
+      "kind": "product",
+      "version": 1,
+      "items": [
+        {
+          "key": "photos_real",
+          "labelEn": "Photos show this product (no stock images of something else)",
+          "labelBn": "ছবিগুলো এই পণ্যের (অন্য কিছুর স্টক ছবি নয়)"
+        },
+        {
+          "key": "type_ok",
+          "labelEn": "Item type, specs and variants match the product",
+          "labelBn": "আইটেমের ধরন, স্পেসিফিকেশন ও ভ্যারিয়েন্ট পণ্যের সাথে মেলে"
+        },
+        {
+          "key": "price_ok",
+          "labelEn": "Price fits the item",
+          "labelBn": "দাম পণ্যের সাথে মানানসই"
+        },
+        {
+          "key": "text_ok",
+          "labelEn": "Title and description are honest and allowed",
+          "labelBn": "শিরোনাম ও বিবরণ সৎ ও অনুমোদিত"
+        },
+        {
+          "key": "supplement_ok",
+          "labelEn": "Supplements: importer or BSTI details and expiry dates are given",
+          "labelBn": "সাপ্লিমেন্ট: আমদানিকারক বা BSTI তথ্য ও মেয়াদ দেওয়া আছে"
+        }
+      ]
     }
   ],
   "reasons": [
@@ -108,7 +165,8 @@
       "labelEn": "Photos unclear or not of the item",
       "labelBn": "ছবি অস্পষ্ট বা জিনিসটির নয়",
       "kinds": [
-        "ground"
+        "ground",
+        "product"
       ],
       "sort": 1
     },
@@ -117,7 +175,8 @@
       "labelEn": "Price looks wrong",
       "labelBn": "দাম ঠিক মনে হচ্ছে না",
       "kinds": [
-        "ground"
+        "ground",
+        "product"
       ],
       "sort": 2
     },
@@ -156,7 +215,9 @@
       "kinds": [
         "document",
         "game_profile",
-        "ground"
+        "ground",
+        "shop",
+        "product"
       ],
       "sort": 6
     },
@@ -175,7 +236,9 @@
         "document",
         "game_profile",
         "esports_tournament",
-        "ground"
+        "ground",
+        "shop",
+        "product"
       ],
       "sort": 8
     },
@@ -187,7 +250,9 @@
         "document",
         "game_profile",
         "esports_tournament",
-        "ground"
+        "ground",
+        "shop",
+        "product"
       ],
       "sort": 9
     },
@@ -199,7 +264,9 @@
         "document",
         "game_profile",
         "esports_tournament",
-        "ground"
+        "ground",
+        "shop",
+        "product"
       ],
       "requiresText": true,
       "sort": 10
@@ -248,6 +315,33 @@
         "ground"
       ],
       "sort": 15
+    },
+    {
+      "code": "specs_wrong",
+      "labelEn": "Specs or sizes do not match the item",
+      "labelBn": "স্পেসিফিকেশন বা সাইজ পণ্যের সাথে মেলে না",
+      "kinds": [
+        "product"
+      ],
+      "sort": 16
+    },
+    {
+      "code": "supplement_details",
+      "labelEn": "Importer, BSTI or expiry details missing",
+      "labelBn": "আমদানিকারক, BSTI বা মেয়াদের তথ্য নেই",
+      "kinds": [
+        "product"
+      ],
+      "sort": 17
+    },
+    {
+      "code": "shop_details",
+      "labelEn": "Shop name, type or address is not right",
+      "labelBn": "দোকানের নাম, ধরন বা ঠিকানা ঠিক নয়",
+      "kinds": [
+        "shop"
+      ],
+      "sort": 18
     }
   ]
 }

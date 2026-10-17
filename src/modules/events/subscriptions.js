@@ -27,6 +27,8 @@ function registerAll() {
   // M21: M05 decisions for game profiles and tournaments, payment failures, sanctions.
   require('../esports/esports.moderation').registerEsportsConsumers();
   require('../grounds/grounds.moderation').registerGroundsConsumers();
+  // M12: M05 decisions for shops and products, owner sanctions pause the shop, saved-item alerts.
+  require('../market/market.moderation').registerMarketConsumers();
   // M10: payment failures end holds; suspended or removed grounds cancel their bookings.
   require('../bookings/bookings.consumers').registerBookingsConsumers();
   // M19: read models from bookings, closures, series, payments, the ledger and esports.

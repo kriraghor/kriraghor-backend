@@ -14,9 +14,11 @@
  * The fields are encrypted (common/crypto); responses carry the masked number only. Every file view
  * and the NID reveal are audited (FR-12, FR-13). Images are purged after the retention period (FR-17).
  *
- * Business-role documents (lite, with M09): a ground owner sends a trade licence, a deed or lease and
- * optionally a TIN, each a requirement row of the role with its own fields (field_schema) and one
- * file. They follow the same versions and M05 review; when every required one is approved,
+ * Business-role documents (M09 ground owners, M12 shop owners): each is a requirement row of the role
+ * with its own fields (field_schema) and one file. A ground owner sends a trade licence, a deed or
+ * lease and optionally a TIN; a shop owner a trade licence, a TIN and, when VAT registered, a BIN.
+ * They are kept per role (subject_key = the role), so a ground's licence never counts for a shop.
+ * They follow the same versions and M05 review; when every required one of the role is approved,
  * verification.passed {role} lets M01 activate the role. The member (NID) role must be active first.
  */
 const crypto = require('crypto');
@@ -52,6 +54,7 @@ const ERRORS = {
   MEMBER_NOT_ACTIVE: [409, 'Verify your NID first'],
   ROLE_NOT_APPLIED: [409, 'Apply for this business role first'],
   DOC_TYPE_NOT_REQUIRED: [422, 'This document is not needed for that role'],
+  ROLE_AMBIGUOUS: [422, 'Say which business role this document is for'],
   REVEAL_NOT_AVAILABLE: [409, 'Only an NID number can be revealed'],
 };
 const fail = (code) => new AppError(ERRORS[code][0], code, ERRORS[code][1]);
@@ -68,12 +71,23 @@ async function nidRequirement(transaction) {
   return req;
 }
 
-/** The active requirement of a document type (the NID for members, one business role per type). */
+/** The active requirement of a document type: the NID for members; a business type (its file slots are the same for every role). */
 async function requirementOf(docType, transaction) {
   if (docType === 'nid') return nidRequirement(transaction);
-  const req = await DocumentRequirement.findOne({ where: { docType, isActive: true }, transaction });
+  const req = await DocumentRequirement.findOne({ where: { docType, isActive: true }, order: [['role', 'ASC']], transaction });
   if (!req) throw fail('DOC_TYPE_NOT_REQUIRED');
   return req;
+}
+
+/** M12: the requirement a business document is sent for (the role asked, or the only applied role needing the type). */
+async function businessRequirement(principal, docType, asked, transaction) {
+  const reqs = await DocumentRequirement.findAll({ where: { docType, isActive: true }, transaction });
+  const appliedRoles = Object.entries(principal.roles ?? {})
+    .filter(([r, status]) => r !== 'member' && !['withdrawn', 'suspended'].includes(status))
+    .map(([r]) => r);
+  const picked = rules.businessRoleFor({ asked, requirementRoles: reqs.map((r) => r.role), appliedRoles });
+  if (picked.error) throw fail(picked.error);
+  return reqs.find((r) => r.role === picked.role);
 }
 
 // Front, back, then selfie: the order a reviewer reads an NID in. Business documents have one file.
@@ -104,6 +118,10 @@ const UNLOCKS = {
     en: ['List your grounds and set prices', 'Take bookings with an advance', 'Get paid at check-in'],
     bn: ['আপনার মাঠ তালিকাভুক্ত করুন ও দাম ঠিক করুন', 'অগ্রিমসহ বুকিং নিন', 'চেক-ইনে টাকা পান'],
   },
+  shop_owner: {
+    en: ['Open your shop on Kriraghor', 'List new gear, supplements or gym equipment with sizes and stock', 'Sell to members across the platform'],
+    bn: ['ক্রীড়াঘরে আপনার দোকান খুলুন', 'সাইজ ও স্টকসহ নতুন সরঞ্জাম, সাপ্লিমেন্ট বা জিমের জিনিস তালিকাভুক্ত করুন', 'প্ল্যাটফর্মজুড়ে সদস্যদের কাছে বিক্রি করুন'],
+  },
 };
 
 /** GET /me/verification?role=: the checklist of a business role (the member checklist is below). */
@@ -111,7 +129,7 @@ async function roleVerification(principal, role, locale) {
   const { user } = principal;
   const bn = locale === 'bn';
   const reqs = await requirementsFor(role);
-  const current = await VerificationDocument.findAll({ where: { userId: user.id, docType: reqs.map((r) => r.docType).filter(Boolean), isCurrent: true } });
+  const current = await VerificationDocument.findAll({ where: { userId: user.id, docType: reqs.map((r) => r.docType).filter(Boolean), subjectKey: role, isCurrent: true } });
   const files = current.length ? await DocumentFile.findAll({ where: { documentId: current.map((d) => d.id) } }) : [];
   const items = reqs.map((r) => {
     const doc = current.find((d) => d.docType === r.docType);
@@ -261,18 +279,17 @@ async function submit(principal, body, req) {
  * POST /me/documents for a business document (trade licence, deed or lease, TIN). The fields follow
  * the requirement's field_schema; the number is encrypted with the rest and shown masked.
  */
-async function submitBusiness(principal, { docType, fields = {}, files = {} }, req) {
+async function submitBusiness(principal, { docType, fields = {}, files = {}, role: asked }, req) {
   const { user } = principal;
   if (principal.roles?.member !== 'active') throw fail('MEMBER_NOT_ACTIVE');
   const today = rules.dhakaToday(new Date());
   return sequelize.transaction(async (transaction) => {
-    const requirement = await requirementOf(docType, transaction);
+    const requirement = await businessRequirement(principal, docType, asked, transaction);
     const { role } = requirement;
-    if (!principal.roles?.[role] || ['withdrawn', 'suspended'].includes(principal.roles[role])) throw fail('ROLE_NOT_APPLIED');
     const errors = rules.fieldsBlock(requirement.fieldSchema, fields, today);
     if (errors) throw E.validation(errors);
     if (rules.slotsBlock(requirement.fileSlots, files)) throw fail('FILES_INCOMPLETE');
-    const mine = await VerificationDocument.findAll({ where: { userId: user.id, docType, subjectKey: '' }, order: [['version', 'DESC']], transaction, lock: transaction.LOCK.UPDATE });
+    const mine = await VerificationDocument.findAll({ where: { userId: user.id, docType, subjectKey: role }, order: [['version', 'DESC']], transaction, lock: transaction.LOCK.UPDATE });
     if (mine.some((d) => d.status === 'approved' && d.isCurrent) && !(await requested(principal.user.id, docType, transaction))) throw fail('DOC_ALREADY_APPROVED');
     const fileIds = Object.values(files);
     const rows = await DocumentFile.findAll({ where: { id: fileIds, userId: user.id, documentId: null, purgedAt: null }, transaction, lock: transaction.LOCK.UPDATE });
@@ -291,6 +308,7 @@ async function submitBusiness(principal, { docType, fields = {}, files = {} }, r
       {
         userId: user.id,
         docType,
+        subjectKey: role,
         version: (mine[0]?.version ?? 0) + 1,
         status: 'in_review',
         isCurrent: true,
@@ -304,7 +322,7 @@ async function submitBusiness(principal, { docType, fields = {}, files = {} }, r
     await moderation.submit(
       {
         kind: 'document',
-        subjectId: subjectIdFor(user.id, docType),
+        subjectId: subjectIdFor(user.id, docType, role),
         payload: { documentId: doc.id, docType, version: doc.version, role, numberMasked: doc.fieldsPublic.numberMasked, expiresOn: doc.fieldsPublic.expiresOn },
         title: `${requirement.labelEn} · v${doc.version}`,
         submittedBy: user.id,
@@ -351,7 +369,7 @@ async function adminGet(id) {
       ? { legalName: raw.legalName, dob: raw.dob, numberMasked: d.fieldsPublic.numberMasked }
       : { ...typed, numberMasked: d.fieldsPublic.numberMasked ?? null, role: d.fieldsPublic.role ?? null };
   const files = await DocumentFile.findAll({ where: { documentId: d.id }, order: [['slot', 'ASC']] });
-  const history = await VerificationDocument.findAll({ where: { userId: d.userId, docType: d.docType }, order: [['version', 'DESC']] });
+  const history = await VerificationDocument.findAll({ where: { userId: d.userId, docType: d.docType, subjectKey: d.subjectKey }, order: [['version', 'DESC']] });
   const who = (await directory.identities([d.userId])).get(d.userId);
   const contact = (await directory.contactFor([d.userId])).get(d.userId);
   return {
@@ -458,7 +476,7 @@ async function applyDecision(submissionId, status, { transaction }) {
   } else if (approved) {
     // A business role passes once every required document of the role is approved.
     const reqs = await requirementsFor(role, transaction);
-    const approvedTypes = (await VerificationDocument.findAll({ where: { userId: d.userId, status: 'approved', isCurrent: true }, attributes: ['docType'], transaction })).map((x) => x.docType);
+    const approvedTypes = (await VerificationDocument.findAll({ where: { userId: d.userId, subjectKey: role, status: 'approved', isCurrent: true }, attributes: ['docType'], transaction })).map((x) => x.docType);
     if (rules.roleComplete(reqs, approvedTypes)) await events.publish(transaction, { name: 'verification.passed', aggregateType: 'user', aggregateId: d.userId, payload: { userId: d.userId, role } });
   }
   if (approved) await ack();

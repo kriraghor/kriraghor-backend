@@ -119,6 +119,24 @@ const CROSS_RULES = [
     ok: (v) => v('market.offer_min_pct') <= v('market.offer_floor_pct_default') && v('market.offer_floor_pct_default') < 100,
   },
   {
+    id: 'market.photos_order',
+    text: 'market.product_min_photos ≤ market.product_max_photos',
+    keys: ['market.product_min_photos', 'market.product_max_photos'],
+    ok: (v) => v('market.product_min_photos') <= v('market.product_max_photos'),
+  },
+  {
+    id: 'market.mto_default',
+    text: 'market.mto_days_default ≤ market.mto_days_max',
+    keys: ['market.mto_days_default', 'market.mto_days_max'],
+    ok: (v) => v('market.mto_days_default') <= v('market.mto_days_max'),
+  },
+  {
+    id: 'market.qty_default',
+    text: 'market.max_qty_per_order_default ≤ market.max_qty_per_order_max',
+    keys: ['market.max_qty_per_order_default', 'market.max_qty_per_order_max'],
+    ok: (v) => v('market.max_qty_per_order_default') <= v('market.max_qty_per_order_max'),
+  },
+  {
     id: 'market.return_window',
     text: 'market.return_window_days_min ≤ market.return_window_days_max',
     keys: ['market.return_window_days_min', 'market.return_window_days_max'],

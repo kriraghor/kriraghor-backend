@@ -43,8 +43,8 @@ const KYC_REASONS = {
 };
 const reviewersOf = (kind) => directory.withPermission(require('../moderation/moderation.adapters').get(kind).permission);
 const KIND_LABELS = {
-  en: { document: 'identity document', game_profile: 'game UID', esports_tournament: 'esports tournament', ground: 'ground listing' },
-  bn: { document: 'পরিচয় ডকুমেন্ট', game_profile: 'গেম UID', esports_tournament: 'এস্পোর্টস টুর্নামেন্ট', ground: 'মাঠের তালিকা' },
+  en: { document: 'identity document', game_profile: 'game UID', esports_tournament: 'esports tournament', ground: 'ground listing', shop: 'shop', product: 'shop product' },
+  bn: { document: 'পরিচয় ডকুমেন্ট', game_profile: 'গেম UID', esports_tournament: 'এস্পোর্টস টুর্নামেন্ট', ground: 'মাঠের তালিকা', shop: 'দোকান', product: 'দোকানের পণ্য' },
 };
 const kindLabel = (kind, locale) => KIND_LABELS[locale]?.[kind] ?? KIND_LABELS.en[kind] ?? kind;
 const es = () => require('../esports/esports.facts');
@@ -53,8 +53,8 @@ const groundFacts = (id) => require('../grounds/grounds.service').facts(id);
 const vendorUrl = (p) => `${config.apps.vendor}${p}`;
 const isNid = (e) => !e.payload.role || e.payload.role === 'member';
 const DOC_LABELS = {
-  en: { trade_license: 'trade licence', deed_or_lease: 'land deed or lease', tin: 'TIN certificate' },
-  bn: { trade_license: 'ট্রেড লাইসেন্স', deed_or_lease: 'জমির দলিল বা লিজ', tin: 'টিআইএন সনদ' },
+  en: { trade_license: 'trade licence', deed_or_lease: 'land deed or lease', tin: 'TIN certificate', bin: 'VAT registration (BIN)' },
+  bn: { trade_license: 'ট্রেড লাইসেন্স', deed_or_lease: 'জমির দলিল বা লিজ', tin: 'টিআইএন সনদ', bin: 'ভ্যাট নিবন্ধন (বিআইএন)' },
 };
 const docLabel = (type, locale) => DOC_LABELS[locale]?.[type] ?? DOC_LABELS.en[type] ?? type;
 const GROUND_REASONS = {
@@ -63,6 +63,20 @@ const GROUND_REASONS = {
 };
 const groundReason = (code, locale) => GROUND_REASONS[locale]?.[code] ?? GROUND_REASONS.en[code] ?? reasonText(code, locale);
 const esportsUrl = (p) => `${config.apps.esports}${p}`;
+// M12: shops, products and stock (the shop owner), saved items (members).
+const shopFacts = (id) => require('../market/shops.service').facts(id);
+const productFacts = (id) => require('../market/products.service').facts(id);
+const variantFacts = (id) => require('../market/products.service').variantFacts(id);
+const MARKET_REASONS = {
+  en: { photos_unclear: 'the photos are unclear or not of this item', price_wrong: 'the price looks wrong', duplicate: 'it is already listed', info_incomplete: 'some information is missing', breaks_rules: 'it breaks our rules', specs_wrong: 'the details or sizes do not match the item', supplement_details: 'the importer, BSTI or expiry details are missing', shop_details: 'the shop name, type or address is not right', other: 'see the note from our team' },
+  bn: { photos_unclear: 'ছবি অস্পষ্ট বা এই পণ্যের নয়', price_wrong: 'দাম ঠিক মনে হচ্ছে না', duplicate: 'এটি আগেই তালিকায় আছে', info_incomplete: 'কিছু তথ্য নেই', breaks_rules: 'এটি আমাদের নিয়ম ভঙ্গ করে', specs_wrong: 'তথ্য বা সাইজ পণ্যের সাথে মেলে না', supplement_details: 'আমদানিকারক, BSTI বা মেয়াদের তথ্য নেই', shop_details: 'দোকানের নাম, ধরন বা ঠিকানা ঠিক নয়', other: 'আমাদের টিমের নোট দেখুন' },
+};
+const marketReason = (code, locale) => MARKET_REASONS[locale]?.[code] ?? MARKET_REASONS.en[code] ?? reasonText(code, locale);
+const variantValues = async (e, locale) => {
+  const f = await variantFacts(e.payload.variantId);
+  return { product: f.title, variant: locale === 'bn' ? f.labelBn : f.labelEn };
+};
+const webProduct = async (productId) => webUrl(`/shop/p/${(await productFacts(productId)).slug}`);
 const bookingFacts = (id) => require('../bookings/bookings.reads').facts(id);
 const bookingValues = async (e) => {
   const f = await bookingFacts(e.payload.bookingId);
@@ -916,6 +930,106 @@ const CATALOGUE = [
     recipients: (e) => [e.payload.authorId],
     values: async (e) => ({ ground: (await reviewFacts(e.payload.reviewId)).groundName }),
     link: () => '/me/reviews',
+  },
+  // ---------------- M12 market: shop and product reviews, stock (the shop owner), saved items (members)
+  {
+    code: 'SHOP_LIVE',
+    events: ['shop.published'],
+    category: 'moderation',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e) => ({ name: (await shopFacts(e.payload.shopId)).name, url: vendorUrl('/vendor/shop') }),
+    link: () => '/vendor/shop',
+  },
+  {
+    code: 'SHOP_CHANGES_REQUESTED',
+    events: ['shop.changes_requested'],
+    category: 'moderation',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e, { locale }) => ({ name: (await shopFacts(e.payload.shopId)).name, reason: marketReason(e.payload.reasonCode, locale) }),
+    link: () => '/vendor/shop',
+  },
+  {
+    code: 'SHOP_REJECTED',
+    events: ['shop.rejected'],
+    category: 'moderation',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e, { locale }) => ({ name: (await shopFacts(e.payload.shopId)).name, reason: marketReason(e.payload.reasonCode, locale) }),
+    link: () => '/vendor/shop',
+  },
+  {
+    code: 'PRODUCT_LIVE',
+    events: ['product.published'],
+    category: 'moderation',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e) => ({ name: (await productFacts(e.payload.productId)).title, url: await webProduct(e.payload.productId) }),
+    link: (e) => `/vendor/products/${e.payload.productId}`,
+  },
+  {
+    code: 'PRODUCT_CHANGES_REQUESTED',
+    events: ['product.changes_requested'],
+    category: 'moderation',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e, { locale }) => ({ name: (await productFacts(e.payload.productId)).title, reason: marketReason(e.payload.reasonCode, locale) }),
+    link: (e) => `/vendor/products/${e.payload.productId}`,
+  },
+  {
+    code: 'PRODUCT_REJECTED',
+    events: ['product.rejected'],
+    category: 'moderation',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e, { locale }) => ({ name: (await productFacts(e.payload.productId)).title, reason: marketReason(e.payload.reasonCode, locale) }),
+    link: (e) => `/vendor/products/${e.payload.productId}`,
+  },
+  {
+    code: 'STOCK_LOW',
+    events: ['variant.low_stock_reached'],
+    category: 'orders',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e, { locale }) => ({ ...(await variantValues(e, locale)), left: e.payload.available }),
+    link: () => '/vendor/inventory?status=low',
+  },
+  {
+    code: 'STOCK_OUT',
+    events: ['variant.stock_depleted'],
+    category: 'orders',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e, { locale }) => variantValues(e, locale),
+    link: () => '/vendor/inventory?status=out',
+  },
+  {
+    code: 'SUPPLEMENT_EXPIRING',
+    events: ['variant.sale_blocked'],
+    category: 'orders',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e, { locale }) => ({ ...(await variantValues(e, locale)), expiry: e.payload.expiryDate ?? '' }),
+    link: () => '/vendor/inventory?status=blocked',
+  },
+  {
+    code: 'SAVED_BACK_IN_STOCK',
+    events: ['saved_item.alerted'],
+    category: 'offers',
+    channels: ['in_app'],
+    recipients: (e) => (e.payload.reason === 'back_in_stock' ? [e.payload.userId] : []),
+    values: async (e) => ({ name: (await productFacts(e.payload.itemId)).title }),
+    link: () => '/shop/saved',
+  },
+  {
+    code: 'SAVED_PRICE_DROP',
+    events: ['saved_item.alerted'],
+    category: 'offers',
+    channels: ['in_app'],
+    recipients: (e) => (e.payload.reason === 'price_dropped' ? [e.payload.userId] : []),
+    values: async (e) => ({ name: (await productFacts(e.payload.itemId)).title, price: e.payload.pricePoisha }),
+    link: () => '/shop/saved',
   },
   // ---------------- M18 risk and trust (the payee never sees the rule)
   {

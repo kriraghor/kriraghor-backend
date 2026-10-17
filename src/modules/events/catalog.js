@@ -6,7 +6,7 @@
  * invalid payloads before commit. Payloads carry IDs, codes, amounts, statuses and timestamps only:
  * no phone, NID, DOB, email or names (consumers read details through the producer's service).
  *
- * Built so far: M01, M02, M03, M04, M05, M06, M07, M09, M10, M17, M18, M19, M21. Each later module adds its events here when it is built.
+ * Built so far: M01, M02, M03, M04, M05, M06, M07, M09, M10, M12, M17, M18, M19, M21. Each later module adds its events here when it is built.
  */
 const { z } = require('zod');
 
@@ -19,6 +19,10 @@ const poisha = z.number().int().nonnegative();
 const paymentClosed = z.object({ paymentId: uuid, purpose: z.string(), purposeId: uuid, amount: poisha, payerId: uuid, reason: z.string().max(60) });
 const refundEvent = z.object({ refundId: uuid, paymentId: uuid, amount: poisha, purpose: z.string(), purposeId: uuid, payerId: uuid });
 const groundEvent = z.object({ groundId: uuid, ownerId: uuid });
+const shopEvent = z.object({ shopId: uuid, ownerId: uuid });
+const productEvent = z.object({ productId: uuid, shopId: uuid, ownerId: uuid });
+const variantEvent = z.object({ variantId: uuid, productId: uuid, shopId: uuid, ownerId: uuid });
+const reasonText = z.string().max(300).nullable().optional();
 const docEvent = z.object({ documentId: uuid, userId: uuid, docType: z.string().max(30), role: z.string().max(32).optional() });
 const payoutEvent = z.object({ payoutId: uuid, code: z.string(), payeeId: uuid, amount: poisha });
 const subEvent = z.object({ submissionId: uuid, kind: z.string().max(30), subjectId: uuid, version: z.number().int(), submittedBy: uuid });
@@ -28,7 +32,7 @@ const esProfile = z.object({ profileId: uuid, userId: uuid, gameId: uuid });
 const esShare = z.object({ shareId: uuid, tournamentId: uuid, userId: uuid, amount: poisha });
 const bookingEvent = z.object({ bookingId: uuid, code: z.string().max(16), groundId: uuid, ownerId: uuid, bookerUserId: uuid.nullable() });
 const disputeEvent = z.object({ disputeId: uuid, code: z.string().max(20), sourceType: z.enum(['booking', 'esports_result']), sourceId: uuid, category: z.string().max(30), claimantId: uuid, respondentId: uuid.nullable() });
-const subjectType = z.enum(['ground', 'booking', 'user', 'review', 'esports_tournament']);
+const subjectType = z.enum(['ground', 'booking', 'user', 'review', 'esports_tournament', 'shop', 'product']);
 const reviewEvent = z.object({ reviewId: uuid, subjectType: z.literal('ground'), subjectId: uuid, authorId: uuid });
 const docRequestEvent = z.object({ requestId: uuid, userId: uuid, docType: z.string().max(30), sourceRef: uuid.nullable(), dueAt: iso.nullable() });
 const riskFlagEvent = z.object({ flagId: uuid, userId: uuid, ruleKey: z.string().max(40), severity: z.enum(['info', 'medium', 'high', 'critical']) });
@@ -199,6 +203,37 @@ const EVENTS = {
   'ground.restored': { module: 'M09', version: 1, schema: groundEvent },
   'ground.removed': { module: 'M09', version: 1, schema: groundEvent.extend({ reason: z.string().max(300).nullable().optional() }) },
   'ground.pricing_published': { module: 'M09', version: 1, schema: groundEvent.extend({ version: z.number().int(), changedKeys: z.array(z.string().max(40)) }) },
+  // ---------------- M12 market catalogue (step 1)
+  'shop.submitted': { module: 'M12', version: 1, schema: shopEvent.extend({ version: z.number().int(), isEdit: z.boolean() }) },
+  'shop.published': { module: 'M12', version: 1, schema: shopEvent.extend({ version: z.number().int(), first: z.boolean() }) },
+  'shop.changes_requested': { module: 'M12', version: 1, schema: shopEvent.extend({ isEdit: z.boolean(), reasonCode: z.string().max(40).nullable() }) },
+  'shop.rejected': { module: 'M12', version: 1, schema: shopEvent.extend({ isEdit: z.boolean(), reasonCode: z.string().max(40).nullable() }) },
+  'shop.withdrawn': { module: 'M12', version: 1, schema: shopEvent },
+  'shop.paused': { module: 'M12', version: 1, schema: shopEvent.extend({ reason: reasonText }) },
+  'shop.resumed': { module: 'M12', version: 1, schema: shopEvent },
+  'shop.suspended': { module: 'M12', version: 1, schema: shopEvent.extend({ reason: reasonText }) },
+  'shop.restored': { module: 'M12', version: 1, schema: shopEvent },
+  'shop.removed': { module: 'M12', version: 1, schema: shopEvent.extend({ reason: reasonText }) },
+  'product.submitted': { module: 'M12', version: 1, schema: productEvent.extend({ version: z.number().int(), isEdit: z.boolean() }) },
+  'product.published': { module: 'M12', version: 1, schema: productEvent.extend({ version: z.number().int(), first: z.boolean() }) },
+  'product.changes_requested': { module: 'M12', version: 1, schema: productEvent.extend({ isEdit: z.boolean(), reasonCode: z.string().max(40).nullable() }) },
+  'product.rejected': { module: 'M12', version: 1, schema: productEvent.extend({ isEdit: z.boolean(), reasonCode: z.string().max(40).nullable() }) },
+  'product.withdrawn': { module: 'M12', version: 1, schema: productEvent },
+  'product.paused': { module: 'M12', version: 1, schema: productEvent.extend({ reason: reasonText }) },
+  'product.resumed': { module: 'M12', version: 1, schema: productEvent },
+  'product.suspended': { module: 'M12', version: 1, schema: productEvent.extend({ reason: reasonText }) },
+  'product.restored': { module: 'M12', version: 1, schema: productEvent },
+  'product.removed': { module: 'M12', version: 1, schema: productEvent.extend({ reason: reasonText }) },
+  'product.hidden': { module: 'M12', version: 1, schema: productEvent.extend({ reason: z.enum(['stock']) }) },
+  'product.unhidden': { module: 'M12', version: 1, schema: productEvent.extend({ reason: z.enum(['stock']) }) },
+  'product.price_lowered': { module: 'M12', version: 1, schema: productEvent.extend({ fromPoisha: poisha, toPoisha: poisha }) },
+  'variant.low_stock_reached': { module: 'M12', version: 1, schema: variantEvent.extend({ available: z.number().int() }) },
+  'variant.stock_depleted': { module: 'M12', version: 1, schema: variantEvent },
+  'variant.restocked': { module: 'M12', version: 1, schema: variantEvent.extend({ available: z.number().int() }) },
+  'variant.sale_blocked': { module: 'M12', version: 1, schema: variantEvent.extend({ expiryDate: z.string().max(10).nullable() }) },
+  'variant.sale_unblocked': { module: 'M12', version: 1, schema: variantEvent.extend({ expiryDate: z.string().max(10).nullable() }) },
+  'inventory.adjusted': { module: 'M12', version: 1, schema: z.object({ variantId: uuid, productId: uuid, shopId: uuid, delta: z.number().int(), reasonCode: z.string().max(30) }) },
+  'saved_item.alerted': { module: 'M12', version: 1, schema: z.object({ savedItemId: uuid, userId: uuid, itemType: z.enum(['product', 'used_listing']), itemId: uuid, reason: z.enum(['back_in_stock', 'price_dropped']), pricePoisha: poisha }) },
   // step 2: closures and series (written as M10 booking slots)
   'closure.created': { module: 'M09', version: 1, schema: z.object({ closureId: uuid, groundId: uuid, start: iso, end: iso, reason: z.string().max(30) }) },
   'closure.reopened': { module: 'M09', version: 1, schema: z.object({ closureId: uuid, groundId: uuid, start: iso, end: iso, reason: z.string().max(30) }) },
@@ -267,7 +302,7 @@ const EVENTS = {
   'analytics.drift_detected': { module: 'M19', version: 1, schema: z.object({ vertical: z.string().max(20), records: z.number().int(), amount: poisha, runAt: iso }) },
 };
 /** FR-19: `<aggregate>.<past_tense_verb>`, snake_case. Irregular past tenses are listed. */
-const IRREGULAR = new Set(['sent', 'paid', 'held', 'won', 'lost', 'made', 'begun', 'done', 'drawn', 'shown', 'thrown', 'given', 'taken', 'built', 'set', 'put', 'cut', 'withdrawn', 'chosen', 'written', 'frozen', 'unfrozen', 'seen', 'broken', 'sold', 'told', 'found', 'left', 'met', 'read', 'run', 'spent', 'struck', 'hidden']);
+const IRREGULAR = new Set(['sent', 'paid', 'held', 'won', 'lost', 'made', 'begun', 'done', 'drawn', 'shown', 'thrown', 'given', 'taken', 'built', 'set', 'put', 'cut', 'withdrawn', 'chosen', 'written', 'frozen', 'unfrozen', 'seen', 'broken', 'sold', 'told', 'found', 'left', 'met', 'read', 'run', 'spent', 'struck', 'hidden', 'unhidden']);
 function nameError(name) {
   const m = /^([a-z][a-z0-9_]*)\.([a-z][a-z0-9_]*)$/.exec(name);
   if (!m) return 'Use <aggregate>.<verb> in snake_case';

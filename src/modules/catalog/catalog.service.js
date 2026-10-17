@@ -2,17 +2,18 @@
 
 /**
  * M03 catalogues: esports (§7.1 [v3]: games, modes, maps, points presets) and, for M09 and later
- * verticals, sports, divisions, districts, areas, facilities and surfaces (§6.1, §6.3).
+ * verticals, sports, divisions, districts, areas, facilities and surfaces (§6.1, §6.3); for M12 the
+ * item catalogue (item categories, item types and their spec fields, FR-09).
  *  - Rows are never deleted: deactivate hides them from pickers, old references stay valid (M03-FR-01).
  *  - `key` (and the parent row) are immutable after create: CATALOG_KEY_IMMUTABLE.
  *  - Points presets are immutable rows: an edit inserts version n+1, so tournaments that
  *    snapshotted an older version keep scoring with it.
  */
 const { AppError, E } = require('../../common/errors');
-const { sequelize, EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset, Sport, Division, District, Area, Facility, Surface, AREA_FLAGS } = require('../../models');
+const { sequelize, EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset, Sport, Division, District, Area, Facility, Surface, ItemCategory, ItemType, ItemTypeField, AREA_FLAGS } = require('../../models');
 const audit = require('../audit/audit.service');
 const events = require('../events/events.service');
-const { modeCapacityError, presetPointsError, uidRegexError } = require('./catalog.validate');
+const { modeCapacityError, presetPointsError, uidRegexError, itemFieldError } = require('./catalog.validate');
 
 /** parentKey: the immutable foreign key to the parent row (and the list filter). */
 const TABLES = {
@@ -26,6 +27,10 @@ const TABLES = {
   areas: { Model: Area, entity: 'area', parentKey: 'districtId', Parent: District, parentLabel: 'District' },
   facilities: { Model: Facility, entity: 'facility' },
   surfaces: { Model: Surface, entity: 'surface' },
+  'item-categories': { Model: ItemCategory, entity: 'item_category' },
+  'item-types': { Model: ItemType, entity: 'item_type', parentKey: 'categoryId', Parent: ItemCategory, parentLabel: 'Item category' },
+  // Field keys repeat across item types (size, flavour), so they are unique per type.
+  'item-type-fields': { Model: ItemTypeField, entity: 'item_type_field', parentKey: 'itemTypeId', Parent: ItemType, parentLabel: 'Item type', scopedKey: true },
 };
 
 const invalid = (field, message) => new AppError(422, 'VALIDATION_FAILED', 'Some fields are invalid', { errors: [{ field, message }] });
@@ -67,6 +72,11 @@ function checkRow(table, row) {
     if (err) throw invalid('placementPoints', err);
   }
   if (table === 'areas' && row.dhakaZone && !row.isDhakaMetro) throw invalid('dhakaZone', 'Only Dhaka metro areas have a zone');
+  if (table === 'item-types' && Number(row.priceCeilingPoisha) <= Number(row.priceFloorPoisha)) throw invalid('priceCeilingPoisha', 'Above the lowest price');
+  if (table === 'item-type-fields') {
+    const err = itemFieldError(row);
+    if (err) throw invalid(err.field, err.message);
+  }
 }
 
 const cfg = (table) => TABLES[table];
@@ -90,7 +100,7 @@ async function create(actor, table, body, req) {
   const row = await sequelize.transaction(async (transaction) => {
     if (parentKey && !(await Parent.findByPk(body[parentKey], { transaction }))) throw E.notFound(parentLabel);
     // Keys are unique per parent for esports children, platform-wide everywhere else.
-    const taken = await Model.findOne({ where: parentKey && cfg(table).esports ? { [parentKey]: body[parentKey], key: body.key } : { key: body.key }, transaction });
+    const taken = await Model.findOne({ where: parentKey && (cfg(table).esports || cfg(table).scopedKey) ? { [parentKey]: body[parentKey], key: body.key } : { key: body.key }, transaction });
     if (taken) throw E.conflict('CATALOG_KEY_TAKEN', 'That key is already used', `Pick another key than ${body.key}`);
     const created = await Model.create({ ...body, ...(versioned ? { version: 1 } : {}), createdBy: actor.id, updatedBy: actor.id }, { transaction });
     await audit.record({ action: 'catalog_item.created', actor, entityType: entity, entityId: created.id, after: serialize(created), req }, { transaction });
@@ -223,4 +233,31 @@ async function publicAreas({ districtId, service, q } = {}) {
   return { items };
 }
 
-module.exports = { list, create, update, setActive, publicGames, publicSports, publicFacilities, publicSurfaces, publicLocations, publicAreas, TABLES };
+/**
+ * GET /market/categories (M12 reads it): active item categories with their active item types and the
+ * types' active spec fields, in display order. The vendor product form and the Market filters use it.
+ */
+async function publicItems() {
+  const order = [['sort', 'ASC'], ['key', 'ASC']];
+  const categories = await ItemCategory.findAll({ where: { isActive: true }, order });
+  const types = await ItemType.findAll({ where: { isActive: true, categoryId: categories.map((x) => x.id) }, order });
+  const fields = await ItemTypeField.findAll({ where: { isActive: true, itemTypeId: types.map((t) => t.id) }, order });
+  const field = (f) => ({ key: f.key, labelEn: f.labelEn, labelBn: f.labelBn, kind: f.kind, options: f.options, unit: f.unit ?? null, min: f.minValue ?? null, max: f.maxValue ?? null, required: f.required, isVariantAxis: f.isVariantAxis });
+  return {
+    items: categories.map((k) => ({
+      id: k.id,
+      key: k.key,
+      nameEn: k.nameEn,
+      nameBn: k.nameBn,
+      sportKey: k.sportKey ?? null,
+      shopTypes: k.shopTypes,
+      isSupplement: k.isSupplement,
+      icon: k.icon ?? null,
+      types: types
+        .filter((t) => t.categoryId === k.id)
+        .map((t) => ({ id: t.id, key: t.key, nameEn: t.nameEn, nameBn: t.nameBn, priceFloorPoisha: t.priceFloorPoisha, priceCeilingPoisha: t.priceCeilingPoisha, placeholderEn: t.placeholderEn ?? null, placeholderBn: t.placeholderBn ?? null, fields: fields.filter((f) => f.itemTypeId === t.id).map(field) })),
+    })),
+  };
+}
+
+module.exports = { publicItems, list, create, update, setActive, publicGames, publicSports, publicFacilities, publicSurfaces, publicLocations, publicAreas, TABLES };

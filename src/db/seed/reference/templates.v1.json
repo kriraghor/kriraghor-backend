@@ -1,6 +1,6 @@
 {
-  "seedVersion": 10,
-  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code. v9: the M17 DISPUTE_*, REPORT_* and REVIEW_* codes. v10: the M18 RISK_*, PAYOUTS_*, DOCUMENTS_* and TRUST_LOW codes.",
+  "seedVersion": 11,
+  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code. v9: the M17 DISPUTE_*, REPORT_* and REVIEW_* codes. v10: the M18 RISK_*, PAYOUTS_*, DOCUMENTS_* and TRUST_LOW codes. v11: the M12 SHOP_*, PRODUCT_*, STOCK_*, SUPPLEMENT_EXPIRING and SAVED_* codes.",
   "templates": [
     {
       "code": "AUDIT_CRITICAL",
@@ -4987,6 +4987,602 @@
         {
           "name": "score",
           "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "SHOP_LIVE",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Shop approved",
+      "body": "{{name}} is approved and open on Kriraghor. Add your products next.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "url",
+          "type": "text",
+          "maxLen": 200
+        }
+      ]
+    },
+    {
+      "code": "SHOP_LIVE",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "দোকান অনুমোদিত",
+      "body": "{{name}} অনুমোদিত হয়েছে এবং ক্রীড়াঘরে খোলা। এবার পণ্য যোগ করুন।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "url",
+          "type": "text",
+          "maxLen": 200
+        }
+      ]
+    },
+    {
+      "code": "SHOP_LIVE",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: your shop {{name}} is approved. Add products on your business desk.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "SHOP_LIVE",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: আপনার দোকান {{name}} অনুমোদিত। বিজনেস ডেস্কে পণ্য যোগ করুন।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "SHOP_CHANGES_REQUESTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Changes needed",
+      "body": "Staff asked for changes to your shop {{name}}: {{reason}}.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "SHOP_CHANGES_REQUESTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পরিবর্তন দরকার",
+      "body": "আপনার দোকান {{name}}-এ পরিবর্তন চাওয়া হয়েছে: {{reason}}।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "SHOP_CHANGES_REQUESTED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: changes needed to your shop {{name}}: {{reason}}.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "SHOP_CHANGES_REQUESTED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: আপনার দোকান {{name}}-এ পরিবর্তন দরকার: {{reason}}।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "SHOP_REJECTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Shop not approved",
+      "body": "Your shop {{name}} was not approved: {{reason}}.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "SHOP_REJECTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "দোকান অনুমোদিত হয়নি",
+      "body": "আপনার দোকান {{name}} অনুমোদিত হয়নি: {{reason}}।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "SHOP_REJECTED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: your shop {{name}} was not approved: {{reason}}.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "SHOP_REJECTED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: আপনার দোকান {{name}} অনুমোদিত হয়নি: {{reason}}।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "PRODUCT_LIVE",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Product approved",
+      "body": "{{name}} is approved and on Kriraghor Market.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "url",
+          "type": "text",
+          "maxLen": 200
+        }
+      ]
+    },
+    {
+      "code": "PRODUCT_LIVE",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পণ্য অনুমোদিত",
+      "body": "{{name}} অনুমোদিত হয়েছে এবং ক্রীড়াঘর মার্কেটে আছে।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "url",
+          "type": "text",
+          "maxLen": 200
+        }
+      ]
+    },
+    {
+      "code": "PRODUCT_CHANGES_REQUESTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Changes needed",
+      "body": "Staff asked for changes to {{name}}: {{reason}}.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "PRODUCT_CHANGES_REQUESTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পরিবর্তন দরকার",
+      "body": "{{name}}-এ পরিবর্তন চাওয়া হয়েছে: {{reason}}।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "PRODUCT_CHANGES_REQUESTED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: changes needed to {{name}}: {{reason}}.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "PRODUCT_CHANGES_REQUESTED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{name}}-এ পরিবর্তন দরকার: {{reason}}।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "PRODUCT_REJECTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Product not approved",
+      "body": "{{name}} was not approved: {{reason}}.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "PRODUCT_REJECTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পণ্য অনুমোদিত হয়নি",
+      "body": "{{name}} অনুমোদিত হয়নি: {{reason}}।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "PRODUCT_REJECTED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{name}} was not approved: {{reason}}.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "PRODUCT_REJECTED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{name}} অনুমোদিত হয়নি: {{reason}}।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "STOCK_LOW",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Running low",
+      "body": "{{product}} ({{variant}}): {{left}} left.",
+      "variables": [
+        {
+          "name": "product",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "variant",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "left",
+          "type": "number",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "STOCK_LOW",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "স্টক কম",
+      "body": "{{product}} ({{variant}}): আর {{left}}টি বাকি।",
+      "variables": [
+        {
+          "name": "product",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "variant",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "left",
+          "type": "number",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "STOCK_OUT",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Out of stock",
+      "body": "{{product}} ({{variant}}) is out of stock.",
+      "variables": [
+        {
+          "name": "product",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "variant",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "STOCK_OUT",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "স্টক শেষ",
+      "body": "{{product}} ({{variant}})-এর স্টক শেষ।",
+      "variables": [
+        {
+          "name": "product",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "variant",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "SUPPLEMENT_EXPIRING",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Blocked for expiry",
+      "body": "{{product}} ({{variant}}) expires on {{expiry}} and is no longer sold. Add a fresh batch as a new variant.",
+      "variables": [
+        {
+          "name": "product",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "variant",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "expiry",
+          "type": "text",
+          "maxLen": 10
+        }
+      ]
+    },
+    {
+      "code": "SUPPLEMENT_EXPIRING",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "মেয়াদের কারণে বন্ধ",
+      "body": "{{product}} ({{variant}})-এর মেয়াদ {{expiry}} তারিখে শেষ, তাই আর বিক্রি হচ্ছে না। নতুন ব্যাচ নতুন ভ্যারিয়েন্ট হিসেবে যোগ করুন।",
+      "variables": [
+        {
+          "name": "product",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "variant",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "expiry",
+          "type": "text",
+          "maxLen": 10
+        }
+      ]
+    },
+    {
+      "code": "SAVED_BACK_IN_STOCK",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Back in stock",
+      "body": "{{name}} that you saved is back in stock.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "SAVED_BACK_IN_STOCK",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আবার স্টকে",
+      "body": "আপনার সংরক্ষিত {{name}} আবার স্টকে এসেছে।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "SAVED_PRICE_DROP",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Price dropped",
+      "body": "{{name}} that you saved now costs {{price}}.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "price",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "SAVED_PRICE_DROP",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "দাম কমেছে",
+      "body": "আপনার সংরক্ষিত {{name}}-এর দাম এখন {{price}}।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "price",
+          "type": "money"
         }
       ]
     }

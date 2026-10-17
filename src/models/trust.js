@@ -94,7 +94,7 @@ Report.init(
   {
     id,
     code: req(DataTypes.STRING(20)),
-    subjectType: req(DataTypes.ENUM('ground', 'booking', 'user', 'review', 'esports_tournament')),
+    subjectType: req(DataTypes.ENUM('ground', 'booking', 'user', 'review', 'esports_tournament', 'shop', 'product')),
     subjectId: req(DataTypes.UUID),
     subjectOwnerId: DataTypes.UUID,
     reporterId: req(DataTypes.UUID),

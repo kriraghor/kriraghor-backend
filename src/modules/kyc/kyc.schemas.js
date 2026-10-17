@@ -11,8 +11,9 @@ const DOC_STATUSES = ['in_review', 'changes_requested', 'approved', 'rejected', 
 
 const idParam = z.object({ id: z.uuid() });
 const fileParams = z.object({ id: z.uuid(), fileId: z.uuid() });
-const BUSINESS_TYPES = ['trade_license', 'deed_or_lease', 'tin'];
-const verificationQuery = z.object({ locale: z.enum(['en', 'bn']).default('en'), role: z.enum(['member', 'ground_owner']).default('member') });
+const BUSINESS_TYPES = ['trade_license', 'deed_or_lease', 'tin', 'bin'];
+const BUSINESS_ROLES = ['ground_owner', 'shop_owner'];
+const verificationQuery = z.object({ locale: z.enum(['en', 'bn']).default('en'), role: z.enum(['member', ...BUSINESS_ROLES]).default('member') });
 const uploadQuery = z.object({ slot: z.enum(['front', 'back', 'selfie', 'document']), docType: z.enum(['nid', ...BUSINESS_TYPES]).default('nid') });
 
 const nidBody = z.object({
@@ -31,9 +32,10 @@ const businessBody = z.object({
   docType: z.enum(BUSINESS_TYPES),
   fields: z.record(z.string(), z.string().max(200).nullable()).meta({ description: 'By field key, e.g. number, holderName, expiresOn (YYYY-MM-DD), kind' }),
   files: z.object({ document: z.uuid() }).meta({ description: 'The file id from POST /me/documents/files?slot=document' }),
+  role: z.enum(BUSINESS_ROLES).optional().meta({ description: 'The business role the document is for (documents are kept per role). Needed only when more than one applied role asks for this type' }),
   consent: z.literal(true),
 });
-const submitBody = z.discriminatedUnion('docType', [nidBody, businessBody.extend({ docType: z.literal('trade_license') }), businessBody.extend({ docType: z.literal('deed_or_lease') }), businessBody.extend({ docType: z.literal('tin') })]);
+const submitBody = z.discriminatedUnion('docType', [nidBody, ...BUSINESS_TYPES.map((t) => businessBody.extend({ docType: z.literal(t) }))]);
 
 const revealBody = z.object({ reason: z.string().trim().min(3).max(300) });
 

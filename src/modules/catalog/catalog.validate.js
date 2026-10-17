@@ -34,4 +34,19 @@ function uidRegexError(pattern) {
   }
 }
 
-module.exports = { modeCapacityError, presetPointsError, uidRegexError };
+/**
+ * M12 item fields: a select needs options with unique values (and an axis is always a select);
+ * min ≤ max for numbers. Returns { field, message } or null.
+ */
+function itemFieldError(row) {
+  if (row.isVariantAxis && row.kind !== 'select') return { field: 'isVariantAxis', message: 'Only a pick-list can be a variant option' };
+  if (row.kind === 'select') {
+    const values = (row.options ?? []).map((o) => o.value);
+    if (!values.length) return { field: 'options', message: 'Add at least one option' };
+    if (new Set(values).size !== values.length) return { field: 'options', message: 'Option values must be unique' };
+  }
+  if (row.minValue !== null && row.minValue !== undefined && row.maxValue !== null && row.maxValue !== undefined && Number(row.maxValue) < Number(row.minValue)) return { field: 'maxValue', message: 'At least the minimum' };
+  return null;
+}
+
+module.exports = { modeCapacityError, presetPointsError, uidRegexError, itemFieldError };

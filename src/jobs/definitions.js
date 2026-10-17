@@ -27,6 +27,7 @@ const analytics = require('../modules/analytics/facts.service');
 const disputes = require('../modules/trust/disputes.service');
 const riskJobs = require('../modules/risk/risk.jobs');
 const risk = require('../modules/risk/risk.nightly');
+const inventory = require('../modules/market/inventory.service');
 const { purgeExpired: purgeIdempotencyKeys } = require('../common/idempotency');
 const logger = require('../common/logger');
 
@@ -267,6 +268,30 @@ const JOBS = [
     pattern: '30 2 * * *',
     tz: 'Asia/Dhaka',
     run: async () => risk.nightly(),
+  },
+  // ---------------- M12 market (§10). Idempotent: each step changes only what is out of line, under row locks.
+  {
+    // v3: supplement variants past or near their expiry are blocked from sale; the shop is told.
+    name: 'market.supplement-expiry',
+    queue: QUEUES.MARKET,
+    pattern: '0 1 * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => inventory.supplementSweep(),
+  },
+  {
+    // FR-11: the variant stock columns equal the sum of their movements; a mismatch is a critical audit row.
+    name: 'market.inventory-reconcile',
+    queue: QUEUES.MARKET,
+    pattern: '30 3 * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => inventory.reconcile(),
+  },
+  {
+    // FR-15 safety net: hide and show products from their stock (every movement already does this).
+    name: 'market.visibility-sweep',
+    queue: QUEUES.MARKET,
+    every: 60 * 60 * 1000,
+    run: async () => inventory.visibilitySweep(),
   },
   // ---------------- M19 analytics (§10). Idempotent: upserts and REFRESH … CONCURRENTLY under an advisory lock.
   {

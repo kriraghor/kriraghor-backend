@@ -20,6 +20,7 @@ const QUEUES = Object.freeze({
   BOOKINGS: 'bookings', // M10 tick: hold expiry, completion, reminders, unrecorded balances
   ANALYTICS: 'analytics', // M19 view refresh, nightly reconcile and occupancy rebuild
   TRUST: 'trust', // M17 respondent reminders and timeouts, SLA breaches, claim expiry
+  MARKET: 'market', // M12 supplement expiry, inventory reconcile, visibility sweep
   RISK: 'risk', // M18 evaluations (debounced per user), re-evaluation after a threshold change, nightly runs
 });
 

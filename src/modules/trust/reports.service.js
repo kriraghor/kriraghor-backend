@@ -2,13 +2,14 @@
 
 /**
  * M17 reports (§5.2, FR-15 to FR-19; Q99). Any signed-in member can report a ground, a booking they
- * are part of, a member, a review or an esports tournament (reports.per_day each). A report counts
+ * are part of, a member, a review, an esports tournament, or a shop or shop product (M12)
+ * (reports.per_day each). A report counts
  * toward auto-hide only when its reporter is NID-verified with an account at least
  * reports.reporter_min_account_days old. When eligible reporters of one subject reach
  * reports.autohide_threshold within reports.autohide_window_days, a review is hidden at once; every
  * other subject goes to the top of the staff queue (report.threshold_reached). Staff resolve a subject
- * with one action for all its open reports; suspensions use M01 and ground takedowns M09, in the same
- * transaction.
+ * with one action for all its open reports; suspensions use M01, ground takedowns M09 and shop or
+ * product takedowns M12, in the same transaction.
  */
 const { Op, UniqueConstraintError } = require('sequelize');
 const { E } = require('../../common/errors');
@@ -54,6 +55,17 @@ const SUBJECTS = {
     const r = await reviews.get(id);
     if (!r) return null;
     return { owners: [r.authorId], suspendable: r.authorId, summary: { stars: r.stars, text: r.text, status: r.status, groundId: r.subjectId } };
+  },
+  // M12: a shop or a shop product; taking it down suspends it (M12), suspending hits the shop owner.
+  async shop(id) {
+    const s = await require('../market/market.reads').shop(id);
+    if (!s) return null;
+    return { owners: [s.ownerId], suspendable: s.ownerId, summary: { name: s.name, slug: s.slug, status: s.status } };
+  },
+  async product(id) {
+    const p = await require('../market/market.reads').product(id);
+    if (!p) return null;
+    return { owners: [p.ownerId], suspendable: p.ownerId, summary: { title: p.title, slug: p.slug, status: p.status, shopId: p.shopId } };
   },
   async esports_tournament(id) {
     const t = await require('../esports/esports.facts').tournament(id).catch(() => null);
@@ -166,12 +178,13 @@ async function lockOpen(subjectType, subjectId, transaction) {
 
 /**
  * POST /admin/reports/resolve { subjectType, subjectId, action, note }: closes every open report of the
- * subject. content_removed hides a review or suspends a ground (M09; needs manage_users for grounds);
+ * subject. content_removed hides a review or suspends a ground, shop or product (M09, M12; needs
+ * manage_users for those);
  * user_suspended suspends the account behind the subject (M01; needs manage_users).
  */
 async function resolve(actor, { subjectType, subjectId, action, note }, req) {
   if (!rules.resolutionAllowed(subjectType, action)) throw fail('RESOLUTION_NOT_ALLOWED');
-  const needsUsers = action === 'user_suspended' || (action === 'content_removed' && subjectType === 'ground');
+  const needsUsers = action === 'user_suspended' || (action === 'content_removed' && ['ground', 'shop', 'product'].includes(subjectType));
   if (needsUsers && !authz.hasPermission(actor, 'manage_users')) throw E.forbidden('PERMISSION_REQUIRED', 'You do not have permission to do this', undefined, { missing: ['manage_users'] });
   return sequelize.transaction(async (transaction) => {
     const open = await lockOpen(subjectType, subjectId, transaction);
@@ -182,6 +195,8 @@ async function resolve(actor, { subjectType, subjectId, action, note }, req) {
       if (rv.status === 'hidden' && rv.hiddenReason === 'reports') await reviews.restoreInTx(rv, { actor, transaction });
     }
     if (subjectType === 'ground' && action === 'content_removed') await require('../grounds/grounds.service').staffActionInTx(actor, subjectId, 'suspend', { reason: note, transaction, req });
+    if (subjectType === 'shop' && action === 'content_removed') await require('../market/shops.service').staffActionInTx(actor, subjectId, 'suspend', { reason: note, transaction, req });
+    if (subjectType === 'product' && action === 'content_removed') await require('../market/products.service').staffActionInTx(actor, subjectId, 'suspend', { reason: note, transaction, req });
     if (action === 'user_suspended') await require('../admin/admin-users.service').suspendInTx(actor, subject.suspendable, { reasonCode: 'reported', note }, { transaction, req });
     const now = new Date();
     await Report.update({ status: 'resolved', resolutionAction: action, resolutionNote: note, resolvedBy: actor.id, resolvedAt: now }, { where: { id: open.map((r) => r.id) }, transaction });

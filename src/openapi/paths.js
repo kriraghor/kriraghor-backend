@@ -20,9 +20,10 @@ const bkS = require('../modules/bookings/bookings.schemas');
 const anS = require('../modules/analytics/analytics.schemas');
 const trS = require('../modules/trust/trust.schemas');
 const rkS = require('../modules/risk/risk.schemas');
+const mkS = require('../modules/market/market.schemas');
 
 /**
- * Every route (M01 to M10, M17, M18, M19, M21), registered with its request and response schemas and the stable error
+ * Every route (M01 to M10, M12, M17, M18, M19, M21), registered with its request and response schemas and the stable error
  * codes it can return (ADR-002). When a route is added in a module, add it here: the
  * coverage test fails if an Express route has no OpenAPI entry.
  */
@@ -847,6 +848,73 @@ function register(registry) {
   p({ method: 'get', path: '/me/trust', tags: ['risk'], summary: 'My reliability scores and the counts behind them (FR-14)', security: bearer, responses: { 200: json(rkS.Scores), ...errors(COMMON_AUTH) } });
   p({ method: 'get', path: '/trust/{userId}', tags: ['risk'], summary: 'Reliability scores that are shown (enough bookings, trust.min_sample)', request: rkUser, responses: { 200: json(rkS.Scores), ...errors(VALIDATION) } });
   p({ method: 'get', path: '/me/document-requests', tags: ['kyc'], summary: 'Documents our team asked me for (M02, from the risk desk)', security: bearer, responses: { 200: json(rkS.DocumentRequests), ...errors(COMMON_AUTH) } });
+  // ------------------------------------------------------------------ M12 market catalogue (step 1)
+  const mkId = { params: mkS.idParam };
+  const SHOP = { ...COMMON_AUTH, 403: ['ROLE_REQUIRED', 'ROLE_PENDING', 'KYC_REQUIRED', 'PHONE_REQUIRED', 'NOT_OWNER'], 404: ['NOT_FOUND'] };
+  const PRODUCT_EDIT = { 409: ['PRODUCT_IN_REVIEW', 'PRODUCT_STATE', 'SHOP_REQUIRED'] };
+  const mkPhoto = { description: 'The photo itself, up to market.photo_max_bytes', content: { 'image/jpeg': { schema: z.string() }, 'image/png': { schema: z.string() }, 'image/webp': { schema: z.string() } } };
+  p({ method: 'get', path: '/market/items', tags: ['market'], summary: 'Live shop products: category, item types, price band, area, search; facet counts; sorts newest / price (FR-30 to FR-32)', request: { query: mkS.listQuery }, responses: { 200: json(mkS.ItemList), ...errors(VALIDATION) } });
+  p({ method: 'get', path: '/market/categories', tags: ['market'], summary: 'The M03 item catalogue: categories, item types with price ranges and spec fields (ETag)', responses: { 200: json(mkS.Categories), 304: { description: 'Not modified' } } });
+  p({ method: 'get', path: '/market/products/{slug}', tags: ['market'], summary: 'A product page: public version, variant picker with live stock, specs, supplement details, the shop (410 once removed)',
+    request: { params: mkS.slugParam }, responses: { 200: json(mkS.ProductPage), ...errors({ 404: ['NOT_FOUND'], 410: ['PRODUCT_GONE'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/market/shops/{slug}', tags: ['market'], summary: 'A live shop and its products', request: { params: mkS.slugParam, query: mkS.shopPageQuery }, responses: { 200: json(mkS.ShopPage), ...errors({ 404: ['NOT_FOUND'], ...VALIDATION }) } });
+
+  p({ method: 'get', path: '/me/saved', tags: ['market'], summary: 'My saved items with badges (price dropped, out of stock, unavailable) (FR-33)', security: bearer, responses: { 200: json(mkS.SavedList), ...errors(COMMON_AUTH) } });
+  p({ method: 'put', path: '/me/saved/{itemType}/{id}', tags: ['market'], summary: 'Save an item (idempotent; at most market.saved_max; not your own, FR-34)', security: bearer,
+    request: { params: mkS.savedParams }, responses: { 200: json(mkS.SavedResult), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], 409: ['OWN_ITEM', 'SAVED_LIMIT'], ...VALIDATION }) } });
+  p({ method: 'delete', path: '/me/saved/{itemType}/{id}', tags: ['market'], summary: 'Unsave an item (the row is kept with removed_at)', security: bearer, request: { params: mkS.savedParams }, responses: { 200: json(mkS.SavedResult), ...errors({ ...COMMON_AUTH, ...VALIDATION }) } });
+
+  p({ method: 'get', path: '/shop/profile', tags: ['market'], summary: 'My shop (shop owner; gate list_product)', security: bearer, responses: { 200: json(mkS.ShopOwner), ...errors(SHOP) } });
+  p({ method: 'post', path: '/shop/profile', tags: ['market'], summary: 'Open my shop: a draft of a type from market.shop_types (FR-01; one per owner)', security: bearer,
+    request: body(mkS.createShop), responses: { 201: json(mkS.ShopOwner, 'Created'), ...errors({ ...SHOP, 409: ['SHOP_EXISTS'], 422: ['VALIDATION_FAILED', 'SHOP_TYPE_UNKNOWN', 'AREA_UNKNOWN'] }) } });
+  p({ method: 'patch', path: '/shop/profile', tags: ['market'], summary: 'Edit my shop; on a live shop the name, area and address start an edit, the rest apply at once', security: bearer,
+    request: body(mkS.updateShop), responses: { 200: json(mkS.ShopOwner), ...errors({ ...SHOP, 409: ['SHOP_IN_REVIEW', 'SHOP_STATE', 'SHOP_REQUIRED'], 422: ['VALIDATION_FAILED', 'SHOP_TYPE_UNKNOWN', 'AREA_UNKNOWN'] }) } });
+  for (const [action, summary] of [['submit', 'Send the shop (or an edit of it) for review (M05 kind shop)'], ['withdraw', 'Take the shop or its edit out of review'], ['pause', 'Hide the shop and its products'], ['resume', 'Show a paused shop again']]) {
+    p({ method: 'post', path: `/shop/profile/${action}`, tags: ['market'], summary, security: bearer, responses: { 200: json(mkS.ShopOwner), ...errors({ ...SHOP, 409: ['SHOP_STATE', 'SHOP_IN_REVIEW', 'NOTHING_TO_REVIEW', 'SHOP_REQUIRED'] }) } });
+  }
+  p({ method: 'put', path: '/shop/stock-rules', tags: ['market'], summary: 'Low-stock alert, hide when out of stock, made-to-order days (FR-06, FR-14, FR-15; explicit save, audited)', security: bearer,
+    request: body(mkS.stockRules), responses: { 200: json(mkS.ShopOwner), ...errors({ ...SHOP, 409: ['SHOP_REQUIRED'], 422: ['VALIDATION_FAILED', 'MTO_DAYS_INVALID'] }) } });
+  p({ method: 'get', path: '/shop/products', tags: ['market'], summary: 'My products with status, cover and stock totals', security: bearer, request: { query: mkS.ownerListQuery }, responses: { 200: json(mkS.ProductOwnerList), ...errors({ ...SHOP, 409: ['SHOP_REQUIRED'] }) } });
+  p({ method: 'post', path: '/shop/products', tags: ['market'], summary: 'Draft a product of an item type with its variants and opening stock (FR-02 to FR-06)', security: bearer,
+    request: body(mkS.createProduct),
+    responses: { 201: json(mkS.ProductOwner, 'Created'), ...errors({ ...SHOP, 409: ['SHOP_REQUIRED', 'SHOP_STATE', 'VARIANT_DUPLICATE', 'SKU_TAKEN', 'MTO_NO_STOCK'], 422: ['VALIDATION_FAILED', 'ITEM_TYPE_UNKNOWN', 'CATEGORY_NOT_FOR_SHOP', 'SPECS_INVALID', 'ATTRIBUTES_INVALID', 'AXES_MISMATCH', 'PRICE_OUT_OF_RANGE', 'EXPIRY_REQUIRED', 'MTO_DAYS_INVALID', 'QTY_LIMIT_INVALID'] }) } });
+  p({ method: 'get', path: '/shop/products/{id}', tags: ['market'], summary: 'My product: the working copy with photos and variants', security: bearer, request: mkId, responses: { 200: json(mkS.ProductOwner), ...errors(SHOP) } });
+  p({ method: 'patch', path: '/shop/products/{id}', tags: ['market'], summary: 'Edit my product; title, type, brand, specs, supplement details and price moves above market.product_reprice_moderation_pct need review (FR-02)', security: bearer,
+    request: { ...mkId, ...body(mkS.updateProduct) },
+    responses: { 200: json(mkS.ProductOwner), ...errors({ ...SHOP, 409: [...PRODUCT_EDIT[409], 'VARIANT_HAS_HELD'], 422: ['VALIDATION_FAILED', 'ITEM_TYPE_UNKNOWN', 'CATEGORY_NOT_FOR_SHOP', 'SPECS_INVALID', 'ATTRIBUTES_INVALID', 'PRICE_OUT_OF_RANGE', 'MTO_DAYS_INVALID', 'QTY_LIMIT_INVALID'] }) } });
+  p({ method: 'post', path: '/shop/products/{id}/submit', tags: ['market'], summary: 'Send the product (or an edit of a live one) for review (M05 kind product; the shop must be live)', security: bearer,
+    request: mkId, responses: { 200: json(mkS.ProductOwner), ...errors({ ...SHOP, 409: ['SHOP_NOT_LIVE', 'PRODUCT_STATE', 'PRODUCT_IN_REVIEW', 'NOTHING_TO_REVIEW'], 422: ['PRODUCT_INCOMPLETE', 'ITEM_TYPE_UNKNOWN', 'CATEGORY_NOT_FOR_SHOP'] }) } });
+  p({ method: 'post', path: '/shop/products/{id}/withdraw', tags: ['market'], summary: 'Take the product or its edit out of review', security: bearer, request: mkId, responses: { 200: json(mkS.ProductOwner), ...errors({ ...SHOP, 409: ['PRODUCT_STATE'] }) } });
+  p({ method: 'post', path: '/shop/products/{id}/pause', tags: ['market'], summary: 'Hide a live product', security: bearer, request: mkId, responses: { 200: json(mkS.ProductOwner), ...errors({ ...SHOP, 409: ['PRODUCT_STATE'] }) } });
+  p({ method: 'post', path: '/shop/products/{id}/resume', tags: ['market'], summary: 'Show a paused product again', security: bearer, request: mkId, responses: { 200: json(mkS.ProductOwner), ...errors({ ...SHOP, 409: ['PRODUCT_STATE'] }) } });
+  p({ method: 'post', path: '/shop/products/{id}/remove', tags: ['market'], summary: 'Remove a product (no units held for orders; nothing is deleted)', security: bearer, request: mkId, responses: { 200: json(mkS.StatusResult), ...errors({ ...SHOP, 409: ['PRODUCT_STATE', 'VARIANT_HAS_HELD'] }) } });
+  p({ method: 'post', path: '/shop/products/{id}/variants', tags: ['market'], summary: 'Add a variant (a size or option) with its opening stock; public at once on a live product (FR-04)', security: bearer,
+    request: { ...mkId, ...body(mkS.createVariant) }, responses: { 201: json(mkS.ProductOwner, 'Created'), ...errors({ ...SHOP, 409: [...PRODUCT_EDIT[409], 'VARIANT_DUPLICATE', 'SKU_TAKEN', 'MTO_NO_STOCK'], 422: ['VALIDATION_FAILED', 'ATTRIBUTES_INVALID', 'AXES_MISMATCH', 'PRICE_OUT_OF_RANGE', 'EXPIRY_REQUIRED'] }) } });
+  p({ method: 'patch', path: '/shop/variants/{id}', tags: ['market'], summary: 'Edit a variant: SKU, price, expiry date and batch (supplements)', security: bearer,
+    request: { ...mkId, ...body(mkS.updateVariant) }, responses: { 200: json(mkS.ProductOwner), ...errors({ ...SHOP, 409: [...PRODUCT_EDIT[409], 'VARIANT_STATE', 'SKU_TAKEN'], 422: ['VALIDATION_FAILED', 'PRICE_OUT_OF_RANGE', 'EXPIRY_REQUIRED'] }) } });
+  p({ method: 'post', path: '/shop/variants/{id}/retire', tags: ['market'], summary: 'Retire a variant (none held for orders; a product keeps one)', security: bearer, request: mkId, responses: { 200: json(mkS.ProductOwner), ...errors({ ...SHOP, 409: [...PRODUCT_EDIT[409], 'VARIANT_STATE', 'VARIANT_HAS_HELD', 'LAST_VARIANT'] }) } });
+  p({ method: 'post', path: '/shop/products/{id}/photos', tags: ['market'], summary: 'Upload a photo (raw JPEG, PNG or WebP, checked by its first bytes) to the public bucket', security: bearer,
+    request: { ...mkId, body: mkPhoto },
+    responses: { 201: json(mkS.Photo, 'Created'), ...errors({ ...SHOP, 409: ['PRODUCT_IN_REVIEW', 'PRODUCT_STATE', 'PHOTO_LIMIT'], 413: ['FILE_TOO_LARGE', 'PAYLOAD_TOO_LARGE'], 415: ['FILE_TYPE_NOT_ALLOWED', 'FILE_TYPE_MISMATCH'], 422: ['FILE_EMPTY'], 429: ['UPLOAD_RATE_LIMITED'] }) } });
+  p({ method: 'put', path: '/shop/products/{id}/photos/order', tags: ['market'], summary: 'Reorder the photos (first = cover)', security: bearer,
+    request: { ...mkId, ...body(mkS.photoOrder) }, responses: { 200: json(z.object({ items: z.array(mkS.Photo) })), ...errors({ ...SHOP, 409: ['PRODUCT_IN_REVIEW', 'PRODUCT_STATE'], 422: ['VALIDATION_FAILED', 'PHOTOS_MISMATCH'] }) } });
+  p({ method: 'post', path: '/shop/products/{id}/photos/{photoId}/remove', tags: ['market'], summary: 'Remove a photo (status; nothing is deleted)', security: bearer,
+    request: { params: mkS.photoParams }, responses: { 200: json(z.object({ removed: z.uuid() })), ...errors({ ...SHOP, 409: ['PRODUCT_IN_REVIEW', 'PRODUCT_STATE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/shop/variants/{id}/adjust', tags: ['market'], summary: 'Change the count on the shelf with a reason (received, count correction, damaged, lost, other) (FR-13)', security: bearer,
+    request: { ...mkId, ...body(mkS.adjustBody) }, responses: { 200: json(mkS.StockResult), ...errors({ ...SHOP, 409: ['BELOW_HELD', 'MTO_NO_STOCK', 'VARIANT_STATE'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/shop/variants/{id}/movements', tags: ['market'], summary: 'The stock ledger of a variant, newest first (FR-11)', security: bearer, request: { ...mkId, query: mkS.cursorQuery }, responses: { 200: json(mkS.MovementList), ...errors(SHOP) } });
+  p({ method: 'get', path: '/shop/inventory', tags: ['market'], summary: 'Inventory desk: stock value, out, low, held, blocked; every active variant (§4)', security: bearer, request: { query: mkS.inventoryQuery }, responses: { 200: json(mkS.InventoryOverview), ...errors({ ...SHOP, 409: ['SHOP_REQUIRED'] }) } });
+
+  const MK = { ...ADMIN_AUTH, 404: ['NOT_FOUND'] };
+  p({ method: 'get', path: '/admin/market/shops', tags: ['market'], summary: 'Shops (approve_listings or manage_users)', security: adminBearer, request: { query: mkS.staffShopsQuery }, responses: { 200: json(mkS.StaffShopList), ...errors({ ...ADMIN_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/market/shops/{id}', tags: ['market'], summary: 'A shop: the working copy and the public version', security: adminBearer, request: mkId, responses: { 200: json(z.object({}).loose()), ...errors(MK) } });
+  p({ method: 'get', path: '/admin/market/products', tags: ['market'], summary: 'Shop products (approve_listings or manage_users)', security: adminBearer, request: { query: mkS.staffProductsQuery }, responses: { 200: json(mkS.StaffProductList), ...errors({ ...ADMIN_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/market/products/{id}', tags: ['market'], summary: 'A product: the working copy and the public version', security: adminBearer, request: mkId, responses: { 200: json(z.object({}).loose()), ...errors(MK) } });
+  for (const what of ['shops', 'products']) {
+    p({ method: 'post', path: `/admin/market/${what}/{id}/suspend`, tags: ['market'], summary: `Suspend (manage_users): hidden from Market`, security: adminBearer, request: { ...mkId, ...body(mkS.reasonBody) }, responses: { 200: json(mkS.StatusResult), ...errors({ ...MK, 409: ['SHOP_STATE', 'PRODUCT_STATE'], ...VALIDATION }) } });
+    p({ method: 'post', path: `/admin/market/${what}/{id}/restore`, tags: ['market'], summary: 'Restore a suspended one (masters)', security: adminBearer, request: { ...mkId, ...body(mkS.reasonBody) }, responses: { 200: json(mkS.StatusResult), ...errors({ ...MK, 409: ['SHOP_STATE', 'PRODUCT_STATE'], ...VALIDATION }) } });
+    p({ method: 'post', path: `/admin/market/${what}/{id}/remove`, tags: ['market'], summary: 'Remove for good (masters; nothing is deleted)', security: adminBearer, request: { ...mkId, ...body(mkS.reasonBody) }, responses: { 200: json(mkS.StatusResult), ...errors({ ...MK, 409: ['SHOP_STATE', 'PRODUCT_STATE', 'VARIANT_HAS_HELD'], ...VALIDATION }) } });
+  }
 }
 
 function dateTimeOf() {

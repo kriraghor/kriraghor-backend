@@ -15,7 +15,7 @@ const limit = (max, dflt) => z.coerce.number().int().min(1).max(max).default(dfl
 
 const OUTCOMES = ['all', 'half', 'none', 'custom', 'upheld', 'rejected', 'corrected'];
 const CATEGORIES = ['no_show_contest', 'venue_problem', 'cash_problem'];
-const SUBJECTS = ['ground', 'booking', 'user', 'review', 'esports_tournament'];
+const SUBJECTS = ['ground', 'booking', 'user', 'review', 'esports_tournament', 'shop', 'product'];
 const REASONS = ['fake_listing', 'wrong_info', 'unsafe', 'harassment', 'fraud', 'spam', 'offensive', 'cheating', 'other'];
 const RESOLUTIONS = ['no_violation', 'content_removed', 'owner_warned', 'user_suspended', 'converted_to_dispute'];
 
