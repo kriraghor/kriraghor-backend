@@ -24,6 +24,9 @@ const defaultOnCaptured = ({ late }) => (late ? 'reject' : 'accept');
 const PURPOSES = {
   // M21 entry fees, held per registration and settled per tournament (pool).
   esports_entry: { vertical: 'esports', escrowAccount: 'escrow:esports_entry', pooled: true, testOnly: false, payoutSchedule: 'withdraw' },
+  // M10 ground bookings: the advance or the full price, held per booking and released to the owner at
+  // check-in (or auto-complete) with the fee on the full value (escrow feeBase, v3).
+  ground_booking: { vertical: 'grounds', escrowAccount: 'escrow:ground_booking', pooled: false, testOnly: false, payoutSchedule: 'ground_weekly' },
   // Master test charge (dev and staging only, PAYMENTS_TEST_CHARGES): the Phase 2 exit check.
   test_charge: { vertical: 'test', escrowAccount: 'escrow:test_charge', pooled: false, testOnly: true, payoutSchedule: 'daily' },
 };

@@ -1,6 +1,6 @@
 {
-  "seedVersion": 6,
-  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes.",
+  "seedVersion": 7,
+  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes.",
   "templates": [
     {
       "code": "AUDIT_CRITICAL",
@@ -3441,6 +3441,686 @@
           "name": "name",
           "type": "text",
           "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_CONFIRMED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Booking confirmed",
+      "body": "{{code}} at {{ground}}, {{start}}. Paid {{paid}} online; {{due}} to pay at the venue. The advance is not refunded if you cancel.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "paid",
+          "type": "money"
+        },
+        {
+          "name": "due",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_CONFIRMED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "বুকিং নিশ্চিত",
+      "body": "{{ground}}-এ {{code}}, {{start}}। অনলাইনে {{paid}} দেওয়া হয়েছে; ভেন্যুতে {{due}} দিতে হবে। বাতিল করলে অগ্রিম ফেরত হয় না।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "paid",
+          "type": "money"
+        },
+        {
+          "name": "due",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_CONFIRMED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: booking {{code}} confirmed, {{ground}}, {{start}}. Pay {{due}} at the venue.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "due",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_CONFIRMED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: বুকিং {{code}} নিশ্চিত, {{ground}}, {{start}}। ভেন্যুতে {{due}} দিন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "due",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_NEW_FOR_OWNER",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "New booking",
+      "body": "{{code}} at {{ground}}, {{start}}. {{paid}} paid online (held until check-in); {{due}} due at the venue.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "paid",
+          "type": "money"
+        },
+        {
+          "name": "due",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_NEW_FOR_OWNER",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "নতুন বুকিং",
+      "body": "{{ground}}-এ {{code}}, {{start}}। অনলাইনে {{paid}} (চেক-ইন পর্যন্ত জমা); ভেন্যুতে {{due}} বাকি।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "paid",
+          "type": "money"
+        },
+        {
+          "name": "due",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_CANCELLED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Booking cancelled",
+      "body": "You cancelled {{code}} at {{ground}}. Refund: {{refund}}. The advance of {{retained}} is kept.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        },
+        {
+          "name": "retained",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_CANCELLED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "বুকিং বাতিল",
+      "body": "আপনি {{ground}}-এর {{code}} বাতিল করেছেন। ফেরত: {{refund}}। অগ্রিম {{retained}} ফেরত হয় না।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        },
+        {
+          "name": "retained",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_CANCELLED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{code}} cancelled. Refund {{refund}} to your payment method.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_CANCELLED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{code}} বাতিল। {{refund}} আপনার পেমেন্ট মাধ্যমে ফেরত যাবে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_CANCELLED_FOR_OWNER",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "A player cancelled",
+      "body": "{{code}} at {{ground}}, {{start}}, was cancelled by the player. You keep {{retained}} before the fee.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "retained",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_CANCELLED_FOR_OWNER",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "খেলোয়াড় বাতিল করেছেন",
+      "body": "{{ground}}-এ {{code}}, {{start}}, খেলোয়াড় বাতিল করেছেন। ফির আগে আপনি {{retained}} পাবেন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "retained",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_OWNER_CANCELLED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Booking cancelled by the venue",
+      "body": "{{code}} at {{ground}}, {{start}}, was cancelled by the venue. You get {{refund}} back in full.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_OWNER_CANCELLED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "ভেন্যু বুকিং বাতিল করেছে",
+      "body": "{{ground}}-এ {{code}}, {{start}}, ভেন্যু বাতিল করেছে। আপনি পুরো {{refund}} ফেরত পাবেন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_OWNER_CANCELLED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{code}} was cancelled by the venue. Full refund {{refund}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_OWNER_CANCELLED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: ভেন্যু {{code}} বাতিল করেছে। পুরো {{refund}} ফেরত।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_REMINDER",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Your booking is soon",
+      "body": "{{code}} at {{ground}} starts {{start}}. Bring {{due}} for the venue.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "due",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_REMINDER",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "বুকিং শিগগিরই",
+      "body": "{{ground}}-এ {{code}} শুরু {{start}}। ভেন্যুর জন্য {{due}} সঙ্গে আনুন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "due",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_REMINDER",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{code}} at {{ground}} starts {{start}}. Pay {{due}} at the venue.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "due",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_REMINDER",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{ground}}-এ {{code}} শুরু {{start}}। ভেন্যুতে {{due}} দিন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "due",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_MOVED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Booking moved",
+      "body": "{{code}} was moved to {{ground}}, same time ({{start}}) and price. If the place changed you can cancel free until the start.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_MOVED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "বুকিং সরানো হয়েছে",
+      "body": "{{code}} {{ground}}-এ সরানো হয়েছে, একই সময় ({{start}}) ও দাম। জায়গা বদলালে শুরুর আগে বিনামূল্যে বাতিল করতে পারবেন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_MOVED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{code}} moved to {{ground}}, {{start}}. Same price.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_MOVED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{code}} {{ground}}-এ সরানো হয়েছে, {{start}}। দাম একই।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_NO_SHOW",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Marked as no-show",
+      "body": "The venue marked {{code}} as a no-show. The advance of {{retained}} is kept; refund: {{refund}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "retained",
+          "type": "money"
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_NO_SHOW",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "নো-শো চিহ্নিত",
+      "body": "ভেন্যু {{code}}-কে নো-শো চিহ্নিত করেছে। অগ্রিম {{retained}} ফেরত হয় না; ফেরত: {{refund}}।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "retained",
+          "type": "money"
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_NO_SHOW",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{code}} marked no-show. Refund {{refund}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "BOOKING_NO_SHOW",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{code}} নো-শো। ফেরত {{refund}}।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "refund",
+          "type": "money"
         }
       ]
     }

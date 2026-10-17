@@ -7,10 +7,9 @@
  *
  *   GET /grounds         filters (sport, area, near + radius, price band, surface, facilities, indoor),
  *                        facet counts (each facet counted with the other filters), sorts cheapest,
- *                        nearest, newest; cursor = offset
+ *                        nearest, newest and most open hours today (FR-26, through the M10 port); cursor = offset
  *   GET /grounds/:slug   facts, courts with hours, facilities, rules, price table, v3 payment line
  *   POST /grounds/:id/quote  the public price of a slot (M10 uses the same calculator)
- * "Most open hours" (FR-26) needs M10 availability and comes with it.
  */
 const { E } = require('../../common/errors');
 const storage = require('../../common/storage');
@@ -18,6 +17,7 @@ const { Ground, CourtHours, PricingRule, Sport, Surface, Facility } = require('.
 const directory = require('../users/directory.service');
 const pr = require('./pricing.rules');
 const rules = require('./grounds.rules');
+const occupancy = require('./occupancy.port');
 const c = require('./grounds.common');
 const pricing = require('./pricing.service');
 
@@ -78,8 +78,19 @@ async function list(q) {
   const facilityCounts = count('facilities', (x) => x.s.facilityIds);
   const indoorCounts = count('indoor', (x) => [String(x.s.isIndoor)]);
 
+  // FR-26: free half-hours left today on every public court (M10 slots), as hours.
+  const today = pr.dhakaParts(new Date()).date;
+  const openHours = async (x) => {
+    if (x.openHours === undefined) {
+      const per = await occupancy.openHalfHours(x.s.courts.map((k) => k.id), today);
+      x.openHours = Object.values(per).reduce((n, v) => n + v, 0) / 2;
+    }
+    return x.openHours;
+  };
   const sort = q.sort ?? (near ? 'nearest' : 'cheapest');
+  if (sort === 'most_open') for (const x of matched) await openHours(x);
   const order = {
+    most_open: (a, b) => b.openHours - a.openHours || a.band.from - b.band.from,
     cheapest: (a, b) => a.band.from - b.band.from || a.g.name.localeCompare(b.g.name),
     nearest: (a, b) => (a.distanceM ?? Infinity) - (b.distanceM ?? Infinity) || a.band.from - b.band.from,
     newest: (a, b) => new Date(b.g.firstLiveAt) - new Date(a.g.firstLiveAt),
@@ -87,6 +98,7 @@ async function list(q) {
   matched.sort(order);
   const offset = Number(q.cursor ?? 0);
   const page = matched.slice(offset, offset + q.limit);
+  for (const x of page) await openHours(x);
 
   const names = await c.catalogueNames({
     areaIds: page.map((x) => x.s.areaId),
@@ -109,7 +121,7 @@ async function list(q) {
   };
 }
 
-function card({ g, s, band, distanceM }, names) {
+function card({ g, s, band, distanceM, openHours }, names) {
   const sports = [...new Set(s.courts.flatMap((k) => k.sportIds))].map((id) => names.sports.get(id)).filter(Boolean);
   const surfaces = [...new Set(s.courts.map((k) => k.surfaceId))].map((id) => names.surfaces.get(id)).filter(Boolean);
   return {
@@ -124,6 +136,7 @@ function card({ g, s, band, distanceM }, names) {
     courtsCount: s.courts.length,
     priceFromPoisha: band.from,
     distanceM,
+    openHoursToday: openHours ?? null,
     ratingAvg: g.ratingAvg ?? null,
     ratingCount: g.ratingCount,
   };
@@ -194,7 +207,7 @@ async function detail(slug) {
     owner: { displayName: owner?.displayName ?? null },
     ratingAvg: g.ratingAvg ?? null,
     ratingCount: g.ratingCount,
-    bookingOpen: false, // M10
+    bookingOpen: g.status === 'live', // M10: live grounds take bookings
     version: g.liveVersion,
   };
 }

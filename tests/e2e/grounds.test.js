@@ -467,7 +467,7 @@ describe('pricing (FR-09 to FR-14) and the public read side (FR-25, FR-27)', () 
       pricing: { basePricePoisha: 240000, fromPoisha: 192000, toPoisha: 345000, minBookingMin: 60, advancePct: 30 },
       payment: { allowFullPayment: true, advanceRefundable: false, fullRefundHours: null },
       owner: { displayName: 'Kamal Hossain' },
-      bookingOpen: false,
+      bookingOpen: true, // M10: live grounds take bookings
     });
     expect(detail.body.courts[0].sports.map((s) => s.key)).toEqual(['football', 'futsal']);
     expect(detail.body.photos).toHaveLength(3);

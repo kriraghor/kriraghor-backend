@@ -169,12 +169,12 @@ describe('roles and the gate', () => {
 
   it('previews the gate before and after NID verification', async () => {
     const s = await h.signupUser();
-    const before = await api().get(`${P}/me/gate?action=book_ground`).set(h.bearer(s)).expect(200);
+    const before = await api().get(`${P}/me/gate?action=hire`).set(h.bearer(s)).expect(200);
     expect(before.body).toMatchObject({ allowed: false, code: 'KYC_REQUIRED', next: '/account/verification' });
 
     await h.verifyMember(s.user.id);
     const login = await h.refreshWeb(s.cookie).expect(200);
-    const after = await api().get(`${P}/me/gate?action=book_ground`).set('Authorization', `Bearer ${login.body.accessToken}`).expect(200);
+    const after = await api().get(`${P}/me/gate?action=hire`).set('Authorization', `Bearer ${login.body.accessToken}`).expect(200);
     expect(after.body.allowed).toBe(true);
   });
 

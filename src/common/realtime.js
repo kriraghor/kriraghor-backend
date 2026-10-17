@@ -7,6 +7,7 @@
  *   user:{id}                 private: only that user's sockets (secrets such as room credentials go here only)
  *   esports_tournament:{id}   public: slots, status, standings, streams
  *   esports_match:{id}        public: match status, posted results
+ *   ground:{id}               public: "availability changed" (M10), the grid re-reads
  */
 const config = require('../config');
 const logger = require('./logger');
@@ -39,6 +40,6 @@ function toRoom(room, name, data) {
 const toUser = (userId, name, data) => toRoom(`user:${userId}`, name, data);
 
 /** Public rooms a client may subscribe to (the socket server checks this list). */
-const PUBLIC_ROOM = /^esports_(tournament|match):[0-9a-f-]{36}$/;
+const PUBLIC_ROOM = /^(esports_(tournament|match)|ground):[0-9a-f-]{36}$/;
 
 module.exports = { toRoom, toUser, PUBLIC_ROOM, emitted: () => emitted.slice(), clearEmitted: () => emitted.splice(0, emitted.length) };

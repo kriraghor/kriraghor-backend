@@ -125,6 +125,12 @@ describe('ledger rules (§6.2, FR-12)', () => {
       { account: 'fee_revenue:v', credit: 100 },
     ]);
     expect(() => L.releaseLines({ escrowAccount: 'escrow:e', holdId: 'h', payeeId: 'p', vertical: 'v', gross: 100, fee: 101 })).toThrow(L.LedgerError);
+    // M10: a ৳600 extension paid at the venue owes 5% = ৳30 (3000 poisha).
+    expect(L.feeReceivableLines({ payeeId: 'o', vertical: 'grounds', amount: 3000 })).toEqual([
+      { account: 'fee_receivable:user:o', debit: 3000 },
+      { account: 'fee_revenue:grounds', credit: 3000 },
+    ]);
+    for (const bad of [0, -1, 1.5]) expect(() => L.feeReceivableLines({ payeeId: 'o', vertical: 'grounds', amount: bad })).toThrow(L.LedgerError);
     expect(L.refundReserveLines({ source: 'escrow', escrowAccount: 'escrow:e', holdId: 'h', amount: 7 })).toEqual([
       { account: 'escrow:e', debit: 7, holdId: 'h' },
       { account: 'refund_clearing', credit: 7 },
@@ -181,6 +187,15 @@ describe('escrow rules (§8, FR-13, FR-14)', () => {
     expect(ER.release(hold())).toEqual({ gross: 10000, fee: 500, net: 9500 });
     expect(ER.release(hold(), 3333)).toEqual({ gross: 3333, fee: 167, net: 3166 });
     for (const bad of [0, 10001, 1.5]) expect(() => ER.release(hold(), bad)).toThrow(RangeError);
+  });
+
+  it('takes the fee on an explicit base (M10 v3: fee on the full booking value)', () => {
+    // ৳2,000 booking, ৳500 advance held: fee 5% × ৳2,000 = ৳100, owner ৳400.
+    const h = hold({ heldPoisha: 50000 });
+    expect(ER.release(h, 50000, 200000)).toEqual({ gross: 50000, fee: 10000, net: 40000 });
+    expect(ER.release(h, 50000, 0)).toEqual({ gross: 50000, fee: 0, net: 50000 });
+    expect(() => ER.release(h, 50000, 1100000)).toThrow(RangeError);
+    for (const bad of [-1, 2.5]) expect(() => ER.release(h, 50000, bad)).toThrow(RangeError);
   });
 
   it('moves through the hold statuses', () => {

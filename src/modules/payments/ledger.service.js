@@ -125,6 +125,9 @@ async function reverse(txnId, { idempotencyKey, memo, postedBy, kind = 'reversal
   return post({ kind, refType: original.refType, refId: original.refId, idempotencyKey, lines, memo, postedBy, reversesTxnId: txnId }, { transaction });
 }
 
+/** The transaction posted with an idempotency key (null when none). */
+const findByKey = (idempotencyKey, transaction) => LedgerTransaction.findOne({ where: { idempotencyKey }, transaction });
+
 /** Balance of an account by code (0 for an account that has never been used). */
 async function balance(code, transaction) {
   const acc = await LedgerAccount.findOne({ where: { code }, transaction });
@@ -263,4 +266,4 @@ async function payableEntries({ upTo, payeeIds = null, transaction } = {}) {
   }));
 }
 
-module.exports = { ensureAccount, post, reverse, balance, balancesByPrefix, trialBalance, listAccounts, accountEntries, getTransaction, transactionsFor, payableEntries };
+module.exports = { ensureAccount, post, reverse, findByKey, balance, balancesByPrefix, trialBalance, listAccounts, accountEntries, getTransaction, transactionsFor, payableEntries };

@@ -206,7 +206,7 @@ async function priceSlot(groundId, { courtIds, start, minutes, rules: r, ownerTo
   if (courts.length !== new Set(courtIds).size) throw fail('COURT_UNKNOWN');
   if (courts.length > 1 && (!courts[0].combinableGroup || courts.some((x) => x.combinableGroup !== courts[0].combinableGroup))) throw fail('NOT_COMBINABLE');
   const lengths = [...new Set([...settings.get('booking.min_length_options_min'), 180])].filter((m) => m >= r.minBookingMin);
-  if (!lengths.includes(minutes)) throw fail('LENGTH_INVALID', { allowed: lengths });
+  if (!lengths.includes(minutes)) throw fail('LENGTH_INVALID', { meta: { allowed: lengths } });
   const hours = await CourtHours.findAll({ where: { courtId: courtIds } });
   const t0 = new Date(start).getTime();
   for (let i = 0; i < minutes; i += 30) {

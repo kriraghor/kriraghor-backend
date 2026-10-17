@@ -169,6 +169,26 @@ const ACTIONS = {
   'ground_pricing.draft_saved': A('M09', 'info', 'Saved a pricing draft (version {meta.version})', 'দামের খসড়া সংরক্ষণ (সংস্করণ {meta.version})'),
   'ground_pricing.discarded': A('M09', 'info', 'Discarded a pricing draft', 'দামের খসড়া বাতিল'),
   'ground_pricing.published': A('M09', 'notice', 'Published pricing: {meta.summary}', 'দাম প্রকাশ: {meta.summary}'),
+  'closure.created': A('M09', 'info', 'Closed courts for a period', 'নির্দিষ্ট সময়ের জন্য কোর্ট বন্ধ'),
+  'closure.reopened': A('M09', 'info', 'Reopened a closure', 'বন্ধ কোর্ট আবার খোলা'),
+  'closure.ended_early': A('M09', 'info', 'Ended a closure early (to {after.end})', 'বন্ধ আগে শেষ ({after.end})'),
+  'booking_series.created': A('M09', 'info', 'Booked a weekly series for {after.teamName}', '{after.teamName}-এর সাপ্তাহিক সিরিজ বুকিং'),
+  'booking_series.week_skipped': A('M09', 'info', 'Skipped week {after.week} of a series', 'সিরিজের সপ্তাহ {after.week} বাদ'),
+  'booking_series.week_restored': A('M09', 'info', 'Restored week {after.week} of a series', 'সিরিজের সপ্তাহ {after.week} ফেরত'),
+  'booking_series.ended': A('M09', 'notice', 'Ended a series ({after.cancelled} weeks cancelled)', 'সিরিজ শেষ ({after.cancelled} সপ্তাহ বাতিল)'),
+
+  // ---------------- M10 Bookings ----------------
+  'booking.held': A('M10', 'info', 'Held a slot to pay ({after.choice})', 'পেমেন্টের জন্য স্লট ধরে রাখা ({after.choice})'),
+  'booking.released': A('M10', 'info', 'Let a held slot go', 'ধরে রাখা স্লট ছেড়ে দেওয়া'),
+  'booking.cancelled': A('M10', 'notice', 'Cancelled a booking (refund {after.refund})', 'বুকিং বাতিল (ফেরত {after.refund})'),
+  'booking.check_in_recorded': A('M10', 'notice', 'Checked in a booking; released {after.released} (fee {after.fee})', 'বুকিং চেক-ইন; ছাড় {after.released} (ফি {after.fee})'),
+  'booking.no_show_marked': A('M10', 'notice', 'Marked a no-show (retained {after.retained})', 'নো-শো চিহ্নিত (রাখা {after.retained})'),
+  'booking.extended': A('M10', 'info', 'Extended a booking to {after.end}', 'বুকিং {after.end} পর্যন্ত বাড়ানো'),
+  'booking.balance_collected': A('M10', 'info', 'Recorded the venue balance ({after.method})', 'ভেন্যুর বাকি টাকা রেকর্ড ({after.method})'),
+  'booking.walk_in_recorded': A('M10', 'info', 'Recorded a walk-in', 'ওয়াক-ইন রেকর্ড'),
+  'booking.owner_cancelled': A('M10', 'notice', 'Cancelled a booking as the owner (refund {after.refund})', 'মালিক হিসেবে বুকিং বাতিল (ফেরত {after.refund})'),
+  'booking.platform_cancelled': A('M10', 'critical', 'Cancelled a booking for the platform (refund {after.refund})', 'প্ল্যাটফর্মের পক্ষে বুকিং বাতিল (ফেরত {after.refund})'),
+  'booking.moved': A('M10', 'notice', 'Moved a booking to another court', 'বুকিং অন্য কোর্টে সরানো'),
 };
 const get = (action) => ACTIONS[action];
 

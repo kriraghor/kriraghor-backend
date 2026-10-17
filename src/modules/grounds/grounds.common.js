@@ -33,6 +33,19 @@ const ERRORS = {
   OUTSIDE_HOURS: [422, 'The ground is closed for part of that time'],
   COURT_UNKNOWN: [422, 'Choose courts of this ground'],
   NOT_COMBINABLE: [422, 'These courts cannot be booked together'],
+  // step 2: closures and series (§9)
+  NOT_HALF_HOUR: [422, 'Times start on the hour or half-hour'],
+  CLOSURE_EMPTY: [422, 'The closure must end after it starts'],
+  CLOSURE_IN_PAST: [422, 'The closure has already ended'],
+  OUT_OF_RANGE: [422, 'That date is too far ahead'],
+  CLOSURE_CLASHES: [409, 'Bookings or closures already use some of this time. Move or cancel them first'],
+  CLOSURE_STATE: [409, 'The closure cannot do that now'],
+  REASON_NOT_ALLOWED: [403, 'Only Kriraghor staff can use this reason'],
+  SERIES_WEEKS_INVALID: [422, 'Choose one of the series lengths offered'],
+  SERIES_DAY_MISMATCH: [422, 'The first date must fall on the chosen weekday'],
+  SERIES_CLASHES: [409, 'Some weeks are already taken. Skip them or choose another time'],
+  SERIES_STATE: [409, 'The series cannot do that now'],
+  GROUND_NOT_BOOKABLE: [409, 'The ground must be live to take series bookings'],
 };
 const fail = (code, meta) => new AppError(ERRORS[code][0], code, ERRORS[code][1], meta);
 

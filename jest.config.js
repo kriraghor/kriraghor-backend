@@ -34,5 +34,7 @@ module.exports = {
     // M09 price formula and limits (shared with M10), listing rules.
     './src/modules/grounds/pricing.rules.js': FULL,
     './src/modules/grounds/grounds.rules.js': FULL,
+    // M10 state machine, time guards and the v3 money plans.
+    './src/modules/bookings/bookings.rules.js': FULL,
   },
 };

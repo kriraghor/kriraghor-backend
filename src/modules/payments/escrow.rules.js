@@ -20,12 +20,16 @@ function releaseBlock(h) {
 }
 
 /**
- * A release of `amount` (default: everything left). fee = round_half_up(gross × fee_bps / 10000) on
- * this tranche; net = gross − fee, so rounding residue stays with the payee.
+ * A release of `amount` (default: everything left). fee = round_half_up(base × fee_bps / 10000), where
+ * the base is this tranche unless the purpose passes `feeBase` (M10 v3: the ground fee is on the full
+ * booking value although only the advance was paid online). net = gross − fee, so rounding residue
+ * stays with the payee. The fee can never exceed what is released.
  */
-function release(h, amount = available(h)) {
+function release(h, amount = available(h), feeBase = null) {
   if (!Number.isSafeInteger(amount) || amount <= 0 || amount > available(h)) throw new RangeError('Release amount must be between 1 and what the hold still holds');
-  const fee = feeOf(amount, h.feeBps);
+  if (feeBase !== null && (!Number.isSafeInteger(feeBase) || feeBase < 0)) throw new RangeError('Fee base must be a non-negative integer');
+  const fee = feeOf(feeBase ?? amount, h.feeBps);
+  if (fee > amount) throw new RangeError('The fee would exceed the amount released');
   return { gross: amount, fee, net: amount - fee };
 }
 

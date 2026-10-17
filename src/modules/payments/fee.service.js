@@ -10,6 +10,8 @@
  */
 const settings = require('../settings/settings.service');
 const { pctToBps } = require('../../common/money');
+const ledger = require('./ledger.service');
+const lrules = require('./ledger.rules');
 
 const FEE_KEYS = {
   grounds: 'fees.ground_booking_pct',
@@ -31,4 +33,32 @@ function snapshot(vertical) {
   return { feeBps: pctToBps(snap.value), settingKey: key, settingsVersion: snap.version };
 }
 
-module.exports = { snapshot, FEE_KEYS };
+/**
+ * A fee the payee owes on money collected off-platform (M06 §6.4): posted as a receivable and netted
+ * at the next payout (M07). Idempotent by `key`; a zero amount posts nothing. Runs in the caller's
+ * transaction.
+ */
+async function accrueReceivable({ payeeId, vertical, amount, refType, refId, key, memo = null, actor = null }, { transaction }) {
+  if (amount === 0) return null;
+  return ledger.post(
+    {
+      kind: 'fee.receivable',
+      refType,
+      refId,
+      idempotencyKey: `fee.receivable:${key}`,
+      lines: lrules.feeReceivableLines({ payeeId, vertical, amount }),
+      memo: memo ?? `Fee owed on ${refType} ${refId}`,
+      postedBy: actor?.id ?? null,
+    },
+    { transaction }
+  );
+}
+
+/** Undo a receivable (the venue sale was entered by mistake and cancelled). Idempotent; null when none was posted. */
+async function reverseReceivable({ key, actor = null }, { transaction }) {
+  const posted = await ledger.findByKey(`fee.receivable:${key}`, transaction);
+  if (!posted) return null;
+  return ledger.reverse(posted.id, { idempotencyKey: `fee.receivable.reverse:${key}`, memo: 'Fee owed cancelled', postedBy: actor?.id ?? null, kind: 'fee.receivable_reversed' }, { transaction });
+}
+
+module.exports = { snapshot, accrueReceivable, reverseReceivable, FEE_KEYS };

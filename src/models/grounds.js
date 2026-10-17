@@ -1,8 +1,8 @@
 'use strict';
 
 /**
- * M09 Grounds models (migration 20261024000004-create-grounds). index.js re-exports them and declares
- * the cross-file associations.
+ * M09 Grounds models (migrations 20261024000004-create-grounds and, step 2, 20261025000001
+ * closures and booking_series). index.js re-exports them and declares the cross-file associations.
  */
 const { DataTypes, Model } = require('sequelize');
 const { sequelize } = require('../db');
@@ -154,9 +154,56 @@ PricingRule.init(
   { sequelize, modelName: 'PricingRule', tableName: 'pricing_rules' }
 );
 
+class Closure extends Model {}
+Closure.init(
+  {
+    id,
+    groundId: req(DataTypes.UUID),
+    courtIds: req(DataTypes.ARRAY(DataTypes.UUID)),
+    startsAt: req(DataTypes.DATE(3)),
+    endsAt: req(DataTypes.DATE(3)),
+    reason: req(DataTypes.ENUM('maintenance', 're_turfing', 'floodlight_repair', 'private_event', 'waterlogged', 'platform')),
+    note: DataTypes.STRING(200),
+    status: { type: DataTypes.ENUM('active', 'reopened', 'ended_early'), allowNull: false, defaultValue: 'active' },
+    reopenedAt: DataTypes.DATE(3),
+    reopenedBy: DataTypes.UUID,
+    endedEarlyAt: DataTypes.DATE(3),
+    ...by,
+  },
+  { sequelize, modelName: 'Closure', tableName: 'closures' }
+);
+
+class BookingSeries extends Model {}
+BookingSeries.init(
+  {
+    id,
+    groundId: req(DataTypes.UUID),
+    courtId: req(DataTypes.UUID),
+    ownerId: req(DataTypes.UUID),
+    teamName: req(DataTypes.STRING(80)),
+    contactUserId: DataTypes.UUID,
+    contactPhoneEnc: DataTypes.STRING(255),
+    contactPhoneLast4: DataTypes.CHAR(4),
+    dow: req(DataTypes.SMALLINT),
+    startTime: req(DataTypes.STRING(5)),
+    lengthMin: req(DataTypes.SMALLINT),
+    weeks: req(DataTypes.SMALLINT),
+    firstDate: req(DataTypes.DATEONLY),
+    pricingRuleId: req(DataTypes.UUID),
+    discountPct: num('discountPct', DataTypes.DECIMAL(5, 2)),
+    pricePerSessionPoisha: poisha('pricePerSessionPoisha'),
+    status: { type: DataTypes.ENUM('active', 'ended', 'completed'), allowNull: false, defaultValue: 'active' },
+    endedAt: DataTypes.DATE(3),
+    endedBy: DataTypes.UUID,
+    endReason: DataTypes.STRING(40),
+    ...by,
+  },
+  { sequelize, modelName: 'BookingSeries', tableName: 'booking_series' }
+);
+
 Ground.hasMany(GroundPhoto, { as: 'photos', foreignKey: 'groundId' });
 Ground.hasMany(Court, { as: 'courts', foreignKey: 'groundId' });
 Court.hasMany(CourtHours, { as: 'hours', foreignKey: 'courtId' });
 Ground.hasMany(PricingRule, { as: 'pricing', foreignKey: 'groundId' });
 
-module.exports = { Ground, GroundPhoto, Court, CourtHours, PricingRule };
+module.exports = { Ground, GroundPhoto, Court, CourtHours, PricingRule, Closure, BookingSeries };

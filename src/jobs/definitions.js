@@ -22,6 +22,7 @@ const kyc = require('../modules/kyc/kyc.service');
 const moderation = require('../modules/moderation/moderation.service');
 const esportsLifecycle = require('../modules/esports/esports.lifecycle');
 const esportsRankings = require('../modules/esports/rankings.service');
+const bookings = require('../modules/bookings/bookings.service');
 const { purgeExpired: purgeIdempotencyKeys } = require('../common/idempotency');
 const logger = require('../common/logger');
 
@@ -222,6 +223,16 @@ const JOBS = [
     pattern: '0 3 * * *',
     tz: 'Asia/Dhaka',
     run: async () => esportsRankings.recomputeAll(),
+  },
+  // ---------------- M10 bookings (§10). Idempotent: every step locks the row and checks its status.
+  {
+    // Holds past their time; checked-in bookings at their end; never-checked-in bookings
+    // booking.auto_complete_after_hours after the end (full release, Q68); start reminders; venue
+    // balances not recorded after booking.balance_unrecorded_days.
+    name: 'bookings.tick',
+    queue: QUEUES.BOOKINGS,
+    every: 60 * 1000,
+    run: async () => bookings.tick(),
   },
   {
     name: 'idempotency.purge',

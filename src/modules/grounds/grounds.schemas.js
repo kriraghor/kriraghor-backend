@@ -5,6 +5,7 @@
  * numbers with up to two decimals; times are Asia/Dhaka wall-clock "HH:MM"; weekdays 0 = Sunday.
  */
 const { z } = require('zod');
+const { normalizePhone } = require('../../common/identifiers');
 
 const dateTime = z.iso.datetime({ offset: true });
 const id = z.uuid();
@@ -91,7 +92,7 @@ const listQuery = z.object({
   surface: csv(z.string().regex(/^[a-z_]{2,40}$/)).optional(),
   facilities: csv(z.string().regex(/^[a-z_]{2,40}$/)).optional(),
   indoor: bool.optional(),
-  sort: z.enum(['cheapest', 'nearest', 'newest']).optional(),
+  sort: z.enum(['cheapest', 'nearest', 'newest', 'most_open']).optional(),
   cursor: z.string().regex(/^\d{1,6}$/).optional(),
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
@@ -237,6 +238,7 @@ const Card = z
     courtsCount: z.number().int(),
     priceFromPoisha: z.number().int(),
     distanceM: z.number().int().nullable(),
+    openHoursToday: z.number().nullable().meta({ description: 'Free hours left today across the courts (FR-26)' }),
     ratingAvg: z.number().nullable(),
     ratingCount: z.number().int(),
   })
@@ -312,7 +314,73 @@ const StaffGround = OwnerGround.extend({
   rules: Rules.nullable(),
 }).meta({ id: 'StaffGround' });
 
+// ---------------- step 2: closures and series (FR-15 to FR-24)
+const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD');
+const halfHour = z.string().regex(/^([01]\d|2[0-3]):(00|30)$/, 'HH:MM on the half-hour');
+const phone = z.string().transform((v, ctx) => {
+  const p = normalizePhone(v);
+  if (!p) ctx.addIssue({ code: 'custom', message: 'Enter a Bangladesh mobile number' });
+  return p ?? v;
+});
+const weekParams = z.object({ id, week: z.coerce.number().int().min(0).max(51) });
+const CLOSURE_REASONS = ['maintenance', 're_turfing', 'floodlight_repair', 'private_event', 'waterlogged', 'platform'];
+const closureBody = z
+  .object({ courtIds: z.array(id).min(1).max(20).optional(), start: dateTime, end: dateTime, reason: z.enum(CLOSURE_REASONS), note: z.string().trim().max(200).optional() })
+  .transform((b) => ({ ...b, start: new Date(b.start), end: new Date(b.end) }));
+const closureListQuery = z.object({ scope: z.enum(['upcoming', 'past']).default('upcoming') });
+const seriesBody = z.object({
+  courtId: id,
+  teamName: z.string().trim().min(2).max(80),
+  phone: phone.optional(),
+  dow: z.number().int().min(0).max(6).meta({ description: 'Dhaka weekday, 0 = Sunday' }),
+  startTime: halfHour,
+  lengthMin: z.union([z.literal(60), z.literal(90), z.literal(120), z.literal(180)]),
+  weeks: z.number().int().min(1).max(52),
+  firstDate: day,
+  skipClashingWeeks: z.boolean().default(false),
+});
+const seriesEndBody = z.object({ reason: z.string().trim().max(40).optional() });
+
+const Conflict = z.object({ kind: z.enum(['booking', 'closure']), id, code: z.string().optional(), label: z.string(), courtId: id, start: dateTime, end: dateTime }).passthrough();
+const Closure = z
+  .object({ id, groundId: id, courtIds: z.array(id), start: dateTime, end: dateTime, reason: z.enum(CLOSURE_REASONS), note: z.string().nullable(), status: z.string(), phase: z.enum(['upcoming', 'in_progress', 'past']), reopenedAt: dateTime.nullable() })
+  .meta({ id: 'Closure' });
+const ClosurePreview = z.object({ courtIds: z.array(id), conflicts: z.array(Conflict) }).meta({ id: 'ClosurePreview' });
+const ClosureList = z.object({ items: z.array(Closure) }).meta({ id: 'ClosureList' });
+const SeriesWeek = z.object({ week: z.number().int(), date: day, start: dateTime, end: dateTime, clash: z.string().nullable() });
+const SeriesPreview = z.object({ pricePerSession: z.number().int().nonnegative(), discountPct: z.number(), total: z.number().int().nonnegative(), weeks: z.array(SeriesWeek) }).meta({ id: 'SeriesPreview' });
+const Series = z
+  .object({
+    id,
+    groundId: id,
+    courtId: id,
+    teamName: z.string(),
+    phoneLast4: z.string().nullable(),
+    dow: z.number().int(),
+    startTime: z.string(),
+    lengthMin: z.number().int(),
+    weeks: z.number().int(),
+    firstDate: day,
+    discountPct: z.number(),
+    pricePerSession: z.number().int().nonnegative(),
+    status: z.enum(['active', 'ended', 'completed']),
+    sessions: z.array(z.object({ id, code: z.string(), week: z.number().int(), start: dateTime, end: dateTime, status: z.string() })).optional(),
+  })
+  .meta({ id: 'BookingSeries' });
+const SeriesList = z.object({ items: z.array(Series) }).meta({ id: 'BookingSeriesList' });
+
 module.exports = {
+  weekParams,
+  closureBody,
+  closureListQuery,
+  seriesBody,
+  seriesEndBody,
+  Closure,
+  ClosurePreview,
+  ClosureList,
+  SeriesPreview,
+  Series,
+  SeriesList,
   idParam,
   photoParams,
   createGround,

@@ -5,6 +5,8 @@
  *   publicRouter  /grounds        browse, detail, quote (no sign-in)
  *   meGrounds     /me/grounds     the owner's grounds, courts, photos and pricing; gate list_ground
  *   meCourts      /me/courts      a court, its hours, retire (an active ground_owner role, M01/M02)
+ *   meClosures    /me/closures    reopen, end now (step 2; created under /me/grounds/:id/closures)
+ *   meSeries      /me/series      a series, skip or restore a week, end (step 2)
  *   adminRouter   /admin/grounds  suspend (manage_users), restore and remove (masters)
  * Decisions on listings are M05's (/admin/submissions, kind `ground`).
  */
@@ -21,6 +23,8 @@ const grounds = require('./grounds.service');
 const photos = require('./photos.service');
 const pricing = require('./pricing.service');
 const pub = require('./public.service');
+const closures = require('./closures.service');
+const series = require('./series.service');
 const s = require('./grounds.schemas');
 
 const id = validate(s.idParam, 'params');
@@ -69,6 +73,27 @@ meGrounds.get('/:id/pricing/history', id, async (req, res) => res.json(await pri
 meGrounds.get('/:id/pricing/heatmap', id, validate(s.heatmapQuery, 'query'), async (req, res) => res.json(await pricing.heatmap(req.user, req.params.id, req.validQuery)));
 meGrounds.post('/:id/pricing/quote', id, validate(s.ownerQuote), async (req, res) => res.json(await pricing.ownerQuote(req.user, req.params.id, req.body)));
 
+// ---------------- step 2: closures and series (FR-15 to FR-24)
+meGrounds.post('/:id/closures/preview', id, validate(s.closureBody), async (req, res) => res.json(await closures.preview(req.user, req.params.id, req.body)));
+meGrounds.post('/:id/closures', id, validate(s.closureBody), async (req, res) => res.status(201).json(await closures.create(req.user, req.params.id, req.body, req)));
+meGrounds.get('/:id/closures', id, validate(s.closureListQuery, 'query'), async (req, res) => res.json(await closures.list(req.user, req.params.id, req.validQuery)));
+meGrounds.post('/:id/series/preview', id, validate(s.seriesBody), async (req, res) => res.json(await series.preview(req.user, req.params.id, req.body)));
+meGrounds.post('/:id/series', id, validate(s.seriesBody), async (req, res) => res.status(201).json(await series.create(req.user, req.params.id, req.body, req)));
+meGrounds.get('/:id/series', id, async (req, res) => res.json(await series.list(req.user, req.params.id)));
+
+const meClosures = Router();
+meClosures.use(authenticate, requireGate('list_ground'));
+meClosures.post('/:id/reopen', id, async (req, res) => res.json(await closures.reopen(req.user, req.params.id, req)));
+meClosures.post('/:id/end-now', id, async (req, res) => res.json(await closures.endNow(req.user, req.params.id, req)));
+
+const meSeries = Router();
+meSeries.use(authenticate, requireGate('list_ground'));
+const week = validate(s.weekParams, 'params');
+meSeries.get('/:id', id, async (req, res) => res.json(await series.get(req.user, req.params.id)));
+meSeries.post('/:id/weeks/:week/skip', week, async (req, res) => res.json(await series.setWeek(req.user, req.params.id, req.params.week, 'skip', req)));
+meSeries.post('/:id/weeks/:week/restore', week, async (req, res) => res.json(await series.setWeek(req.user, req.params.id, req.params.week, 'restore', req)));
+meSeries.post('/:id/end', id, validate(s.seriesEndBody), async (req, res) => res.json(await series.end(req.user, req.params.id, req.body, req)));
+
 // ---------------- staff
 const adminRouter = Router();
 adminRouter.use(authenticateAdmin, requireStaff);
@@ -79,4 +104,4 @@ adminRouter.post('/:id/suspend', requireAnyPermission(PERMISSIONS.MANAGE_USERS),
 adminRouter.post('/:id/restore', requireMaster, id, validate(s.reasonBody), async (req, res) => res.json(await grounds.staffAction(req.user, req.params.id, 'restore', req.body, req)));
 adminRouter.post('/:id/remove', requireMaster, id, validate(s.reasonBody), async (req, res) => res.json(await grounds.staffAction(req.user, req.params.id, 'remove', req.body, req)));
 
-module.exports = { publicRouter, meGrounds, meCourts, adminRouter };
+module.exports = { publicRouter, meGrounds, meCourts, meClosures, meSeries, adminRouter };

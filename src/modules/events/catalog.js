@@ -6,7 +6,7 @@
  * invalid payloads before commit. Payloads carry IDs, codes, amounts, statuses and timestamps only:
  * no phone, NID, DOB, email or names (consumers read details through the producer's service).
  *
- * Built so far: M01, M02, M03, M04, M05, M06, M07, M21. Each later module adds its events here when it is built.
+ * Built so far: M01, M02, M03, M04, M05, M06, M07, M09, M10, M21. Each later module adds its events here when it is built.
  */
 const { z } = require('zod');
 
@@ -26,6 +26,7 @@ const esReg = z.object({ registrationId: uuid, tournamentId: uuid, registrantUse
 const esMatch = z.object({ matchId: uuid, tournamentId: uuid });
 const esProfile = z.object({ profileId: uuid, userId: uuid, gameId: uuid });
 const esShare = z.object({ shareId: uuid, tournamentId: uuid, userId: uuid, amount: poisha });
+const bookingEvent = z.object({ bookingId: uuid, code: z.string().max(16), groundId: uuid, ownerId: uuid, bookerUserId: uuid.nullable() });
 const catalogItem = z.object({ table: z.string(), id: uuid, key: z.string(), version: z.number().int().optional(), isActive: z.boolean().optional() });
 
 const EVENTS = {
@@ -193,6 +194,30 @@ const EVENTS = {
   'ground.restored': { module: 'M09', version: 1, schema: groundEvent },
   'ground.removed': { module: 'M09', version: 1, schema: groundEvent.extend({ reason: z.string().max(300).nullable().optional() }) },
   'ground.pricing_published': { module: 'M09', version: 1, schema: groundEvent.extend({ version: z.number().int(), changedKeys: z.array(z.string().max(40)) }) },
+  // step 2: closures and series (written as M10 booking slots)
+  'closure.created': { module: 'M09', version: 1, schema: z.object({ closureId: uuid, groundId: uuid, start: iso, end: iso, reason: z.string().max(30) }) },
+  'closure.reopened': { module: 'M09', version: 1, schema: z.object({ closureId: uuid, groundId: uuid, start: iso, end: iso, reason: z.string().max(30) }) },
+  'closure.shortened': { module: 'M09', version: 1, schema: z.object({ closureId: uuid, groundId: uuid, start: iso, end: iso, reason: z.string().max(30) }) },
+  'booking_series.created': { module: 'M09', version: 1, schema: z.object({ seriesId: uuid, groundId: uuid, ownerId: uuid, weeks: z.number().int(), skipped: z.number().int() }) },
+  'booking_series.week_skipped': { module: 'M09', version: 1, schema: z.object({ seriesId: uuid, groundId: uuid, ownerId: uuid, week: z.number().int() }) },
+  'booking_series.week_restored': { module: 'M09', version: 1, schema: z.object({ seriesId: uuid, groundId: uuid, ownerId: uuid, week: z.number().int() }) },
+  'booking_series.ended': { module: 'M09', version: 1, schema: z.object({ seriesId: uuid, groundId: uuid, ownerId: uuid, cancelled: z.number().int() }) },
+
+  // ---------------- M10 Bookings (ids, codes and amounts only; v3 money)
+  'booking.held': { module: 'M10', version: 1, schema: bookingEvent.extend({ start: iso, online: poisha }) },
+  'booking.confirmed': { module: 'M10', version: 1, schema: bookingEvent.extend({ start: iso, online: poisha, choice: z.enum(['advance', 'full']) }) },
+  'booking.hold_expired': { module: 'M10', version: 1, schema: bookingEvent.extend({ reason: z.string().max(40) }) },
+  'booking.check_in_recorded': { module: 'M10', version: 1, schema: bookingEvent.extend({ released: poisha, fee: poisha, lateMinutes: z.number().int() }) },
+  'booking.extended': { module: 'M10', version: 1, schema: bookingEvent.extend({ amount: poisha, end: iso }) },
+  'booking.balance_collected': { module: 'M10', version: 1, schema: bookingEvent.extend({ amount: poisha, method: z.enum(['cash', 'bkash_venue']) }) },
+  'booking.completed': { module: 'M10', version: 1, schema: bookingEvent.extend({ auto: z.boolean(), released: poisha, fee: poisha }) },
+  'booking.no_show_marked': { module: 'M10', version: 1, schema: bookingEvent.extend({ refund: poisha, retained: poisha }) },
+  'booking.cancelled': { module: 'M10', version: 1, schema: bookingEvent.extend({ refund: poisha, retained: poisha }) },
+  'booking.owner_cancelled': { module: 'M10', version: 1, schema: bookingEvent.extend({ refund: poisha, reason: z.string().max(40), penalised: z.boolean() }) },
+  'booking.platform_cancelled': { module: 'M10', version: 1, schema: bookingEvent.extend({ refund: poisha, reason: z.string().max(40) }) },
+  'booking.moved': { module: 'M10', version: 1, schema: bookingEvent.extend({ fromGroundId: uuid, newGround: z.boolean() }) },
+  'booking.walk_in_recorded': { module: 'M10', version: 1, schema: bookingEvent.extend({ start: iso, price: poisha }) },
+  'booking.reminded': { module: 'M10', version: 1, schema: bookingEvent.extend({ start: iso }) },
 };
 /** FR-19: `<aggregate>.<past_tense_verb>`, snake_case. Irregular past tenses are listed. */
 const IRREGULAR = new Set(['sent', 'paid', 'held', 'won', 'lost', 'made', 'begun', 'done', 'drawn', 'shown', 'thrown', 'given', 'taken', 'built', 'set', 'put', 'cut', 'withdrawn', 'chosen', 'written', 'frozen', 'unfrozen', 'seen', 'broken', 'sold', 'told', 'found', 'left', 'met', 'read', 'run', 'spent', 'struck']);

@@ -28,15 +28,15 @@ describe('parseIdentifier', () => {
 describe('gate.evaluate', () => {
   const principal = (status, roles, kycStatus = 'unverified') => ({ user: { status, kycStatus }, roles });
 
-  it('requires sign in', () => expect(gate.evaluateAction(null, 'book_ground')).toMatchObject({ allowed: false, code: 'AUTH_REQUIRED' }));
+  it('requires sign in', () => expect(gate.evaluateAction(null, 'hire')).toMatchObject({ allowed: false, code: 'AUTH_REQUIRED' }));
   it('blocks suspended accounts', () =>
-    expect(gate.evaluateAction(principal('suspended', { member: 'active' }), 'book_ground').code).toBe('ACCOUNT_SUSPENDED'));
+    expect(gate.evaluateAction(principal('suspended', { member: 'active' }), 'hire').code).toBe('ACCOUNT_SUSPENDED'));
   it('asks for NID when member is not active', () =>
-    expect(gate.evaluateAction(principal('active', { member: 'applied' }), 'book_ground').code).toBe('KYC_REQUIRED'));
+    expect(gate.evaluateAction(principal('active', { member: 'applied' }), 'hire').code).toBe('KYC_REQUIRED'));
   it('says pending while NID is in review', () =>
-    expect(gate.evaluateAction(principal('active', { member: 'in_review' }), 'book_ground').code).toBe('KYC_PENDING'));
+    expect(gate.evaluateAction(principal('active', { member: 'in_review' }), 'hire').code).toBe('KYC_PENDING'));
   it('allows verified members to book', () =>
-    expect(gate.evaluateAction(principal('active', { member: 'active' }), 'book_ground')).toEqual({ allowed: true }));
+    expect(gate.evaluateAction(principal('active', { member: 'active' }), 'hire')).toEqual({ allowed: true }));
   it('requires the business role for listing a ground', () => {
     expect(gate.evaluateAction(principal('active', { member: 'active' }), 'list_ground').code).toBe('ROLE_REQUIRED');
     expect(gate.evaluateAction(principal('active', { member: 'active', ground_owner: 'in_review' }), 'list_ground').code).toBe('ROLE_PENDING');
@@ -50,4 +50,11 @@ describe('gate.evaluate', () => {
 describe('crypto', () => {
   it('round-trips AES-GCM', () => expect(decrypt(encrypt('JBSWY3DPEHPK3PXP'))).toBe('JBSWY3DPEHPK3PXP'));
   it('generates fixed-length digit codes', () => expect(randomDigits(6)).toMatch(/^\d{6}$/));
+});
+
+describe('gate: book_ground needs only a verified phone (M10, 17 Oct 2026)', () => {
+  const p = (user, roles = {}) => ({ user: { status: 'active', kycStatus: 'unverified', ...user }, roles });
+  it('allows a verified phone without NID', () =>
+    expect(gate.evaluateAction(p({ phone: '+8801711000001', phoneVerifiedAt: new Date() }), 'book_ground')).toEqual({ allowed: true }));
+  it('asks for a phone otherwise', () => expect(gate.evaluateAction(p({ phone: null }), 'book_ground').code).toBe('PHONE_REQUIRED'));
 });

@@ -3,7 +3,7 @@
 /**
  * Notification catalogue (M08 §6.6), as code. Each entry maps a domain event to recipients, channels
  * and template variables. Template texts are versioned rows in message_templates (EN and BN for
- * every default channel; a contract test checks it). Built so far: the M01, M02, M03, M04, M05, M06, M07, M09 and M21 events.
+ * every default channel; a contract test checks it). Built so far: the M01, M02, M03, M04, M05, M06, M07, M09, M10 and M21 events.
  *
  * Entry: { code, events[], category, channels[], urgent, roleContext?(e), recipients(e) → userIds,
  *          values(e, { locale, userId }) → template values, link(e) → in-app link }
@@ -63,6 +63,13 @@ const GROUND_REASONS = {
 };
 const groundReason = (code, locale) => GROUND_REASONS[locale]?.[code] ?? GROUND_REASONS.en[code] ?? reasonText(code, locale);
 const esportsUrl = (p) => `${config.apps.esports}${p}`;
+const bookingFacts = (id) => require('../bookings/bookings.reads').facts(id);
+const bookingValues = async (e) => {
+  const f = await bookingFacts(e.payload.bookingId);
+  return { code: f.code, ground: f.groundName, start: f.start, paid: f.paidOnline, due: f.dueAtVenue, refund: f.refund, retained: f.retained };
+};
+const toBooker = (e) => (e.payload.bookerUserId ? [e.payload.bookerUserId] : []);
+const myBooking = (e) => `/me/bookings/${e.payload.bookingId}`;
 const tTitle = async (id, locale) => es().title(await es().tournament(id), locale);
 const payoutFacts = (id) => require('../payouts/payouts.service').facts(id);
 const accountFacts = (id) => require('../payouts/payout-accounts.service').facts(id);
@@ -682,6 +689,81 @@ const CATALOGUE = [
     recipients: () => directory.withPermission('view_payouts'),
     values: async (e) => ({ account: (await accountFacts(e.payload.accountId)).masked }),
     link: () => '/admin/finance?tab=accounts',
+  },
+  // ---------------- M10 bookings (v3: instant confirmation; the advance is not refunded)
+  {
+    code: 'BOOKING_CONFIRMED',
+    events: ['booking.confirmed'],
+    category: 'bookings',
+    channels: ['in_app', 'sms'],
+    recipients: toBooker,
+    values: bookingValues,
+    link: myBooking,
+  },
+  {
+    code: 'BOOKING_NEW_FOR_OWNER',
+    events: ['booking.confirmed'],
+    category: 'bookings',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.ownerId],
+    values: bookingValues,
+    link: () => vendorUrl('/vendor/bookings'),
+  },
+  {
+    code: 'BOOKING_CANCELLED',
+    events: ['booking.cancelled'],
+    category: 'bookings',
+    channels: ['in_app', 'sms'],
+    recipients: toBooker,
+    values: bookingValues,
+    link: myBooking,
+  },
+  {
+    code: 'BOOKING_CANCELLED_FOR_OWNER',
+    events: ['booking.cancelled'],
+    category: 'bookings',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.ownerId],
+    values: bookingValues,
+    link: () => vendorUrl('/vendor/bookings'),
+  },
+  {
+    code: 'BOOKING_OWNER_CANCELLED',
+    events: ['booking.owner_cancelled', 'booking.platform_cancelled'],
+    category: 'bookings',
+    channels: ['in_app', 'sms'],
+    urgent: true,
+    recipients: toBooker,
+    values: bookingValues,
+    link: myBooking,
+  },
+  {
+    code: 'BOOKING_REMINDER',
+    events: ['booking.reminded'],
+    category: 'bookings',
+    channels: ['in_app', 'sms'],
+    recipients: toBooker,
+    values: bookingValues,
+    link: myBooking,
+  },
+  {
+    code: 'BOOKING_MOVED',
+    events: ['booking.moved'],
+    category: 'bookings',
+    channels: ['in_app', 'sms'],
+    urgent: true,
+    recipients: toBooker,
+    values: bookingValues,
+    link: myBooking,
+  },
+  {
+    code: 'BOOKING_NO_SHOW',
+    events: ['booking.no_show_marked'],
+    category: 'bookings',
+    channels: ['in_app', 'sms'],
+    recipients: toBooker,
+    values: bookingValues,
+    link: myBooking,
   },
 ];
 

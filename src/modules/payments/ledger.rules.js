@@ -91,6 +91,16 @@ function releaseLines({ escrowAccount, holdId, payeeId, vertical, gross, fee }) 
   return lines.filter((l) => (l.debit ?? l.credit) > 0);
 }
 
+/**
+ * Fees owed for money the payee collected off-platform (M06 §6.4; M10 walk-ins, extensions and series
+ * sessions paid at the venue): Dr fee_receivable:user:{payee} / Cr fee_revenue:{vertical}. M07 nets the
+ * receivable from the payee's next payout.
+ */
+function feeReceivableLines({ payeeId, vertical, amount }) {
+  if (!Number.isSafeInteger(amount) || amount <= 0) throw new LedgerError('A fee receivable must be more than zero');
+  return [dr(`fee_receivable:user:${payeeId}`, amount), cr(`fee_revenue:${vertical}`, amount)];
+}
+
 /** A refund leaves its source (escrow hold, goodwill or suspense) for refund_clearing until the provider confirms. */
 function refundReserveLines({ source, escrowAccount, holdId, amount }) {
   const from = { escrow: escrowAccount, goodwill: 'goodwill_expense', suspense: 'suspense' }[source];
@@ -149,6 +159,7 @@ module.exports = {
   captureLines,
   mismatchLines,
   releaseLines,
+  feeReceivableLines,
   refundReserveLines,
   refundSettleLines,
   allocate,

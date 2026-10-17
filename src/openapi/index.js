@@ -46,7 +46,8 @@ function buildOpenApi() {
       { name: 'payouts', description: 'Payout accounts, payout runs, approvals and manual disbursement (M07)' },
       { name: 'kyc', description: 'Identity and business documents: NID and ground-owner uploads, the document panel and the checklists (M02)' },
       { name: 'moderation', description: 'Submissions, the Moderation desk: claim, rubric, decisions, SLA (M05)' },
-      { name: 'grounds', description: 'Grounds: listings, courts, hours, photos, pricing and the public browse (M09)' },
+      { name: 'grounds', description: 'Grounds: listings, courts, hours, photos, pricing, closures, series and the public browse (M09)' },
+      { name: 'bookings', description: 'Bookings: availability, holds and payment, my bookings, the owner\'s day (M10)' },
       { name: 'esports', description: 'Esports tournaments: UIDs, squads, registration, check-in, rooms, results, prizes, leaderboards (M21)' },
     ],
   });

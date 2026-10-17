@@ -2,8 +2,10 @@
 
 /**
  * M09 pure rules: the ground state machine (§8), which edits of a live ground need review (FR-04),
- * the opening-hours grid (FR-07, §6.3), slugs and the review diff. No I/O.
+ * the opening-hours grid (FR-07, §6.3), slugs and the review diff; step 2: closure periods (FR-15)
+ * and the weeks of a series (FR-19). No I/O.
  */
+const { dhakaInstant, dhakaParts } = require('./pricing.rules');
 
 /** Owner and staff actions on a ground, by the statuses they may start from (§8). */
 const TRANSITIONS = {
@@ -143,7 +145,51 @@ function distanceM(a, b) {
   return Math.round(2 * R * Math.asin(Math.sqrt(h)));
 }
 
+// ---- Step 2: closures and series (§4.2, §4.3) ----
+
+const HALF_HOUR_MS = 30 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const t = (v) => new Date(v).getTime();
+
+/** FR-15: a closure is half-hour aligned, ends in the future and starts within the horizon (Q63). */
+function closureBlock({ start, end, now, maxDaysAhead }) {
+  if (t(start) % HALF_HOUR_MS !== 0 || t(end) % HALF_HOUR_MS !== 0) return 'NOT_HALF_HOUR';
+  if (t(end) <= t(start)) return 'CLOSURE_EMPTY';
+  if (t(end) <= t(now)) return 'CLOSURE_IN_PAST';
+  if (t(start) > t(now) + maxDaysAhead * DAY_MS) return 'OUT_OF_RANGE';
+  return null;
+}
+
+/** Closure state for reopen (upcoming) and end now (in progress); past closures are read-only. */
+function closurePhase({ start, end, now }) {
+  if (t(now) < t(start)) return 'upcoming';
+  return t(now) < t(end) ? 'in_progress' : 'past';
+}
+
+/** FR-19: the series shape. firstDate must fall on the chosen Dhaka weekday, today or later. */
+function seriesBlock({ firstDate, dow, startTime, lengthMin, weeks, weeksOptions, minBookingMin, today }) {
+  if (!weeksOptions.includes(weeks)) return 'SERIES_WEEKS_INVALID';
+  if (![60, 90, 120, 180].includes(lengthMin) || lengthMin < minBookingMin) return 'LENGTH_INVALID';
+  if (!/^([01][0-9]|2[0-3]):(00|30)$/.test(startTime)) return 'NOT_HALF_HOUR';
+  if (firstDate < today) return 'OUT_OF_RANGE';
+  if (dhakaParts(dhakaInstant(firstDate, 12 * 60)).dow !== dow) return 'SERIES_DAY_MISMATCH';
+  return null;
+}
+
+/** The start and end of every week of a series, computed on the Dhaka wall clock. */
+function seriesWeeks({ firstDate, startTime, lengthMin, weeks }) {
+  return Array.from({ length: weeks }, (_, week) => {
+    const date = new Date(Date.parse(`${firstDate}T00:00:00Z`) + week * 7 * DAY_MS).toISOString().slice(0, 10);
+    const start = dhakaInstant(date, toMin(startTime));
+    return { week, date, start, end: new Date(start.getTime() + lengthMin * 60 * 1000) };
+  });
+}
+
 module.exports = {
+  closureBlock,
+  closurePhase,
+  seriesBlock,
+  seriesWeeks,
   TRANSITIONS,
   next,
   isPublished,

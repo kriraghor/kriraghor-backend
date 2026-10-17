@@ -7,10 +7,12 @@ const { ROLES } = require('../../common/enums');
  * Action → requirement map. Keep in sync with the frontend contract.
  * PHONE_VERIFIED (v3, M21): esports play needs a verified phone, not NID KYC; the verified game
  * profile for the tournament's game is checked by M21 itself (ESPORTS_GAME_PROFILE_REQUIRED).
+ * Booking a ground (M10, 17 Oct 2026) also needs only a verified phone: the money is prepaid into
+ * escrow, so NID adds friction without protecting anyone. Owners still need NID (list_ground).
  */
 const PHONE_VERIFIED = 'phone_verified';
 const ACTIONS = Object.freeze({
-  book_ground: ROLES.MEMBER,
+  book_ground: PHONE_VERIFIED,
   hire: ROLES.MEMBER,
   buy: ROLES.MEMBER,
   offer: ROLES.MEMBER,

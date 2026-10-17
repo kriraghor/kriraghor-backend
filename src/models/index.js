@@ -1151,6 +1151,13 @@ grounds.Ground.belongsTo(places.Area, { as: 'area', foreignKey: 'areaId' });
 grounds.Ground.belongsTo(User, { as: 'owner', foreignKey: 'ownerId' });
 grounds.Court.belongsTo(places.Surface, { as: 'surface', foreignKey: 'surfaceId' });
 
+// ---- M10 bookings (models in ./bookings.js) ----
+const bookings = require('./bookings');
+bookings.Booking.belongsTo(grounds.Ground, { as: 'ground', foreignKey: 'groundId' });
+bookings.Booking.belongsTo(User, { as: 'booker', foreignKey: 'bookerUserId' });
+bookings.Booking.belongsTo(grounds.BookingSeries, { as: 'series', foreignKey: 'seriesId' });
+grounds.BookingSeries.hasMany(bookings.Booking, { as: 'bookings', foreignKey: 'seriesId' });
+
 // ---- M21 esports (models in ./esports.js) ----
 const esports = require('./esports');
 esports.EsportsTournament.belongsTo(EsportsGame, { as: 'game', foreignKey: 'gameId' });
@@ -1163,6 +1170,7 @@ module.exports = {
   ...esports,
   ...places,
   ...grounds,
+  ...bookings,
   sequelize,
   User,
   UserRole,

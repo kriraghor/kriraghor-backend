@@ -16,6 +16,7 @@ const kycS = require('../modules/kyc/kyc.schemas');
 const modS = require('../modules/moderation/moderation.schemas');
 const esS = require('../modules/esports/esports.schemas');
 const grS = require('../modules/grounds/grounds.schemas');
+const bkS = require('../modules/bookings/bookings.schemas');
 
 /**
  * Every route (M01, M02, M03, M04, M05, M06, M07, M08, M09, M21), registered with its request and response schemas and the stable error
@@ -676,6 +677,75 @@ function register(registry) {
   p({ method: 'post', path: '/admin/grounds/{id}/suspend', tags: ['grounds'], summary: 'Suspend a live or paused ground (manage_users)', security: adminBearer, request: { ...grId, ...body(grS.reasonBody) }, responses: { 200: json(grS.StaffResult), ...errors(STAFF) } });
   p({ method: 'post', path: '/admin/grounds/{id}/restore', tags: ['grounds'], summary: 'Restore a suspended ground (master)', security: adminBearer, request: { ...grId, ...body(grS.reasonBody) }, responses: { 200: json(grS.StaffResult), ...errors(STAFF) } });
   p({ method: 'post', path: '/admin/grounds/{id}/remove', tags: ['grounds'], summary: 'Remove a ground (master; status, never deleted)', security: adminBearer, request: { ...grId, ...body(grS.reasonBody) }, responses: { 200: json(grS.StaffResult), ...errors(STAFF) } });
+  // ------------------------------------------------------------------ M09 step 2: closures and series
+  const OWNER2 = { ...COMMON_AUTH, 403: ['ROLE_REQUIRED', 'KYC_REQUIRED', 'PHONE_REQUIRED', 'NOT_OWNER', 'REASON_NOT_ALLOWED'], 404: ['NOT_FOUND'] };
+  const CLOSURE_422 = { 422: ['VALIDATION_FAILED', 'NOT_HALF_HOUR', 'CLOSURE_EMPTY', 'CLOSURE_IN_PAST', 'OUT_OF_RANGE', 'COURT_UNKNOWN'] };
+  p({ method: 'post', path: '/me/grounds/{id}/closures/preview', tags: ['grounds'], summary: 'What a closure would clash with: bookings, holds, series weeks, closures (FR-16)', security: bearer,
+    request: { ...grId, ...body(grS.closureBody) }, responses: { 200: json(grS.ClosurePreview), ...errors({ ...OWNER2, 409: ['GROUND_STATE'], ...CLOSURE_422 }) } });
+  p({ method: 'post', path: '/me/grounds/{id}/closures', tags: ['grounds'], summary: 'Close courts for a half-hour aligned period, up to 90 days ahead; nothing partial on a clash (FR-15, FR-16, Q63)', security: bearer,
+    request: { ...grId, ...body(grS.closureBody) }, responses: { 201: json(grS.Closure), ...errors({ ...OWNER2, 409: ['GROUND_STATE', 'CLOSURE_CLASHES'], ...CLOSURE_422 }) } });
+  p({ method: 'get', path: '/me/grounds/{id}/closures', tags: ['grounds'], summary: 'Upcoming or past closures', security: bearer,
+    request: { ...grId, query: grS.closureListQuery }, responses: { 200: json(grS.ClosureList), ...errors({ ...OWNER2, ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/closures/{id}/reopen', tags: ['grounds'], summary: 'Reopen an upcoming closure (FR-17)', security: bearer, request: grId, responses: { 200: json(grS.Closure), ...errors({ ...OWNER2, 409: ['CLOSURE_STATE'] }) } });
+  p({ method: 'post', path: '/me/closures/{id}/end-now', tags: ['grounds'], summary: 'End an in-progress closure at the next half-hour (FR-17)', security: bearer, request: grId, responses: { 200: json(grS.Closure), ...errors({ ...OWNER2, 409: ['CLOSURE_STATE'] }) } });
+  const SERIES_422 = { 422: ['VALIDATION_FAILED', 'SERIES_WEEKS_INVALID', 'SERIES_DAY_MISMATCH', 'LENGTH_INVALID', 'NOT_HALF_HOUR', 'OUT_OF_RANGE', 'COURT_UNKNOWN'] };
+  p({ method: 'post', path: '/me/grounds/{id}/series/preview', tags: ['grounds'], summary: 'Weeks of a weekly series with their clashes and the price per session (FR-19, FR-20)', security: bearer,
+    request: { ...grId, ...body(grS.seriesBody) }, responses: { 200: json(grS.SeriesPreview), ...errors({ ...OWNER2, 409: ['GROUND_NOT_BOOKABLE', 'PRICING_MISSING'], ...SERIES_422 }) } });
+  p({ method: 'post', path: '/me/grounds/{id}/series', tags: ['grounds'], summary: 'Book a weekly series: every week becomes a booking paid at the venue (FR-19 to FR-21, Q64)', security: bearer,
+    request: { ...grId, ...body(grS.seriesBody) }, responses: { 201: json(grS.Series), ...errors({ ...OWNER2, 409: ['GROUND_NOT_BOOKABLE', 'PRICING_MISSING', 'SERIES_CLASHES', 'SLOT_UNAVAILABLE'], ...SERIES_422 }) } });
+  p({ method: 'get', path: '/me/grounds/{id}/series', tags: ['grounds'], summary: 'Series of a ground', security: bearer, request: grId, responses: { 200: json(grS.SeriesList), ...errors(OWNER2) } });
+  p({ method: 'get', path: '/me/series/{id}', tags: ['grounds'], summary: 'A series with its sessions', security: bearer, request: grId, responses: { 200: json(grS.Series), ...errors(OWNER2) } });
+  p({ method: 'post', path: '/me/series/{id}/weeks/{week}/skip', tags: ['grounds'], summary: 'Skip a future week; the court is free (FR-22)', security: bearer,
+    request: { params: grS.weekParams }, responses: { 200: json(grS.Series), ...errors({ ...OWNER2, 409: ['SERIES_STATE', 'BOOKING_STATE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/series/{id}/weeks/{week}/restore', tags: ['grounds'], summary: 'Restore a skipped week if the court is still free (FR-22)', security: bearer,
+    request: { params: grS.weekParams }, responses: { 200: json(grS.Series), ...errors({ ...OWNER2, 409: ['SERIES_STATE', 'BOOKING_STATE', 'SLOT_UNAVAILABLE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/series/{id}/end', tags: ['grounds'], summary: 'End a series: future weeks are cancelled, no penalty, no refund (paid at the venue) (FR-23)', security: bearer,
+    request: { ...grId, ...body(grS.seriesEndBody) }, responses: { 200: json(grS.Series), ...errors({ ...OWNER2, 409: ['SERIES_STATE'], ...VALIDATION }) } });
+
+  // ------------------------------------------------------------------ M10 bookings (v3 money)
+  const bkId = { params: bkS.idParam };
+  const MEMBER = { ...COMMON_AUTH, 404: ['NOT_FOUND'] };
+  const BOWNER = { ...COMMON_AUTH, 403: ['ROLE_REQUIRED', 'KYC_REQUIRED', 'NOT_OWNER'], 404: ['NOT_FOUND'] };
+  p({ method: 'get', path: '/grounds/{id}/availability', tags: ['bookings'], summary: 'Half-hour grid per court for a Dhaka day: open, booked, yours, closed, past, with the hourly rate (FR-01 to FR-03)',
+    request: { ...bkId, query: bkS.availabilityQuery }, responses: { 200: json(bkS.Availability), ...errors({ 404: ['NOT_FOUND'], 422: ['VALIDATION_FAILED', 'OUT_OF_RANGE'] }) } });
+  p({ method: 'post', path: '/bookings/holds', tags: ['bookings'], summary: 'Hold a slot and start paying the advance or the full price (gate book_ground: a verified phone; FR-04 to FR-06)', security: bearer,
+    request: { headers: idem, ...body(bkS.holdBody) },
+    responses: {
+      201: json(bkS.HoldResult),
+      ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'ACCOUNT_SUSPENDED', 'ACCOUNT_BANNED'], 404: ['NOT_FOUND'], 409: ['GROUND_NOT_BOOKABLE', 'SLOT_UNAVAILABLE', 'PRICING_MISSING', 'IDEMPOTENCY_IN_PROGRESS'],
+        422: ['VALIDATION_FAILED', 'OWN_GROUND', 'COURT_UNKNOWN', 'NOT_COMBINABLE', 'NOT_HALF_HOUR', 'TOO_LATE', 'OUT_OF_RANGE', 'LENGTH_INVALID', 'OUTSIDE_HOURS', 'PAYMENT_CHOICE_UNAVAILABLE'], 429: ['HOLD_LIMIT', 'HOLD_RATE_LIMITED'] }),
+    } });
+  p({ method: 'post', path: '/bookings/{id}/pay', tags: ['bookings'], summary: 'The payment link of a booking on hold', security: bearer, request: bkId, responses: { 200: json(bkS.HoldResult), ...errors({ ...MEMBER, 409: ['BOOKING_STATE'] }) } });
+  p({ method: 'post', path: '/bookings/{id}/release', tags: ['bookings'], summary: 'Let a held slot go before paying', security: bearer, request: bkId, responses: { 200: json(bkS.HoldResult), ...errors({ ...MEMBER, 409: ['BOOKING_STATE'] }) } });
+  p({ method: 'get', path: '/me/bookings', tags: ['bookings'], summary: 'My bookings, upcoming or past', security: bearer, request: { query: bkS.myListQuery }, responses: { 200: json(bkS.MyBookings), ...errors({ ...COMMON_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/bookings/{id}', tags: ['bookings'], summary: 'A booking with its cancel terms', security: bearer, request: bkId, responses: { 200: json(bkS.MyBooking), ...errors(MEMBER) } });
+  p({ method: 'post', path: '/me/bookings/{id}/cancel-preview', tags: ['bookings'], summary: 'What cancelling gives back (v3: the advance is retained; above-advance refunded, Q120)', security: bearer,
+    request: bkId, responses: { 200: json(bkS.CancelTerms), ...errors({ ...MEMBER, 409: ['BOOKING_STATE'] }) } });
+  p({ method: 'post', path: '/me/bookings/{id}/cancel', tags: ['bookings'], summary: 'Cancel before the start, confirming the refund shown (FR-10 to FR-12)', security: bearer,
+    request: { ...bkId, ...body(bkS.cancelBody) }, responses: { 200: json(bkS.CancelResult), ...errors({ ...MEMBER, 409: ['BOOKING_STATE', 'ALREADY_STARTED', 'REFUND_CHANGED'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/ground-bookings', tags: ['bookings'], summary: 'The owner\'s day at a ground: courts, hours, bookings, closures (FR-35)', security: bearer,
+    request: { query: bkS.timelineQuery }, responses: { 200: json(bkS.Timeline), ...errors({ ...BOWNER, ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/ground-bookings/{id}', tags: ['bookings'], summary: 'A booking at my ground', security: bearer, request: bkId, responses: { 200: json(bkS.OwnerDetail), ...errors(BOWNER) } });
+  p({ method: 'post', path: '/me/ground-bookings/{id}/check-in', tags: ['bookings'], summary: 'Check in from start − 30 min to the end; releases the online money minus the fee on the full value (FR-13, v3)', security: bearer,
+    request: bkId, responses: { 200: json(bkS.OwnerResult), ...errors({ ...BOWNER, 409: ['BOOKING_STATE', 'NOT_CHECKIN_WINDOW'] }) } });
+  p({ method: 'post', path: '/me/ground-bookings/{id}/no-show', tags: ['bookings'], summary: 'Mark a no-show once late, until auto-complete; the advance is retained (FR-15, Q68)', security: bearer,
+    request: bkId, responses: { 200: json(bkS.OwnerResult), ...errors({ ...BOWNER, 409: ['BOOKING_STATE', 'NOT_LATE_YET', 'NO_SHOW_WINDOW_CLOSED'] }) } });
+  p({ method: 'post', path: '/me/ground-bookings/{id}/extend', tags: ['bookings'], summary: 'Extend by 30 minutes, paid at the venue; the fee is owed (FR-16)', security: bearer,
+    request: bkId, responses: { 200: json(bkS.OwnerResult), ...errors({ ...BOWNER, 409: ['BOOKING_STATE', 'BOOKING_ENDED', 'NEXT_SLOT_TAKEN'], 422: ['OUTSIDE_HOURS'] }) } });
+  p({ method: 'post', path: '/me/ground-bookings/{id}/collect-balance', tags: ['bookings'], summary: 'Record the balance paid at the venue (cash or bKash), the full amount due (FR-17)', security: bearer,
+    request: { ...bkId, ...body(bkS.balanceBody) }, responses: { 200: json(bkS.OwnerResult), ...errors({ ...BOWNER, 409: ['BOOKING_STATE', 'NO_BALANCE_DUE'], 422: ['VALIDATION_FAILED', 'BALANCE_MISMATCH'] }) } });
+  p({ method: 'post', path: '/me/ground-bookings/{id}/cancel', tags: ['bookings'], summary: 'Cancel as the owner before the start: 100% back to the member (FR-19, v3; weather not penalised, Q22)', security: bearer,
+    request: { ...bkId, ...body(bkS.ownerCancelBody) }, responses: { 200: json(bkS.OwnerResult), ...errors({ ...BOWNER, 409: ['BOOKING_STATE', 'ALREADY_STARTED'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/ground-bookings/{id}/move-targets', tags: ['bookings'], summary: 'Free courts at my grounds for the same time (M09 §6.4)', security: bearer, request: bkId, responses: { 200: json(bkS.MoveTargets), ...errors(BOWNER) } });
+  p({ method: 'post', path: '/me/ground-bookings/{id}/move', tags: ['bookings'], summary: 'Move to another court, same time and price; a new ground lets the member cancel free (FR-20)', security: bearer,
+    request: { ...bkId, ...body(bkS.moveBody) }, responses: { 200: json(bkS.OwnerResult), ...errors({ ...BOWNER, 409: ['BOOKING_STATE', 'ALREADY_STARTED', 'SLOT_UNAVAILABLE'], 422: ['VALIDATION_FAILED', 'MOVE_TARGET_INVALID', 'OUTSIDE_HOURS'] }) } });
+  p({ method: 'post', path: '/me/grounds/{id}/walk-ins', tags: ['bookings'], summary: 'Record a walk-in paid in full at the counter; checked in at once when starting soon (FR-18)', security: bearer,
+    request: { ...grId, headers: idem, ...body(bkS.walkInBody) },
+    responses: { 201: json(bkS.OwnerResult), ...errors({ ...BOWNER, 409: ['GROUND_NOT_BOOKABLE', 'PRICING_MISSING', 'SLOT_UNAVAILABLE'], 422: ['VALIDATION_FAILED', 'NOT_HALF_HOUR', 'TOO_LATE', 'OUT_OF_RANGE', 'COURT_UNKNOWN', 'LENGTH_INVALID', 'OUTSIDE_HOURS', 'NOT_COMBINABLE'] }) } });
+  p({ method: 'get', path: '/admin/bookings', tags: ['bookings'], summary: 'Bookings for staff (manage_users or view_payouts)', security: adminBearer, request: { query: bkS.staffListQuery }, responses: { 200: json(bkS.StaffList), ...errors({ ...ADMIN_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/bookings/{id}', tags: ['bookings'], summary: 'A booking with its ledger trail', security: adminBearer, request: bkId, responses: { 200: json(bkS.StaffDetail), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'] }) } });
+  p({ method: 'post', path: '/admin/bookings/{id}/cancel', tags: ['bookings'], summary: 'Cancel for the platform with a full refund (master, step-up escrow.manage)', security: adminBearer,
+    request: { ...bkId, headers: stepUpHeader, ...body(bkS.reasonBody) }, responses: { 200: json(bkS.OwnerResult), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'], 409: ['BOOKING_STATE'], ...VALIDATION }) } });
 }
 
 function dateTimeOf() {

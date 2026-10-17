@@ -7,10 +7,13 @@
  *   closesAt(courtId, day)           the closing time, for "The ground closes at 11pm."
  *   publishedVersionAt(groundId, t)  the pricing version in force at t (M10-FR-04)
  *   versionById(id)                  any version, for extensions priced on the booking's snapshot
+ *   hoursFor(courtIds)               the weekly hours rows (availability grid, conflicts)
+ *   courts(courtIds)                 ground, status, sports and group of courts (moves)
+ *   liveGroundsOf(ownerId)           an owner's live grounds with public courts (move targets)
  *   price / quote                    the shared calculator (pricing.rules)
  */
 const { Op } = require('sequelize');
-const { Ground, CourtHours, PricingRule } = require('../../models');
+const { Ground, Court, CourtHours, PricingRule } = require('../../models');
 const pr = require('./pricing.rules');
 const rules = require('./grounds.rules');
 const c = require('./grounds.common');
@@ -65,4 +68,19 @@ async function publishedVersionAt(groundId, at = new Date(), { transaction } = {
 
 const versionById = async (id, { transaction } = {}) => asRules(await PricingRule.findByPk(id, { transaction }));
 
-module.exports = { ground, isOpen, closesAt, publishedVersionAt, versionById, price: pr.price, quote: pr.quote, advanceOf: pr.advanceOf, seriesPrice: pr.seriesPrice };
+async function hoursFor(courtIds, { transaction } = {}) {
+  const rows = await CourtHours.findAll({ where: { courtId: courtIds }, transaction });
+  return rows.map((h) => ({ courtId: h.courtId, dow: h.dow, isClosed: h.isClosed, openTime: h.openTime, closeTime: h.closeTime }));
+}
+
+async function courts(courtIds, { transaction } = {}) {
+  const rows = await Court.findAll({ where: { id: courtIds }, transaction });
+  return rows.map((k) => ({ id: k.id, groundId: k.groundId, name: k.name, status: k.status, sportIds: k.sportIds, combinableGroup: k.combinableGroup }));
+}
+
+async function liveGroundsOf(ownerId, { transaction } = {}) {
+  const rows = await Ground.findAll({ where: { ownerId, status: 'live' }, transaction });
+  return rows.map((g) => ({ id: g.id, name: g.liveSnapshot?.name ?? g.name, areaId: g.liveSnapshot?.areaId ?? g.areaId, courts: (g.liveSnapshot?.courts ?? []).map((k) => ({ id: k.id, name: k.name, sportIds: k.sportIds })) }));
+}
+
+module.exports = { ground, isOpen, hoursFor, courts, liveGroundsOf, closesAt, publishedVersionAt, versionById, price: pr.price, quote: pr.quote, advanceOf: pr.advanceOf, seriesPrice: pr.seriesPrice };

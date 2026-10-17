@@ -278,7 +278,7 @@ async function setHours(principal, courtId, rows, req) {
     const { court, g } = await courtOf(principal, courtId, { transaction, lock: true });
     if (['rejected', 'suspended'].includes(g.status)) throw fail('GROUND_STATE');
     const conflicts = await occupancy.findConflicts({ courtIds: [court.id], outsideHours: rows }, { transaction });
-    if (conflicts.length) throw fail('HOURS_CONFLICT', { conflicts });
+    if (conflicts.length) throw fail('HOURS_CONFLICT', { meta: { conflicts } });
     await writeHours(court.id, rows, transaction);
     await audit.record({ action: 'ground_court.hours_set', actor: principal, entityType: 'court', entityId: court.id, after: { hours: rows }, meta: { groundId: g.id }, req }, { transaction });
     return view(g.id, { transaction });

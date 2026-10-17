@@ -35,6 +35,14 @@ async function lockHold(id, transaction) {
   return hold;
 }
 
+/** The id of the hold opened for a payment (read only; null when it never captured). */
+const holdIdForPayment = async (paymentId) => (await EscrowHold.findOne({ where: { paymentId }, attributes: ['id'], order: [['createdAt', 'ASC']] }))?.id ?? null;
+
+/** The hold opened for a captured payment, locked (null when the payment never captured). */
+async function lockHoldForPayment(paymentId, transaction) {
+  return EscrowHold.findOne({ where: { paymentId }, order: [['createdAt', 'ASC']], transaction, lock: transaction.LOCK.UPDATE });
+}
+
 /**
  * FR-06: on capture, open a hold from the payment's escrow instructions (snapshotted at obligation
  * time, FR-07) and post Dr provider_clearing / Cr escrow:{purpose} tagged with it.
@@ -80,10 +88,10 @@ async function openHold(payment, { transaction, capturedAt }) {
 }
 
 /** FR-13: release (all or part) to the payee, inside `transaction`, on a locked hold. */
-async function releaseInTx(hold, { amount, actor = null, transaction, kind = 'escrow.release' }) {
+async function releaseInTx(hold, { amount, feeBase = null, actor = null, transaction, kind = 'escrow.release' }) {
   const block = rules.releaseBlock(hold);
   if (block) throw blocked(block);
-  const { gross, fee, net } = rules.release(hold, amount);
+  const { gross, fee, net } = rules.release(hold, amount, feeBase);
   const def = purposes.get(hold.purpose);
   const n = hold.releaseCount + 1;
   const posted = await ledger.post(
@@ -93,7 +101,7 @@ async function releaseInTx(hold, { amount, actor = null, transaction, kind = 'es
       refId: hold.id,
       idempotencyKey: `escrow.release:${hold.id}:${n}`,
       lines: lrules.releaseLines({ escrowAccount: def.escrowAccount, holdId: hold.id, payeeId: hold.payeeId, vertical: hold.vertical, gross, fee }),
-      memo: `Release ${n} of hold ${hold.id}`,
+      memo: feeBase === null ? `Release ${n} of hold ${hold.id}` : `Release ${n} of hold ${hold.id} (fee on ${feeBase})`,
       postedBy: actor?.id ?? null,
     },
     { transaction }
@@ -295,4 +303,4 @@ async function getOne(id) {
   return serialize(hold);
 }
 
-module.exports = { openHold, releaseInTx, releaseManually, takeForRefund, freeze, unfreeze, releaseDue, settlePool, reversePoolCredit, list, getOne, serialize, lockHold };
+module.exports = { openHold, holdIdForPayment, lockHoldForPayment, releaseInTx, releaseManually, takeForRefund, freeze, unfreeze, releaseDue, settlePool, reversePoolCredit, list, getOne, serialize, lockHold };
