@@ -4,7 +4,7 @@
  * Bootstrap the FIRST master admin (M01-FR-12). Only works while no master exists;
  * every later master is promoted in-app by an existing master with step-up.
  *
- *   npm run create:master -- --phone 01712345678 --name "Ayesha Siddiqua" --employee-id KG-0001
+ *   npm run create:master -- --phone 01712345678 --name "Ayesha Siddiqua" --employee-id KG-0001.
  *
  * The master signs in with an OTP to that phone, then must enrol TOTP before any access.
  */
