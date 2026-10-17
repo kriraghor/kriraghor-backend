@@ -57,3 +57,26 @@ describe('M03 item fields (M12; Q77)', () => {
     expect(itemFieldError({ kind: 'number', minValue: 5, maxValue: 2 })).toEqual({ field: 'maxValue', message: 'At least the minimum' });
   });
 });
+
+// M03 hire taxonomy (M11 §6.1): roles priced per match format, credential tiers in order.
+describe('hire role (M11)', () => {
+  const { hireRoleError } = require('../../src/modules/catalog/catalog.validate');
+  const tiers = (...levels) => levels.map((level) => ({ level, labelEn: level, labelBn: level }));
+  it('accepts the seeded umpire and an hourly coach', () => {
+    expect(hireRoleError({ allowedUnits: ['match', 'hourly'], formatPriced: true, formats: ['T10', 'T20'], credentialTiers: tiers('amateur', 'semi_pro', 'pro', 'national'), requiresCredential: true })).toBeNull();
+    expect(hireRoleError({ allowedUnits: ['hourly'] })).toBeNull();
+    expect(hireRoleError({})).toBeNull(); // a PATCH merged onto a row without the lists
+  });
+  it('refuses formats without match pricing, and match pricing without formats or the match unit', () => {
+    expect(hireRoleError({ allowedUnits: ['hourly'], formatPriced: true, formats: ['T20'] })).toEqual({ field: 'formatPriced', message: 'Only a role hired by the match is priced per format' });
+    expect(hireRoleError({ allowedUnits: ['match'], formatPriced: true, formats: [] })).toEqual({ field: 'formats', message: 'Add the match formats' });
+    expect(hireRoleError({ allowedUnits: ['match'], formatPriced: false, formats: ['T20'] })).toEqual({ field: 'formats', message: 'Formats need format pricing' });
+  });
+  it('refuses tiers out of order, repeated or unknown, and a credential role without tiers', () => {
+    const order = { field: 'credentialTiers', message: 'Levels go up once each: amateur, semi_pro, pro, national' };
+    expect(hireRoleError({ allowedUnits: ['match'], credentialTiers: tiers('pro', 'semi_pro') })).toEqual(order);
+    expect(hireRoleError({ allowedUnits: ['match'], credentialTiers: tiers('pro', 'pro') })).toEqual(order);
+    expect(hireRoleError({ allowedUnits: ['match'], credentialTiers: tiers('grandmaster') })).toEqual(order);
+    expect(hireRoleError({ allowedUnits: ['match'], requiresCredential: true })).toEqual({ field: 'credentialTiers', message: 'A role that needs a credential lists its tiers' });
+  });
+});
