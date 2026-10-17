@@ -424,7 +424,12 @@ describe('results, disputes and prizes (FR-18 to FR-25, §6.5)', () => {
     const d = await api().post(`${P}/me/esports/matches/${m.id}/disputes`).set(h.bearer(p1)).send({ reason: 'I was first, see the scoreboard', evidenceIds: [ev.body.id] }).expect(201);
     expect((await api().post(`${P}/me/esports/matches/${m.id}/disputes`).set(h.bearer(p1)).send({ reason: 'Again please' }).expect(409)).body.code).toBe('ESPORTS_DISPUTE_LIMIT');
     expect((await api().post(`${P}/admin/esports/tournaments/${t.id}/finalise`).set(h.bearer(master)).set('X-Step-Up', await h.stepUp(master, 'esports.money')).expect(409)).body.code).toBe('ESPORTS_NOT_FINALISABLE');
+    // M17: the dispute is also a case on the unified desk (no money, straight to staff).
+    expect(d.body.caseCode).toMatch(/^DSP-/);
+    const kase = await api().get(`${P}/admin/disputes/${d.body.caseCode}`).set(h.bearer(master)).expect(200);
+    expect(kase.body).toMatchObject({ dispute: { sourceType: 'esports_result', status: 'under_review', money: false }, outcomes: ['corrected', 'rejected'], source: { matchId: m.id } });
     await api().post(`${P}/admin/esports/disputes/${d.body.id}/resolve`).set(h.bearer(master)).send({ outcome: 'corrected', rows: [row(p1, 1, 2), row(p2, 2, 4)], note: 'Scoreboard shows P1 first' }).expect(200);
+    expect(await models.Dispute.findOne({ where: { code: d.body.caseCode } })).toMatchObject({ status: 'resolved', outcome: 'corrected', decidedRole: 'master' });
     await models.EsportsMatch.update({ disputeClosesAt: ago(1000) }, { where: { id: m.id } });
     await lifecycle.tick();
     expect((await models.EsportsMatch.findByPk(m.id)).status).toBe('final');
