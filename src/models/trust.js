@@ -29,10 +29,10 @@ Dispute.init(
   {
     id,
     code: req(DataTypes.STRING(20)),
-    sourceType: req(DataTypes.ENUM('booking', 'esports_result')),
+    sourceType: req(DataTypes.ENUM('booking', 'esports_result', 'sub_order')),
     sourceId: req(DataTypes.UUID),
     sourceRef: req(DataTypes.STRING(40)),
-    category: req(DataTypes.ENUM('no_show_contest', 'venue_problem', 'cash_problem', 'result_wrong')),
+    category: req(DataTypes.ENUM('no_show_contest', 'venue_problem', 'cash_problem', 'result_wrong', 'not_received')),
     claimantId: req(DataTypes.UUID),
     respondentId: DataTypes.UUID,
     status: req(DataTypes.ENUM(...ACTIVE, 'resolved', 'withdrawn')),

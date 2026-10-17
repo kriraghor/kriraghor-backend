@@ -70,7 +70,7 @@ function planFor(d, outcome, custom) {
   if (!rules.allowedOutcomes(d).includes(outcome)) throw fail('OUTCOME_NOT_ALLOWED', { allowed: rules.allowedOutcomes(d) });
   if (!d.money) return zeroPlan;
   try {
-    return rules.outcomePlan({ outcome, held: d.heldPoisha, custom, feeBps: d.policy.feeBps, fullPrice: d.policy.fullPrice ?? null });
+    return rules.outcomePlan({ outcome, held: d.heldPoisha, custom, feeBps: d.policy.feeBps, fullPrice: d.policy.fullPrice ?? null, feeBaseMax: d.policy.feeBaseMax ?? null });
   } catch (err) {
     if (err instanceof RangeError) throw fail('REFUND_INVALID', { held: d.heldPoisha });
     throw err;

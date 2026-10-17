@@ -44,5 +44,7 @@ module.exports = {
     './src/modules/risk/risk.rules.js': FULL,
     // M12 state machine, spec and variant checks, stock arithmetic, shelf life and prices.
     './src/modules/market/market.rules.js': FULL,
+    // M13 quote, commission, the sub-order state machine and deadlines.
+    './src/modules/orders/orders.rules.js': FULL,
   },
 };

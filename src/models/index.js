@@ -643,6 +643,7 @@ Refund.init(
   {
     id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
     paymentId: { type: DataTypes.UUID, allowNull: false },
+    escrowHoldId: DataTypes.UUID,
     amountPoisha: poisha('amountPoisha', { defaultValue: undefined }),
     reasonCode: { type: DataTypes.STRING(40), allowNull: false },
     reasonText: DataTypes.STRING(500),
@@ -719,6 +720,7 @@ EscrowHold.init(
     purpose: { type: DataTypes.STRING(30), allowNull: false },
     purposeId: { type: DataTypes.UUID, allowNull: false },
     paymentId: { type: DataTypes.UUID, allowNull: false },
+    splitRef: DataTypes.UUID,
     groupRef: DataTypes.UUID,
     payeeId: DataTypes.UUID,
     vertical: { type: DataTypes.STRING(20), allowNull: false },
@@ -1175,6 +1177,9 @@ const market = require('./market');
 market.Shop.belongsTo(places.Area, { as: 'area', foreignKey: 'areaId' });
 market.Product.belongsTo(items.ItemType, { as: 'itemType', foreignKey: 'itemTypeId' });
 
+// ---- M13 orders, step 1 (./orders.js) ----
+const orders = require('./orders');
+
 // ---- M21 esports (models in ./esports.js) ----
 const esports = require('./esports');
 esports.EsportsTournament.belongsTo(EsportsGame, { as: 'game', foreignKey: 'gameId' });
@@ -1188,6 +1193,7 @@ module.exports = {
   ...places,
   ...items,
   ...market,
+  ...orders,
   ...grounds,
   ...bookings,
   ...analytics,

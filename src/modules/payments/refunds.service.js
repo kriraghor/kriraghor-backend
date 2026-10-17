@@ -74,14 +74,17 @@ async function reserveInTx(refund, payment, hold, { transaction, actor = null })
  * Create a refund inside `transaction` with the payment already locked. `actorKind` = system | staff | master.
  * Returns the refund row.
  */
-async function createInTx({ payment, amount, kind, reasonCode, reasonText = null, actor = null, actorKind, idempotencyKey }, { transaction }) {
+async function createInTx({ payment, amount, kind, reasonCode, reasonText = null, actor = null, actorKind, idempotencyKey, holdId = null }, { transaction }) {
   const existing = await Refund.findOne({ where: { idempotencyKey }, transaction });
   if (existing) return existing;
   const refunds = await Refund.findAll({ where: { paymentId: payment.id }, transaction });
   const left = rules.refundable(payment.capturedPoisha, refunds.map((r) => ({ status: r.status, amount: r.amountPoisha })));
   if (amount > left) throw new AppError(422, 'REFUND_EXCEEDS_CAPTURED', 'That is more than can still be refunded on this payment', { meta: { refundable: left } });
 
-  const hold = await EscrowHold.findOne({ where: { paymentId: payment.id }, transaction, lock: transaction.LOCK.UPDATE });
+  // A split payment (M13) has a hold per sub-order: the caller names it; otherwise the first hold
+  // that still holds enough (single-payee payments have one).
+  const holds = await EscrowHold.findAll({ where: { paymentId: payment.id, ...(holdId ? { id: holdId } : {}) }, order: [['createdAt', 'ASC']], transaction, lock: transaction.LOCK.UPDATE });
+  const hold = holds.find((h) => erules.available(h) >= amount) ?? holds[0] ?? null;
   const source = rules.source({ kind, holdAvailable: hold ? erules.available(hold) : 0, amount, actorKind });
   if (!source) throw new AppError(422, 'REFUND_EXCEEDS_HELD', 'The money has already been released to the payee; only a master can refund it as goodwill', { meta: { held: hold ? erules.available(hold) : 0 } });
   if (source === 'escrow' && hold.status === 'frozen') throw new AppError(409, 'ESCROW_FROZEN', 'This hold is frozen');
@@ -91,6 +94,7 @@ async function createInTx({ payment, amount, kind, reasonCode, reasonText = null
   const refund = await Refund.create(
     {
       paymentId: payment.id,
+      escrowHoldId: source === 'escrow' ? hold.id : null,
       amountPoisha: amount,
       reasonCode,
       reasonText,
@@ -120,11 +124,13 @@ async function createInTx({ payment, amount, kind, reasonCode, reasonText = null
  * approved at once too. Returns null when the payment never captured (nothing to refund).
  * Idempotent by key.
  */
-async function refundPayment({ paymentId, amount, reasonCode, reasonText = null, idempotencyKey, actor = null, kind = 'policy' }, { transaction }) {
+async function refundPayment({ paymentId, amount, reasonCode, reasonText = null, idempotencyKey, actor = null, kind = 'policy', splitRef = null }, { transaction }) {
   const payment = await Payment.findByPk(paymentId, { transaction, lock: transaction.LOCK.UPDATE });
   if (!payment || !['succeeded', 'partially_refunded'].includes(payment.status)) return null;
   if (amount <= 0) return null;
-  return createInTx({ payment, amount, kind, reasonCode, reasonText, actor, actorKind: 'system', idempotencyKey }, { transaction });
+  const holdId = splitRef ? await escrow.holdIdForPayment(payment.id, { splitRef }) : null;
+  if (splitRef && !holdId) return null;
+  return createInTx({ payment, amount, kind, reasonCode, reasonText, actor, actorKind: 'system', idempotencyKey, holdId }, { transaction });
 }
 
 /** POST /admin/refunds (refund_small or master; Idempotency-Key). */
@@ -152,7 +158,7 @@ async function approve(actor, id, { note } = {}, req) {
     const row = await lockRefund(id, transaction);
     if (row.status !== 'pending_master') throw new AppError(409, 'REFUND_NOT_PENDING', 'This refund is not waiting for approval', { meta: { status: row.status } });
     const payment = await lockPayment(row.paymentId, transaction);
-    const hold = await EscrowHold.findOne({ where: { paymentId: payment.id }, transaction, lock: transaction.LOCK.UPDATE });
+    const hold = await EscrowHold.findOne({ where: { paymentId: payment.id, ...(row.escrowHoldId ? { id: row.escrowHoldId } : {}) }, order: [['createdAt', 'ASC']], transaction, lock: transaction.LOCK.UPDATE });
     if (row.source === 'escrow' && (!hold || erules.available(hold) < row.amountPoisha)) {
       throw new AppError(422, 'REFUND_EXCEEDS_HELD', 'The hold no longer has that much; reject this refund and create a new one');
     }

@@ -1,10 +1,13 @@
 'use strict';
 
 /**
- * M12 reads for other modules (M17 reports; later M13 and M19). Ids, names and statuses only.
+ * M12 reads for other modules (M17 reports, M13 cart and checkout, M19). Ids, names, public prices
+ * and stock only; M13 changes stock through InventoryService, never here.
  */
 const { Op } = require('sequelize');
 const { Shop, Product, ProductVariant } = require('../../models');
+const rules = require('./market.rules');
+const c = require('./market.common');
 
 /** A shop for a report: its owner, public name and status (null when unknown or removed). */
 async function shop(id) {
@@ -44,4 +47,53 @@ async function pendingActions(principal) {
   return items;
 }
 
-module.exports = { shop, product, pendingActions };
+/**
+ * M13 cart and checkout: what each variant sells for now, from the public version (live_snapshot),
+ * never the owner's working copy. A variant is purchasable when its product and shop are live and
+ * it is active, not blocked for expiry and in stock (or made to order). Unknown ids are left out.
+ * Returns Map(variantId → { variantId, productId, productSlug, shopId, shopName, shopSlug, sellerId,
+ * title, labelEn, labelBn, sku, photoKey, unitPrice, maxPerOrder, isMto, mtoDays, available,
+ * purchasable }).
+ */
+async function purchasable(variantIds, { transaction } = {}) {
+  const ids = [...new Set(variantIds)];
+  const out = new Map();
+  if (!ids.length) return out;
+  const variants = await ProductVariant.findAll({ where: { id: ids }, transaction });
+  const products = await Product.findAll({ where: { id: [...new Set(variants.map((v) => v.productId))] }, transaction });
+  const shops = await Shop.findAll({ where: { id: [...new Set(products.map((x) => x.shopId))] }, transaction });
+  const fieldsByType = new Map();
+  for (const v of variants) {
+    const p = products.find((x) => x.id === v.productId);
+    const s = p.liveSnapshot;
+    const sv = s?.variants?.find((x) => x.id === v.id);
+    if (!sv) continue;
+    const shop = shops.find((x) => x.id === p.shopId);
+    if (!fieldsByType.has(s.itemTypeId)) fieldsByType.set(s.itemTypeId, await c.itemTypeWithFields(s.itemTypeId, { transaction }).then((t) => t.fields).catch(() => []));
+    const fields = fieldsByType.get(s.itemTypeId);
+    const available = v.onHand - v.held;
+    out.set(v.id, {
+      variantId: v.id,
+      productId: p.id,
+      productSlug: p.slug,
+      shopId: shop.id,
+      shopName: shop.liveSnapshot?.name ?? shop.name,
+      shopSlug: shop.slug,
+      sellerId: shop.ownerId,
+      title: s.title,
+      labelEn: rules.variantLabel(fields, sv.attributes, 'en'),
+      labelBn: rules.variantLabel(fields, sv.attributes, 'bn'),
+      sku: sv.sku ?? null,
+      photoKey: s.photos?.[0]?.key ?? null,
+      unitPrice: sv.pricePoisha,
+      maxPerOrder: s.maxQtyPerOrder,
+      isMto: s.isMto,
+      mtoDays: s.isMto ? s.mtoDays : null,
+      available,
+      purchasable: p.status === 'live' && shop.status === 'live' && rules.saleable({ status: v.status, saleBlocked: v.saleBlocked, available }, s.isMto),
+    });
+  }
+  return out;
+}
+
+module.exports = { shop, product, pendingActions, purchasable };

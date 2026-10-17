@@ -93,13 +93,15 @@ function outcomeRefund({ outcome, held, custom = null }) {
 /**
  * The money an outcome moves: the refund, then the rest released with its fee. `fullPrice` is the
  * booking value when the case holds a started booking's online money (fee on the full value when
- * nothing is refunded); null for a no-show's retained advance.
+ * nothing is refunded); null for a no-show's retained advance. `feeBaseMax` caps the fee base: an
+ * M13 sub-order's commission is on its items only, never on the delivery fee the shop keeps.
  */
-function outcomePlan({ outcome, held, custom = null, feeBps, fullPrice = null }) {
+function outcomePlan({ outcome, held, custom = null, feeBps, fullPrice = null, feeBaseMax = null }) {
   const refund = outcomeRefund({ outcome, held, custom });
   const release = held - refund;
   if (release === 0) return { refund, release: 0, feeBase: 0, fee: 0, net: 0 };
-  const feeBase = refund === 0 && fullPrice !== null ? fullPrice : release;
+  const base = refund === 0 && fullPrice !== null ? fullPrice : release;
+  const feeBase = feeBaseMax !== null && base > feeBaseMax ? feeBaseMax : base;
   const fee = feeOf(feeBase, feeBps);
   if (fee > release) throw new RangeError('The fee would exceed the amount released');
   return { refund, release, feeBase, fee, net: release - fee };

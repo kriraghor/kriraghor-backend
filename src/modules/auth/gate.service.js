@@ -14,7 +14,9 @@ const PHONE_VERIFIED = 'phone_verified';
 const ACTIONS = Object.freeze({
   book_ground: PHONE_VERIFIED,
   hire: ROLES.MEMBER,
-  buy: ROLES.MEMBER,
+  // M13 (17 Oct 2026): buying from a shop is prepaid into escrow, so a verified phone is enough, as
+  // for booking. Selling (list_product, sell_used) and withdrawing still need NID.
+  buy: PHONE_VERIFIED,
   offer: ROLES.MEMBER,
   sell_used: ROLES.MEMBER,
   register_team: ROLES.MEMBER,

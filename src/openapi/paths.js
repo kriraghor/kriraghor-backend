@@ -21,6 +21,7 @@ const anS = require('../modules/analytics/analytics.schemas');
 const trS = require('../modules/trust/trust.schemas');
 const rkS = require('../modules/risk/risk.schemas');
 const mkS = require('../modules/market/market.schemas');
+const orS = require('../modules/orders/orders.schemas');
 
 /**
  * Every route (M01 to M10, M12, M17, M18, M19, M21), registered with its request and response schemas and the stable error
@@ -915,6 +916,45 @@ function register(registry) {
     p({ method: 'post', path: `/admin/market/${what}/{id}/restore`, tags: ['market'], summary: 'Restore a suspended one (masters)', security: adminBearer, request: { ...mkId, ...body(mkS.reasonBody) }, responses: { 200: json(mkS.StatusResult), ...errors({ ...MK, 409: ['SHOP_STATE', 'PRODUCT_STATE'], ...VALIDATION }) } });
     p({ method: 'post', path: `/admin/market/${what}/{id}/remove`, tags: ['market'], summary: 'Remove for good (masters; nothing is deleted)', security: adminBearer, request: { ...mkId, ...body(mkS.reasonBody) }, responses: { 200: json(mkS.StatusResult), ...errors({ ...MK, 409: ['SHOP_STATE', 'PRODUCT_STATE', 'VARIANT_HAS_HELD'], ...VALIDATION }) } });
   }
+
+  // ------------------------------------------------------------------ M13 orders and fulfilment (step 1)
+  const orId = { params: orS.idParam };
+  const orCode = { params: orS.codeParam };
+  const orVariant = { params: orS.variantParam };
+  const BUY = { ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'ACCOUNT_SUSPENDED'] };
+  const LINE = { 409: ['ITEM_UNAVAILABLE', 'INSUFFICIENT_STOCK'], 422: ['OWN_ITEM', 'QTY_LIMIT', 'VALIDATION_FAILED'] };
+  const SUB = { ...COMMON_AUTH, 404: ['NOT_FOUND'], 409: ['ORDER_STATE'] };
+  const SELLER = { ...SHOP, 403: [...SHOP[403], 'NOT_YOUR_SHOP'], 409: ['ORDER_STATE'] };
+  const proof = { description: 'Optional delivery photo (raw JPEG, PNG or WebP, up to market.photo_max_bytes); send an empty body for none', content: { 'image/jpeg': { schema: z.string() }, 'image/png': { schema: z.string() }, 'image/webp': { schema: z.string() } } };
+  p({ method: 'get', path: '/me/cart', tags: ['orders'], summary: 'My cart grouped by shop, with live prices and stock (FR-01, FR-02)', security: bearer, responses: { 200: json(orS.Cart), ...errors(COMMON_AUTH) } });
+  p({ method: 'delete', path: '/me/cart', tags: ['orders'], summary: 'Empty my cart', security: bearer, responses: { 200: json(orS.Cart), ...errors(COMMON_AUTH) } });
+  p({ method: 'put', path: '/me/cart/items/{variantId}', tags: ['orders'], summary: 'Add an item or set its quantity (at most the stock and the per-order limit; not your own shop)', security: bearer,
+    request: { ...orVariant, ...body(orS.cartQty) }, responses: { 200: json(orS.Cart), ...errors({ ...COMMON_AUTH, ...LINE }) } });
+  p({ method: 'delete', path: '/me/cart/items/{variantId}', tags: ['orders'], summary: 'Remove an item (the line is kept with removed_at)', security: bearer, request: orVariant, responses: { 200: json(orS.Cart), ...errors(COMMON_AUTH) } });
+  p({ method: 'post', path: '/checkout/quote', tags: ['orders'], summary: 'Price the cart on the server: a sub-order per shop, delivery by area (৳80 Dhaka metro, ৳150 outside), price changes (FR-03)', security: bearer,
+    request: body(orS.quoteBody), responses: { 200: json(orS.Quote), ...errors({ ...BUY, ...LINE, 422: [...LINE[422], 'CART_EMPTY', 'AREA_UNKNOWN'] }) } });
+  p({ method: 'post', path: '/checkout', tags: ['orders'], summary: 'Place the order (gate buy: a verified phone): stock held, one payment split into an escrow hold per shop; pay within market.checkout_hold_minutes (FR-04 to FR-07)', security: bearer,
+    request: { headers: idem, ...body(orS.checkoutBody) }, responses: { 201: json(orS.OrderResult, 'Created'), ...errors({ ...BUY, 409: [...LINE[409], 'PRICE_CHANGED'], 422: [...LINE[422], 'CART_EMPTY', 'AREA_UNKNOWN'] }) } });
+  p({ method: 'get', path: '/me/orders', tags: ['orders'], summary: 'My orders, newest first', security: bearer, request: { query: orS.myOrdersQuery }, responses: { 200: json(orS.OrderList), ...errors({ ...COMMON_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/orders/{code}', tags: ['orders'], summary: 'An order with its sub-orders, tracking and what I can do now', security: bearer, request: orCode, responses: { 200: json(orS.OrderResult), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'] }) } });
+  p({ method: 'post', path: '/me/orders/{code}/pay', tags: ['orders'], summary: 'The payment link of an unpaid order', security: bearer, request: orCode, responses: { 200: json(orS.OrderResult), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], 409: ['ORDER_STATE'] }) } });
+  p({ method: 'post', path: '/me/sub-orders/{id}/cancel', tags: ['orders'], summary: 'Cancel before the shop accepts, or once shipping is late by market.ship_overdue_buyer_cancel_hours (100% refund)', security: bearer,
+    request: { ...orId, ...body(orS.cancelBody) }, responses: { 200: json(orS.OrderResult), ...errors({ ...SUB, 409: ['ORDER_STATE', 'CANCEL_NOT_YET'] }) } });
+  p({ method: 'post', path: '/me/sub-orders/{id}/received', tags: ['orders'], summary: 'I have the parcel: the sub-order completes and the shop is paid (minus the commission on the items)', security: bearer, request: orId, responses: { 200: json(orS.OrderResult), ...errors(SUB) } });
+  p({ method: 'post', path: '/me/sub-orders/{id}/not-received', tags: ['orders'], summary: 'Open an M17 dispute (not_received): the hold freezes until staff decide (gate file_dispute)', security: bearer,
+    request: { ...orId, headers: idem, ...body(orS.notReceivedBody) }, responses: { 201: json(z.object({}).loose(), 'Created'), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'NOT_YOUR_ORDER'], 404: ['NOT_FOUND'], 409: ['DISPUTE_NOT_ELIGIBLE', 'DISPUTE_WINDOW_CLOSED', 'DISPUTE_ALREADY_OPEN'], 429: ['DISPUTE_LIMIT'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/shop/sub-orders', tags: ['orders'], summary: 'My shop orders by tab (to accept, to ship, shipped, done, cancelled) with counts', security: bearer, request: { query: orS.shopListQuery }, responses: { 200: json(orS.ShopSubList), ...errors({ ...SHOP, ...VALIDATION }) } });
+  p({ method: 'get', path: '/shop/sub-orders/{id}', tags: ['orders'], summary: 'A shop order; the buyer’s phone and address show once accepted (FR-10)', security: bearer, request: orId, responses: { 200: json(orS.ShopSub), ...errors(SELLER) } });
+  p({ method: 'post', path: '/shop/sub-orders/{id}/accept', tags: ['orders'], summary: 'Accept within market.shop_accept_hours (FR-08)', security: bearer, request: orId, responses: { 200: json(orS.ShopSub), ...errors(SELLER) } });
+  p({ method: 'post', path: '/shop/sub-orders/{id}/reject', tags: ['orders'], summary: 'Reject the whole sub-order with a reason (Q82): 100% refund, stock released', security: bearer, request: { ...orId, ...body(orS.rejectBody) }, responses: { 200: json(orS.ShopSub), ...errors({ ...SELLER, ...VALIDATION }) } });
+  p({ method: 'post', path: '/shop/sub-orders/{id}/ship', tags: ['orders'], summary: 'Ship with the courier and tracking number; the held stock is committed', security: bearer, request: { ...orId, ...body(orS.shipBody) }, responses: { 200: json(orS.ShopSub), ...errors({ ...SELLER, 422: ['TRACKING_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/shop/sub-orders/{id}/delivered', tags: ['orders'], summary: 'Mark delivered (optional photo proof, private storage); auto-completes after market.auto_complete_days', security: bearer,
+    request: { ...orId, body: proof }, responses: { 200: json(orS.ShopSub), ...errors({ ...SELLER, 413: ['FILE_TOO_LARGE', 'PAYLOAD_TOO_LARGE'], 415: ['FILE_TYPE_NOT_ALLOWED', 'FILE_TYPE_MISMATCH'], 429: ['UPLOAD_RATE_LIMITED'] }) } });
+  p({ method: 'get', path: '/shop/settlement', tags: ['orders'], summary: 'Completed (released to my payable), in escrow and refunded totals', security: bearer, responses: { 200: json(orS.Settlement), ...errors(SHOP) } });
+  p({ method: 'get', path: '/admin/orders', tags: ['orders'], summary: 'Orders by code or status (manage_users, refund_small or view_payouts)', security: adminBearer, request: { query: orS.adminListQuery }, responses: { 200: json(orS.StaffOrderList), ...errors({ ...ADMIN_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/orders/{code}', tags: ['orders'], summary: 'An order: each sub-order’s timeline and escrow hold (no phone or address)', security: adminBearer, request: { params: z.object({ code: z.string() }) }, responses: { 200: json(orS.StaffOrder), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'] }) } });
+  p({ method: 'post', path: '/admin/orders/sub-orders/{id}/cancel', tags: ['orders'], summary: 'Cancel a sub-order not yet shipped for the platform with a full refund (master, step-up escrow.manage)', security: adminBearer,
+    request: { ...orId, headers: stepUpHeader, ...body(orS.reasonBody) }, responses: { 200: json(orS.StaffOrder), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'], 409: ['ORDER_STATE'], ...VALIDATION }) } });
 }
 
 function dateTimeOf() {

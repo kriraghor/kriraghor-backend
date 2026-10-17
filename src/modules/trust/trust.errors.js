@@ -12,6 +12,7 @@ const ERRORS = {
   DISPUTE_SOURCE_CHANGED: [409, 'The booking changed since the dispute opened; look again'],
   DISPUTE_VERSION: [409, 'Someone else changed this dispute; reload and try again'],
   NOT_YOUR_BOOKING: [403, 'Only the member who paid can dispute this booking'],
+  NOT_YOUR_ORDER: [403, 'Only the buyer can dispute this order'],
   NOT_A_PARTY: [404, 'Dispute not found'],
   CONFLICT_OF_INTEREST: [403, 'You are part of this dispute and cannot decide it'],
   CLAIMED_BY_OTHER: [409, 'Another staff member is working on this case'],

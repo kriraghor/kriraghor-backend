@@ -170,8 +170,8 @@ async function product(slug) {
     supplement: t.category?.isSupplement ? { importer: s.importer, bstiRegNo: s.bstiRegNo } : null,
     shop: { name: shop.liveSnapshot.name, slug: shop.slug, shopType: shop.shopType, area: areas.get(shop.liveSnapshot.areaId) ?? null, verifiedSince: c.iso(shop.firstLiveAt), ratingAvg: shop.ratingAvg ?? null, ratingCount: shop.ratingCount },
     available,
-    // M13 brings the cart and checkout; until then the page shows the item and its stock only.
-    checkoutOpen: false,
+    // M13: the cart and checkout are open while the product and its shop are live.
+    checkoutOpen: available,
     version: p.liveVersion,
   };
 }

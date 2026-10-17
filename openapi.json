@@ -17236,6 +17236,1878 @@
         "required": [
           "items"
         ]
+      },
+      "Cart": {
+        "type": "object",
+        "properties": {
+          "shops": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "shop": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "slug"
+                  ]
+                },
+                "lines": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "variantId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "productId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "productSlug": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "variantLabelEn": {
+                        "type": "string"
+                      },
+                      "variantLabelBn": {
+                        "type": "string"
+                      },
+                      "photoUrl": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "shop": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "slug": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "slug"
+                        ]
+                      },
+                      "qty": {
+                        "type": "integer"
+                      },
+                      "maxQty": {
+                        "type": "integer"
+                      },
+                      "unitPrice": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "addedPrice": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "priceChanged": {
+                        "type": "boolean"
+                      },
+                      "lineTotal": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "isMto": {
+                        "type": "boolean"
+                      },
+                      "mtoDays": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      },
+                      "unavailable": {
+                        "type": "boolean"
+                      },
+                      "block": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "variantId",
+                      "qty",
+                      "addedPrice",
+                      "unavailable",
+                      "block"
+                    ]
+                  }
+                },
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "shop",
+                "lines",
+                "items"
+              ]
+            }
+          },
+          "unavailable": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "variantId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "productId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "productSlug": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "variantLabelEn": {
+                  "type": "string"
+                },
+                "variantLabelBn": {
+                  "type": "string"
+                },
+                "photoUrl": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "shop": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "slug"
+                  ]
+                },
+                "qty": {
+                  "type": "integer"
+                },
+                "maxQty": {
+                  "type": "integer"
+                },
+                "unitPrice": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "addedPrice": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "priceChanged": {
+                  "type": "boolean"
+                },
+                "lineTotal": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "isMto": {
+                  "type": "boolean"
+                },
+                "mtoDays": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "unavailable": {
+                  "type": "boolean"
+                },
+                "block": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "variantId",
+                "qty",
+                "addedPrice",
+                "unavailable",
+                "block"
+              ]
+            }
+          },
+          "count": {
+            "type": "integer"
+          },
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "ready": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "shops",
+          "unavailable",
+          "count",
+          "items",
+          "ready"
+        ]
+      },
+      "OrderQuote": {
+        "type": "object",
+        "properties": {
+          "area": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "nameEn": {
+                "type": "string"
+              },
+              "nameBn": {
+                "type": "string"
+              },
+              "isDhakaMetro": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "nameEn",
+              "nameBn",
+              "isDhakaMetro"
+            ]
+          },
+          "subOrders": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "shop": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "slug"
+                  ]
+                },
+                "lines": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "variantId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "variantLabelEn": {
+                        "type": "string"
+                      },
+                      "variantLabelBn": {
+                        "type": "string"
+                      },
+                      "unitPrice": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "qty": {
+                        "type": "integer"
+                      },
+                      "lineTotal": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "isMto": {
+                        "type": "boolean"
+                      },
+                      "mtoDays": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "variantId",
+                      "title",
+                      "variantLabelEn",
+                      "variantLabelBn",
+                      "unitPrice",
+                      "qty",
+                      "lineTotal",
+                      "isMto",
+                      "mtoDays"
+                    ]
+                  }
+                },
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "delivery": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "total": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "shop",
+                "lines",
+                "items",
+                "delivery",
+                "total"
+              ]
+            }
+          },
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "delivery": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "variantId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "was": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "now": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "variantId",
+                "was",
+                "now"
+              ]
+            }
+          }
+        },
+        "required": [
+          "area",
+          "subOrders",
+          "items",
+          "delivery",
+          "total",
+          "changes"
+        ]
+      },
+      "OrderResult": {
+        "type": "object",
+        "properties": {
+          "order": {
+            "$ref": "#/components/schemas/Order"
+          },
+          "payment": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "payUrl": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "payUrl"
+            ]
+          }
+        },
+        "required": [
+          "order",
+          "payment"
+        ]
+      },
+      "Order": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending_payment",
+              "placed",
+              "cancelled",
+              "completed"
+            ]
+          },
+          "paymentMethod": {
+            "type": "string",
+            "enum": [
+              "online"
+            ]
+          },
+          "paymentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "payBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "placedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "money": {
+            "type": "object",
+            "properties": {
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "delivery": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "total": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "items",
+              "delivery",
+              "total"
+            ]
+          },
+          "shipTo": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "phoneLast4": {
+                "type": "string"
+              },
+              "areaId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "line": {
+                "type": "string"
+              },
+              "note": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "phoneLast4",
+              "areaId",
+              "line",
+              "note"
+            ]
+          },
+          "subOrders": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "code": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "pending_payment",
+                    "placed",
+                    "accepted",
+                    "shipped",
+                    "delivered",
+                    "completed",
+                    "rejected",
+                    "expired",
+                    "cancelled",
+                    "disputed",
+                    "refunded"
+                  ]
+                },
+                "shop": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "slug"
+                  ]
+                },
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "variantId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "productId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "variantLabelEn": {
+                        "type": "string"
+                      },
+                      "variantLabelBn": {
+                        "type": "string"
+                      },
+                      "sku": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "photoUrl": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "unitPrice": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "qty": {
+                        "type": "integer"
+                      },
+                      "lineTotal": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "isMto": {
+                        "type": "boolean"
+                      },
+                      "mtoDays": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "variantId",
+                      "productId",
+                      "title",
+                      "variantLabelEn",
+                      "variantLabelBn",
+                      "sku",
+                      "photoUrl",
+                      "unitPrice",
+                      "qty",
+                      "lineTotal",
+                      "isMto",
+                      "mtoDays"
+                    ]
+                  }
+                },
+                "money": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "delivery": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "total": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "refunded": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "delivery",
+                    "total",
+                    "refunded"
+                  ]
+                },
+                "courier": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "trackingNo": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "trackingNo"
+                  ]
+                },
+                "placedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "acceptBy": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "acceptedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "shipBy": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "buyerCancelFrom": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "shippedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "deliveredAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "completeBy": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "completedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "cancelledAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "cancelReason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "disputeId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "uuid"
+                },
+                "can": {
+                  "type": "object",
+                  "properties": {
+                    "cancel": {
+                      "type": "boolean"
+                    },
+                    "received": {
+                      "type": "boolean"
+                    },
+                    "notReceived": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "cancel",
+                    "received",
+                    "notReceived"
+                  ]
+                },
+                "notReceivedClosesAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "code",
+                "status",
+                "shop",
+                "items",
+                "money",
+                "courier",
+                "placedAt",
+                "acceptBy",
+                "acceptedAt",
+                "shipBy",
+                "buyerCancelFrom",
+                "shippedAt",
+                "deliveredAt",
+                "completeBy",
+                "completedAt",
+                "cancelledAt",
+                "cancelReason",
+                "disputeId",
+                "can",
+                "notReceivedClosesAt"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "status",
+          "paymentMethod",
+          "paymentId",
+          "payBy",
+          "placedAt",
+          "createdAt",
+          "money",
+          "shipTo",
+          "subOrders"
+        ]
+      },
+      "OrderList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Order"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "ShopSubOrderList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShopSubOrder"
+            }
+          },
+          "counts": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "counts",
+          "nextCursor"
+        ]
+      },
+      "ShopSubOrder": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "orderCode": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending_payment",
+              "placed",
+              "accepted",
+              "shipped",
+              "delivered",
+              "completed",
+              "rejected",
+              "expired",
+              "cancelled",
+              "disputed",
+              "refunded"
+            ]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "variantId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "productId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "variantLabelEn": {
+                  "type": "string"
+                },
+                "variantLabelBn": {
+                  "type": "string"
+                },
+                "sku": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "photoUrl": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "unitPrice": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "qty": {
+                  "type": "integer"
+                },
+                "lineTotal": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "isMto": {
+                  "type": "boolean"
+                },
+                "mtoDays": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "variantId",
+                "productId",
+                "title",
+                "variantLabelEn",
+                "variantLabelBn",
+                "sku",
+                "photoUrl",
+                "unitPrice",
+                "qty",
+                "lineTotal",
+                "isMto",
+                "mtoDays"
+              ]
+            }
+          },
+          "money": {
+            "type": "object",
+            "properties": {
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "delivery": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "total": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "refunded": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "commissionBps": {
+                "type": "integer"
+              },
+              "commission": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "net": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "released": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "items",
+              "delivery",
+              "total",
+              "refunded",
+              "commissionBps",
+              "commission",
+              "net",
+              "released"
+            ]
+          },
+          "courier": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "trackingNo": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "trackingNo"
+            ]
+          },
+          "placedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "acceptBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "acceptedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "shipBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "buyerCancelFrom": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "shippedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "deliveredAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "completeBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "completedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cancelledAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "autoCancelAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cancelReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cancelledBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "completedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "disputeId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "area": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "nameEn": {
+                "type": "string"
+              },
+              "nameBn": {
+                "type": "string"
+              },
+              "isDhakaMetro": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "nameEn",
+              "nameBn",
+              "isDhakaMetro"
+            ]
+          },
+          "shipTo": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "phone": {
+                "type": "string"
+              },
+              "line": {
+                "type": "string"
+              },
+              "note": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "phone",
+              "line",
+              "note"
+            ],
+            "description": "Shown once the shop accepts (FR-10)"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "orderCode",
+          "status",
+          "items",
+          "money",
+          "courier",
+          "placedAt",
+          "acceptBy",
+          "acceptedAt",
+          "shipBy",
+          "buyerCancelFrom",
+          "shippedAt",
+          "deliveredAt",
+          "completeBy",
+          "completedAt",
+          "cancelledAt",
+          "autoCancelAt",
+          "cancelReason",
+          "cancelledBy",
+          "completedBy",
+          "disputeId",
+          "area",
+          "shipTo"
+        ]
+      },
+      "ShopSettlement": {
+        "type": "object",
+        "properties": {
+          "completed": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "gross": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "commission": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "net": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "count",
+              "gross",
+              "commission",
+              "net"
+            ]
+          },
+          "inEscrow": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "net": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "count",
+              "net"
+            ]
+          },
+          "refunded": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "payoutsHref": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "completed",
+          "inEscrow",
+          "refunded",
+          "payoutsHref"
+        ]
+      },
+      "StaffOrderList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "code": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "pending_payment",
+                    "placed",
+                    "cancelled",
+                    "completed"
+                  ]
+                },
+                "total": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "createdAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "subOrders": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "code",
+                "status",
+                "total",
+                "createdAt",
+                "subOrders"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "StaffOrder": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending_payment",
+              "placed",
+              "cancelled",
+              "completed"
+            ]
+          },
+          "buyerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "paymentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "money": {
+            "type": "object",
+            "properties": {
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "delivery": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "total": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "items",
+              "delivery",
+              "total"
+            ]
+          },
+          "area": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "nameEn": {
+                "type": "string"
+              },
+              "nameBn": {
+                "type": "string"
+              },
+              "isDhakaMetro": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "nameEn",
+              "nameBn",
+              "isDhakaMetro"
+            ]
+          },
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "placedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subOrders": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "code": {
+                  "type": "string"
+                },
+                "orderCode": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "pending_payment",
+                    "placed",
+                    "accepted",
+                    "shipped",
+                    "delivered",
+                    "completed",
+                    "rejected",
+                    "expired",
+                    "cancelled",
+                    "disputed",
+                    "refunded"
+                  ]
+                },
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "variantId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "productId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "variantLabelEn": {
+                        "type": "string"
+                      },
+                      "variantLabelBn": {
+                        "type": "string"
+                      },
+                      "sku": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "photoUrl": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "unitPrice": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "qty": {
+                        "type": "integer"
+                      },
+                      "lineTotal": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "isMto": {
+                        "type": "boolean"
+                      },
+                      "mtoDays": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "variantId",
+                      "productId",
+                      "title",
+                      "variantLabelEn",
+                      "variantLabelBn",
+                      "sku",
+                      "photoUrl",
+                      "unitPrice",
+                      "qty",
+                      "lineTotal",
+                      "isMto",
+                      "mtoDays"
+                    ]
+                  }
+                },
+                "money": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "delivery": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "total": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "refunded": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "commissionBps": {
+                      "type": "integer"
+                    },
+                    "commission": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "net": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "released": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "delivery",
+                    "total",
+                    "refunded",
+                    "commissionBps",
+                    "commission",
+                    "net",
+                    "released"
+                  ]
+                },
+                "courier": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "trackingNo": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "trackingNo"
+                  ]
+                },
+                "placedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "acceptBy": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "acceptedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "shipBy": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "buyerCancelFrom": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "shippedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "deliveredAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "completeBy": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "completedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "cancelledAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "autoCancelAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "cancelReason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "cancelledBy": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "completedBy": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "disputeId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "uuid"
+                },
+                "area": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "nameEn": {
+                      "type": "string"
+                    },
+                    "nameBn": {
+                      "type": "string"
+                    },
+                    "isDhakaMetro": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "nameEn",
+                    "nameBn",
+                    "isDhakaMetro"
+                  ]
+                },
+                "shop": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "slug"
+                  ]
+                },
+                "sellerId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "buyerId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "escrow": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "additionalProperties": {}
+                }
+              },
+              "required": [
+                "id",
+                "code",
+                "orderCode",
+                "status",
+                "items",
+                "money",
+                "courier",
+                "placedAt",
+                "acceptBy",
+                "acceptedAt",
+                "shipBy",
+                "buyerCancelFrom",
+                "shippedAt",
+                "deliveredAt",
+                "completeBy",
+                "completedAt",
+                "cancelledAt",
+                "autoCancelAt",
+                "cancelReason",
+                "cancelledBy",
+                "completedBy",
+                "disputeId",
+                "area",
+                "sellerId",
+                "buyerId",
+                "escrow"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "status",
+          "buyerId",
+          "paymentId",
+          "money",
+          "area",
+          "createdAt",
+          "placedAt",
+          "subOrders"
+        ]
       }
     },
     "parameters": {}
@@ -45553,9 +47425,10 @@
                   "sourceType": {
                     "type": "string",
                     "enum": [
-                      "booking"
+                      "booking",
+                      "sub_order"
                     ],
-                    "description": "Esports result disputes open from the match page (POST /me/esports/matches/{id}/disputes)"
+                    "description": "A booking or a shop sub-order (M13). Esports result disputes open from the match page (POST /me/esports/matches/{id}/disputes)"
                   },
                   "sourceId": {
                     "type": "string",
@@ -45566,7 +47439,8 @@
                     "enum": [
                       "no_show_contest",
                       "venue_problem",
-                      "cash_problem"
+                      "cash_problem",
+                      "not_received"
                     ]
                   },
                   "statement": {
@@ -45766,7 +47640,8 @@
               "type": "string",
               "enum": [
                 "booking",
-                "esports_result"
+                "esports_result",
+                "sub_order"
               ],
               "default": "booking"
             },
@@ -46361,7 +48236,8 @@
               "type": "string",
               "enum": [
                 "booking",
-                "esports_result"
+                "esports_result",
+                "sub_order"
               ]
             },
             "required": false,
@@ -53993,6 +55869,1838 @@
           },
           "409": {
             "description": "Error. Codes: SHOP_STATE, PRODUCT_STATE, VARIANT_HAS_HELD",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/cart": {
+      "get": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "My cart grouped by shop, with live prices and stock (FR-01, FR-02)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Cart"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Empty my cart",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Cart"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/cart/items/{variantId}": {
+      "put": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Add an item or set its quantity (at most the stock and the per-order limit; not your own shop)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "variantId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "qty": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 50
+                  }
+                },
+                "required": [
+                  "qty"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Cart"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: ITEM_UNAVAILABLE, INSUFFICIENT_STOCK",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: OWN_ITEM, QTY_LIMIT, VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Remove an item (the line is kept with removed_at)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "variantId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Cart"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/checkout/quote": {
+      "post": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Price the cart on the server: a sub-order per shop, delivery by area (৳80 Dhaka metro, ৳150 outside), price changes (FR-03)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "areaId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "areaId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderQuote"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PHONE_REQUIRED, ACCOUNT_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: ITEM_UNAVAILABLE, INSUFFICIENT_STOCK",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: OWN_ITEM, QTY_LIMIT, VALIDATION_FAILED, CART_EMPTY, AREA_UNKNOWN",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/checkout": {
+      "post": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Place the order (gate buy: a verified phone): stock held, one payment split into an escrow hold per shop; pay within market.checkout_hold_minutes (FR-04 to FR-07)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "8–80 letters, digits, - or _. Retries with the same key and body replay the first response"
+            },
+            "required": true,
+            "description": "8–80 letters, digits, - or _. Retries with the same key and body replay the first response",
+            "name": "idempotency-key",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ship": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 2,
+                        "maxLength": 80
+                      },
+                      "phone": {
+                        "type": "string"
+                      },
+                      "areaId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "line": {
+                        "type": "string",
+                        "minLength": 5,
+                        "maxLength": 200,
+                        "description": "House, road, landmark"
+                      },
+                      "note": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "phone",
+                      "areaId",
+                      "line"
+                    ]
+                  },
+                  "expectedTotal": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "The quote total the buyer confirmed; a different live total is PRICE_CHANGED"
+                  }
+                },
+                "required": [
+                  "ship",
+                  "expectedTotal"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PHONE_REQUIRED, ACCOUNT_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: ITEM_UNAVAILABLE, INSUFFICIENT_STOCK, PRICE_CHANGED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: OWN_ITEM, QTY_LIMIT, VALIDATION_FAILED, CART_EMPTY, AREA_UNKNOWN",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/orders": {
+      "get": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "My orders, newest first",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending_payment",
+                "placed",
+                "cancelled",
+                "completed"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/orders/{code}": {
+      "get": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "An order with its sub-orders, tracking and what I can do now",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^KG-\\d{2}-\\d{6,}(-[A-Z])?$"
+            },
+            "required": true,
+            "name": "code",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/orders/{code}/pay": {
+      "post": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "The payment link of an unpaid order",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^KG-\\d{2}-\\d{6,}(-[A-Z])?$"
+            },
+            "required": true,
+            "name": "code",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: ORDER_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/sub-orders/{id}/cancel": {
+      "post": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Cancel before the shop accepts, or once shipping is late by market.ship_overdue_buyer_cancel_hours (100% refund)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "changed_mind",
+                      "ordered_by_mistake",
+                      "found_cheaper",
+                      "buyer_cancelled",
+                      "other"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: ORDER_STATE, CANCEL_NOT_YET",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/sub-orders/{id}/received": {
+      "post": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "I have the parcel: the sub-order completes and the shop is paid (minus the commission on the items)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: ORDER_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/sub-orders/{id}/not-received": {
+      "post": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Open an M17 dispute (not_received): the hold freezes until staff decide (gate file_dispute)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "8–80 letters, digits, - or _. Retries with the same key and body replay the first response"
+            },
+            "required": true,
+            "description": "8–80 letters, digits, - or _. Retries with the same key and body replay the first response",
+            "name": "idempotency-key",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "statement": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "statement"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {},
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PHONE_REQUIRED, NOT_YOUR_ORDER",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: DISPUTE_NOT_ELIGIBLE, DISPUTE_WINDOW_CLOSED, DISPUTE_ALREADY_OPEN",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error. Codes: DISPUTE_LIMIT",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shop/sub-orders": {
+      "get": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "My shop orders by tab (to accept, to ship, shipped, done, cancelled) with counts",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "to_accept",
+                "to_ship",
+                "shipped",
+                "done",
+                "cancelled"
+              ],
+              "default": "to_accept"
+            },
+            "required": false,
+            "name": "tab",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopSubOrderList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, NOT_OWNER",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shop/sub-orders/{id}": {
+      "get": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "A shop order; the buyer’s phone and address show once accepted (FR-10)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopSubOrder"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, NOT_OWNER, NOT_YOUR_SHOP",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: ORDER_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shop/sub-orders/{id}/accept": {
+      "post": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Accept within market.shop_accept_hours (FR-08)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopSubOrder"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, NOT_OWNER, NOT_YOUR_SHOP",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: ORDER_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shop/sub-orders/{id}/reject": {
+      "post": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Reject the whole sub-order with a reason (Q82): 100% refund, stock released",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "out_of_stock",
+                      "cannot_deliver_area",
+                      "price_error",
+                      "shop_closed",
+                      "other"
+                    ]
+                  },
+                  "note": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopSubOrder"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, NOT_OWNER, NOT_YOUR_SHOP",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: ORDER_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shop/sub-orders/{id}/ship": {
+      "post": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Ship with the courier and tracking number; the held stock is committed",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "courierName": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 60
+                  },
+                  "trackingNo": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9/-]{4,40}$"
+                  }
+                },
+                "required": [
+                  "courierName",
+                  "trackingNo"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopSubOrder"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, NOT_OWNER, NOT_YOUR_SHOP",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: ORDER_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: TRACKING_INVALID, VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shop/sub-orders/{id}/delivered": {
+      "post": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Mark delivered (optional photo proof, private storage); auto-completes after market.auto_complete_days",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "description": "Optional delivery photo (raw JPEG, PNG or WebP, up to market.photo_max_bytes); send an empty body for none",
+          "content": {
+            "image/jpeg": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "image/png": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "image/webp": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopSubOrder"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, NOT_OWNER, NOT_YOUR_SHOP",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: ORDER_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error. Codes: FILE_TOO_LARGE, PAYLOAD_TOO_LARGE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error. Codes: FILE_TYPE_NOT_ALLOWED, FILE_TYPE_MISMATCH",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error. Codes: UPLOAD_RATE_LIMITED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shop/settlement": {
+      "get": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Completed (released to my payable), in escrow and refunded totals",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShopSettlement"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, NOT_OWNER",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/orders": {
+      "get": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Orders by code or status (manage_users, refund_small or view_payouts)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 24
+            },
+            "required": false,
+            "name": "code",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending_payment",
+                "placed",
+                "cancelled",
+                "completed"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffOrderList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/orders/{code}": {
+      "get": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "An order: each sub-order’s timeline and escrow hold (no phone or address)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "code",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffOrder"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/orders/sub-orders/{id}/cancel": {
+      "post": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Cancel a sub-order not yet shipped for the platform with a full refund (master, step-up escrow.manage)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Single-use step-up token from POST /auth/step-up"
+            },
+            "required": true,
+            "description": "Single-use step-up token from POST /auth/step-up",
+            "name": "x-step-up",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffOrder"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: ORDER_STATE",
             "content": {
               "application/problem+json": {
                 "schema": {

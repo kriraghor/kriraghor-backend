@@ -14,11 +14,14 @@ const SEVERITY = { high: 0, normal: 1, low: 2 };
 const PROVIDERS = {
   member: [
     (p) => require('../bookings/bookings.reads').pendingActions(p, 'member'),
+    // M13: parcels marked delivered that the buyer has not confirmed.
+    (p) => require('../orders/orders.reads').pendingActions(p, 'member'),
     async (p) => (p.roles?.member === 'active' ? [] : [{ key: p.roles?.member === 'in_review' ? 'nid_in_review' : 'verify_nid', count: 1, severity: 'normal', dueAt: null, href: '/account/verification' }]),
   ],
   ground_owner: [(p) => require('../bookings/bookings.reads').pendingActions(p, 'ground_owner'), (p) => require('../grounds/grounds.reads').pendingActions(p)],
   // M12: the shop and products with changes requested, and stock running low, out or blocked for expiry.
-  shop_owner: [(p) => require('../market/market.reads').pendingActions(p)],
+  // M13: orders to accept and to ship.
+  shop_owner: [(p) => require('../market/market.reads').pendingActions(p), (p) => require('../orders/orders.reads').pendingActions(p, 'shop_owner')],
   staff: [
     async (p) => {
       const s = await require('../moderation/moderation.service').stats(p);

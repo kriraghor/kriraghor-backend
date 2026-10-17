@@ -6,7 +6,7 @@
  * invalid payloads before commit. Payloads carry IDs, codes, amounts, statuses and timestamps only:
  * no phone, NID, DOB, email or names (consumers read details through the producer's service).
  *
- * Built so far: M01, M02, M03, M04, M05, M06, M07, M09, M10, M12, M17, M18, M19, M21. Each later module adds its events here when it is built.
+ * Built so far: M01, M02, M03, M04, M05, M06, M07, M09, M10, M12, M13, M17, M18, M19, M21. Each later module adds its events here when it is built.
  */
 const { z } = require('zod');
 
@@ -23,6 +23,8 @@ const shopEvent = z.object({ shopId: uuid, ownerId: uuid });
 const productEvent = z.object({ productId: uuid, shopId: uuid, ownerId: uuid });
 const variantEvent = z.object({ variantId: uuid, productId: uuid, shopId: uuid, ownerId: uuid });
 const reasonText = z.string().max(300).nullable().optional();
+const orderEvent = z.object({ orderId: uuid, code: z.string().max(20), buyerId: uuid, total: poisha });
+const subOrderEvent = z.object({ subOrderId: uuid, code: z.string().max(24), orderId: uuid, shopId: uuid, sellerId: uuid, buyerId: uuid, total: poisha });
 const docEvent = z.object({ documentId: uuid, userId: uuid, docType: z.string().max(30), role: z.string().max(32).optional() });
 const payoutEvent = z.object({ payoutId: uuid, code: z.string(), payeeId: uuid, amount: poisha });
 const subEvent = z.object({ submissionId: uuid, kind: z.string().max(30), subjectId: uuid, version: z.number().int(), submittedBy: uuid });
@@ -31,7 +33,7 @@ const esMatch = z.object({ matchId: uuid, tournamentId: uuid });
 const esProfile = z.object({ profileId: uuid, userId: uuid, gameId: uuid });
 const esShare = z.object({ shareId: uuid, tournamentId: uuid, userId: uuid, amount: poisha });
 const bookingEvent = z.object({ bookingId: uuid, code: z.string().max(16), groundId: uuid, ownerId: uuid, bookerUserId: uuid.nullable() });
-const disputeEvent = z.object({ disputeId: uuid, code: z.string().max(20), sourceType: z.enum(['booking', 'esports_result']), sourceId: uuid, category: z.string().max(30), claimantId: uuid, respondentId: uuid.nullable() });
+const disputeEvent = z.object({ disputeId: uuid, code: z.string().max(20), sourceType: z.enum(['booking', 'esports_result', 'sub_order']), sourceId: uuid, category: z.string().max(30), claimantId: uuid, respondentId: uuid.nullable() });
 const subjectType = z.enum(['ground', 'booking', 'user', 'review', 'esports_tournament', 'shop', 'product']);
 const reviewEvent = z.object({ reviewId: uuid, subjectType: z.literal('ground'), subjectId: uuid, authorId: uuid });
 const docRequestEvent = z.object({ requestId: uuid, userId: uuid, docType: z.string().max(30), sourceRef: uuid.nullable(), dueAt: iso.nullable() });
@@ -100,7 +102,7 @@ const EVENTS = {
   'escrow.held': {
     module: 'M06',
     version: 1,
-    schema: z.object({ holdId: uuid, paymentId: uuid, purpose: z.string(), purposeId: uuid, amount: poisha, payeeId: uuid.nullable(), groupRef: uuid.nullable() }),
+    schema: z.object({ holdId: uuid, paymentId: uuid, purpose: z.string(), purposeId: uuid, amount: poisha, payeeId: uuid.nullable(), groupRef: uuid.nullable(), splitRef: uuid.nullable().optional() }),
   },
   'escrow.released': {
     module: 'M06',
@@ -234,6 +236,22 @@ const EVENTS = {
   'variant.sale_unblocked': { module: 'M12', version: 1, schema: variantEvent.extend({ expiryDate: z.string().max(10).nullable() }) },
   'inventory.adjusted': { module: 'M12', version: 1, schema: z.object({ variantId: uuid, productId: uuid, shopId: uuid, delta: z.number().int(), reasonCode: z.string().max(30) }) },
   'saved_item.alerted': { module: 'M12', version: 1, schema: z.object({ savedItemId: uuid, userId: uuid, itemType: z.enum(['product', 'used_listing']), itemId: uuid, reason: z.enum(['back_in_stock', 'price_dropped']), pricePoisha: poisha }) },
+  // ---------------- M13 orders, step 1 (shop orders)
+  'order.created': { module: 'M13', version: 1, schema: orderEvent.extend({ subOrders: z.number().int() }) },
+  'order.placed': { module: 'M13', version: 1, schema: orderEvent.extend({ subOrders: z.number().int() }) },
+  'order.cancelled': { module: 'M13', version: 1, schema: orderEvent },
+  'order.completed': { module: 'M13', version: 1, schema: orderEvent },
+  'sub_order.placed': { module: 'M13', version: 1, schema: subOrderEvent.extend({ acceptBy: iso, items: z.number().int() }) },
+  'sub_order.accept_reminded': { module: 'M13', version: 1, schema: subOrderEvent.extend({ acceptBy: iso.nullable() }) },
+  'sub_order.accepted': { module: 'M13', version: 1, schema: subOrderEvent.extend({ shipBy: iso.nullable() }) },
+  'sub_order.rejected': { module: 'M13', version: 1, schema: subOrderEvent.extend({ reason: z.string().max(40), refund: poisha }) },
+  'sub_order.expired': { module: 'M13', version: 1, schema: subOrderEvent.extend({ reason: z.string().max(40), refund: poisha, by: z.string().max(10) }) },
+  'sub_order.shipped': { module: 'M13', version: 1, schema: subOrderEvent.extend({ courier: z.string().max(60), tracking: z.string().max(40) }) },
+  'sub_order.delivered': { module: 'M13', version: 1, schema: subOrderEvent.extend({ completeBy: iso.nullable(), proof: z.boolean() }) },
+  'sub_order.completed': { module: 'M13', version: 1, schema: subOrderEvent.extend({ by: z.enum(['buyer', 'auto', 'dispute']), released: poisha, fee: poisha, net: poisha, refund: poisha.optional() }) },
+  'sub_order.cancelled': { module: 'M13', version: 1, schema: subOrderEvent.extend({ reason: z.string().max(40), refund: poisha, by: z.string().max(10).optional() }) },
+  'sub_order.disputed': { module: 'M13', version: 1, schema: subOrderEvent.extend({ disputeId: uuid }) },
+  'sub_order.refunded': { module: 'M13', version: 1, schema: subOrderEvent.extend({ refund: poisha, disputeId: uuid }) },
   // step 2: closures and series (written as M10 booking slots)
   'closure.created': { module: 'M09', version: 1, schema: z.object({ closureId: uuid, groundId: uuid, start: iso, end: iso, reason: z.string().max(30) }) },
   'closure.reopened': { module: 'M09', version: 1, schema: z.object({ closureId: uuid, groundId: uuid, start: iso, end: iso, reason: z.string().max(30) }) },

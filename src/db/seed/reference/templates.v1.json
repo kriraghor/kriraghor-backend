@@ -1,6 +1,6 @@
 {
-  "seedVersion": 11,
-  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code. v9: the M17 DISPUTE_*, REPORT_* and REVIEW_* codes. v10: the M18 RISK_*, PAYOUTS_*, DOCUMENTS_* and TRUST_LOW codes. v11: the M12 SHOP_*, PRODUCT_*, STOCK_*, SUPPLEMENT_EXPIRING and SAVED_* codes.",
+  "seedVersion": 12,
+  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code. v9: the M17 DISPUTE_*, REPORT_* and REVIEW_* codes. v10: the M18 RISK_*, PAYOUTS_*, DOCUMENTS_* and TRUST_LOW codes. v11: the M12 SHOP_*, PRODUCT_*, STOCK_*, SUPPLEMENT_EXPIRING and SAVED_* codes. v12: the M13 ORDER_* and SHOP_*ORDER* codes.",
   "templates": [
     {
       "code": "AUDIT_CRITICAL",
@@ -5583,6 +5583,636 @@
         {
           "name": "price",
           "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORDER_PLACED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Order placed",
+      "body": "Order {{code}} is paid ({{total}}). We will tell you when each shop accepts and ships.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "total",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORDER_PLACED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অর্ডার সম্পন্ন",
+      "body": "অর্ডার {{code}}-এর পেমেন্ট হয়েছে ({{total}})। প্রতিটি দোকান গ্রহণ ও পাঠালে আমরা জানাব।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "total",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORDER_PLACED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: order {{code}} paid, {{total}}. Track it in My orders.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "total",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORDER_PLACED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: অর্ডার {{code}}, {{total}} পরিশোধিত। আমার অর্ডারে দেখুন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "total",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "SHOP_NEW_ORDER",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "New order {{code}}",
+      "body": "A new order for {{total}}. Accept it by {{acceptBy}} or it is cancelled and refunded.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "acceptBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "SHOP_NEW_ORDER",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "নতুন অর্ডার {{code}}",
+      "body": "{{total}}-এর নতুন অর্ডার। {{acceptBy}}-এর মধ্যে গ্রহণ করুন, নইলে বাতিল ও ফেরত হবে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "acceptBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "SHOP_NEW_ORDER",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: new order {{code}}, {{total}}. Accept by {{acceptBy}} on vendor.kriraghor.com.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "acceptBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "SHOP_NEW_ORDER",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: নতুন অর্ডার {{code}}, {{total}}। {{acceptBy}}-এর মধ্যে গ্রহণ করুন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "acceptBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "SHOP_ORDER_REMINDER",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Accept order {{code}} soon",
+      "body": "Order {{code}} is cancelled and refunded if you do not accept it by {{acceptBy}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "acceptBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "SHOP_ORDER_REMINDER",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অর্ডার {{code}} গ্রহণ করুন",
+      "body": "{{acceptBy}}-এর মধ্যে গ্রহণ না করলে অর্ডার {{code}} বাতিল ও ফেরত হবে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "acceptBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "SHOP_ORDER_REMINDER",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: accept order {{code}} by {{acceptBy}} or it is cancelled.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "acceptBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "SHOP_ORDER_REMINDER",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{acceptBy}}-এর মধ্যে অর্ডার {{code}} গ্রহণ করুন, নইলে বাতিল হবে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "acceptBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "ORDER_ACCEPTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Order accepted",
+      "body": "{{shop}} accepted {{code}} and is getting it ready to ship.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "shop",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "ORDER_ACCEPTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অর্ডার গৃহীত",
+      "body": "{{shop}} {{code}} গ্রহণ করেছে এবং পাঠানোর প্রস্তুতি নিচ্ছে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "shop",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "ORDER_REJECTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Order not accepted",
+      "body": "{{shop}} could not take {{code}}: {{reason}}. {{refund}} is on its way back to you.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "shop",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORDER_REJECTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অর্ডার গৃহীত হয়নি",
+      "body": "{{shop}} {{code}} নিতে পারেনি: {{reason}}। {{refund}} আপনাকে ফেরত দেওয়া হচ্ছে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "shop",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORDER_REJECTED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: order {{code}} was not accepted. {{refund}} will be refunded.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORDER_REJECTED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: অর্ডার {{code}} গৃহীত হয়নি। {{refund}} ফেরত দেওয়া হবে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORDER_SHIPPED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Order shipped",
+      "body": "{{code}} is on its way with {{courier}}, tracking {{tracking}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "courier",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "tracking",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ORDER_SHIPPED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অর্ডার পাঠানো হয়েছে",
+      "body": "{{code}} {{courier}}-এর মাধ্যমে আসছে, ট্র্যাকিং {{tracking}}।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "courier",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "tracking",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ORDER_SHIPPED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{code}} shipped with {{courier}}, tracking {{tracking}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "courier",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "tracking",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ORDER_SHIPPED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{code}} {{courier}}-এ পাঠানো হয়েছে, ট্র্যাকিং {{tracking}}।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "courier",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "tracking",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ORDER_DELIVERED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Did your order arrive?",
+      "body": "The shop marked {{code}} delivered. Tap Received if you have it, or Not received if you do not.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        }
+      ]
+    },
+    {
+      "code": "ORDER_DELIVERED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অর্ডার পেয়েছেন?",
+      "body": "দোকান {{code}} ডেলিভারি হয়েছে বলেছে। পেলে \"পেয়েছি\", না পেলে \"পাইনি\" চাপুন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        }
+      ]
+    },
+    {
+      "code": "ORDER_COMPLETED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Order {{code}} completed",
+      "body": "{{net}} is on its way to your payouts after the Kriraghor commission.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "net",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORDER_COMPLETED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অর্ডার {{code}} সম্পন্ন",
+      "body": "ক্রীড়াঘরের কমিশনের পর {{net}} আপনার পেআউটে যাচ্ছে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "net",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORDER_CANCELLED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Order cancelled",
+      "body": "{{code}} was cancelled: {{reason}}. {{refund}} is on its way back to you.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORDER_CANCELLED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অর্ডার বাতিল",
+      "body": "{{code}} বাতিল হয়েছে: {{reason}}। {{refund}} আপনাকে ফেরত দেওয়া হচ্ছে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORDER_CANCELLED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: order {{code}} cancelled. {{refund}} will be refunded.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORDER_CANCELLED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: অর্ডার {{code}} বাতিল। {{refund}} ফেরত দেওয়া হবে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "SHOP_ORDER_CANCELLED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Order {{code}} cancelled",
+      "body": "{{code}} was cancelled: {{reason}}. The stock is back on your shelf.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "SHOP_ORDER_CANCELLED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অর্ডার {{code}} বাতিল",
+      "body": "{{code}} বাতিল হয়েছে: {{reason}}। স্টক আবার আপনার তাকে ফিরেছে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 60
         }
       ]
     }

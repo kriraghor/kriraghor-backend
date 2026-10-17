@@ -28,6 +28,7 @@ const disputes = require('../modules/trust/disputes.service');
 const riskJobs = require('../modules/risk/risk.jobs');
 const risk = require('../modules/risk/risk.nightly');
 const inventory = require('../modules/market/inventory.service');
+const orders = require('../modules/orders/orders.jobs');
 const { purgeExpired: purgeIdempotencyKeys } = require('../common/idempotency');
 const logger = require('../common/logger');
 
@@ -292,6 +293,15 @@ const JOBS = [
     queue: QUEUES.MARKET,
     every: 60 * 60 * 1000,
     run: async () => inventory.visibilitySweep(),
+  },
+  // ---------------- M13 orders (§10). Idempotent: every step locks the sub-order and re-checks its status.
+  {
+    // Unpaid orders past market.checkout_hold_minutes; accept reminders and expiry (refund); shipping
+    // late past market.ship_overdue_auto_cancel_hours (refund); delivered past market.auto_complete_days.
+    name: 'orders.tick',
+    queue: QUEUES.ORDERS,
+    every: 60 * 1000,
+    run: async () => orders.tick(),
   },
   // ---------------- M19 analytics (§10). Idempotent: upserts and REFRESH … CONCURRENTLY under an advisory lock.
   {

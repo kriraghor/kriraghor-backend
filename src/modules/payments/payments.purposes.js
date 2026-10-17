@@ -27,6 +27,9 @@ const PURPOSES = {
   // M10 ground bookings: the advance or the full price, held per booking and released to the owner at
   // check-in (or auto-complete) with the fee on the full value (escrow feeBase, v3).
   ground_booking: { vertical: 'grounds', escrowAccount: 'escrow:ground_booking', pooled: false, testOnly: false, payoutSchedule: 'ground_weekly' },
+  // M13 shop orders: one payment for a basket, split into one hold per shop sub-order (M06 splits),
+  // each released to its shop at completion with the commission on the items subtotal (feeBase).
+  market_order: { vertical: 'market', escrowAccount: 'escrow:market_order', pooled: false, testOnly: false, payoutSchedule: 'shop_weekly' },
   // Master test charge (dev and staging only, PAYMENTS_TEST_CHARGES): the Phase 2 exit check.
   test_charge: { vertical: 'test', escrowAccount: 'escrow:test_charge', pooled: false, testOnly: true, payoutSchedule: 'daily' },
 };

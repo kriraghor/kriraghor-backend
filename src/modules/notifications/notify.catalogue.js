@@ -3,7 +3,7 @@
 /**
  * Notification catalogue (M08 §6.6), as code. Each entry maps a domain event to recipients, channels
  * and template variables. Template texts are versioned rows in message_templates (EN and BN for
- * every default channel; a contract test checks it). Built so far: the M01, M02, M03, M04, M05, M06, M07, M09, M10, M17, M18, M19 and M21 events.
+ * every default channel; a contract test checks it). Built so far: the M01, M02, M03, M04, M05, M06, M07, M09, M10, M12, M13, M17, M18, M19 and M21 events.
  *
  * Entry: { code, events[], category, channels[], urgent, roleContext?(e), recipients(e) → userIds,
  *          values(e, { locale, userId }) → template values, link(e) → in-app link }
@@ -78,6 +78,15 @@ const variantValues = async (e, locale) => {
 };
 const webProduct = async (productId) => webUrl(`/shop/p/${(await productFacts(productId)).slug}`);
 const bookingFacts = (id) => require('../bookings/bookings.reads').facts(id);
+// M13: shop orders (the buyer and the shop owner). Codes, shop names and amounts only.
+const orderFacts = (id) => require('../orders/orders.reads').facts(id);
+const ORDER_REASONS = {
+  en: { out_of_stock: 'the item is out of stock', cannot_deliver_area: 'the shop cannot deliver to your area', price_error: 'the price was wrong', shop_closed: 'the shop is closed', not_accepted: 'the shop did not accept in time', not_shipped: 'the shop did not ship in time', ship_overdue: 'you cancelled a late shipment', buyer_cancelled: 'you cancelled it', platform: 'our team cancelled it', payment_not_completed: 'the payment was not completed', payment_timeout: 'the payment was not completed in time', other: 'see the order for details' },
+  bn: { out_of_stock: 'পণ্যটি স্টকে নেই', cannot_deliver_area: 'দোকান আপনার এলাকায় পাঠাতে পারে না', price_error: 'দাম ভুল ছিল', shop_closed: 'দোকান বন্ধ', not_accepted: 'দোকান সময়মতো গ্রহণ করেনি', not_shipped: 'দোকান সময়মতো পাঠায়নি', ship_overdue: 'দেরিতে পাঠানোর কারণে আপনি বাতিল করেছেন', buyer_cancelled: 'আপনি বাতিল করেছেন', platform: 'আমাদের টিম বাতিল করেছে', payment_not_completed: 'পেমেন্ট সম্পন্ন হয়নি', payment_timeout: 'সময়মতো পেমেন্ট হয়নি', other: 'বিস্তারিত অর্ডারে দেখুন' },
+};
+const orderReason = (code, locale) => ORDER_REASONS[locale]?.[code] ?? ORDER_REASONS.en[code] ?? reasonText(code, locale);
+const orderLink = (e) => `/me/orders/${e.payload.code.replace(/-[A-Z]$/, '')}`;
+const vendorOrder = (e) => `/vendor/orders?id=${e.payload.subOrderId}`;
 const bookingValues = async (e) => {
   const f = await bookingFacts(e.payload.bookingId);
   return { code: f.code, ground: f.groundName, start: f.start, paid: f.paidOnline, due: f.dueAtVenue, refund: f.refund, retained: f.retained };
@@ -1030,6 +1039,100 @@ const CATALOGUE = [
     recipients: (e) => (e.payload.reason === 'price_dropped' ? [e.payload.userId] : []),
     values: async (e) => ({ name: (await productFacts(e.payload.itemId)).title, price: e.payload.pricePoisha }),
     link: () => '/shop/saved',
+  },
+  // ---------------- M13 orders: the buyer and the shop owner
+  {
+    code: 'ORDER_PLACED',
+    events: ['order.placed'],
+    category: 'orders',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.buyerId],
+    values: (e) => ({ code: e.payload.code, total: e.payload.total }),
+    link: (e) => `/me/orders/${e.payload.code}`,
+  },
+  {
+    code: 'SHOP_NEW_ORDER',
+    events: ['sub_order.placed'],
+    category: 'orders',
+    channels: ['in_app', 'sms'],
+    urgent: true,
+    recipients: (e) => [e.payload.sellerId],
+    values: (e) => ({ code: e.payload.code, total: e.payload.total, acceptBy: e.payload.acceptBy }),
+    link: vendorOrder,
+  },
+  {
+    code: 'SHOP_ORDER_REMINDER',
+    events: ['sub_order.accept_reminded'],
+    category: 'orders',
+    channels: ['in_app', 'sms'],
+    urgent: true,
+    recipients: (e) => [e.payload.sellerId],
+    values: (e) => ({ code: e.payload.code, acceptBy: e.payload.acceptBy }),
+    link: vendorOrder,
+  },
+  {
+    code: 'ORDER_ACCEPTED',
+    events: ['sub_order.accepted'],
+    category: 'orders',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.buyerId],
+    values: async (e) => ({ code: e.payload.code, shop: (await orderFacts(e.payload.subOrderId)).shopName }),
+    link: orderLink,
+  },
+  {
+    code: 'ORDER_REJECTED',
+    events: ['sub_order.rejected'],
+    category: 'orders',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.buyerId],
+    values: async (e, { locale }) => ({ code: e.payload.code, shop: (await orderFacts(e.payload.subOrderId)).shopName, reason: orderReason(e.payload.reason, locale), refund: e.payload.refund }),
+    link: orderLink,
+  },
+  {
+    code: 'ORDER_SHIPPED',
+    events: ['sub_order.shipped'],
+    category: 'orders',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.buyerId],
+    values: (e) => ({ code: e.payload.code, courier: e.payload.courier, tracking: e.payload.tracking }),
+    link: orderLink,
+  },
+  {
+    code: 'ORDER_DELIVERED',
+    events: ['sub_order.delivered'],
+    category: 'orders',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.buyerId],
+    values: (e) => ({ code: e.payload.code }),
+    link: orderLink,
+  },
+  {
+    code: 'ORDER_COMPLETED',
+    events: ['sub_order.completed'],
+    category: 'orders',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.sellerId],
+    values: (e) => ({ code: e.payload.code, net: e.payload.net }),
+    link: vendorOrder,
+  },
+  {
+    code: 'ORDER_CANCELLED',
+    events: ['sub_order.cancelled', 'sub_order.expired'],
+    category: 'orders',
+    channels: ['in_app', 'sms'],
+    // An unpaid order that lapsed tells no one (nothing was paid or sent to the shop).
+    recipients: (e) => (['payment_not_completed', 'payment_timeout'].includes(e.payload.reason) ? [] : [e.payload.buyerId]),
+    values: (e, { locale }) => ({ code: e.payload.code, reason: orderReason(e.payload.reason, locale), refund: e.payload.refund }),
+    link: orderLink,
+  },
+  {
+    code: 'SHOP_ORDER_CANCELLED',
+    events: ['sub_order.cancelled', 'sub_order.expired'],
+    category: 'orders',
+    channels: ['in_app'],
+    recipients: (e) => (['payment_not_completed', 'payment_timeout'].includes(e.payload.reason) ? [] : [e.payload.sellerId]),
+    values: (e, { locale }) => ({ code: e.payload.code, reason: orderReason(e.payload.reason, locale) }),
+    link: vendorOrder,
   },
   // ---------------- M18 risk and trust (the payee never sees the rule)
   {
