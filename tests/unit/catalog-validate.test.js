@@ -39,3 +39,21 @@ describe('UID pattern', () => {
     expect(uidRegexError('^[0-9{5,12$')).toBe('Not a valid pattern');
   });
 });
+
+describe('M03 item fields (M12; Q77)', () => {
+  const { itemFieldError } = require('../../src/modules/catalog/catalog.validate');
+  const opts = (...values) => values.map((value) => ({ value, labelEn: value, labelBn: value }));
+  it('accepts a pick-list axis and a bounded number', () => {
+    expect(itemFieldError({ kind: 'select', isVariantAxis: true, options: opts('S', 'M') })).toBeNull();
+    expect(itemFieldError({ kind: 'number', minValue: 1, maxValue: 10 })).toBeNull();
+    expect(itemFieldError({ kind: 'number', minValue: null, maxValue: 10 })).toBeNull();
+    expect(itemFieldError({ kind: 'text' })).toBeNull();
+  });
+  it('refuses a non-select axis, an empty or duplicated pick-list and max below min', () => {
+    expect(itemFieldError({ kind: 'text', isVariantAxis: true })).toEqual({ field: 'isVariantAxis', message: 'Only a pick-list can be a variant option' });
+    expect(itemFieldError({ kind: 'select', options: [] })).toEqual({ field: 'options', message: 'Add at least one option' });
+    expect(itemFieldError({ kind: 'select' })).toEqual({ field: 'options', message: 'Add at least one option' });
+    expect(itemFieldError({ kind: 'select', options: opts('S', 'S') })).toEqual({ field: 'options', message: 'Option values must be unique' });
+    expect(itemFieldError({ kind: 'number', minValue: 5, maxValue: 2 })).toEqual({ field: 'maxValue', message: 'At least the minimum' });
+  });
+});

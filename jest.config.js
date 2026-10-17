@@ -42,5 +42,7 @@ module.exports = {
     './src/modules/trust/trust.rules.js': FULL,
     // M18 flag machine, authority, undo and the reliability formula.
     './src/modules/risk/risk.rules.js': FULL,
+    // M12 state machine, spec and variant checks, stock arithmetic, shelf life and prices.
+    './src/modules/market/market.rules.js': FULL,
   },
 };

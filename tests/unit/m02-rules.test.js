@@ -128,3 +128,16 @@ describe('M02 member role (§6.2) and badge (§6.4)', () => {
     expect(R.MEMBER_AFTER.approved.kyc).toBe('verified');
   });
 });
+
+describe('M02 business documents per role (M12)', () => {
+  it('uses the role asked for, or the only applied role that needs the type', () => {
+    const both = ['ground_owner', 'shop_owner'];
+    expect(R.businessRoleFor({ asked: 'shop_owner', requirementRoles: both, appliedRoles: both })).toEqual({ role: 'shop_owner' });
+    expect(R.businessRoleFor({ asked: 'shop_owner', requirementRoles: both, appliedRoles: ['ground_owner'] })).toEqual({ error: 'ROLE_NOT_APPLIED' });
+    expect(R.businessRoleFor({ asked: 'shop_owner', requirementRoles: ['ground_owner'], appliedRoles: both })).toEqual({ error: 'DOC_TYPE_NOT_REQUIRED' });
+    expect(R.businessRoleFor({ requirementRoles: both, appliedRoles: ['shop_owner'] })).toEqual({ role: 'shop_owner' });
+    expect(R.businessRoleFor({ requirementRoles: both, appliedRoles: both })).toEqual({ error: 'ROLE_AMBIGUOUS' });
+    expect(R.businessRoleFor({ requirementRoles: both, appliedRoles: [] })).toEqual({ error: 'ROLE_NOT_APPLIED' });
+    expect(R.businessRoleFor({ requirementRoles: [], appliedRoles: both })).toEqual({ error: 'DOC_TYPE_NOT_REQUIRED' });
+  });
+});

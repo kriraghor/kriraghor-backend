@@ -76,7 +76,7 @@ async function owner(name = 'Kamal Hossain') {
   await sendDoc(m, 'trade_license', { number: `TL-${(seq += 1)}-2026`, holderName: `${name} Sports`, expiresOn: future(300) }, 201);
   await sendDoc(m, 'deed_or_lease', { kind: 'lease', expiresOn: future(900) }, 201);
   await h.drainEvents();
-  for (const t of ['trade_license', 'deed_or_lease']) await review(docsReviewer, 'document', subjectIdFor(m.user.id, t));
+  for (const t of ['trade_license', 'deed_or_lease']) await review(docsReviewer, 'document', subjectIdFor(m.user.id, t, 'ground_owner'));
   return refresh(m);
 }
 

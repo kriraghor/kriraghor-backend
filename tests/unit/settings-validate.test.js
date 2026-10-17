@@ -130,6 +130,12 @@ describe('cross-key rules (§6.5)', () => {
     'market.offer_floor_pct_default': 70,
     'market.return_window_days_min': 3,
     'market.return_window_days_max': 30,
+    'market.product_min_photos': 3,
+    'market.product_max_photos': 10,
+    'market.mto_days_default': 5,
+    'market.mto_days_max': 21,
+    'market.max_qty_per_order_default': 10,
+    'market.max_qty_per_order_max': 50,
     'esports.checkin_close_minutes': 20,
     'esports.checkin_open_minutes': 60,
     'esports.room_reveal_minutes': 15,
@@ -154,6 +160,9 @@ describe('cross-key rules (§6.5)', () => {
     ['market.offer_order', { 'market.offer_min_pct': 80 }],
     ['market.offer_order', { 'market.offer_floor_pct_default': 100, 'market.offer_min_pct': 50 }],
     ['market.return_window', { 'market.return_window_days_min': 31 }],
+    ['market.photos_order', { 'market.product_min_photos': 11 }],
+    ['market.mto_default', { 'market.mto_days_max': 4 }],
+    ['market.qty_default', { 'market.max_qty_per_order_max': 9 }],
     ['esports.checkin_order', { 'esports.checkin_close_minutes': 60 }],
     ['esports.room_reveal', { 'esports.room_reveal_minutes': 21 }],
     ['money.refund_below_payout_threshold', { 'refunds.staff_limit_poisha': 5000001 }],
@@ -164,7 +173,7 @@ describe('cross-key rules (§6.5)', () => {
 
   it('every rule is covered by the cases above', () => {
     expect(CROSS_RULES.map((r) => r.id).sort()).toEqual(
-      ['booking.advance_order', 'booking.advance_covers_fee', 'booking.refund_tiers', 'booking.grid_order', 'ground.price_band', 'market.offer_order', 'market.return_window', 'esports.checkin_order', 'esports.room_reveal', 'money.refund_below_payout_threshold', 'money.auto_release_below_payout_threshold'].sort()
+      ['booking.advance_order', 'booking.advance_covers_fee', 'booking.refund_tiers', 'booking.grid_order', 'ground.price_band', 'market.offer_order', 'market.return_window', 'market.photos_order', 'market.mto_default', 'market.qty_default', 'esports.checkin_order', 'esports.room_reveal', 'money.refund_below_payout_threshold', 'money.auto_release_below_payout_threshold'].sort()
     );
   });
 
