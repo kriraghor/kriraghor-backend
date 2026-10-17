@@ -36,5 +36,7 @@ module.exports = {
     './src/modules/grounds/grounds.rules.js': FULL,
     // M10 state machine, time guards and the v3 money plans.
     './src/modules/bookings/bookings.rules.js': FULL,
+    // M19 periods, deltas and KPI formulas.
+    './src/modules/analytics/analytics.rules.js': FULL,
   },
 };

@@ -29,6 +29,8 @@ function registerAll() {
   require('../grounds/grounds.moderation').registerGroundsConsumers();
   // M10: payment failures end holds; suspended or removed grounds cancel their bookings.
   require('../bookings/bookings.consumers').registerBookingsConsumers();
+  // M19: read models from bookings, closures, series, payments, the ledger and esports.
+  require('../analytics/facts.consumers').registerAnalyticsConsumers();
 
   // M01 ← M02: the member role follows the NID review.
   require('../users/kyc.consumers').registerKycConsumers();

@@ -223,6 +223,36 @@ async function getTransaction(id) {
   };
 }
 
+/**
+ * M19 facts: the platform fee lines of a transaction (fee_revenue:{vertical} credits are revenue,
+ * debits are reversals); null when the transaction has none.
+ */
+function feeFactOf(txn, entries) {
+  const lines = entries.filter((e) => e.account.code.startsWith('fee_revenue:'));
+  if (!lines.length) return null;
+  return {
+    txnId: txn.id,
+    postedAt: txn.postedAt,
+    kind: txn.kind,
+    vertical: lines[0].account.code.slice('fee_revenue:'.length),
+    feeRevenue: lines.reduce((n, e) => n + e.creditPoisha, 0),
+    feeReversal: lines.reduce((n, e) => n + e.debitPoisha, 0),
+  };
+}
+async function feeFact(txnId) {
+  const txn = await LedgerTransaction.findByPk(txnId);
+  if (!txn) return null;
+  const entries = await LedgerEntry.findAll({ where: { txnId }, include: [{ association: 'account', attributes: ['code'] }] });
+  return feeFactOf(txn, entries);
+}
+
+/** M19 reconcile: fee lines of the transactions posted in [since, until). */
+async function exportFeeFacts({ since, until }) {
+  const txns = await LedgerTransaction.findAll({ where: { postedAt: { [Op.gte]: since, [Op.lt]: until } }, order: [['postedAt', 'ASC']] });
+  const entries = txns.length ? await LedgerEntry.findAll({ where: { txnId: txns.map((t) => t.id) }, include: [{ association: 'account', attributes: ['code'] }] }) : [];
+  return txns.map((t) => feeFactOf(t, entries.filter((e) => e.txnId === t.id))).filter(Boolean);
+}
+
 /** Transactions that reference something (a payment, a refund, a hold). */
 async function transactionsFor(refs) {
   const rows = await LedgerTransaction.findAll({ where: { [Op.or]: refs.map(([refType, refId]) => ({ refType, refId })) }, order: [['postedAt', 'ASC'], ['id', 'ASC']] });
@@ -266,4 +296,4 @@ async function payableEntries({ upTo, payeeIds = null, transaction } = {}) {
   }));
 }
 
-module.exports = { ensureAccount, post, reverse, findByKey, balance, balancesByPrefix, trialBalance, listAccounts, accountEntries, getTransaction, transactionsFor, payableEntries };
+module.exports = { ensureAccount, post, reverse, findByKey, feeFact, exportFeeFacts, balance, balancesByPrefix, trialBalance, listAccounts, accountEntries, getTransaction, transactionsFor, payableEntries };

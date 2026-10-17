@@ -11,6 +11,7 @@
  *   courts(courtIds)                 ground, status, sports and group of courts (moves)
  *   liveGroundsOf(ownerId)           an owner's live grounds with public courts (move targets)
  *   price / quote                    the shared calculator (pricing.rules)
+ *   pendingActions(principal)        M19 "Needs your action": grounds with changes requested or unfinished drafts
  */
 const { Op } = require('sequelize');
 const { Ground, Court, CourtHours, PricingRule } = require('../../models');
@@ -83,4 +84,14 @@ async function liveGroundsOf(ownerId, { transaction } = {}) {
   return rows.map((g) => ({ id: g.id, name: g.liveSnapshot?.name ?? g.name, areaId: g.liveSnapshot?.areaId ?? g.areaId, courts: (g.liveSnapshot?.courts ?? []).map((k) => ({ id: k.id, name: k.name, sportIds: k.sportIds })) }));
 }
 
-module.exports = { ground, isOpen, hoursFor, courts, liveGroundsOf, closesAt, publishedVersionAt, versionById, price: pr.price, quote: pr.quote, advanceOf: pr.advanceOf, seriesPrice: pr.seriesPrice };
+async function pendingActions(principal) {
+  const rows = await Ground.findAll({ where: { ownerId: principal.id }, attributes: ['id', 'status', 'editStatus'] });
+  const changes = rows.filter((g) => g.status === 'changes_requested' || g.editStatus === 'changes_requested');
+  const drafts = rows.filter((g) => g.status === 'draft');
+  return [
+    ...changes.map((g) => ({ key: 'ground_changes_requested', count: 1, severity: 'high', dueAt: null, href: `/vendor/grounds/${g.id}` })),
+    ...(drafts.length ? [{ key: 'ground_draft', count: drafts.length, severity: 'normal', dueAt: null, href: '/vendor/grounds' }] : []),
+  ];
+}
+
+module.exports = { pendingActions, ground, isOpen, hoursFor, courts, liveGroundsOf, closesAt, publishedVersionAt, versionById, price: pr.price, quote: pr.quote, advanceOf: pr.advanceOf, seriesPrice: pr.seriesPrice };

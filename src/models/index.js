@@ -7,7 +7,7 @@ const { uuid7 } = require('../common/uuid7');
 const { toPoisha } = require('../common/money');
 
 const ROLE_STATUSES = ['applied', 'documents_pending', 'in_review', 'changes_requested', 'active', 'rejected', 'suspended', 'withdrawn'];
-const PERMS = ['approve_listings', 'approve_documents', 'resolve_reports', 'refund_small', 'view_payouts', 'release_payouts', 'edit_fees', 'manage_staff', 'manage_users', 'manage_catalog', 'manage_esports', 'enter_results'];
+const PERMS = ['approve_listings', 'approve_documents', 'resolve_reports', 'refund_small', 'view_payouts', 'release_payouts', 'edit_fees', 'manage_staff', 'manage_users', 'manage_catalog', 'manage_esports', 'enter_results', 'view_analytics'];
 
 const uuidPk = { type: DataTypes.UUID, primaryKey: true, defaultValue: DataTypes.UUIDV4 };
 
@@ -1158,6 +1158,9 @@ bookings.Booking.belongsTo(User, { as: 'booker', foreignKey: 'bookerUserId' });
 bookings.Booking.belongsTo(grounds.BookingSeries, { as: 'series', foreignKey: 'seriesId' });
 grounds.BookingSeries.hasMany(bookings.Booking, { as: 'bookings', foreignKey: 'seriesId' });
 
+// ---- M19 analytics read models (./analytics.js) ----
+const analytics = require('./analytics');
+
 // ---- M21 esports (models in ./esports.js) ----
 const esports = require('./esports');
 esports.EsportsTournament.belongsTo(EsportsGame, { as: 'game', foreignKey: 'gameId' });
@@ -1171,6 +1174,7 @@ module.exports = {
   ...places,
   ...grounds,
   ...bookings,
+  ...analytics,
   sequelize,
   User,
   UserRole,

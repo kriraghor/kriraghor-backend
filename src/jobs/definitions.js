@@ -23,6 +23,7 @@ const moderation = require('../modules/moderation/moderation.service');
 const esportsLifecycle = require('../modules/esports/esports.lifecycle');
 const esportsRankings = require('../modules/esports/rankings.service');
 const bookings = require('../modules/bookings/bookings.service');
+const analytics = require('../modules/analytics/facts.service');
 const { purgeExpired: purgeIdempotencyKeys } = require('../common/idempotency');
 const logger = require('../common/logger');
 
@@ -233,6 +234,31 @@ const JOBS = [
     queue: QUEUES.BOOKINGS,
     every: 60 * 1000,
     run: async () => bookings.tick(),
+  },
+  // ---------------- M19 analytics (§10). Idempotent: upserts and REFRESH … CONCURRENTLY under an advisory lock.
+  {
+    // FR-10: refresh the day-grained summaries (asOf). The interval is analytics.mview_refresh_minutes,
+    // read when the schedulers are registered (a change applies at the next deploy).
+    name: 'analytics.refresh-mviews',
+    queue: QUEUES.ANALYTICS,
+    every: () => settings.get('analytics.mview_refresh_minutes') * 60 * 1000,
+    run: async () => analytics.refreshViews(),
+  },
+  {
+    // FR-09: re-read the last analytics.reconcile_days through the owning services; repair, log, alert.
+    name: 'analytics.reconcile',
+    queue: QUEUES.ANALYTICS,
+    pattern: '0 3 * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => analytics.reconcile(),
+  },
+  {
+    // Occupancy (open and booked half-hours) for the last 2 and next 14 days, so hours changes count.
+    name: 'analytics.court-days',
+    queue: QUEUES.ANALYTICS,
+    pattern: '30 2 * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => ({ rebuilt: await analytics.rebuildRecentCourtDays() }),
   },
   {
     name: 'idempotency.purge',

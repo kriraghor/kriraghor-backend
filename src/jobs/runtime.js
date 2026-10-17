@@ -28,7 +28,8 @@ async function processJob(job) {
 async function registerSchedules() {
   const scheduled = JOBS.filter((j) => j.every || j.pattern);
   for (const job of scheduled) {
-    const repeat = job.pattern ? { pattern: job.pattern, tz: job.tz } : { every: job.every };
+    // `every` may be a function of the settings (read at boot, after the M03 boot check).
+    const repeat = job.pattern ? { pattern: job.pattern, tz: job.tz } : { every: typeof job.every === 'function' ? job.every() : job.every };
     await getQueue(job.queue).upsertJobScheduler(job.name, repeat, { name: job.name, opts: { removeOnComplete: 100, removeOnFail: 500 } });
   }
   return scheduled.map((j) => j.name);

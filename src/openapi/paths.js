@@ -17,6 +17,7 @@ const modS = require('../modules/moderation/moderation.schemas');
 const esS = require('../modules/esports/esports.schemas');
 const grS = require('../modules/grounds/grounds.schemas');
 const bkS = require('../modules/bookings/bookings.schemas');
+const anS = require('../modules/analytics/analytics.schemas');
 
 /**
  * Every route (M01, M02, M03, M04, M05, M06, M07, M08, M09, M21), registered with its request and response schemas and the stable error
@@ -746,6 +747,20 @@ function register(registry) {
   p({ method: 'get', path: '/admin/bookings/{id}', tags: ['bookings'], summary: 'A booking with its ledger trail', security: adminBearer, request: bkId, responses: { 200: json(bkS.StaffDetail), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'] }) } });
   p({ method: 'post', path: '/admin/bookings/{id}/cancel', tags: ['bookings'], summary: 'Cancel for the platform with a full refund (master, step-up escrow.manage)', security: adminBearer,
     request: { ...bkId, headers: stepUpHeader, ...body(bkS.reasonBody) }, responses: { 200: json(bkS.OwnerResult), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'], 409: ['BOOKING_STATE'], ...VALIDATION }) } });
+  // ------------------------------------------------------------------ M19 dashboards and analytics
+  const csv = { description: 'CSV (UTF-8 with a byte-order mark; taka with two decimals; +06:00 times)', content: { 'text/csv': { schema: z.string() } } };
+  p({ method: 'get', path: '/me/dashboard', tags: ['analytics'], summary: 'My dashboard: member (spent, bookings, where it went) or ground owner (revenue, occupancy, bookings, repeat teams, charts) (FR-01 to FR-07)', security: bearer,
+    request: { query: anS.dashboardQuery }, responses: { 200: json(z.union([anS.MemberDashboard, anS.OwnerDashboard])), ...errors({ ...COMMON_AUTH, 403: ['ROLE_REQUIRED'], 422: ['VALIDATION_FAILED', 'PERIOD_INVALID'] }) } });
+  p({ method: 'get', path: '/me/dashboard/actions', tags: ['analytics'], summary: 'Needs your action, from the owning modules (FR-11)', security: bearer,
+    request: { query: anS.actionsQuery }, responses: { 200: json(anS.Actions), ...errors({ ...COMMON_AUTH, 403: ['ROLE_REQUIRED'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/dashboard/export', tags: ['analytics'], summary: 'CSV of my bookings, revenue by week or payments (FR-22, FR-23; audited; per-hour limit)', security: bearer,
+    request: { query: anS.exportQuery }, responses: { 200: csv, ...errors({ ...COMMON_AUTH, 403: ['ROLE_REQUIRED'], 404: ['DATASET_UNKNOWN'], 422: ['VALIDATION_FAILED', 'EXPORT_TOO_LARGE'], 429: ['EXPORT_LIMIT'] }) } });
+  p({ method: 'get', path: '/kpis/{key}/definition', tags: ['analytics'], summary: 'What a dashboard tile counts, in English or Bangla', request: { params: anS.kpiParam, query: anS.kpiQuery }, responses: { 200: json(anS.KpiDefinition), ...errors({ 404: ['NOT_FOUND'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/analytics/overview', tags: ['analytics'], summary: 'Platform overview: GTV with venue money, fee revenue, take rate, bookings, esports, members, review queue (master or view_analytics)', security: adminBearer,
+    request: { query: anS.platformQuery }, responses: { 200: json(anS.PlatformOverview), ...errors({ ...ADMIN_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/analytics/export', tags: ['analytics'], summary: 'CSV of the platform day table (master or view_analytics)', security: adminBearer,
+    request: { query: anS.platformExportQuery }, responses: { 200: csv, ...errors({ ...ADMIN_AUTH, 404: ['DATASET_UNKNOWN'], 422: ['VALIDATION_FAILED', 'EXPORT_TOO_LARGE'], 429: ['EXPORT_LIMIT'] }) } });
+  p({ method: 'get', path: '/admin/analytics/actions', tags: ['analytics'], summary: 'Needs your action for staff (the review queue)', security: adminBearer, responses: { 200: json(anS.Actions), ...errors(ADMIN_AUTH) } });
 }
 
 function dateTimeOf() {

@@ -1,6 +1,6 @@
 {
-  "seedVersion": 7,
-  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes.",
+  "seedVersion": 8,
+  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code.",
   "templates": [
     {
       "code": "AUDIT_CRITICAL",
@@ -4120,6 +4120,94 @@
         },
         {
           "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ANALYTICS_DRIFT",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Dashboard numbers repaired",
+      "body": "The nightly check repaired {{records}} {{vertical}} records ({{amount}} apart). Look for a missed event.",
+      "variables": [
+        {
+          "name": "vertical",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "records",
+          "type": "number"
+        },
+        {
+          "name": "amount",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ANALYTICS_DRIFT",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "ড্যাশবোর্ডের সংখ্যা ঠিক করা হয়েছে",
+      "body": "রাতের যাচাইয়ে {{vertical}}-এর {{records}}টি রেকর্ড ঠিক করা হয়েছে ({{amount}} পার্থক্য)। কোনো ইভেন্ট বাদ পড়েছে কি না দেখুন।",
+      "variables": [
+        {
+          "name": "vertical",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "records",
+          "type": "number"
+        },
+        {
+          "name": "amount",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ANALYTICS_DRIFT",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Kriraghor: dashboard numbers repaired",
+      "body": "The nightly analytics check repaired {{records}} {{vertical}} records ({{amount}} apart). Check the events and consumers for a missed delivery.",
+      "variables": [
+        {
+          "name": "vertical",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "records",
+          "type": "number"
+        },
+        {
+          "name": "amount",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ANALYTICS_DRIFT",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "ক্রীড়াঘর: ড্যাশবোর্ডের সংখ্যা ঠিক করা হয়েছে",
+      "body": "রাতের অ্যানালিটিক্স যাচাইয়ে {{vertical}}-এর {{records}}টি রেকর্ড ঠিক করা হয়েছে ({{amount}} পার্থক্য)। ইভেন্ট ও কনজিউমার পরীক্ষা করুন।",
+      "variables": [
+        {
+          "name": "vertical",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "records",
+          "type": "number"
+        },
+        {
+          "name": "amount",
           "type": "money"
         }
       ]

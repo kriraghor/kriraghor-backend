@@ -8,6 +8,20 @@ const models = require('../../models');
 
 const { EsportsTournament, EsportsRegistration, EsportsRegistrationPlayer, EsportsMatch, EsportsSquad, EsportsCheckin } = models;
 
+/** M19 facts: a confirmed entry, and a finalised tournament's settlement. */
+async function entryFact(registrationId) {
+  const r = await EsportsRegistration.findByPk(registrationId, { attributes: ['id', 'tournamentId', 'registrantUserId', 'confirmedAt', 'paymentId', 'status'] });
+  if (!r || !r.confirmedAt) return null;
+  return { registrationId: r.id, tournamentId: r.tournamentId, userId: r.registrantUserId, confirmedAt: r.confirmedAt, paid: Boolean(r.paymentId) };
+}
+async function tournamentFact(tournamentId) {
+  const t = await EsportsTournament.findByPk(tournamentId, { attributes: ['id', 'gameId', 'finalisedAt', 'settlement'] });
+  if (!t || !t.finalisedAt || !t.settlement) return null;
+  const s = t.settlement;
+  const awards = await models.EsportsPrizeAward.count({ where: { tournamentId: t.id } });
+  return { tournamentId: t.id, gameId: t.gameId, finalisedAt: t.finalisedAt, awards, paid: s.paid ?? 0, subsidy: s.subsidy ?? 0, revenue: s.fee ?? 0 };
+}
+
 async function tournament(id) {
   const t = await EsportsTournament.findByPk(id, { attributes: ['id', 'slug', 'titleEn', 'titleBn', 'startsAt'] });
   return t ? { id: t.id, slug: t.slug, titleEn: t.titleEn, titleBn: t.titleBn, startsAt: t.startsAt } : null;
@@ -49,4 +63,6 @@ async function squadName(squadId) {
   return s?.name ?? '';
 }
 
-module.exports = { tournament, title, entryPeople, confirmedPlayers, allEntrants, matchPlayers, squadName };
+module.exports = {
+  entryFact,
+  tournamentFact, tournament, title, entryPeople, confirmedPlayers, allEntrants, matchPlayers, squadName };

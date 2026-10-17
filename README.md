@@ -18,6 +18,7 @@ The specification for every module is in [`../kriraghor-docs/modules`](../krirag
 | **M21 Esports (step 1)** | ✅ [`src/modules/esports`](src/modules/esports): game UIDs (screenshot, M05 review, bans), squads, tournaments (`single_match`, `series`; M05 review, no self-approval, prize table locked), registration (row-locked slots, M06 `esports_entry` pool, waitlist offers, refunds, auto-cancel below the minimum), check-in, encrypted versioned room credentials revealed only to checked-in players (socket and API, every view audited), results with disputes (built in until M17), disqualification, finalise through `escrow.settlePool` with step-up `esports.money`, rankings, and M07 withdrawals. Jobs: `esports.tick` (every minute), `esports.rankings-recompute` (03:00 Dhaka). Group stages, auto-finalise and cheating reports are step 2 |
 | **M09 Grounds (step 1)** | ✅ [`src/modules/grounds`](src/modules/grounds): listings with a live version beside edits (`live_snapshot`, review diff), courts and weekly hours, photos in the public bucket, versioned pricing rules (one draft, one published, history, "apply to all") with the pure shared calculator (`pricing.rules`, §6.1, both v3 payment options), quote and heatmap, the public `/grounds` (filters, facets, sorts) and detail, staff list, suspend, restore and remove, sanctions pause. With it: M03 places catalogue (sports, divisions, districts, areas, facilities, surfaces), M02 ground-owner documents lite, M01 business-role activation, M05 kind `ground`. The occupancy port waits for M10; closures and series come with it |
 | **M10 Bookings (step 1)** | ✅ [`src/modules/bookings`](src/modules/bookings): the half-hour grid (Redis cache, live through `ground:{id}`), holds (gate `book_ground`: a verified phone) paying the advance or the full price into escrow (M06 purpose `ground_booking`), instant confirmation, late captures, member cancel with the refund preview, check-in releasing the money with the fee on the full value (`escrow.releaseInTx` `feeBase`), no-show, auto-complete after 24 h (Q68), extend, the venue balance, walk-ins and extensions owing the fee as a receivable (`fees.accrueReceivable`), owner and platform cancels, moves, the owner timeline, staff list and platform cancel. One occupancy table, `booking_slots`, with an exclusion constraint; M10 registers the M09 occupancy port. With it: M09 step 2 closures and weekly series, the "most open hours" sort. The pure `bookings.rules` (state machine, windows, v3 money plans) has a 100% gate |
+| **M19 Dashboards (step 1)** | ✅ [`src/modules/analytics`](src/modules/analytics): read models only. Facts (`kpi_fact_booking`, court-day occupancy, payments, ledger fee lines, esports entries and tournaments) are written from the events by re-reading each record through its owner's service, guarded twice against replays; four day-grained materialised views refresh CONCURRENTLY (`asOf`); a nightly reconcile repairs drift and alerts masters. The ground owner's Overview and Analytics (revenue gross, occupancy, bookings, repeat teams, four charts), the member's Overview, the platform overview (GTV with venue money, fee revenue, take rate, esports; master or `view_analytics`), "Needs your action" and CSV exports. The pure `analytics.rules` (Dhaka periods, deltas, v3 earned, take rate) has a 100% gate |
 | Everything else | Not started |
 
 ## Quick start
@@ -112,6 +113,8 @@ See [`postman/M01-acceptance-checklist.md`](postman/M01-acceptance-checklist.md)
 
 **M21 (esports step 1)** runs unattended: `node postman/run-m21.js` (masters A and B, two players; a local test clock moves the stored times between steps; UID review, authoring and review, paid registration, check-in, room reveal and audited views, results, a dispute, finalise with step-up, winnings, leaderboard, the KYC gate on withdrawal; 60 requests, 91 assertions). Checklist: [`postman/M21-acceptance-checklist.md`](postman/M21-acceptance-checklist.md).
 
+**M19 (dashboards step 1)** runs unattended: `node postman/run-m19.js` (master A, an owner with a fixture ground, a member; a played booking and a member cancel feed the facts; the owner, member and platform dashboards, actions, CSV exports and the nightly reconcile; 24 requests, 50 assertions). Checklist: [`postman/M19-acceptance-checklist.md`](postman/M19-acceptance-checklist.md).
+
 **M10 (bookings step 1)** runs unattended: `node postman/run-m10.js` (master A, two owners with a fixture ground at ৳2,000/h flat and a 25% advance, two members; holds, payment through the simulator, check-in, the venue balance, extend, member and owner cancels, no-show, auto-complete, walk-in, closures, series, staff and the ledger at the end; 50 requests, 94 assertions). Checklist: [`postman/M10-acceptance-checklist.md`](postman/M10-acceptance-checklist.md).
 
 **M09 (grounds step 1)** runs unattended: `node postman/run-m09.js` (masters A and B, an owner who applied as a ground owner; business documents, the role, a ground with a court and three photos through review, public list, detail and quote, pricing draft and publish, a live edit with a diff, pause, staff suspend and restore; 69 requests, 115 assertions). Checklist: [`postman/M09-acceptance-checklist.md`](postman/M09-acceptance-checklist.md).
@@ -184,6 +187,7 @@ src/
    ├─ kyc/                M02 NID uploads, submissions, document panel, retention (rules + service), M05 adapter (kyc.moderation.js); M01 follows through users/kyc.consumers.js
    ├─ moderation/         M05 submissions, adapters, claims, rubric, decisions, override, reopen, jobs (rules + service)
    ├─ grounds/            M09 listings, courts, hours, photos, pricing (pricing.rules: the shared calculator), public read side, occupancy port, reads for M10, M05 adapter; closures and series (step 2)
+   ├─ analytics/          M19 facts from events, materialised views, dashboards, actions, CSV exports (analytics.rules: periods and KPI formulas)
    ├─ bookings/           M10 availability, holds, my bookings, the owner's day, settlement through M06 (bookings.rules: state machine and v3 money), the occupancy implementation
    └─ esports/            M21 profiles, squads, tournaments, registrations, rooms, results, prizes, rankings, lifecycle tick, M05 adapters and M06 hook (rules + services)
 src/providers/payments/   SSLCommerz adapter and the SSLCommerz-compatible simulator (dev and tests only)
@@ -355,6 +359,16 @@ Every process (api, realtime, worker) refuses to start until every seeded settin
 | `POST /admin/submissions/:id/reopen` | master, step-up `moderation.override` | A decided submission back to the queue (critical audit) |
 
 **Adding a kind:** widen the `submissions.kind` CHECK in a migration, seed its rubric and reasons in `moderation.v1.json`, register an adapter (`moderation.adapters.register({ kind, permission, checks, ownerWithdraw, lockedChecks })`), call `moderation.submit` from your module, and apply decisions in consumers of `submission.approved` / `.changes_requested` / `.rejected`, acknowledging with `submission.applied` (see `kyc/kyc.moderation.js`).
+
+## API (M19)
+
+| Endpoint | Access | Notes |
+|---|---|---|
+| `GET /me/dashboard?role=member|ground_owner&period=7w|qtr|yr` | signed in; the owner view needs an active `ground_owner` role (`ROLE_REQUIRED`) | Tiles (value, delta, sparkline), charts, `asOf`, definitions |
+| `GET /me/dashboard/actions?role=` · `GET /admin/analytics/actions` | signed in · staff | "Needs your action" from the owning modules |
+| `GET /me/dashboard/export?dataset=owner_bookings|owner_revenue|member_payments` | as the screen | CSV, audited, `analytics.exports_per_hour` |
+| `GET /admin/analytics/overview?period=` · `/admin/analytics/export?dataset=platform_daily` | master or `view_analytics` | Platform overview and its CSV |
+| `GET /kpis/:key/definition?locale=` | public | What a tile counts |
 
 ## API (M10)
 

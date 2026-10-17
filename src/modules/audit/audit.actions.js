@@ -177,6 +177,9 @@ const ACTIONS = {
   'booking_series.week_restored': A('M09', 'info', 'Restored week {after.week} of a series', 'সিরিজের সপ্তাহ {after.week} ফেরত'),
   'booking_series.ended': A('M09', 'notice', 'Ended a series ({after.cancelled} weeks cancelled)', 'সিরিজ শেষ ({after.cancelled} সপ্তাহ বাতিল)'),
 
+  // ---------------- M19 Dashboards and Analytics ----------------
+  'analytics.exported': A('M19', 'info', 'Exported {meta.dataset} ({meta.rows} rows)', '{meta.dataset} এক্সপোর্ট ({meta.rows} সারি)'),
+
   // ---------------- M10 Bookings ----------------
   'booking.held': A('M10', 'info', 'Held a slot to pay ({after.choice})', 'পেমেন্টের জন্য স্লট ধরে রাখা ({after.choice})'),
   'booking.released': A('M10', 'info', 'Let a held slot go', 'ধরে রাখা স্লট ছেড়ে দেওয়া'),

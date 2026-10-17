@@ -30,6 +30,7 @@ const moderationRoutes = require('./modules/moderation/moderation.routes');
 const esportsRoutes = require('./modules/esports/esports.routes');
 const groundsRoutes = require('./modules/grounds/grounds.routes');
 const bookingsRoutes = require('./modules/bookings/bookings.routes');
+const analyticsRoutes = require('./modules/analytics/analytics.routes');
 
 // ADR-004: customer and admin origins (exact or one-label wildcard). Unknown origins get no CORS headers.
 const allowedOrigin = compile([...config.corsOrigins, ...config.adminOrigins]);
@@ -93,6 +94,8 @@ function createApp() {
   api.use('/me/closures', groundsRoutes.meClosures);
   api.use('/me/series', groundsRoutes.meSeries);
   api.use('/me/bookings', bookingsRoutes.meBookings);
+  api.use('/me/dashboard', analyticsRoutes.meRouter);
+  api.use('/kpis', analyticsRoutes.kpiRouter);
   api.use('/me/ground-bookings', bookingsRoutes.meOwner);
   api.use('/bookings', bookingsRoutes.bookingsRouter);
   api.use('/grounds', bookingsRoutes.groundsPublic);
@@ -123,6 +126,7 @@ function createApp() {
   api.use('/admin/esports', esportsRoutes.adminRouter);
   api.use('/admin/grounds', groundsRoutes.adminRouter);
   api.use('/admin/bookings', bookingsRoutes.adminRouter);
+  api.use('/admin/analytics', analyticsRoutes.adminRouter);
   api.use('/admin', adminRoutes);
   app.use(config.apiPrefix, api);
 

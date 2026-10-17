@@ -3,7 +3,7 @@
 /**
  * Notification catalogue (M08 §6.6), as code. Each entry maps a domain event to recipients, channels
  * and template variables. Template texts are versioned rows in message_templates (EN and BN for
- * every default channel; a contract test checks it). Built so far: the M01, M02, M03, M04, M05, M06, M07, M09, M10 and M21 events.
+ * every default channel; a contract test checks it). Built so far: the M01, M02, M03, M04, M05, M06, M07, M09, M10, M19 and M21 events.
  *
  * Entry: { code, events[], category, channels[], urgent, roleContext?(e), recipients(e) → userIds,
  *          values(e, { locale, userId }) → template values, link(e) → in-app link }
@@ -689,6 +689,16 @@ const CATALOGUE = [
     recipients: () => directory.withPermission('view_payouts'),
     values: async (e) => ({ account: (await accountFacts(e.payload.accountId)).masked }),
     link: () => '/admin/finance?tab=accounts',
+  },
+  // ---------------- M19 analytics
+  {
+    code: 'ANALYTICS_DRIFT',
+    events: ['analytics.drift_detected'],
+    category: 'staff_ops',
+    channels: ['in_app', 'email'],
+    recipients: async () => directory.masters(),
+    values: async (e) => ({ vertical: e.payload.vertical, records: e.payload.records, amount: e.payload.amount }),
+    link: () => '/admin',
   },
   // ---------------- M10 bookings (v3: instant confirmation; the advance is not refunded)
   {

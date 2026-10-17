@@ -68,6 +68,10 @@
       "description": "Grounds: listings, courts, hours, photos, pricing, closures, series and the public browse (M09)"
     },
     {
+      "name": "analytics",
+      "description": "Dashboards: member, ground owner and platform numbers, actions, CSV (M19)"
+    },
+    {
       "name": "bookings",
       "description": "Bookings: availability, holds and payment, my bookings, the owner's day (M10)"
     },
@@ -279,6 +283,7 @@
                 "manage_catalog",
                 "manage_esports",
                 "enter_results",
+                "view_analytics",
                 "edit_fees",
                 "manage_staff"
               ]
@@ -13074,6 +13079,595 @@
           "checkIn",
           "ledger"
         ]
+      },
+      "MemberDashboard": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "member"
+            ]
+          },
+          "tiles": {
+            "type": "object",
+            "properties": {
+              "spent": {
+                "$ref": "#/components/schemas/KpiTile"
+              },
+              "bookings": {
+                "$ref": "#/components/schemas/KpiTile"
+              },
+              "upcoming": {
+                "$ref": "#/components/schemas/KpiTile"
+              }
+            },
+            "required": [
+              "spent",
+              "bookings",
+              "upcoming"
+            ]
+          },
+          "charts": {
+            "type": "object",
+            "properties": {
+              "whereItWent": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "vertical": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "vertical",
+                    "value"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "whereItWent"
+            ]
+          },
+          "period": {
+            "type": "string",
+            "enum": [
+              "7w",
+              "qtr",
+              "yr"
+            ]
+          },
+          "buckets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "from": {
+                  "type": "string"
+                },
+                "to": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "key",
+                "from",
+                "to"
+              ]
+            }
+          },
+          "asOf": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "definitions": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "role",
+          "tiles",
+          "charts",
+          "period",
+          "buckets",
+          "asOf",
+          "definitions"
+        ]
+      },
+      "KpiTile": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "delta": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "spark": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "note": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "type": "number"
+            }
+          }
+        },
+        "required": [
+          "value",
+          "delta",
+          "spark"
+        ]
+      },
+      "OwnerDashboard": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "ground_owner"
+            ]
+          },
+          "tiles": {
+            "type": "object",
+            "properties": {
+              "revenue": {
+                "$ref": "#/components/schemas/KpiTile"
+              },
+              "occupancy": {
+                "$ref": "#/components/schemas/KpiTile"
+              },
+              "bookings": {
+                "$ref": "#/components/schemas/KpiTile"
+              },
+              "repeatTeams": {
+                "$ref": "#/components/schemas/KpiTile"
+              }
+            },
+            "required": [
+              "revenue",
+              "occupancy",
+              "bookings",
+              "repeatTeams"
+            ]
+          },
+          "charts": {
+            "type": "object",
+            "properties": {
+              "weeklyRevenue": {
+                "type": "object",
+                "properties": {
+                  "points": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "key": {
+                          "type": "string"
+                        },
+                        "from": {
+                          "type": "string"
+                        },
+                        "value": {
+                          "type": "number"
+                        },
+                        "lastYear": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "from",
+                        "value",
+                        "lastYear"
+                      ]
+                    }
+                  },
+                  "lastYearShown": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "points",
+                  "lastYearShown"
+                ]
+              },
+              "bookingsByDay": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "day": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "day",
+                    "value"
+                  ]
+                }
+              },
+              "busiestHours": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "hour": {
+                      "type": "number"
+                    },
+                    "hours": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "hour",
+                    "hours"
+                  ]
+                }
+              },
+              "revenueByGround": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "groundId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "groundId",
+                    "name",
+                    "value"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "weeklyRevenue",
+              "bookingsByDay",
+              "busiestHours",
+              "revenueByGround"
+            ]
+          },
+          "period": {
+            "type": "string",
+            "enum": [
+              "7w",
+              "qtr",
+              "yr"
+            ]
+          },
+          "buckets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "from": {
+                  "type": "string"
+                },
+                "to": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "key",
+                "from",
+                "to"
+              ]
+            }
+          },
+          "asOf": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "definitions": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "role",
+          "tiles",
+          "charts",
+          "period",
+          "buckets",
+          "asOf",
+          "definitions"
+        ]
+      },
+      "PendingActions": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "number"
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": [
+                    "high",
+                    "normal",
+                    "low"
+                  ]
+                },
+                "dueAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "href": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "key",
+                "count",
+                "severity",
+                "dueAt",
+                "href"
+              ]
+            }
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ]
+      },
+      "KpiDefinition": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "text"
+        ]
+      },
+      "PlatformOverview": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "platform"
+            ]
+          },
+          "tiles": {
+            "type": "object",
+            "properties": {
+              "gtv": {
+                "$ref": "#/components/schemas/KpiTile"
+              },
+              "feeRevenue": {
+                "$ref": "#/components/schemas/KpiTile"
+              },
+              "takeRate": {
+                "$ref": "#/components/schemas/KpiTile"
+              },
+              "bookings": {
+                "$ref": "#/components/schemas/KpiTile"
+              },
+              "esportsEntries": {
+                "$ref": "#/components/schemas/KpiTile"
+              },
+              "prizesPaid": {
+                "$ref": "#/components/schemas/KpiTile"
+              },
+              "verifiedMembers": {
+                "$ref": "#/components/schemas/KpiTile"
+              },
+              "waitingForReview": {
+                "$ref": "#/components/schemas/KpiTile"
+              }
+            },
+            "required": [
+              "gtv",
+              "feeRevenue",
+              "takeRate",
+              "bookings",
+              "esportsEntries",
+              "prizesPaid",
+              "verifiedMembers",
+              "waitingForReview"
+            ]
+          },
+          "charts": {
+            "type": "object",
+            "properties": {
+              "volume": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string"
+                    },
+                    "from": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "number"
+                    },
+                    "online": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "from",
+                    "value",
+                    "online"
+                  ]
+                }
+              },
+              "volumeByVertical": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "vertical": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "vertical",
+                    "value"
+                  ]
+                }
+              },
+              "topAreas": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "areaId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "bookings": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "areaId",
+                    "name",
+                    "bookings"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "volume",
+              "volumeByVertical",
+              "topAreas"
+            ]
+          },
+          "period": {
+            "type": "string",
+            "enum": [
+              "7w",
+              "qtr",
+              "yr"
+            ]
+          },
+          "buckets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "from": {
+                  "type": "string"
+                },
+                "to": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "key",
+                "from",
+                "to"
+              ]
+            }
+          },
+          "asOf": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "definitions": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "role",
+          "tiles",
+          "charts",
+          "period",
+          "buckets",
+          "asOf",
+          "definitions"
+        ]
       }
     },
     "parameters": {}
@@ -16461,11 +17055,12 @@
                         "manage_catalog",
                         "manage_esports",
                         "enter_results",
+                        "view_analytics",
                         "edit_fees",
                         "manage_staff"
                       ]
                     },
-                    "maxItems": 12,
+                    "maxItems": 13,
                     "default": []
                   }
                 },
@@ -16617,6 +17212,7 @@
                               "manage_catalog",
                               "manage_esports",
                               "enter_results",
+                              "view_analytics",
                               "edit_fees",
                               "manage_staff"
                             ]
@@ -16638,6 +17234,7 @@
                               "manage_catalog",
                               "manage_esports",
                               "enter_results",
+                              "view_analytics",
                               "edit_fees",
                               "manage_staff"
                             ]
@@ -40238,6 +40835,588 @@
           },
           "422": {
             "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/dashboard": {
+      "get": {
+        "tags": [
+          "analytics"
+        ],
+        "summary": "My dashboard: member (spent, bookings, where it went) or ground owner (revenue, occupancy, bookings, repeat teams, charts) (FR-01 to FR-07)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "member",
+                "ground_owner"
+              ],
+              "default": "member"
+            },
+            "required": false,
+            "name": "role",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "7w",
+                "qtr",
+                "yr"
+              ],
+              "default": "7w"
+            },
+            "required": false,
+            "name": "period",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "groundId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "bn"
+              ],
+              "default": "en"
+            },
+            "required": false,
+            "name": "locale",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/MemberDashboard"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerDashboard"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: ROLE_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, PERIOD_INVALID",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/dashboard/actions": {
+      "get": {
+        "tags": [
+          "analytics"
+        ],
+        "summary": "Needs your action, from the owning modules (FR-11)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "member",
+                "ground_owner"
+              ],
+              "default": "member"
+            },
+            "required": false,
+            "name": "role",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingActions"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: ROLE_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/dashboard/export": {
+      "get": {
+        "tags": [
+          "analytics"
+        ],
+        "summary": "CSV of my bookings, revenue by week or payments (FR-22, FR-23; audited; per-hour limit)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "owner_bookings",
+                "owner_revenue",
+                "member_payments"
+              ]
+            },
+            "required": true,
+            "name": "dataset",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "7w",
+                "qtr",
+                "yr"
+              ],
+              "default": "7w"
+            },
+            "required": false,
+            "name": "period",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CSV (UTF-8 with a byte-order mark; taka with two decimals; +06:00 times)",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: ROLE_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: DATASET_UNKNOWN",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, EXPORT_TOO_LARGE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error. Codes: EXPORT_LIMIT",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/kpis/{key}/definition": {
+      "get": {
+        "tags": [
+          "analytics"
+        ],
+        "summary": "What a dashboard tile counts, in English or Bangla",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 40
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "bn"
+              ],
+              "default": "en"
+            },
+            "required": false,
+            "name": "locale",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KpiDefinition"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/analytics/overview": {
+      "get": {
+        "tags": [
+          "analytics"
+        ],
+        "summary": "Platform overview: GTV with venue money, fee revenue, take rate, bookings, esports, members, review queue (master or view_analytics)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "7w",
+                "qtr",
+                "yr"
+              ],
+              "default": "yr"
+            },
+            "required": false,
+            "name": "period",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "bn"
+              ],
+              "default": "en"
+            },
+            "required": false,
+            "name": "locale",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformOverview"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/analytics/export": {
+      "get": {
+        "tags": [
+          "analytics"
+        ],
+        "summary": "CSV of the platform day table (master or view_analytics)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "platform_daily"
+              ]
+            },
+            "required": true,
+            "name": "dataset",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "7w",
+                "qtr",
+                "yr"
+              ],
+              "default": "yr"
+            },
+            "required": false,
+            "name": "period",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CSV (UTF-8 with a byte-order mark; taka with two decimals; +06:00 times)",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: DATASET_UNKNOWN",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, EXPORT_TOO_LARGE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error. Codes: EXPORT_LIMIT",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/analytics/actions": {
+      "get": {
+        "tags": [
+          "analytics"
+        ],
+        "summary": "Needs your action for staff (the review queue)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingActions"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
             "content": {
               "application/problem+json": {
                 "schema": {

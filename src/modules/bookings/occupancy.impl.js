@@ -81,6 +81,35 @@ async function openHalfHours(courtIds, day) {
   return out;
 }
 
+/**
+ * M19 occupancy (M10 §6.6, FR-35): per court on a Dhaka day, the open half-hours (inside the hours,
+ * minus closures) and the booked ones (every non-closure source with an active slot).
+ */
+async function courtDays(courtIds, day) {
+  if (!courtIds.length) return [];
+  const [hours, courts] = await Promise.all([reads.hoursFor(courtIds), reads.courts(courtIds)]);
+  const from = pr.dhakaInstant(day, 0);
+  const to = new Date(from.getTime() + 24 * 60 * 60 * 1000);
+  const busy = await c.overlapping({ courtIds, from, to });
+  const owners = new Map();
+  const out = [];
+  for (const k of courts) {
+    if (!owners.has(k.groundId)) owners.set(k.groundId, (await reads.ground(k.groundId))?.ownerId ?? null);
+    const rows = hours.filter((h) => h.courtId === k.id);
+    const mine = busy.filter((b) => b.courtId === k.id);
+    const covers = (b, t) => new Date(b.start).getTime() < t + HALF && new Date(b.end).getTime() > t;
+    let open = 0;
+    let booked = 0;
+    for (let t = from.getTime(); t < to.getTime(); t += HALF) {
+      if (!insideHours(rows, t, t + HALF) || mine.some((b) => b.source === 'closure' && covers(b, t))) continue;
+      open += 1;
+      if (mine.some((b) => b.source !== 'closure' && covers(b, t))) booked += 1;
+    }
+    out.push({ courtId: k.id, groundId: k.groundId, ownerId: owners.get(k.groundId), day, openHh: open, bookedHh: booked });
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------- closures (M09 FR-15 to FR-18)
 
 const reserveClosure = (closure, { transaction }) =>
@@ -172,4 +201,4 @@ function register() {
   occupancyPort.register({ findConflicts, countUpcoming, openHalfHours, reserveClosure, releaseClosure, shortenClosure, materialiseSeries, setSeriesWeek, endSeries, seriesBookings });
 }
 
-module.exports = { register, findConflicts, countUpcoming, openHalfHours, insideHours, sequelize };
+module.exports = { register, findConflicts, countUpcoming, openHalfHours, courtDays, insideHours, sequelize };
