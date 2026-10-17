@@ -72,9 +72,11 @@ describe('M19 dashboards from real events (v3 money)', () => {
     expect(d.buckets).toHaveLength(7);
     const thisWeek = d.tiles.revenue.spark[6];
     expect(thisWeek).toBe(d.tiles.revenue.value);
-    // b1 today earns ৳2,000; b2 (tomorrow) earns ৳500 if tomorrow is in this week.
-    const tomorrowSameWeek = d.buckets[6].to > new Date(Date.now() + 6 * 3600000 + 86400000).toISOString().slice(0, 10);
-    expect(d.tiles.revenue.value).toBe(tomorrowSameWeek ? 250000 : 200000);
+    // b1 today earns ৳2,000; b2 earns ৳500 if its Dhaka day is in this week (late in the evening the
+    // slot 27 h ahead falls two days later, so read its real start).
+    const b2Day = new Date(new Date(b2.startAt).getTime() + 6 * 3600000).toISOString().slice(0, 10);
+    const b2SameWeek = d.buckets[6].to > b2Day;
+    expect(d.tiles.revenue.value).toBe(b2SameWeek ? 250000 : 200000);
     expect(d.tiles.bookings.value).toBe(1); // the cancelled one is not counted
     expect(d.tiles.bookings.note).toEqual({ app: 1, walkIn: 0, series: 0 });
     // FR-06: the charts add up to their tiles.
@@ -167,7 +169,8 @@ describe('M19 access, actions and exports', () => {
     const o = await owner();
     const g = await liveGround(o);
     const m = await h.signupUser();
-    const b = await book(m, g);
+    // About an hour from now, so the booking is in this week's export even on a Sunday (tomorrow is next week).
+    const b = await book(m, g, { start: slot(0, 2) });
     await settle();
     const csv = await api().get(`${P}/me/dashboard/export?dataset=owner_bookings&period=7w`).set(h.bearer(o)).expect(200);
     expect(csv.headers['content-type']).toMatch(/text\/csv/);

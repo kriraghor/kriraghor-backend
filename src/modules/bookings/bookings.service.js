@@ -160,7 +160,12 @@ async function checkIn(principal, id, req) {
   });
 }
 
-/** FR-15 (v3): owner only, once late, until auto-complete. The advance is retained; the tail is freed. */
+/**
+ * FR-15 (v3): owner only, once late, until auto-complete. The advance is retained; the tail is freed.
+ * M17 (17 Oct 2026): anything above the advance is refunded now (Q120), but the retained advance
+ * stays in escrow for disputes.window_booking_hours so the member can contest the no-show; the tick
+ * releases it (owner ৳475, fee ৳25) unless a dispute froze it (settleNoShowInTx).
+ */
 async function noShow(principal, id, req) {
   return sequelize.transaction(async (transaction) => {
     const b = await owned(principal, id, transaction);
@@ -168,14 +173,16 @@ async function noShow(principal, id, req) {
     const now = new Date();
     const block = rules.noShowBlock({ start: b.startAt, end: b.endAt, graceMin: b.graceMin, now, autoCompleteHours: settings.get('booking.auto_complete_after_hours') });
     if (block) throw c.fail(block);
-    const moved = await settlement.apply(b, rules.retainPlan({ online: b.onlinePoisha, advance: b.advancePoisha, feeBps: b.feeBps, ...c.policy() }), { step: 'retain', reasonCode: 'booking.no_show_marked', actor: principal, transaction });
+    const plan = rules.retainPlan({ online: b.onlinePoisha, advance: b.advancePoisha, feeBps: b.feeBps, ...c.policy() });
+    const moved = await settlement.apply(b, { ...plan, release: 0 }, { step: 'no_show', reasonCode: 'booking.no_show_marked', actor: principal, transaction });
     const tail = rules.noShowTailEnd({ start: b.startAt, end: b.endAt, now });
     if (tail) await c.setPeriod(b.id, b.groundId, b.startAt, tail, { transaction });
     else if (now < b.endAt) c.touch(b.groundId, transaction);
-    await b.update({ status: to, noShowAt: now, updatedBy: principal.id }, { transaction });
-    await c.publish(transaction, 'booking.no_show_marked', b, { refund: moved.refunded, retained: moved.released }, principal);
-    await audit.record({ action: 'booking.no_show_marked', actor: principal, entityType: 'booking', entityId: b.id, entityCode: b.code, after: { status: to, retained: moved.released, refund: moved.refunded }, req }, { transaction });
-    return { booking: c.ownerView(b), settled: moved };
+    const settleDueAt = plan.release > 0 ? new Date(now.getTime() + settings.get('disputes.window_booking_hours') * 3600000) : null;
+    await b.update({ status: to, noShowAt: now, retainedPoisha: plan.release, settleDueAt, updatedBy: principal.id }, { transaction });
+    await c.publish(transaction, 'booking.no_show_marked', b, { refund: moved.refunded, retained: plan.release }, principal);
+    await audit.record({ action: 'booking.no_show_marked', actor: principal, entityType: 'booking', entityId: b.id, entityCode: b.code, after: { status: to, retained: plan.release, refund: moved.refunded, settleDueAt }, req }, { transaction });
+    return { booking: c.ownerView(b), settled: { refunded: moved.refunded, retained: plan.release, settleDueAt: c.iso(settleDueAt) } };
   });
 }
 
@@ -408,6 +415,23 @@ async function staffGet(id) {
   return { booking: c.ownerView(b, await courtNames(b)), checkIn: (await CheckIn.findOne({ where: { bookingId: b.id } }))?.toJSON() ?? null, ledger: trail };
 }
 
+// ---------------------------------------------------------------- no-show settlement (M17)
+
+/** A frozen hold (an open M17 dispute) waits for the decision. */
+async function frozen(b, transaction) {
+  if (!b.paymentId) return false;
+  const hold = await require('../payments/escrow.service').lockHoldForPayment(b.paymentId, transaction);
+  return hold?.status === 'frozen';
+}
+
+/** The dispute window closed with no dispute: release the retained advance (fee on what is retained). */
+async function settleNoShowInTx(b, { transaction }) {
+  const moved = await settlement.apply(b, { refund: 0, release: b.retainedPoisha, feeBase: b.retainedPoisha }, { step: 'no_show_release', reasonCode: 'booking.no_show_settled', transaction });
+  await b.update({ settleDueAt: null }, { transaction });
+  await c.publish(transaction, 'booking.no_show_settled', b, { released: moved.released, fee: moved.fee });
+  return moved;
+}
+
 // ---------------------------------------------------------------- tick (§10)
 
 /** Complete a booking: a checked-in one at its end; a confirmed one 24 h after (auto, full release). */
@@ -423,7 +447,7 @@ async function completeInTx(b, { transaction, auto }) {
 }
 
 async function tick(now = new Date()) {
-  const out = { expired: await holds.expireHolds(now), completed: 0, autoCompleted: 0, reminded: 0, unrecorded: 0 };
+  const out = { expired: await holds.expireHolds(now), completed: 0, autoCompleted: 0, noShowsSettled: 0, reminded: 0, unrecorded: 0 };
   const autoHours = settings.get('booking.auto_complete_after_hours');
   const ended = await Booking.findAll({ where: { status: 'checked_in', endAt: { [Op.lte]: now } }, attributes: ['id'], limit: 500 });
   const stale = await Booking.findAll({ where: { status: 'confirmed', endAt: { [Op.lte]: new Date(now.getTime() - autoHours * 3600000) } }, attributes: ['id'], limit: 500 });
@@ -435,10 +459,20 @@ async function tick(now = new Date()) {
       await sequelize.transaction(async (transaction) => {
         const b = await c.lock(id, transaction);
         if (auto ? b.status !== 'confirmed' || !rules.autoCompleteDue({ end: b.endAt, now, hours: autoHours }) : b.status !== 'checked_in') return;
+        if (auto && (await frozen(b, transaction))) return; // a venue-problem dispute decides the money (M17)
         await completeInTx(b, { transaction, auto });
         out[auto ? 'autoCompleted' : 'completed'] += 1;
       });
     }
+  }
+  const settle = await Booking.findAll({ where: { status: 'no_show', settleDueAt: { [Op.lte]: now } }, attributes: ['id'], limit: 500 });
+  for (const { id } of settle) {
+    await sequelize.transaction(async (transaction) => {
+      const b = await c.lock(id, transaction);
+      if (b.status !== 'no_show' || !b.settleDueAt || b.settleDueAt > now || (await frozen(b, transaction))) return;
+      await settleNoShowInTx(b, { transaction });
+      out.noShowsSettled += 1;
+    });
   }
   const remindAt = new Date(now.getTime() + settings.get('booking.start_reminder_hours') * 3600000);
   const soon = await Booking.findAll({ where: { status: 'confirmed', source: 'app', remindedAt: null, startAt: { [Op.gt]: now, [Op.lte]: remindAt } }, attributes: ['id'], limit: 500 });
@@ -481,4 +515,7 @@ module.exports = {
   staffGet,
   tick,
   checkInInTx,
+  completeInTx,
+  settleNoShowInTx,
+  transition,
 };

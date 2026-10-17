@@ -32,11 +32,11 @@ describe('gate.evaluate', () => {
   it('blocks suspended accounts', () =>
     expect(gate.evaluateAction(principal('suspended', { member: 'active' }), 'hire').code).toBe('ACCOUNT_SUSPENDED'));
   it('asks for NID when member is not active', () =>
-    expect(gate.evaluateAction(principal('active', { member: 'applied' }), 'hire').code).toBe('KYC_REQUIRED'));
+    expect(gate.evaluateAction(principal('active', { member: 'applied' }), 'offer').code).toBe('KYC_REQUIRED'));
   it('says pending while NID is in review', () =>
-    expect(gate.evaluateAction(principal('active', { member: 'in_review' }), 'hire').code).toBe('KYC_PENDING'));
+    expect(gate.evaluateAction(principal('active', { member: 'in_review' }), 'offer').code).toBe('KYC_PENDING'));
   it('allows verified members to book', () =>
-    expect(gate.evaluateAction(principal('active', { member: 'active' }), 'hire')).toEqual({ allowed: true }));
+    expect(gate.evaluateAction(principal('active', { member: 'active' }), 'offer')).toEqual({ allowed: true }));
   it('requires the business role for listing a ground', () => {
     expect(gate.evaluateAction(principal('active', { member: 'active' }), 'list_ground').code).toBe('ROLE_REQUIRED');
     expect(gate.evaluateAction(principal('active', { member: 'active', ground_owner: 'in_review' }), 'list_ground').code).toBe('ROLE_PENDING');

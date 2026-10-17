@@ -38,5 +38,15 @@ module.exports = {
     './src/modules/bookings/bookings.rules.js': FULL,
     // M19 periods, deltas and KPI formulas.
     './src/modules/analytics/analytics.rules.js': FULL,
+    // M17 dispute machine, outcome maths, authority, reporter eligibility and reviews.
+    './src/modules/trust/trust.rules.js': FULL,
+    // M18 flag machine, authority, undo and the reliability formula.
+    './src/modules/risk/risk.rules.js': FULL,
+    // M12 state machine, spec and variant checks, stock arithmetic, shelf life and prices.
+    './src/modules/market/market.rules.js': FULL,
+    // M13 quote, commission, the sub-order state machine and deadlines.
+    './src/modules/orders/orders.rules.js': FULL,
+    // M11 quote, rate limits, checks, the request and job machines, windows and cancellation.
+    './src/modules/hire/hire.rules.js': FULL,
   },
 };

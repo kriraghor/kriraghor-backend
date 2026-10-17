@@ -63,6 +63,18 @@ async function squadName(squadId) {
   return s?.name ?? '';
 }
 
+/** M18: disqualifications of this player or of entries they registered since `since`, and banned game UIDs. */
+async function riskFacts(userId, since) {
+  const { Op } = require('sequelize');
+  const regs = await models.EsportsRegistration.findAll({ where: { registrantUserId: userId }, attributes: ['id'] });
+  const disqualifications = await models.EsportsDisqualification.count({
+    where: { createdAt: { [Op.gte]: since }, revertedAt: null, [Op.or]: [{ userId }, { userId: null, registrationId: regs.map((r) => r.id) }] },
+  });
+  const banned = await models.EsportsGameProfile.count({ where: { userId, status: 'banned' } });
+  return { disqualifications, banned };
+}
+
 module.exports = {
+  riskFacts,
   entryFact,
   tournamentFact, tournament, title, entryPeople, confirmedPlayers, allEntrants, matchPlayers, squadName };

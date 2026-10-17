@@ -1,6 +1,6 @@
 {
-  "seedVersion": 1,
-  "source": "M02 §6.1, lite (Oct 2026): the member (NID) requirements, and the ground owner business documents (with M09). Hire, shop and organiser documents come with M11, M12 and M22. Rows are inserted only when (role, type) is missing, so a master's edits survive.",
+  "seedVersion": 3,
+  "source": "M02 §6.1, lite (Oct 2026): the member (NID) requirements, and the ground owner business documents (with M09). v2 (M12): the shop owner business documents (trade licence, TIN, and BIN when the shop is VAT registered); documents are kept per role. v3 (M11): the player and pro credentials (one per hire role, kept under hire:<role>) and the police clearance for under-16 work; organiser documents come with M22. Rows are inserted only when (role, type) is missing, so a master's edits survive.",
   "requirements": [
     {
       "role": "member",
@@ -149,6 +149,291 @@
       "whyEn": "Optional. Needed later for tax statements.",
       "whyBn": "ঐচ্ছিক। পরে কর বিবরণীর জন্য লাগবে।",
       "sort": 3
+    },
+    {
+      "role": "shop_owner",
+      "docType": "trade_license",
+      "scope": "role",
+      "required": "always",
+      "fileSlots": [
+        "document"
+      ],
+      "fieldSchema": [
+        {
+          "key": "number",
+          "type": "text",
+          "min": 4,
+          "max": 40,
+          "required": true,
+          "labelEn": "Licence number",
+          "labelBn": "লাইসেন্স নম্বর"
+        },
+        {
+          "key": "holderName",
+          "type": "text",
+          "min": 3,
+          "max": 120,
+          "required": true,
+          "labelEn": "Name on the licence",
+          "labelBn": "লাইসেন্সে নাম"
+        },
+        {
+          "key": "expiresOn",
+          "type": "date",
+          "future": true,
+          "required": true,
+          "labelEn": "Valid until",
+          "labelBn": "মেয়াদ শেষ"
+        }
+      ],
+      "labelEn": "Trade licence",
+      "labelBn": "ট্রেড লাইসেন্স",
+      "whyEn": "Shows the business that runs the shop. It must still be valid.",
+      "whyBn": "দোকান যে প্রতিষ্ঠান চালায় তা দেখায়। মেয়াদ থাকতে হবে।",
+      "sort": 1
+    },
+    {
+      "role": "shop_owner",
+      "docType": "tin",
+      "scope": "role",
+      "required": "always",
+      "fileSlots": [
+        "document"
+      ],
+      "fieldSchema": [
+        {
+          "key": "number",
+          "type": "digits",
+          "min": 12,
+          "max": 12,
+          "required": true,
+          "labelEn": "TIN (12 digits)",
+          "labelBn": "টিআইএন (১২ সংখ্যা)"
+        }
+      ],
+      "labelEn": "TIN certificate",
+      "labelBn": "টিআইএন সনদ",
+      "whyEn": "Needed to sell online in Bangladesh and for tax statements.",
+      "whyBn": "বাংলাদেশে অনলাইনে বিক্রি ও কর বিবরণীর জন্য দরকার।",
+      "sort": 2
+    },
+    {
+      "role": "shop_owner",
+      "docType": "bin",
+      "scope": "role",
+      "required": "optional",
+      "fileSlots": [
+        "document"
+      ],
+      "fieldSchema": [
+        {
+          "key": "number",
+          "type": "digits",
+          "min": 9,
+          "max": 13,
+          "required": true,
+          "labelEn": "BIN (9 or 13 digits)",
+          "labelBn": "বিআইএন (৯ বা ১৩ সংখ্যা)"
+        },
+        {
+          "key": "holderName",
+          "type": "text",
+          "min": 3,
+          "max": 120,
+          "required": true,
+          "labelEn": "Name on the certificate",
+          "labelBn": "সনদে নাম"
+        }
+      ],
+      "labelEn": "VAT registration (BIN)",
+      "labelBn": "ভ্যাট নিবন্ধন (বিআইএন)",
+      "whyEn": "Only if your shop is VAT registered (larger sellers must be).",
+      "whyBn": "শুধু দোকান ভ্যাট নিবন্ধিত হলে (বড় বিক্রেতাদের জন্য বাধ্যতামূলক)।",
+      "sort": 3
+    },
+    {
+      "role": "player",
+      "docType": "credential",
+      "scope": "hire_role",
+      "required": "optional",
+      "fileSlots": [
+        "document"
+      ],
+      "fieldSchema": [
+        {
+          "key": "hireRole",
+          "type": "text",
+          "min": 3,
+          "max": 40,
+          "required": true,
+          "labelEn": "Hire role",
+          "labelBn": "হায়ারের ভূমিকা"
+        },
+        {
+          "key": "level",
+          "type": "text",
+          "min": 3,
+          "max": 10,
+          "required": true,
+          "labelEn": "Level",
+          "labelBn": "স্তর"
+        },
+        {
+          "key": "issuer",
+          "type": "text",
+          "min": 2,
+          "max": 120,
+          "required": true,
+          "labelEn": "Issued by",
+          "labelBn": "প্রদানকারী"
+        },
+        {
+          "key": "number",
+          "type": "text",
+          "min": 2,
+          "max": 40,
+          "required": false,
+          "labelEn": "Certificate number",
+          "labelBn": "সনদ নম্বর"
+        },
+        {
+          "key": "expiresOn",
+          "type": "date",
+          "required": false,
+          "future": true,
+          "labelEn": "Valid until",
+          "labelBn": "মেয়াদ"
+        }
+      ],
+      "labelEn": "Credential for a hire role",
+      "labelBn": "হায়ারের ভূমিকার সনদ",
+      "whyEn": "A certificate or licence for the role you offer (umpire level, physio registration). Some roles need one to be listed; it sets the level you can take.",
+      "whyBn": "আপনার দেওয়া ভূমিকার সনদ বা লাইসেন্স (আম্পায়ার লেভেল, ফিজিও নিবন্ধন)। কিছু ভূমিকায় তালিকাভুক্ত হতে এটি লাগে; এটি কোন স্তরের কাজ নিতে পারবেন তা ঠিক করে।",
+      "sort": 1
+    },
+    {
+      "role": "player",
+      "docType": "police_clearance",
+      "required": "optional",
+      "fileSlots": [
+        "document"
+      ],
+      "fieldSchema": [
+        {
+          "key": "number",
+          "type": "text",
+          "min": 3,
+          "max": 40,
+          "required": true,
+          "labelEn": "Certificate number",
+          "labelBn": "সনদ নম্বর"
+        },
+        {
+          "key": "expiresOn",
+          "type": "date",
+          "required": true,
+          "future": true,
+          "labelEn": "Valid until",
+          "labelBn": "মেয়াদ"
+        }
+      ],
+      "labelEn": "Police clearance",
+      "labelBn": "পুলিশ ক্লিয়ারেন্স",
+      "whyEn": "Needed before you take any job with under-16 players.",
+      "whyBn": "১৬ বছরের কম বয়সী খেলোয়াড়দের সাথে কোনো কাজ নেওয়ার আগে দরকার।",
+      "sort": 2
+    },
+    {
+      "role": "pro",
+      "docType": "credential",
+      "scope": "hire_role",
+      "required": "optional",
+      "fileSlots": [
+        "document"
+      ],
+      "fieldSchema": [
+        {
+          "key": "hireRole",
+          "type": "text",
+          "min": 3,
+          "max": 40,
+          "required": true,
+          "labelEn": "Hire role",
+          "labelBn": "হায়ারের ভূমিকা"
+        },
+        {
+          "key": "level",
+          "type": "text",
+          "min": 3,
+          "max": 10,
+          "required": true,
+          "labelEn": "Level",
+          "labelBn": "স্তর"
+        },
+        {
+          "key": "issuer",
+          "type": "text",
+          "min": 2,
+          "max": 120,
+          "required": true,
+          "labelEn": "Issued by",
+          "labelBn": "প্রদানকারী"
+        },
+        {
+          "key": "number",
+          "type": "text",
+          "min": 2,
+          "max": 40,
+          "required": false,
+          "labelEn": "Certificate number",
+          "labelBn": "সনদ নম্বর"
+        },
+        {
+          "key": "expiresOn",
+          "type": "date",
+          "required": false,
+          "future": true,
+          "labelEn": "Valid until",
+          "labelBn": "মেয়াদ"
+        }
+      ],
+      "labelEn": "Credential for a hire role",
+      "labelBn": "হায়ারের ভূমিকার সনদ",
+      "whyEn": "A certificate or licence for the role you offer (umpire level, physio registration). Some roles need one to be listed; it sets the level you can take.",
+      "whyBn": "আপনার দেওয়া ভূমিকার সনদ বা লাইসেন্স (আম্পায়ার লেভেল, ফিজিও নিবন্ধন)। কিছু ভূমিকায় তালিকাভুক্ত হতে এটি লাগে; এটি কোন স্তরের কাজ নিতে পারবেন তা ঠিক করে।",
+      "sort": 1
+    },
+    {
+      "role": "pro",
+      "docType": "police_clearance",
+      "required": "optional",
+      "fileSlots": [
+        "document"
+      ],
+      "fieldSchema": [
+        {
+          "key": "number",
+          "type": "text",
+          "min": 3,
+          "max": 40,
+          "required": true,
+          "labelEn": "Certificate number",
+          "labelBn": "সনদ নম্বর"
+        },
+        {
+          "key": "expiresOn",
+          "type": "date",
+          "required": true,
+          "future": true,
+          "labelEn": "Valid until",
+          "labelBn": "মেয়াদ"
+        }
+      ],
+      "labelEn": "Police clearance",
+      "labelBn": "পুলিশ ক্লিয়ারেন্স",
+      "whyEn": "Needed before you take any job with under-16 players.",
+      "whyBn": "১৬ বছরের কম বয়সী খেলোয়াড়দের সাথে কোনো কাজ নেওয়ার আগে দরকার।",
+      "sort": 2
     }
   ]
 }

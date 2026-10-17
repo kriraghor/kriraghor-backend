@@ -293,7 +293,7 @@ const GroundDetail = z
       fullRefundHours: z.number().int().nullable(),
       halfRefundHours: z.number().int().nullable(),
     }),
-    owner: z.object({ displayName: z.string().nullable() }),
+    owner: z.object({ displayName: z.string().nullable(), reliability: z.number().int().nullable().meta({ description: 'M18 owner reliability (%), shown from trust.min_sample bookings' }) }),
     ratingAvg: z.number().nullable(),
     ratingCount: z.number().int(),
     bookingOpen: z.boolean(),

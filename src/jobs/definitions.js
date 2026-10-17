@@ -24,6 +24,12 @@ const esportsLifecycle = require('../modules/esports/esports.lifecycle');
 const esportsRankings = require('../modules/esports/rankings.service');
 const bookings = require('../modules/bookings/bookings.service');
 const analytics = require('../modules/analytics/facts.service');
+const disputes = require('../modules/trust/disputes.service');
+const riskJobs = require('../modules/risk/risk.jobs');
+const risk = require('../modules/risk/risk.nightly');
+const inventory = require('../modules/market/inventory.service');
+const orders = require('../modules/orders/orders.jobs');
+const hire = require('../modules/hire/hire.jobs');
 const { purgeExpired: purgeIdempotencyKeys } = require('../common/idempotency');
 const logger = require('../common/logger');
 
@@ -234,6 +240,78 @@ const JOBS = [
     queue: QUEUES.BOOKINGS,
     every: 60 * 1000,
     run: async () => bookings.tick(),
+  },
+  // ---------------- M17 disputes (§10). Idempotent: every step re-checks the state under a row lock.
+  {
+    // Respondent reminders (disputes.respondent_reminder_hours before) and timeouts; staff and master
+    // SLA breaches (once per level); expired desk claims. No-show advances are released by bookings.tick.
+    name: 'trust.tick',
+    queue: QUEUES.TRUST,
+    every: 60 * 1000,
+    run: async () => disputes.tick(),
+  },
+  // ---------------- M18 risk and trust (§10). Every step re-reads the facts, so a repeat is harmless.
+  {
+    // FR-04: one account's rules and reliability, about 30 s after its events (debounced per user).
+    name: riskJobs.JOBS.EVALUATE_USER,
+    queue: QUEUES.RISK,
+    run: async ({ userId }) => risk.evaluate(userId),
+  },
+  {
+    // FR-03: a risk.* or trust.* setting changed: re-evaluate every account with flags or metrics.
+    name: riskJobs.JOBS.REEVALUATE_ALL,
+    queue: QUEUES.RISK,
+    run: async () => risk.everyone(),
+  },
+  {
+    // FR-04, FR-07, FR-14: re-evaluate active accounts, lapse quiet flags, mark overdue document requests.
+    name: 'risk.nightly',
+    queue: QUEUES.RISK,
+    pattern: '30 2 * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => risk.nightly(),
+  },
+  // ---------------- M12 market (§10). Idempotent: each step changes only what is out of line, under row locks.
+  {
+    // v3: supplement variants past or near their expiry are blocked from sale; the shop is told.
+    name: 'market.supplement-expiry',
+    queue: QUEUES.MARKET,
+    pattern: '0 1 * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => inventory.supplementSweep(),
+  },
+  {
+    // FR-11: the variant stock columns equal the sum of their movements; a mismatch is a critical audit row.
+    name: 'market.inventory-reconcile',
+    queue: QUEUES.MARKET,
+    pattern: '30 3 * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => inventory.reconcile(),
+  },
+  {
+    // FR-15 safety net: hide and show products from their stock (every movement already does this).
+    name: 'market.visibility-sweep',
+    queue: QUEUES.MARKET,
+    every: 60 * 60 * 1000,
+    run: async () => inventory.visibilitySweep(),
+  },
+  // ---------------- M13 orders (§10). Idempotent: every step locks the sub-order and re-checks its status.
+  {
+    // Unpaid orders past market.checkout_hold_minutes; accept reminders and expiry (refund); shipping
+    // late past market.ship_overdue_auto_cancel_hours (refund); delivered past market.auto_complete_days.
+    name: 'orders.tick',
+    queue: QUEUES.ORDERS,
+    every: 60 * 1000,
+    run: async () => orders.tick(),
+  },
+  // ---------------- M11 hire (§10). Idempotent: every step locks the row and re-checks its status.
+  {
+    // Requests past hire.reply_hours expire; unpaid ones past hire.payment_window_min lapse; check-in
+    // reminders; jobs marked complete are released after hire.auto_release_hours with no dispute (v3).
+    name: 'hire.tick',
+    queue: QUEUES.HIRE,
+    every: 60 * 1000,
+    run: async () => hire.tick(),
   },
   // ---------------- M19 analytics (§10). Idempotent: upserts and REFRESH … CONCURRENTLY under an advisory lock.
   {

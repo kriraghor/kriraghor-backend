@@ -1431,7 +1431,7 @@
           }
         },
         {
-          "name": "Mark no-show: ৳475 / ৳25",
+          "name": "Mark no-show: the ৳500 advance waits for the dispute window",
           "event": [
             {
               "listen": "test",
@@ -1444,7 +1444,7 @@
                   "pm.test('status 200', () => {",
                   "  pm.response.to.have.status(200);",
                   "});",
-                  "pm.test(\"retained\", () => { pm.expect(j.booking.status === 'no_show' && j.settled.net === 47500 && j.settled.fee === 2500).to.eql(true); });"
+                  "pm.test(\"retained, not yet released\", () => { pm.expect(j.booking.status === 'no_show' && j.settled.retained === 50000 && j.settled.refunded === 0 && Boolean(j.settled.settleDueAt)).to.eql(true); });"
                 ]
               }
             }
@@ -1681,6 +1681,45 @@
                 "me",
                 "bookings",
                 "{{b5}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: the no-show dispute window closes (M17): ৳475 / ৳25",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"no-show settled\", () => { pm.expect(j.tick.noShowsSettled === 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/tick?plusHours=49",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "tick"
+              ],
+              "query": [
+                {
+                  "key": "plusHours",
+                  "value": "49"
+                }
               ]
             }
           }

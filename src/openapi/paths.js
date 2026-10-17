@@ -18,9 +18,14 @@ const esS = require('../modules/esports/esports.schemas');
 const grS = require('../modules/grounds/grounds.schemas');
 const bkS = require('../modules/bookings/bookings.schemas');
 const anS = require('../modules/analytics/analytics.schemas');
+const trS = require('../modules/trust/trust.schemas');
+const rkS = require('../modules/risk/risk.schemas');
+const mkS = require('../modules/market/market.schemas');
+const orS = require('../modules/orders/orders.schemas');
+const hiS = require('../modules/hire/hire.schemas');
 
 /**
- * Every route (M01, M02, M03, M04, M05, M06, M07, M08, M09, M21), registered with its request and response schemas and the stable error
+ * Every route (M01 to M10, M12, M17, M18, M19, M21), registered with its request and response schemas and the stable error
  * codes it can return (ADR-002). When a route is added in a module, add it here: the
  * coverage test fails if an Express route has no OpenAPI entry.
  */
@@ -761,6 +766,248 @@ function register(registry) {
   p({ method: 'get', path: '/admin/analytics/export', tags: ['analytics'], summary: 'CSV of the platform day table (master or view_analytics)', security: adminBearer,
     request: { query: anS.platformExportQuery }, responses: { 200: csv, ...errors({ ...ADMIN_AUTH, 404: ['DATASET_UNKNOWN'], 422: ['VALIDATION_FAILED', 'EXPORT_TOO_LARGE'], 429: ['EXPORT_LIMIT'] }) } });
   p({ method: 'get', path: '/admin/analytics/actions', tags: ['analytics'], summary: 'Needs your action for staff (the review queue)', security: adminBearer, responses: { 200: json(anS.Actions), ...errors(ADMIN_AUTH) } });
+  // ------------------------------------------------------------------ M17 disputes, reports and reviews
+  const dCode = { params: trS.codeParam };
+  const dEv = { params: trS.evidenceParam };
+  const rvId = { params: trS.idParam };
+  const file = { description: 'The file (inline, no-store, sandboxed)', content: { 'application/octet-stream': { schema: z.string() } } };
+  const DPARTY = { ...COMMON_AUTH, 404: ['NOT_A_PARTY', 'NOT_FOUND'] };
+  const DSTAFF = { ...ADMIN_AUTH, 404: ['NOT_FOUND'] };
+  const DECIDE = {
+    403: [...ADMIN_AUTH[403], 'CONFLICT_OF_INTEREST', 'CLAIM_REQUIRED', 'REFUND_PERMISSION_REQUIRED', 'ESCALATION_REQUIRED', 'STEP_UP_REQUIRED'],
+    409: ['DISPUTE_STATE', 'DISPUTE_VERSION', 'DISPUTE_SOURCE_CHANGED', 'ESCROW_FROZEN'],
+    422: ['VALIDATION_FAILED', 'OUTCOME_NOT_ALLOWED', 'REFUND_INVALID', 'CORRECTION_REQUIRED'],
+  };
+  p({ method: 'post', path: '/disputes', tags: ['disputes'], summary: 'Open a booking dispute as the member who paid (gate file_dispute: a verified phone); the escrow hold is frozen (FR-01 to FR-04)', security: bearer,
+    request: { headers: idem, ...body(trS.openBody) }, responses: { 201: json(trS.PartyCase, 'Created'), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'NOT_YOUR_BOOKING', 'ACCOUNT_SUSPENDED'], 409: ['DISPUTE_NOT_ELIGIBLE', 'DISPUTE_WINDOW_CLOSED', 'DISPUTE_ALREADY_OPEN', 'ESCROW_NOT_OPEN'], 429: ['DISPUTE_LIMIT'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/disputes', tags: ['disputes'], summary: 'My disputes, as the claimant or the respondent', security: bearer, request: { query: trS.mineQuery }, responses: { 200: json(trS.CaseList), ...errors({ ...COMMON_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/disputes/options', tags: ['disputes'], summary: 'What I can dispute on a booking now, and its latest case', security: bearer, request: { query: trS.optionsQuery }, responses: { 200: json(trS.Options), ...errors({ ...COMMON_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/disputes/{code}', tags: ['disputes'], summary: 'A case: the booking, both sides, the timeline and what I can do', security: bearer, request: dCode, responses: { 200: json(trS.PartyCase), ...errors(DPARTY) } });
+  p({ method: 'post', path: '/me/disputes/{code}/statement', tags: ['disputes'], summary: 'Add a statement while the case is open (FR-05)', security: bearer,
+    request: { ...dCode, ...body(trS.statementBody) }, responses: { 200: json(trS.PartyCase), ...errors({ ...DPARTY, 409: ['DISPUTE_STATE', 'EVIDENCE_LIMIT'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/disputes/{code}/evidence', tags: ['disputes'], summary: 'Upload a file (raw body: JPEG, PNG, WebP or PDF, typed by its bytes; private, audited) (FR-05)', security: bearer,
+    request: { ...dCode, body: { content: { 'application/octet-stream': { schema: z.string() } } } }, responses: { 201: json(trS.EvidenceResult, 'Created'), ...errors({ ...DPARTY, 409: ['DISPUTE_STATE', 'EVIDENCE_LIMIT'], 413: ['FILE_TOO_LARGE'], 415: ['FILE_TYPE'], 429: ['UPLOAD_RATE_LIMITED'] }) } });
+  p({ method: 'get', path: '/me/disputes/{code}/evidence/{eid}/file', tags: ['disputes'], summary: 'Read a file of the case (audited)', security: bearer, request: dEv, responses: { 200: file, ...errors(DPARTY) } });
+  p({ method: 'post', path: '/me/disputes/{code}/respond', tags: ['disputes'], summary: "The respondent's side; the case goes to staff (FR-06)", security: bearer,
+    request: { ...dCode, ...body(trS.statementBody) }, responses: { 200: json(trS.PartyCase), ...errors({ ...DPARTY, 409: ['DISPUTE_STATE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/disputes/{code}/withdraw', tags: ['disputes'], summary: 'Withdraw my case; the hold is unfrozen and the booking settles as usual (FR-07)', security: bearer,
+    request: { ...dCode, ...body(trS.withdrawBody) }, responses: { 200: json(trS.PartyCase), ...errors({ ...DPARTY, 409: ['DISPUTE_STATE'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/disputes', tags: ['disputes'], summary: 'The dispute queue, escalated and most urgent first (resolve_reports for bookings, manage_esports for results)', security: adminBearer,
+    request: { query: trS.adminListQuery }, responses: { 200: json(trS.StaffList), ...errors({ ...ADMIN_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/disputes/{code}', tags: ['disputes'], summary: 'A case with both sides, the policy line, the outcomes and what each would move', security: adminBearer, request: dCode, responses: { 200: json(trS.StaffCase), ...errors(DSTAFF) } });
+  for (const [action, summary] of [['claim', 'Claim a case (one reviewer at a time; parties cannot)'], ['heartbeat', 'Keep my claim'], ['release', 'Let my claim go']]) {
+    p({ method: 'post', path: `/admin/disputes/{code}/${action}`, tags: ['disputes'], summary, security: adminBearer, request: dCode,
+      responses: { 200: json(action === 'claim' ? trS.StaffCase : z.object({}).loose()), ...errors({ ...DSTAFF, 403: [...ADMIN_AUTH[403], 'CONFLICT_OF_INTEREST', 'CLAIM_REQUIRED'], 409: ['DISPUTE_STATE', 'CLAIMED_BY_OTHER'] }) } });
+  }
+  p({ method: 'post', path: '/admin/disputes/{code}/notes', tags: ['disputes'], summary: 'A staff-only note', security: adminBearer, request: { ...dCode, ...body(trS.noteBody) }, responses: { 200: json(trS.StaffCase), ...errors({ ...DSTAFF, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/disputes/{code}/evidence/{eid}/file', tags: ['disputes'], summary: 'Read a file of the case (audited)', security: adminBearer, request: dEv, responses: { 200: file, ...errors(DSTAFF) } });
+  p({ method: 'post', path: '/admin/disputes/{code}/evidence/{eid}/hide', tags: ['disputes'], summary: 'Hide an item from the parties, with a reason', security: adminBearer, request: { ...dEv, ...body(trS.hideBody) }, responses: { 200: json(trS.StaffCase), ...errors({ ...DSTAFF, ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/disputes/{code}/decide', tags: ['disputes'], summary: 'Decide a claimed case: refunds within refunds.staff_limit_poisha need refund_small; the money moves in the same transaction (FR-11, FR-13)', security: adminBearer,
+    request: { ...dCode, headers: idem, ...body(trS.decideBody) }, responses: { 200: json(trS.StaffCase), ...errors({ ...DSTAFF, ...DECIDE }) } });
+  p({ method: 'post', path: '/admin/disputes/{code}/escalate', tags: ['disputes'], summary: 'Escalate to the masters with a recommendation (FR-12)', security: adminBearer,
+    request: { ...dCode, ...body(trS.escalateBody) }, responses: { 200: json(trS.StaffCase), ...errors({ ...DSTAFF, 403: [...ADMIN_AUTH[403], 'CONFLICT_OF_INTEREST'], 409: ['DISPUTE_STATE', 'DISPUTE_VERSION'], 422: ['VALIDATION_FAILED', 'OUTCOME_NOT_ALLOWED', 'REFUND_INVALID'] }) } });
+  p({ method: 'post', path: '/admin/disputes/{code}/master-decide', tags: ['disputes'], summary: 'A master decides any amount (step-up refund.large)', security: adminBearer,
+    request: { ...dCode, headers: stepUpHeader.extend(idem.shape), ...body(trS.decideBody) }, responses: { 200: json(trS.StaffCase), ...errors({ ...DSTAFF, ...DECIDE }) } });
+  p({ method: 'post', path: '/admin/disputes/{code}/send-back', tags: ['disputes'], summary: 'A master sends an escalated case back to staff', security: adminBearer,
+    request: { ...dCode, ...body(trS.sendBackBody) }, responses: { 200: json(trS.StaffCase), ...errors({ ...DSTAFF, 409: ['DISPUTE_STATE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/reports', tags: ['reports'], summary: 'Report a ground, booking, member, review or tournament (reports.per_day) (FR-15, FR-16)', security: bearer,
+    request: body(trS.reportBody), responses: { 201: json(trS.ReportResult, 'Created'), ...errors({ ...COMMON_AUTH, 404: ['REPORT_SUBJECT_UNKNOWN'], 409: ['REPORT_DUPLICATE'], 422: ['VALIDATION_FAILED', 'REPORT_SELF'], 429: ['REPORT_RATE_LIMITED'] }) } });
+  p({ method: 'get', path: '/me/reports', tags: ['reports'], summary: 'What I reported and how it ended', security: bearer, responses: { 200: json(trS.MyReports), ...errors(COMMON_AUTH) } });
+  p({ method: 'get', path: '/admin/reports', tags: ['reports'], summary: 'Reported subjects, flagged first (resolve_reports) (FR-17)', security: adminBearer, request: { query: trS.reportListQuery }, responses: { 200: json(trS.ReportQueue), ...errors({ ...ADMIN_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/reports/subjects/{type}/{id}', tags: ['reports'], summary: 'Every report of a subject and the actions that apply', security: adminBearer, request: { params: trS.subjectParam }, responses: { 200: json(trS.ReportSubject), ...errors({ ...ADMIN_AUTH, ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/reports/resolve', tags: ['reports'], summary: 'Resolve every open report of a subject with one action (suspensions need manage_users) (FR-18)', security: adminBearer,
+    request: body(trS.resolveBody), responses: { 200: json(trS.ReportAction), ...errors({ ...ADMIN_AUTH, 404: ['REPORT_SUBJECT_UNKNOWN'], 409: ['NOTHING_OPEN', 'USER_NOT_ACTIVE', 'GROUND_STATE'], 422: ['VALIDATION_FAILED', 'RESOLUTION_NOT_ALLOWED'] }) } });
+  p({ method: 'post', path: '/admin/reports/escalate', tags: ['reports'], summary: "Escalate a subject's reports to the masters", security: adminBearer, request: body(trS.escalateReportBody), responses: { 200: json(trS.ReportAction), ...errors({ ...ADMIN_AUTH, 409: ['NOTHING_OPEN'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/reports/{code}/dismiss', tags: ['reports'], summary: 'Dismiss one report', security: adminBearer, request: { ...dCode, ...body(trS.dismissBody) }, responses: { 200: json(trS.ReportAction), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'], 409: ['NOTHING_OPEN'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/grounds/{id}/reviews', tags: ['reviews'], summary: 'Published reviews of a ground with the summary (the average from reviews.min_count_display reviews)', request: { ...rvId, query: trS.publicReviewsQuery }, responses: { 200: json(trS.PublicReviews), ...errors(VALIDATION) } });
+  p({ method: 'post', path: '/reviews', tags: ['reviews'], summary: 'Rate a ground after playing (once per booking; held while a dispute is open) (FR-20, FR-21)', security: bearer,
+    request: body(trS.reviewBody), responses: { 201: json(trS.ReviewResult, 'Created'), ...errors({ ...COMMON_AUTH, 403: ['NOT_YOUR_BOOKING'], 404: ['NOT_FOUND'], 409: ['NOT_PLAYED', 'REVIEW_WINDOW_CLOSED', 'REVIEW_EXISTS'], ...VALIDATION }) } });
+  p({ method: 'patch', path: '/reviews/{id}', tags: ['reviews'], summary: 'Change my review within reviews.edit_days (FR-22)', security: bearer,
+    request: { ...rvId, ...body(trS.reviewPatch) }, responses: { 200: json(trS.ReviewResult), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], 409: ['REVIEW_EDIT_CLOSED', 'REVIEW_HIDDEN'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/reviewable', tags: ['reviews'], summary: 'My played bookings still waiting for a rating', security: bearer, responses: { 200: json(trS.Reviewable), ...errors(COMMON_AUTH) } });
+  p({ method: 'get', path: '/me/reviews', tags: ['reviews'], summary: 'My reviews', security: bearer, responses: { 200: json(trS.ReviewList), ...errors(COMMON_AUTH) } });
+  p({ method: 'get', path: '/me/ground-reviews', tags: ['reviews'], summary: 'Reviews of my grounds (gate list_ground)', security: bearer, request: { query: trS.ownerReviewsQuery }, responses: { 200: json(trS.ReviewList), ...errors({ ...COMMON_AUTH, 403: ['ROLE_REQUIRED', 'KYC_REQUIRED'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/ground-reviews/{id}/reply', tags: ['reviews'], summary: 'Reply to a review of my ground (FR-25)', security: bearer,
+    request: { ...rvId, ...body(trS.replyBody) }, responses: { 200: json(trS.ReviewResult), ...errors({ ...COMMON_AUTH, 403: ['NOT_OWNER', 'ROLE_REQUIRED'], 404: ['NOT_FOUND'], 409: ['REVIEW_STATE'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/reviews', tags: ['reviews'], summary: 'Held, hidden or published reviews (resolve_reports)', security: adminBearer, request: { query: trS.adminReviewsQuery }, responses: { 200: json(trS.ReviewList), ...errors({ ...ADMIN_AUTH, ...VALIDATION }) } });
+  for (const [action, summary, extra] of [['hide', 'Hide a review with a reason', body(trS.hideReviewBody)], ['restore', 'Restore a hidden review', {}], ['publish', 'Publish a held review', {}]]) {
+    p({ method: 'post', path: `/admin/reviews/{id}/${action}`, tags: ['reviews'], summary, security: adminBearer, request: { ...rvId, ...extra }, responses: { 200: json(trS.ReviewResult), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'], 409: ['REVIEW_STATE'], ...VALIDATION }) } });
+  }
+  // ------------------------------------------------------------------ M18 risk and trust
+  const rkUser = { params: rkS.userParam };
+  const RK = { ...ADMIN_AUTH, 404: ['NOT_FOUND'] };
+  p({ method: 'get', path: '/admin/risk/overview', tags: ['risk'], summary: 'Open flags by severity and the rules with their live thresholds (manage_users or master)', security: adminBearer, responses: { 200: json(rkS.Overview), ...errors(ADMIN_AUTH) } });
+  p({ method: 'get', path: '/admin/risk/flags', tags: ['risk'], summary: 'Flags, critical first (FR-05)', security: adminBearer, request: { query: rkS.flagsQuery }, responses: { 200: json(rkS.FlagList), ...errors({ ...ADMIN_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/risk/accounts/{userId}', tags: ['risk'], summary: 'One account: flags, metrics, actions with undo, reliability, payout holds, document requests', security: adminBearer, request: rkUser, responses: { 200: json(rkS.Account), ...errors(RK) } });
+  p({ method: 'post', path: '/admin/risk/accounts/{userId}/actions', tags: ['risk'], summary: 'Freeze payouts or ban (master; step-up risk.manage / user.ban), ask for documents, clear, suspend (staff up to risk.staff_suspend_max_days) (FR-06 to FR-11)', security: adminBearer,
+    request: { ...rkUser, headers: stepUpHeader.partial(), ...body(rkS.actionBody) },
+    responses: { 201: json(rkS.Action, 'Created'), ...errors({ ...RK, 403: [...ADMIN_AUTH[403], 'STEP_UP_REQUIRED', 'SELF_ACTION_FORBIDDEN'], 409: ['ALREADY_FROZEN', 'FLAG_STATE', 'USER_NOT_ACTIVE', 'USER_ALREADY_BANNED', 'DOCUMENT_ALREADY_REQUESTED'], 422: ['VALIDATION_FAILED', 'SUSPENSION_TOO_LONG', 'FLAG_REQUIRED'] }) } });
+  p({ method: 'post', path: '/admin/risk/actions/{id}/undo', tags: ['risk'], summary: 'Undo an action with its compensating action: unfreeze, cancel the request, reopen, restore (FR-09)', security: adminBearer,
+    request: { params: rkS.idParam, headers: stepUpHeader.partial(), ...body(rkS.undoBody) },
+    responses: { 201: json(rkS.Action, 'Created'), ...errors({ ...RK, 403: [...ADMIN_AUTH[403], 'STEP_UP_REQUIRED'], 409: ['ACTION_NOT_REVERSIBLE', 'ACTION_ALREADY_REVERSED', 'FLAG_STATE', 'USER_ALREADY_ACTIVE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/risk/thresholds', tags: ['risk'], summary: 'Propose new risk or trust thresholds: an M03 change request (master, step-up settings.write; re-evaluation follows) (FR-02, FR-03)', security: adminBearer,
+    request: { headers: stepUpHeader, ...body(rkS.thresholdsBody) }, responses: { 201: json(z.object({}).loose(), 'Created'), ...errors({ ...ADMIN_AUTH, 422: ['VALIDATION_FAILED', 'SETTING_UNCHANGED', 'SETTING_OUT_OF_RANGE'] }) } });
+  p({ method: 'get', path: '/me/trust', tags: ['risk'], summary: 'My reliability scores and the counts behind them (FR-14)', security: bearer, responses: { 200: json(rkS.Scores), ...errors(COMMON_AUTH) } });
+  p({ method: 'get', path: '/trust/{userId}', tags: ['risk'], summary: 'Reliability scores that are shown (enough bookings, trust.min_sample)', request: rkUser, responses: { 200: json(rkS.Scores), ...errors(VALIDATION) } });
+  p({ method: 'get', path: '/me/document-requests', tags: ['kyc'], summary: 'Documents our team asked me for (M02, from the risk desk)', security: bearer, responses: { 200: json(rkS.DocumentRequests), ...errors(COMMON_AUTH) } });
+  // ------------------------------------------------------------------ M12 market catalogue (step 1)
+  const mkId = { params: mkS.idParam };
+  const SHOP = { ...COMMON_AUTH, 403: ['ROLE_REQUIRED', 'ROLE_PENDING', 'KYC_REQUIRED', 'PHONE_REQUIRED', 'NOT_OWNER'], 404: ['NOT_FOUND'] };
+  const PRODUCT_EDIT = { 409: ['PRODUCT_IN_REVIEW', 'PRODUCT_STATE', 'SHOP_REQUIRED'] };
+  const mkPhoto = { description: 'The photo itself, up to market.photo_max_bytes', content: { 'image/jpeg': { schema: z.string() }, 'image/png': { schema: z.string() }, 'image/webp': { schema: z.string() } } };
+  p({ method: 'get', path: '/market/items', tags: ['market'], summary: 'Live shop products: category, item types, price band, area, search; facet counts; sorts newest / price (FR-30 to FR-32)', request: { query: mkS.listQuery }, responses: { 200: json(mkS.ItemList), ...errors(VALIDATION) } });
+  p({ method: 'get', path: '/market/categories', tags: ['market'], summary: 'The M03 item catalogue: categories, item types with price ranges and spec fields (ETag)', responses: { 200: json(mkS.Categories), 304: { description: 'Not modified' } } });
+  p({ method: 'get', path: '/market/products/{slug}', tags: ['market'], summary: 'A product page: public version, variant picker with live stock, specs, supplement details, the shop (410 once removed)',
+    request: { params: mkS.slugParam }, responses: { 200: json(mkS.ProductPage), ...errors({ 404: ['NOT_FOUND'], 410: ['PRODUCT_GONE'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/market/shops/{slug}', tags: ['market'], summary: 'A live shop and its products', request: { params: mkS.slugParam, query: mkS.shopPageQuery }, responses: { 200: json(mkS.ShopPage), ...errors({ 404: ['NOT_FOUND'], ...VALIDATION }) } });
+
+  p({ method: 'get', path: '/me/saved', tags: ['market'], summary: 'My saved items with badges (price dropped, out of stock, unavailable) (FR-33)', security: bearer, responses: { 200: json(mkS.SavedList), ...errors(COMMON_AUTH) } });
+  p({ method: 'put', path: '/me/saved/{itemType}/{id}', tags: ['market'], summary: 'Save an item (idempotent; at most market.saved_max; not your own, FR-34)', security: bearer,
+    request: { params: mkS.savedParams }, responses: { 200: json(mkS.SavedResult), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], 409: ['OWN_ITEM', 'SAVED_LIMIT'], ...VALIDATION }) } });
+  p({ method: 'delete', path: '/me/saved/{itemType}/{id}', tags: ['market'], summary: 'Unsave an item (the row is kept with removed_at)', security: bearer, request: { params: mkS.savedParams }, responses: { 200: json(mkS.SavedResult), ...errors({ ...COMMON_AUTH, ...VALIDATION }) } });
+
+  p({ method: 'get', path: '/shop/profile', tags: ['market'], summary: 'My shop (shop owner; gate list_product)', security: bearer, responses: { 200: json(mkS.ShopOwner), ...errors(SHOP) } });
+  p({ method: 'post', path: '/shop/profile', tags: ['market'], summary: 'Open my shop: a draft of a type from market.shop_types (FR-01; one per owner)', security: bearer,
+    request: body(mkS.createShop), responses: { 201: json(mkS.ShopOwner, 'Created'), ...errors({ ...SHOP, 409: ['SHOP_EXISTS'], 422: ['VALIDATION_FAILED', 'SHOP_TYPE_UNKNOWN', 'AREA_UNKNOWN'] }) } });
+  p({ method: 'patch', path: '/shop/profile', tags: ['market'], summary: 'Edit my shop; on a live shop the name, area and address start an edit, the rest apply at once', security: bearer,
+    request: body(mkS.updateShop), responses: { 200: json(mkS.ShopOwner), ...errors({ ...SHOP, 409: ['SHOP_IN_REVIEW', 'SHOP_STATE', 'SHOP_REQUIRED'], 422: ['VALIDATION_FAILED', 'SHOP_TYPE_UNKNOWN', 'AREA_UNKNOWN'] }) } });
+  for (const [action, summary] of [['submit', 'Send the shop (or an edit of it) for review (M05 kind shop)'], ['withdraw', 'Take the shop or its edit out of review'], ['pause', 'Hide the shop and its products'], ['resume', 'Show a paused shop again']]) {
+    p({ method: 'post', path: `/shop/profile/${action}`, tags: ['market'], summary, security: bearer, responses: { 200: json(mkS.ShopOwner), ...errors({ ...SHOP, 409: ['SHOP_STATE', 'SHOP_IN_REVIEW', 'NOTHING_TO_REVIEW', 'SHOP_REQUIRED'] }) } });
+  }
+  p({ method: 'put', path: '/shop/stock-rules', tags: ['market'], summary: 'Low-stock alert, hide when out of stock, made-to-order days (FR-06, FR-14, FR-15; explicit save, audited)', security: bearer,
+    request: body(mkS.stockRules), responses: { 200: json(mkS.ShopOwner), ...errors({ ...SHOP, 409: ['SHOP_REQUIRED'], 422: ['VALIDATION_FAILED', 'MTO_DAYS_INVALID'] }) } });
+  p({ method: 'get', path: '/shop/products', tags: ['market'], summary: 'My products with status, cover and stock totals', security: bearer, request: { query: mkS.ownerListQuery }, responses: { 200: json(mkS.ProductOwnerList), ...errors({ ...SHOP, 409: ['SHOP_REQUIRED'] }) } });
+  p({ method: 'post', path: '/shop/products', tags: ['market'], summary: 'Draft a product of an item type with its variants and opening stock (FR-02 to FR-06)', security: bearer,
+    request: body(mkS.createProduct),
+    responses: { 201: json(mkS.ProductOwner, 'Created'), ...errors({ ...SHOP, 409: ['SHOP_REQUIRED', 'SHOP_STATE', 'VARIANT_DUPLICATE', 'SKU_TAKEN', 'MTO_NO_STOCK'], 422: ['VALIDATION_FAILED', 'ITEM_TYPE_UNKNOWN', 'CATEGORY_NOT_FOR_SHOP', 'SPECS_INVALID', 'ATTRIBUTES_INVALID', 'AXES_MISMATCH', 'PRICE_OUT_OF_RANGE', 'EXPIRY_REQUIRED', 'MTO_DAYS_INVALID', 'QTY_LIMIT_INVALID'] }) } });
+  p({ method: 'get', path: '/shop/products/{id}', tags: ['market'], summary: 'My product: the working copy with photos and variants', security: bearer, request: mkId, responses: { 200: json(mkS.ProductOwner), ...errors(SHOP) } });
+  p({ method: 'patch', path: '/shop/products/{id}', tags: ['market'], summary: 'Edit my product; title, type, brand, specs, supplement details and price moves above market.product_reprice_moderation_pct need review (FR-02)', security: bearer,
+    request: { ...mkId, ...body(mkS.updateProduct) },
+    responses: { 200: json(mkS.ProductOwner), ...errors({ ...SHOP, 409: [...PRODUCT_EDIT[409], 'VARIANT_HAS_HELD'], 422: ['VALIDATION_FAILED', 'ITEM_TYPE_UNKNOWN', 'CATEGORY_NOT_FOR_SHOP', 'SPECS_INVALID', 'ATTRIBUTES_INVALID', 'PRICE_OUT_OF_RANGE', 'MTO_DAYS_INVALID', 'QTY_LIMIT_INVALID'] }) } });
+  p({ method: 'post', path: '/shop/products/{id}/submit', tags: ['market'], summary: 'Send the product (or an edit of a live one) for review (M05 kind product; the shop must be live)', security: bearer,
+    request: mkId, responses: { 200: json(mkS.ProductOwner), ...errors({ ...SHOP, 409: ['SHOP_NOT_LIVE', 'PRODUCT_STATE', 'PRODUCT_IN_REVIEW', 'NOTHING_TO_REVIEW'], 422: ['PRODUCT_INCOMPLETE', 'ITEM_TYPE_UNKNOWN', 'CATEGORY_NOT_FOR_SHOP'] }) } });
+  p({ method: 'post', path: '/shop/products/{id}/withdraw', tags: ['market'], summary: 'Take the product or its edit out of review', security: bearer, request: mkId, responses: { 200: json(mkS.ProductOwner), ...errors({ ...SHOP, 409: ['PRODUCT_STATE'] }) } });
+  p({ method: 'post', path: '/shop/products/{id}/pause', tags: ['market'], summary: 'Hide a live product', security: bearer, request: mkId, responses: { 200: json(mkS.ProductOwner), ...errors({ ...SHOP, 409: ['PRODUCT_STATE'] }) } });
+  p({ method: 'post', path: '/shop/products/{id}/resume', tags: ['market'], summary: 'Show a paused product again', security: bearer, request: mkId, responses: { 200: json(mkS.ProductOwner), ...errors({ ...SHOP, 409: ['PRODUCT_STATE'] }) } });
+  p({ method: 'post', path: '/shop/products/{id}/remove', tags: ['market'], summary: 'Remove a product (no units held for orders; nothing is deleted)', security: bearer, request: mkId, responses: { 200: json(mkS.StatusResult), ...errors({ ...SHOP, 409: ['PRODUCT_STATE', 'VARIANT_HAS_HELD'] }) } });
+  p({ method: 'post', path: '/shop/products/{id}/variants', tags: ['market'], summary: 'Add a variant (a size or option) with its opening stock; public at once on a live product (FR-04)', security: bearer,
+    request: { ...mkId, ...body(mkS.createVariant) }, responses: { 201: json(mkS.ProductOwner, 'Created'), ...errors({ ...SHOP, 409: [...PRODUCT_EDIT[409], 'VARIANT_DUPLICATE', 'SKU_TAKEN', 'MTO_NO_STOCK'], 422: ['VALIDATION_FAILED', 'ATTRIBUTES_INVALID', 'AXES_MISMATCH', 'PRICE_OUT_OF_RANGE', 'EXPIRY_REQUIRED'] }) } });
+  p({ method: 'patch', path: '/shop/variants/{id}', tags: ['market'], summary: 'Edit a variant: SKU, price, expiry date and batch (supplements)', security: bearer,
+    request: { ...mkId, ...body(mkS.updateVariant) }, responses: { 200: json(mkS.ProductOwner), ...errors({ ...SHOP, 409: [...PRODUCT_EDIT[409], 'VARIANT_STATE', 'SKU_TAKEN'], 422: ['VALIDATION_FAILED', 'PRICE_OUT_OF_RANGE', 'EXPIRY_REQUIRED'] }) } });
+  p({ method: 'post', path: '/shop/variants/{id}/retire', tags: ['market'], summary: 'Retire a variant (none held for orders; a product keeps one)', security: bearer, request: mkId, responses: { 200: json(mkS.ProductOwner), ...errors({ ...SHOP, 409: [...PRODUCT_EDIT[409], 'VARIANT_STATE', 'VARIANT_HAS_HELD', 'LAST_VARIANT'] }) } });
+  p({ method: 'post', path: '/shop/products/{id}/photos', tags: ['market'], summary: 'Upload a photo (raw JPEG, PNG or WebP, checked by its first bytes) to the public bucket', security: bearer,
+    request: { ...mkId, body: mkPhoto },
+    responses: { 201: json(mkS.Photo, 'Created'), ...errors({ ...SHOP, 409: ['PRODUCT_IN_REVIEW', 'PRODUCT_STATE', 'PHOTO_LIMIT'], 413: ['FILE_TOO_LARGE', 'PAYLOAD_TOO_LARGE'], 415: ['FILE_TYPE_NOT_ALLOWED', 'FILE_TYPE_MISMATCH'], 422: ['FILE_EMPTY'], 429: ['UPLOAD_RATE_LIMITED'] }) } });
+  p({ method: 'put', path: '/shop/products/{id}/photos/order', tags: ['market'], summary: 'Reorder the photos (first = cover)', security: bearer,
+    request: { ...mkId, ...body(mkS.photoOrder) }, responses: { 200: json(z.object({ items: z.array(mkS.Photo) })), ...errors({ ...SHOP, 409: ['PRODUCT_IN_REVIEW', 'PRODUCT_STATE'], 422: ['VALIDATION_FAILED', 'PHOTOS_MISMATCH'] }) } });
+  p({ method: 'post', path: '/shop/products/{id}/photos/{photoId}/remove', tags: ['market'], summary: 'Remove a photo (status; nothing is deleted)', security: bearer,
+    request: { params: mkS.photoParams }, responses: { 200: json(z.object({ removed: z.uuid() })), ...errors({ ...SHOP, 409: ['PRODUCT_IN_REVIEW', 'PRODUCT_STATE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/shop/variants/{id}/adjust', tags: ['market'], summary: 'Change the count on the shelf with a reason (received, count correction, damaged, lost, other) (FR-13)', security: bearer,
+    request: { ...mkId, ...body(mkS.adjustBody) }, responses: { 200: json(mkS.StockResult), ...errors({ ...SHOP, 409: ['BELOW_HELD', 'MTO_NO_STOCK', 'VARIANT_STATE'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/shop/variants/{id}/movements', tags: ['market'], summary: 'The stock ledger of a variant, newest first (FR-11)', security: bearer, request: { ...mkId, query: mkS.cursorQuery }, responses: { 200: json(mkS.MovementList), ...errors(SHOP) } });
+  p({ method: 'get', path: '/shop/inventory', tags: ['market'], summary: 'Inventory desk: stock value, out, low, held, blocked; every active variant (§4)', security: bearer, request: { query: mkS.inventoryQuery }, responses: { 200: json(mkS.InventoryOverview), ...errors({ ...SHOP, 409: ['SHOP_REQUIRED'] }) } });
+
+  const MK = { ...ADMIN_AUTH, 404: ['NOT_FOUND'] };
+  p({ method: 'get', path: '/admin/market/shops', tags: ['market'], summary: 'Shops (approve_listings or manage_users)', security: adminBearer, request: { query: mkS.staffShopsQuery }, responses: { 200: json(mkS.StaffShopList), ...errors({ ...ADMIN_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/market/shops/{id}', tags: ['market'], summary: 'A shop: the working copy and the public version', security: adminBearer, request: mkId, responses: { 200: json(z.object({}).loose()), ...errors(MK) } });
+  p({ method: 'get', path: '/admin/market/products', tags: ['market'], summary: 'Shop products (approve_listings or manage_users)', security: adminBearer, request: { query: mkS.staffProductsQuery }, responses: { 200: json(mkS.StaffProductList), ...errors({ ...ADMIN_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/market/products/{id}', tags: ['market'], summary: 'A product: the working copy and the public version', security: adminBearer, request: mkId, responses: { 200: json(z.object({}).loose()), ...errors(MK) } });
+  for (const what of ['shops', 'products']) {
+    p({ method: 'post', path: `/admin/market/${what}/{id}/suspend`, tags: ['market'], summary: `Suspend (manage_users): hidden from Market`, security: adminBearer, request: { ...mkId, ...body(mkS.reasonBody) }, responses: { 200: json(mkS.StatusResult), ...errors({ ...MK, 409: ['SHOP_STATE', 'PRODUCT_STATE'], ...VALIDATION }) } });
+    p({ method: 'post', path: `/admin/market/${what}/{id}/restore`, tags: ['market'], summary: 'Restore a suspended one (masters)', security: adminBearer, request: { ...mkId, ...body(mkS.reasonBody) }, responses: { 200: json(mkS.StatusResult), ...errors({ ...MK, 409: ['SHOP_STATE', 'PRODUCT_STATE'], ...VALIDATION }) } });
+    p({ method: 'post', path: `/admin/market/${what}/{id}/remove`, tags: ['market'], summary: 'Remove for good (masters; nothing is deleted)', security: adminBearer, request: { ...mkId, ...body(mkS.reasonBody) }, responses: { 200: json(mkS.StatusResult), ...errors({ ...MK, 409: ['SHOP_STATE', 'PRODUCT_STATE', 'VARIANT_HAS_HELD'], ...VALIDATION }) } });
+  }
+
+  // ------------------------------------------------------------------ M13 orders and fulfilment (step 1)
+  const orId = { params: orS.idParam };
+  const orCode = { params: orS.codeParam };
+  const orVariant = { params: orS.variantParam };
+  const BUY = { ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'ACCOUNT_SUSPENDED'] };
+  const LINE = { 409: ['ITEM_UNAVAILABLE', 'INSUFFICIENT_STOCK'], 422: ['OWN_ITEM', 'QTY_LIMIT', 'VALIDATION_FAILED'] };
+  const SUB = { ...COMMON_AUTH, 404: ['NOT_FOUND'], 409: ['ORDER_STATE'] };
+  const SELLER = { ...SHOP, 403: [...SHOP[403], 'NOT_YOUR_SHOP'], 409: ['ORDER_STATE'] };
+  const proof = { description: 'Optional delivery photo (raw JPEG, PNG or WebP, up to market.photo_max_bytes); send an empty body for none', content: { 'image/jpeg': { schema: z.string() }, 'image/png': { schema: z.string() }, 'image/webp': { schema: z.string() } } };
+  p({ method: 'get', path: '/me/cart', tags: ['orders'], summary: 'My cart grouped by shop, with live prices and stock (FR-01, FR-02)', security: bearer, responses: { 200: json(orS.Cart), ...errors(COMMON_AUTH) } });
+  p({ method: 'delete', path: '/me/cart', tags: ['orders'], summary: 'Empty my cart', security: bearer, responses: { 200: json(orS.Cart), ...errors(COMMON_AUTH) } });
+  p({ method: 'put', path: '/me/cart/items/{variantId}', tags: ['orders'], summary: 'Add an item or set its quantity (at most the stock and the per-order limit; not your own shop)', security: bearer,
+    request: { ...orVariant, ...body(orS.cartQty) }, responses: { 200: json(orS.Cart), ...errors({ ...COMMON_AUTH, ...LINE }) } });
+  p({ method: 'delete', path: '/me/cart/items/{variantId}', tags: ['orders'], summary: 'Remove an item (the line is kept with removed_at)', security: bearer, request: orVariant, responses: { 200: json(orS.Cart), ...errors(COMMON_AUTH) } });
+  p({ method: 'post', path: '/checkout/quote', tags: ['orders'], summary: 'Price the cart on the server: a sub-order per shop, delivery by area (৳80 Dhaka metro, ৳150 outside), price changes (FR-03)', security: bearer,
+    request: body(orS.quoteBody), responses: { 200: json(orS.Quote), ...errors({ ...BUY, ...LINE, 422: [...LINE[422], 'CART_EMPTY', 'AREA_UNKNOWN'] }) } });
+  p({ method: 'post', path: '/checkout', tags: ['orders'], summary: 'Place the order (gate buy: a verified phone): stock held, one payment split into an escrow hold per shop; pay within market.checkout_hold_minutes (FR-04 to FR-07)', security: bearer,
+    request: { headers: idem, ...body(orS.checkoutBody) }, responses: { 201: json(orS.OrderResult, 'Created'), ...errors({ ...BUY, 409: [...LINE[409], 'PRICE_CHANGED'], 422: [...LINE[422], 'CART_EMPTY', 'AREA_UNKNOWN'] }) } });
+  p({ method: 'get', path: '/me/orders', tags: ['orders'], summary: 'My orders, newest first', security: bearer, request: { query: orS.myOrdersQuery }, responses: { 200: json(orS.OrderList), ...errors({ ...COMMON_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/orders/{code}', tags: ['orders'], summary: 'An order with its sub-orders, tracking and what I can do now', security: bearer, request: orCode, responses: { 200: json(orS.OrderResult), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'] }) } });
+  p({ method: 'post', path: '/me/orders/{code}/pay', tags: ['orders'], summary: 'The payment link of an unpaid order', security: bearer, request: orCode, responses: { 200: json(orS.OrderResult), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], 409: ['ORDER_STATE'] }) } });
+  p({ method: 'post', path: '/me/sub-orders/{id}/cancel', tags: ['orders'], summary: 'Cancel before the shop accepts, or once shipping is late by market.ship_overdue_buyer_cancel_hours (100% refund)', security: bearer,
+    request: { ...orId, ...body(orS.cancelBody) }, responses: { 200: json(orS.OrderResult), ...errors({ ...SUB, 409: ['ORDER_STATE', 'CANCEL_NOT_YET'] }) } });
+  p({ method: 'post', path: '/me/sub-orders/{id}/received', tags: ['orders'], summary: 'I have the parcel: the sub-order completes and the shop is paid (minus the commission on the items)', security: bearer, request: orId, responses: { 200: json(orS.OrderResult), ...errors(SUB) } });
+  p({ method: 'post', path: '/me/sub-orders/{id}/not-received', tags: ['orders'], summary: 'Open an M17 dispute (not_received): the hold freezes until staff decide (gate file_dispute)', security: bearer,
+    request: { ...orId, headers: idem, ...body(orS.notReceivedBody) }, responses: { 201: json(z.object({}).loose(), 'Created'), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'NOT_YOUR_ORDER'], 404: ['NOT_FOUND'], 409: ['DISPUTE_NOT_ELIGIBLE', 'DISPUTE_WINDOW_CLOSED', 'DISPUTE_ALREADY_OPEN'], 429: ['DISPUTE_LIMIT'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/shop/sub-orders', tags: ['orders'], summary: 'My shop orders by tab (to accept, to ship, shipped, done, cancelled) with counts', security: bearer, request: { query: orS.shopListQuery }, responses: { 200: json(orS.ShopSubList), ...errors({ ...SHOP, ...VALIDATION }) } });
+  p({ method: 'get', path: '/shop/sub-orders/{id}', tags: ['orders'], summary: 'A shop order; the buyer’s phone and address show once accepted (FR-10)', security: bearer, request: orId, responses: { 200: json(orS.ShopSub), ...errors(SELLER) } });
+  p({ method: 'post', path: '/shop/sub-orders/{id}/accept', tags: ['orders'], summary: 'Accept within market.shop_accept_hours (FR-08)', security: bearer, request: orId, responses: { 200: json(orS.ShopSub), ...errors(SELLER) } });
+  p({ method: 'post', path: '/shop/sub-orders/{id}/reject', tags: ['orders'], summary: 'Reject the whole sub-order with a reason (Q82): 100% refund, stock released', security: bearer, request: { ...orId, ...body(orS.rejectBody) }, responses: { 200: json(orS.ShopSub), ...errors({ ...SELLER, ...VALIDATION }) } });
+  p({ method: 'post', path: '/shop/sub-orders/{id}/ship', tags: ['orders'], summary: 'Ship with the courier and tracking number; the held stock is committed', security: bearer, request: { ...orId, ...body(orS.shipBody) }, responses: { 200: json(orS.ShopSub), ...errors({ ...SELLER, 422: ['TRACKING_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/shop/sub-orders/{id}/delivered', tags: ['orders'], summary: 'Mark delivered (optional photo proof, private storage); auto-completes after market.auto_complete_days', security: bearer,
+    request: { ...orId, body: proof }, responses: { 200: json(orS.ShopSub), ...errors({ ...SELLER, 413: ['FILE_TOO_LARGE', 'PAYLOAD_TOO_LARGE'], 415: ['FILE_TYPE_NOT_ALLOWED', 'FILE_TYPE_MISMATCH'], 429: ['UPLOAD_RATE_LIMITED'] }) } });
+  p({ method: 'get', path: '/shop/settlement', tags: ['orders'], summary: 'Completed (released to my payable), in escrow and refunded totals', security: bearer, responses: { 200: json(orS.Settlement), ...errors(SHOP) } });
+  p({ method: 'get', path: '/admin/orders', tags: ['orders'], summary: 'Orders by code or status (manage_users, refund_small or view_payouts)', security: adminBearer, request: { query: orS.adminListQuery }, responses: { 200: json(orS.StaffOrderList), ...errors({ ...ADMIN_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/orders/{code}', tags: ['orders'], summary: 'An order: each sub-order’s timeline and escrow hold (no phone or address)', security: adminBearer, request: { params: z.object({ code: z.string() }) }, responses: { 200: json(orS.StaffOrder), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'] }) } });
+  p({ method: 'post', path: '/admin/orders/sub-orders/{id}/cancel', tags: ['orders'], summary: 'Cancel a sub-order not yet shipped for the platform with a full refund (master, step-up escrow.manage)', security: adminBearer,
+    request: { ...orId, headers: stepUpHeader, ...body(orS.reasonBody) }, responses: { 200: json(orS.StaffOrder), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'], 409: ['ORDER_STATE'], ...VALIDATION }) } });
+
+  // ------------------------------------------------------------------ M11 hire (step 1)
+  const hiId = { params: hiS.idParam };
+  const HIRER = { ...COMMON_AUTH, 404: ['NOT_FOUND', 'NOT_A_PARTY'], 409: ['REQUEST_STATE', 'JOB_STATE'] };
+  const PRO = { ...COMMON_AUTH, 403: ['NOT_YOUR_PROFILE', 'ROLE_REQUIRED', 'MEMBER_NOT_ACTIVE'], 404: ['NOT_FOUND', 'NOT_A_PARTY'], 409: ['PROFILE_STATE', 'REQUEST_STATE', 'JOB_STATE'] };
+  p({ method: 'get', path: '/hire/taxonomy', tags: ['hire'], summary: 'M03 hire taxonomy: 6 categories and their roles (units, match formats, credential tiers)', responses: { 200: json(hiS.Taxonomy) } });
+  p({ method: 'get', path: '/hire/profiles', tags: ['hire'], summary: 'The directory: live profiles by category, role, experience, unit, sport, area and search; sorted by rating, rate (normalised hourly, FR-03), jobs or experience', request: { query: hiS.listQuery }, responses: { 200: json(hiS.ProfileList), ...errors(VALIDATION) } });
+  p({ method: 'get', path: '/hire/profiles/{slug}', tags: ['hire'], summary: 'A profile page: rates, the verified credential level, a 14-day busy strip (times only)', request: { params: hiS.slugParam }, responses: { 200: json(hiS.ProfilePage), ...errors({ 404: ['NOT_FOUND'] }) } });
+  p({ method: 'post', path: '/hire/profiles/{id}/quote', tags: ['hire'], summary: 'A non-binding quote per engagement (§6.3: base, night, short notice, travel zone, rounded to ৳50)', request: { ...hiId, ...body(hiS.quoteBody) }, responses: { 200: json(hiS.Quote), ...errors({ 409: ['PROFILE_NOT_AVAILABLE'], 422: ['UNIT_NOT_OFFERED', 'AREA_UNKNOWN', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/hire/requests', tags: ['hire'], summary: 'Send a hire request (gate hire: a verified phone); the server quotes and snapshots each engagement (FR-20, FR-21)', security: bearer,
+    request: { headers: idem, ...body(hiS.requestBody) }, responses: { 201: json(hiS.RequestResult, 'Created'), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED'], 409: ['PROFILE_NOT_AVAILABLE', 'DUPLICATE_REQUEST'], 422: ['OWN_PROFILE', 'UNIT_NOT_OFFERED', 'AREA_UNKNOWN', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'get', path: '/me/shortlist', tags: ['hire'], summary: 'My shortlist', security: bearer, responses: { 200: json(hiS.ProfileList), ...errors(COMMON_AUTH) } });
+  p({ method: 'put', path: '/me/shortlist/{profileId}', tags: ['hire'], summary: 'Shortlist a profile (at most hire.shortlist_max)', security: bearer, request: { params: hiS.profileParam }, responses: { 200: json(z.object({ shortlisted: z.boolean() })), ...errors({ ...COMMON_AUTH, 409: ['SHORTLIST_LIMIT'] }) } });
+  p({ method: 'delete', path: '/me/shortlist/{profileId}', tags: ['hire'], summary: 'Remove from my shortlist', security: bearer, request: { params: hiS.profileParam }, responses: { 200: json(z.object({ shortlisted: z.boolean() })), ...errors(COMMON_AUTH) } });
+  p({ method: 'get', path: '/me/hire-requests', tags: ['hire'], summary: 'My hire requests as the manager', security: bearer, request: { query: hiS.statusQuery }, responses: { 200: json(hiS.RequestList), ...errors(COMMON_AUTH) } });
+  p({ method: 'get', path: '/me/hire-requests/{id}', tags: ['hire'], summary: 'A request (by id or code) as either party; the other party’s phone shows once paid', security: bearer, request: { params: z.object({ id: z.string() }) }, responses: { 200: json(hiS.RequestResult), ...errors(HIRER) } });
+  p({ method: 'post', path: '/me/hire-requests/{id}/withdraw', tags: ['hire'], summary: 'Withdraw while pending or unpaid (free)', security: bearer, request: hiId, responses: { 200: json(hiS.RequestResult), ...errors(HIRER) } });
+  p({ method: 'post', path: '/me/hire-requests/{id}/pay', tags: ['hire'], summary: 'The payment link of an accepted, unpaid request', security: bearer, request: hiId, responses: { 200: json(hiS.RequestResult), ...errors(HIRER) } });
+  p({ method: 'get', path: '/me/hire-requests/{id}/messages', tags: ['hire'], summary: 'The request’s thread (both parties)', security: bearer, request: hiId, responses: { 200: json(hiS.Messages), ...errors(HIRER) } });
+  p({ method: 'post', path: '/me/hire-requests/{id}/messages', tags: ['hire'], summary: 'Post a message; contact details are refused until paid (v3)', security: bearer, request: { ...hiId, ...body(hiS.messageBody) }, responses: { 201: json(hiS.Message, 'Created'), ...errors({ ...HIRER, 422: ['CONTACT_NOT_ALLOWED', 'VALIDATION_FAILED'], 429: ['MESSAGES_RATE_LIMITED'] }) } });
+  p({ method: 'get', path: '/me/hire-jobs/{id}', tags: ['hire'], summary: 'A job with what the viewer can do now', security: bearer, request: hiId, responses: { 200: json(hiS.Job), ...errors(HIRER) } });
+  p({ method: 'get', path: '/me/hire-jobs/{id}/cancel-preview', tags: ['hire'], summary: 'The cancellation fee now (§6.6: free over 72 h, 25% to 24 h, 50% under)', security: bearer, request: hiId, responses: { 200: json(hiS.CancelPlan), ...errors(HIRER) } });
+  p({ method: 'post', path: '/me/hire-jobs/{id}/cancel', tags: ['hire'], summary: 'Cancel a scheduled job: the fee goes to the pro (minus the platform’s share), the rest is refunded', security: bearer, request: hiId, responses: { 200: json(hiS.CancelResult), ...errors(HIRER) } });
+  p({ method: 'post', path: '/me/hire-jobs/{id}/confirm', tags: ['hire'], summary: 'Confirm the work: the job’s hold is released to the pro minus fees.hire_pct', security: bearer, request: hiId, responses: { 200: json(hiS.Job), ...errors(HIRER) } });
+  for (const [path, what] of [['no-show', 'a no-show (from hire.no_show_after_min after the start, no check-in)'], ['problem', 'a problem with the work (once marked complete)']]) {
+    p({ method: 'post', path: `/me/hire-jobs/{id}/${path}`, tags: ['hire'], summary: `Report ${what}: an M17 dispute; the hold freezes (gate file_dispute)`, security: bearer,
+      request: { ...hiId, headers: idem, ...body(hiS.disputeBody) }, responses: { 201: json(z.object({}).loose(), 'Created'), ...errors({ ...HIRER, 403: ['PHONE_REQUIRED', 'NOT_YOUR_JOB'], 409: ['DISPUTE_NOT_ELIGIBLE', 'DISPUTE_WINDOW_CLOSED', 'DISPUTE_ALREADY_OPEN'] }) } });
+  }
+  p({ method: 'get', path: '/pro/profiles', tags: ['hire'], summary: 'My hire profiles with rate cards and their limits', security: bearer, responses: { 200: json(z.object({ items: z.array(hiS.OwnerProfile) })), ...errors(COMMON_AUTH) } });
+  p({ method: 'post', path: '/pro/profiles', tags: ['hire'], summary: 'A draft profile for one hire role (player or pro role applied; NID verified)', security: bearer, request: body(hiS.profileBody), responses: { 201: json(hiS.OwnerProfile, 'Created'), ...errors({ ...PRO, 409: ['PROFILE_EXISTS'], 422: ['AREA_UNKNOWN', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'get', path: '/pro/profiles/{id}', tags: ['hire'], summary: 'My profile', security: bearer, request: hiId, responses: { 200: json(hiS.OwnerProfile), ...errors(PRO) } });
+  p({ method: 'patch', path: '/pro/profiles/{id}', tags: ['hire'], summary: 'Edit the working copy (an edit of a live profile waits for review)', security: bearer, request: { ...hiId, ...body(hiS.profilePatch) }, responses: { 200: json(hiS.OwnerProfile), ...errors({ ...PRO, 409: ['PROFILE_IN_REVIEW', 'PROFILE_STATE'] }) } });
+  p({ method: 'put', path: '/pro/profiles/{id}/rate-card', tags: ['hire'], summary: 'Save a new rate card version, within the role’s limits (Q74)', security: bearer, request: { ...hiId, ...body(hiS.rateCardBody) }, responses: { 200: json(hiS.OwnerProfile), ...errors({ ...PRO, ...VALIDATION }) } });
+  p({ method: 'post', path: '/pro/profiles/{id}/submit', tags: ['hire'], summary: 'Send for review (M05 kind hire_profile)', security: bearer, request: hiId, responses: { 200: json(hiS.OwnerProfile), ...errors({ ...PRO, 409: ['PROFILE_IN_REVIEW', 'PROFILE_STATE', 'RATE_CARD_REQUIRED', 'NOTHING_TO_REVIEW'] }) } });
+  for (const action of ['pause', 'resume']) p({ method: 'post', path: `/pro/profiles/{id}/${action}`, tags: ['hire'], summary: `${action === 'pause' ? 'Stop' : 'Start'} taking requests`, security: bearer, request: hiId, responses: { 200: json(hiS.OwnerProfile), ...errors(PRO) } });
+  p({ method: 'get', path: '/pro/requests', tags: ['hire'], summary: 'Requests to my profiles; pending ones carry the automatic checks (§6.5)', security: bearer, request: { query: hiS.statusQuery }, responses: { 200: json(hiS.RequestList), ...errors(COMMON_AUTH) } });
+  p({ method: 'get', path: '/pro/requests/{id}', tags: ['hire'], summary: 'A request to me', security: bearer, request: hiId, responses: { 200: json(hiS.RequestResult), ...errors(PRO) } });
+  p({ method: 'post', path: '/pro/requests/{id}/accept', tags: ['hire'], summary: 'Accept: checks re-run, the jobs reserved, the manager asked to pay (FR-22, FR-25)', security: bearer, request: hiId, responses: { 200: json(hiS.RequestResult), ...errors({ ...PRO, 409: ['REQUEST_STATE', 'REPLY_WINDOW_CLOSED', 'SCHEDULE_CLASH'], 422: ['CHECKS_FAILED'] }) } });
+  p({ method: 'post', path: '/pro/requests/{id}/decline', tags: ['hire'], summary: 'Decline with a reason (FR-24)', security: bearer, request: { ...hiId, ...body(hiS.declineBody) }, responses: { 200: json(hiS.RequestResult), ...errors({ ...PRO, ...VALIDATION }) } });
+  p({ method: 'get', path: '/pro/jobs', tags: ['hire'], summary: 'My jobs', security: bearer, request: { query: hiS.jobsQuery }, responses: { 200: json(hiS.JobList), ...errors(COMMON_AUTH) } });
+  p({ method: 'get', path: '/pro/jobs/{id}', tags: ['hire'], summary: 'A job of mine', security: bearer, request: hiId, responses: { 200: json(hiS.Job), ...errors(PRO) } });
+  p({ method: 'post', path: '/pro/jobs/{id}/check-in', tags: ['hire'], summary: 'Check in (from hire.checkin_open_before_min before the start; late after hire.late_before_start_min)', security: bearer, request: hiId, responses: { 200: json(hiS.Job), ...errors({ ...PRO, 409: ['JOB_STATE', 'TOO_EARLY', 'JOB_ENDED'] }) } });
+  p({ method: 'post', path: '/pro/jobs/{id}/start', tags: ['hire'], summary: 'Start (toss) from hire.toss_open_before_min before', security: bearer, request: hiId, responses: { 200: json(hiS.Job), ...errors({ ...PRO, 409: ['JOB_STATE', 'TOO_EARLY'] }) } });
+  p({ method: 'post', path: '/pro/jobs/{id}/complete', tags: ['hire'], summary: 'Mark the work complete; released when the manager confirms or after hire.auto_release_hours', security: bearer, request: { ...hiId, ...body(hiS.completeBody) }, responses: { 200: json(hiS.Job), ...errors(PRO) } });
+  p({ method: 'post', path: '/pro/jobs/{id}/withdraw', tags: ['hire'], summary: 'Withdraw from a scheduled job: the manager gets 100% back', security: bearer, request: { ...hiId, ...body(hiS.withdrawBody) }, responses: { 200: json(hiS.Job), ...errors(PRO) } });
+  p({ method: 'get', path: '/admin/hire/requests', tags: ['hire'], summary: 'Hire requests by code or status (manage_users, approve_listings, refund_small or view_payouts)', security: adminBearer, request: { query: hiS.adminListQuery }, responses: { 200: json(hiS.StaffRequestList), ...errors({ ...ADMIN_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/hire/requests/{code}', tags: ['hire'], summary: 'A request with each job’s escrow hold (no phone numbers)', security: adminBearer, request: { params: z.object({ code: z.string() }) }, responses: { 200: json(hiS.StaffRequest), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'] }) } });
+  p({ method: 'get', path: '/admin/hire/profiles', tags: ['hire'], summary: 'Hire profiles', security: adminBearer, request: { query: hiS.adminProfilesQuery }, responses: { 200: json(hiS.StaffProfileList), ...errors(ADMIN_AUTH) } });
+  p({ method: 'get', path: '/admin/hire/profiles/{id}', tags: ['hire'], summary: 'A profile with its working copy, rate card, owner, credential and base area (the Moderation desk panel)', security: adminBearer, request: hiId, responses: { 200: json(hiS.StaffProfile), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'] }) } });
+  p({ method: 'post', path: '/admin/hire/profiles/{id}/suspend', tags: ['hire'], summary: 'Suspend a profile (manage_users)', security: adminBearer, request: { ...hiId, ...body(hiS.reasonBody) }, responses: { 200: json(hiS.StaffAction), ...errors({ ...ADMIN_AUTH, 409: ['PROFILE_STATE'] }) } });
+  p({ method: 'post', path: '/admin/hire/profiles/{id}/restore', tags: ['hire'], summary: 'Restore a suspended profile (masters)', security: adminBearer, request: { ...hiId, ...body(hiS.reasonBody) }, responses: { 200: json(hiS.StaffAction), ...errors({ ...ADMIN_AUTH, 409: ['PROFILE_STATE'] }) } });
+  p({ method: 'post', path: '/admin/hire/jobs/{id}/cancel', tags: ['hire'], summary: 'Cancel a job for the platform with a full refund (master, step-up escrow.manage)', security: adminBearer, request: { ...hiId, headers: stepUpHeader, ...body(hiS.reasonBody) }, responses: { 200: json(hiS.Job), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'], 409: ['JOB_STATE'] }) } });
 }
 
 function dateTimeOf() {

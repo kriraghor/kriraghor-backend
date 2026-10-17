@@ -14,13 +14,15 @@ const fees = require('../payments/fee.service');
 
 /**
  * Apply a plan to a booking: refund first (from the hold), then release what is left to the owner.
- * Updates the booking's money columns. Returns what moved.
+ * Updates the booking's money columns. Returns what moved. M17 decisions pass kind 'dispute' and the
+ * dispute's own key (`dispute:{id}`), so a decision never moves money twice either.
  */
-async function apply(b, plan, { step, reasonCode, actor = null, transaction }) {
+async function apply(b, plan, { step, reasonCode, actor = null, transaction, kind = 'policy', key = null }) {
   let refunded = 0;
   let released = { gross: 0, fee: 0, net: 0 };
   if (plan.refund > 0 && b.paymentId) {
-    const r = await refunds.refundPayment({ paymentId: b.paymentId, amount: plan.refund, reasonCode, idempotencyKey: `booking:${b.id}:${step}:refund`, actor }, { transaction });
+    const idempotencyKey = key ? `${key}:refund` : `booking:${b.id}:${step}:refund`;
+    const r = await refunds.refundPayment({ paymentId: b.paymentId, amount: plan.refund, reasonCode, idempotencyKey, actor, kind }, { transaction });
     if (r) refunded = plan.refund;
   }
   if (plan.release > 0 && b.paymentId) {

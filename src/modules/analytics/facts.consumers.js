@@ -14,6 +14,7 @@ const rules = require('./analytics.rules');
 const BOOKING = [
   'booking.held', 'booking.confirmed', 'booking.hold_expired', 'booking.check_in_recorded', 'booking.extended', 'booking.balance_collected',
   'booking.completed', 'booking.no_show_marked', 'booking.cancelled', 'booking.owner_cancelled', 'booking.platform_cancelled', 'booking.moved', 'booking.walk_in_recorded',
+  'booking.no_show_settled', 'booking.dispute_settled',
 ];
 const SERIES = ['booking_series.created', 'booking_series.week_skipped', 'booking_series.week_restored', 'booking_series.ended'];
 const CLOSURE = ['closure.created', 'closure.reopened', 'closure.shortened'];

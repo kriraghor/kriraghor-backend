@@ -89,7 +89,7 @@ async function route(entry, event, { transaction }) {
             roleContext: entry.roleContext?.(event) ?? null,
             title: (inApp.title ?? entry.code).slice(0, 140),
             body: inApp.body.slice(0, 500),
-            link: entry.link?.(event) ?? null,
+            link: entry.link?.(event, { userId }) ?? null,
             data: { values },
             locale: inApp.locale,
             templateVersion: inApp.version,

@@ -75,13 +75,23 @@ async function applyBusinessRole(userId, role, kind, { reasonCode = null, docume
   return to;
 }
 
+/** Hire roles (M11) move only on approval: a credential or the first approved hire profile; a rejected credential never rejects the role. */
+const HIRE_ROLES = ['player', 'pro'];
+
 /** Route a document event to the member role or to the business role it belongs to. */
-const route = (e, kind, extra, ctx) =>
-  !e.payload.role || e.payload.role === 'member' ? applyKyc(e.payload.userId, kind, extra, ctx) : applyBusinessRole(e.payload.userId, e.payload.role, kind, extra, ctx);
+const route = (e, kind, extra, ctx) => {
+  if (!e.payload.role || e.payload.role === 'member') return applyKyc(e.payload.userId, kind, extra, ctx);
+  if (HIRE_ROLES.includes(e.payload.role)) return null;
+  return applyBusinessRole(e.payload.userId, e.payload.role, kind, extra, ctx);
+};
 
 function registerKycConsumers() {
   onEvent('document.submitted', 'identity.kyc-submitted', (e, { transaction }) => route(e, 'submitted', { documentId: e.payload.documentId }, { transaction }));
   onEvent('verification.passed', 'identity.kyc-passed', (e, { transaction }) => (e.payload.role === 'member' ? applyKyc(e.payload.userId, 'approved', {}, { transaction }) : applyBusinessRole(e.payload.userId, e.payload.role, 'approved', {}, { transaction })));
+  // M11: the first approved hire profile activates the player or pro role (once the member role is active).
+  onEvent('hire_profile.published', 'identity.hire-role', (e, { transaction }) =>
+    e.payload.first && HIRE_ROLES.includes(e.payload.platformRole) ? applyBusinessRole(e.payload.userId, e.payload.platformRole, 'approved', {}, { transaction }) : null
+  );
   onEvent('document.changes_requested', 'identity.kyc-changes', (e, { transaction }) =>
     route(e, 'changes_requested', { reasonCode: e.payload.reasonCode, documentId: e.payload.documentId }, { transaction })
   );

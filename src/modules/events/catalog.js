@@ -6,7 +6,7 @@
  * invalid payloads before commit. Payloads carry IDs, codes, amounts, statuses and timestamps only:
  * no phone, NID, DOB, email or names (consumers read details through the producer's service).
  *
- * Built so far: M01, M02, M03, M04, M05, M06, M07, M09, M10, M19, M21. Each later module adds its events here when it is built.
+ * Built so far: M01, M02, M03, M04, M05, M06, M07, M09, M10, M11, M12, M13, M17, M18, M19, M21. Each later module adds its events here when it is built.
  */
 const { z } = require('zod');
 
@@ -19,6 +19,15 @@ const poisha = z.number().int().nonnegative();
 const paymentClosed = z.object({ paymentId: uuid, purpose: z.string(), purposeId: uuid, amount: poisha, payerId: uuid, reason: z.string().max(60) });
 const refundEvent = z.object({ refundId: uuid, paymentId: uuid, amount: poisha, purpose: z.string(), purposeId: uuid, payerId: uuid });
 const groundEvent = z.object({ groundId: uuid, ownerId: uuid });
+const shopEvent = z.object({ shopId: uuid, ownerId: uuid });
+const productEvent = z.object({ productId: uuid, shopId: uuid, ownerId: uuid });
+const variantEvent = z.object({ variantId: uuid, productId: uuid, shopId: uuid, ownerId: uuid });
+const reasonText = z.string().max(300).nullable().optional();
+const orderEvent = z.object({ orderId: uuid, code: z.string().max(20), buyerId: uuid, total: poisha });
+const hireProfileEvent = z.object({ profileId: uuid, userId: uuid, roleId: uuid });
+const hireRequestEvent = z.object({ requestId: uuid, code: z.string().max(20), profileId: uuid, hirerId: uuid, proUserId: uuid, total: poisha });
+const hireJobEvent = z.object({ jobId: uuid, code: z.string().max(24), requestId: uuid, hirerId: uuid, proUserId: uuid, quote: poisha });
+const subOrderEvent = z.object({ subOrderId: uuid, code: z.string().max(24), orderId: uuid, shopId: uuid, sellerId: uuid, buyerId: uuid, total: poisha });
 const docEvent = z.object({ documentId: uuid, userId: uuid, docType: z.string().max(30), role: z.string().max(32).optional() });
 const payoutEvent = z.object({ payoutId: uuid, code: z.string(), payeeId: uuid, amount: poisha });
 const subEvent = z.object({ submissionId: uuid, kind: z.string().max(30), subjectId: uuid, version: z.number().int(), submittedBy: uuid });
@@ -27,6 +36,11 @@ const esMatch = z.object({ matchId: uuid, tournamentId: uuid });
 const esProfile = z.object({ profileId: uuid, userId: uuid, gameId: uuid });
 const esShare = z.object({ shareId: uuid, tournamentId: uuid, userId: uuid, amount: poisha });
 const bookingEvent = z.object({ bookingId: uuid, code: z.string().max(16), groundId: uuid, ownerId: uuid, bookerUserId: uuid.nullable() });
+const disputeEvent = z.object({ disputeId: uuid, code: z.string().max(20), sourceType: z.enum(['booking', 'esports_result', 'sub_order', 'hire_job']), sourceId: uuid, category: z.string().max(30), claimantId: uuid, respondentId: uuid.nullable() });
+const subjectType = z.enum(['ground', 'booking', 'user', 'review', 'esports_tournament', 'shop', 'product']);
+const reviewEvent = z.object({ reviewId: uuid, subjectType: z.literal('ground'), subjectId: uuid, authorId: uuid });
+const docRequestEvent = z.object({ requestId: uuid, userId: uuid, docType: z.string().max(30), sourceRef: uuid.nullable(), dueAt: iso.nullable() });
+const riskFlagEvent = z.object({ flagId: uuid, userId: uuid, ruleKey: z.string().max(40), severity: z.enum(['info', 'medium', 'high', 'critical']) });
 const catalogItem = z.object({ table: z.string(), id: uuid, key: z.string(), version: z.number().int().optional(), isActive: z.boolean().optional() });
 
 const EVENTS = {
@@ -91,7 +105,7 @@ const EVENTS = {
   'escrow.held': {
     module: 'M06',
     version: 1,
-    schema: z.object({ holdId: uuid, paymentId: uuid, purpose: z.string(), purposeId: uuid, amount: poisha, payeeId: uuid.nullable(), groupRef: uuid.nullable() }),
+    schema: z.object({ holdId: uuid, paymentId: uuid, purpose: z.string(), purposeId: uuid, amount: poisha, payeeId: uuid.nullable(), groupRef: uuid.nullable(), splitRef: uuid.nullable().optional() }),
   },
   'escrow.released': {
     module: 'M06',
@@ -194,6 +208,81 @@ const EVENTS = {
   'ground.restored': { module: 'M09', version: 1, schema: groundEvent },
   'ground.removed': { module: 'M09', version: 1, schema: groundEvent.extend({ reason: z.string().max(300).nullable().optional() }) },
   'ground.pricing_published': { module: 'M09', version: 1, schema: groundEvent.extend({ version: z.number().int(), changedKeys: z.array(z.string().max(40)) }) },
+  // ---------------- M12 market catalogue (step 1)
+  'shop.submitted': { module: 'M12', version: 1, schema: shopEvent.extend({ version: z.number().int(), isEdit: z.boolean() }) },
+  'shop.published': { module: 'M12', version: 1, schema: shopEvent.extend({ version: z.number().int(), first: z.boolean() }) },
+  'shop.changes_requested': { module: 'M12', version: 1, schema: shopEvent.extend({ isEdit: z.boolean(), reasonCode: z.string().max(40).nullable() }) },
+  'shop.rejected': { module: 'M12', version: 1, schema: shopEvent.extend({ isEdit: z.boolean(), reasonCode: z.string().max(40).nullable() }) },
+  'shop.withdrawn': { module: 'M12', version: 1, schema: shopEvent },
+  'shop.paused': { module: 'M12', version: 1, schema: shopEvent.extend({ reason: reasonText }) },
+  'shop.resumed': { module: 'M12', version: 1, schema: shopEvent },
+  'shop.suspended': { module: 'M12', version: 1, schema: shopEvent.extend({ reason: reasonText }) },
+  'shop.restored': { module: 'M12', version: 1, schema: shopEvent },
+  'shop.removed': { module: 'M12', version: 1, schema: shopEvent.extend({ reason: reasonText }) },
+  'product.submitted': { module: 'M12', version: 1, schema: productEvent.extend({ version: z.number().int(), isEdit: z.boolean() }) },
+  'product.published': { module: 'M12', version: 1, schema: productEvent.extend({ version: z.number().int(), first: z.boolean() }) },
+  'product.changes_requested': { module: 'M12', version: 1, schema: productEvent.extend({ isEdit: z.boolean(), reasonCode: z.string().max(40).nullable() }) },
+  'product.rejected': { module: 'M12', version: 1, schema: productEvent.extend({ isEdit: z.boolean(), reasonCode: z.string().max(40).nullable() }) },
+  'product.withdrawn': { module: 'M12', version: 1, schema: productEvent },
+  'product.paused': { module: 'M12', version: 1, schema: productEvent.extend({ reason: reasonText }) },
+  'product.resumed': { module: 'M12', version: 1, schema: productEvent },
+  'product.suspended': { module: 'M12', version: 1, schema: productEvent.extend({ reason: reasonText }) },
+  'product.restored': { module: 'M12', version: 1, schema: productEvent },
+  'product.removed': { module: 'M12', version: 1, schema: productEvent.extend({ reason: reasonText }) },
+  'product.hidden': { module: 'M12', version: 1, schema: productEvent.extend({ reason: z.enum(['stock']) }) },
+  'product.unhidden': { module: 'M12', version: 1, schema: productEvent.extend({ reason: z.enum(['stock']) }) },
+  'product.price_lowered': { module: 'M12', version: 1, schema: productEvent.extend({ fromPoisha: poisha, toPoisha: poisha }) },
+  'variant.low_stock_reached': { module: 'M12', version: 1, schema: variantEvent.extend({ available: z.number().int() }) },
+  'variant.stock_depleted': { module: 'M12', version: 1, schema: variantEvent },
+  'variant.restocked': { module: 'M12', version: 1, schema: variantEvent.extend({ available: z.number().int() }) },
+  'variant.sale_blocked': { module: 'M12', version: 1, schema: variantEvent.extend({ expiryDate: z.string().max(10).nullable() }) },
+  'variant.sale_unblocked': { module: 'M12', version: 1, schema: variantEvent.extend({ expiryDate: z.string().max(10).nullable() }) },
+  'inventory.adjusted': { module: 'M12', version: 1, schema: z.object({ variantId: uuid, productId: uuid, shopId: uuid, delta: z.number().int(), reasonCode: z.string().max(30) }) },
+  'saved_item.alerted': { module: 'M12', version: 1, schema: z.object({ savedItemId: uuid, userId: uuid, itemType: z.enum(['product', 'used_listing']), itemId: uuid, reason: z.enum(['back_in_stock', 'price_dropped']), pricePoisha: poisha }) },
+  // ---------------- M13 orders, step 1 (shop orders)
+  'order.created': { module: 'M13', version: 1, schema: orderEvent.extend({ subOrders: z.number().int() }) },
+  'order.placed': { module: 'M13', version: 1, schema: orderEvent.extend({ subOrders: z.number().int() }) },
+  'order.cancelled': { module: 'M13', version: 1, schema: orderEvent },
+  'order.completed': { module: 'M13', version: 1, schema: orderEvent },
+  'sub_order.placed': { module: 'M13', version: 1, schema: subOrderEvent.extend({ acceptBy: iso, items: z.number().int() }) },
+  'sub_order.accept_reminded': { module: 'M13', version: 1, schema: subOrderEvent.extend({ acceptBy: iso.nullable() }) },
+  'sub_order.accepted': { module: 'M13', version: 1, schema: subOrderEvent.extend({ shipBy: iso.nullable() }) },
+  'sub_order.rejected': { module: 'M13', version: 1, schema: subOrderEvent.extend({ reason: z.string().max(40), refund: poisha }) },
+  'sub_order.expired': { module: 'M13', version: 1, schema: subOrderEvent.extend({ reason: z.string().max(40), refund: poisha, by: z.string().max(10) }) },
+  'sub_order.shipped': { module: 'M13', version: 1, schema: subOrderEvent.extend({ courier: z.string().max(60), tracking: z.string().max(40) }) },
+  'sub_order.delivered': { module: 'M13', version: 1, schema: subOrderEvent.extend({ completeBy: iso.nullable(), proof: z.boolean() }) },
+  'sub_order.completed': { module: 'M13', version: 1, schema: subOrderEvent.extend({ by: z.enum(['buyer', 'auto', 'dispute']), released: poisha, fee: poisha, net: poisha, refund: poisha.optional() }) },
+  'sub_order.cancelled': { module: 'M13', version: 1, schema: subOrderEvent.extend({ reason: z.string().max(40), refund: poisha, by: z.string().max(10).optional() }) },
+  'sub_order.disputed': { module: 'M13', version: 1, schema: subOrderEvent.extend({ disputeId: uuid }) },
+  'sub_order.refunded': { module: 'M13', version: 1, schema: subOrderEvent.extend({ refund: poisha, disputeId: uuid }) },
+  // ---------------- M11 hire, step 1
+  'hire_profile.submitted': { module: 'M11', version: 1, schema: hireProfileEvent.extend({ version: z.number().int(), isEdit: z.boolean() }) },
+  'hire_profile.published': { module: 'M11', version: 1, schema: hireProfileEvent.extend({ version: z.number().int(), first: z.boolean(), platformRole: z.enum(['player', 'pro']) }) },
+  'hire_profile.changes_requested': { module: 'M11', version: 1, schema: hireProfileEvent.extend({ isEdit: z.boolean(), reasonCode: z.string().max(40).nullable() }) },
+  'hire_profile.rejected': { module: 'M11', version: 1, schema: hireProfileEvent.extend({ isEdit: z.boolean(), reasonCode: z.string().max(40).nullable() }) },
+  'hire_profile.paused': { module: 'M11', version: 1, schema: hireProfileEvent.extend({ reason: z.string().max(40).optional() }) },
+  'hire_profile.resumed': { module: 'M11', version: 1, schema: hireProfileEvent },
+  'hire_profile.suspended': { module: 'M11', version: 1, schema: hireProfileEvent.extend({ reason: reasonText }) },
+  'hire_profile.restored': { module: 'M11', version: 1, schema: hireProfileEvent.extend({ reason: reasonText }) },
+  'hire_request.sent': { module: 'M11', version: 1, schema: hireRequestEvent.extend({ replyBy: iso, jobs: z.number().int() }) },
+  'hire_request.accepted': { module: 'M11', version: 1, schema: hireRequestEvent.extend({ payBy: iso }) },
+  'hire_request.declined': { module: 'M11', version: 1, schema: hireRequestEvent.extend({ reason: z.string().max(40) }) },
+  'hire_request.expired': { module: 'M11', version: 1, schema: hireRequestEvent },
+  'hire_request.withdrawn': { module: 'M11', version: 1, schema: hireRequestEvent },
+  'hire_request.lapsed': { module: 'M11', version: 1, schema: hireRequestEvent },
+  'hire_request.paid': { module: 'M11', version: 1, schema: hireRequestEvent.extend({ paymentId: uuid }) },
+  'hire_request.completed': { module: 'M11', version: 1, schema: hireRequestEvent },
+  'hire_request.cancelled': { module: 'M11', version: 1, schema: hireRequestEvent },
+  'hire_message.posted': { module: 'M11', version: 1, schema: z.object({ requestId: uuid, code: z.string().max(20), messageId: uuid, authorId: uuid, recipientId: uuid }) },
+  'hire_job.checkin_opened': { module: 'M11', version: 1, schema: hireJobEvent.extend({ start: iso }) },
+  'hire_job.check_in_recorded': { module: 'M11', version: 1, schema: hireJobEvent.extend({ late: z.boolean() }) },
+  'hire_job.started': { module: 'M11', version: 1, schema: hireJobEvent },
+  'hire_job.completed_marked': { module: 'M11', version: 1, schema: hireJobEvent.extend({ releaseAt: iso }) },
+  'hire_job.released': { module: 'M11', version: 1, schema: hireJobEvent.extend({ by: z.enum(['hirer', 'auto', 'dispute']), gross: poisha, fee: poisha, net: poisha, refund: poisha.optional() }) },
+  'hire_job.cancelled': { module: 'M11', version: 1, schema: hireJobEvent.extend({ by: z.enum(['hirer', 'staff']), refund: poisha, fee: poisha, proGets: poisha }) },
+  'hire_job.withdrawn': { module: 'M11', version: 1, schema: hireJobEvent.extend({ refund: poisha, reason: z.string().max(40) }) },
+  'hire_job.disputed': { module: 'M11', version: 1, schema: hireJobEvent.extend({ disputeId: uuid }) },
+  'hire_job.refunded': { module: 'M11', version: 1, schema: hireJobEvent.extend({ by: z.literal('dispute'), gross: poisha, fee: poisha, net: poisha, refund: poisha }) },
   // step 2: closures and series (written as M10 booking slots)
   'closure.created': { module: 'M09', version: 1, schema: z.object({ closureId: uuid, groundId: uuid, start: iso, end: iso, reason: z.string().max(30) }) },
   'closure.reopened': { module: 'M09', version: 1, schema: z.object({ closureId: uuid, groundId: uuid, start: iso, end: iso, reason: z.string().max(30) }) },
@@ -218,12 +307,51 @@ const EVENTS = {
   'booking.moved': { module: 'M10', version: 1, schema: bookingEvent.extend({ fromGroundId: uuid, newGround: z.boolean() }) },
   'booking.walk_in_recorded': { module: 'M10', version: 1, schema: bookingEvent.extend({ start: iso, price: poisha }) },
   'booking.reminded': { module: 'M10', version: 1, schema: bookingEvent.extend({ start: iso }) },
+  'booking.no_show_settled': { module: 'M10', version: 1, schema: bookingEvent.extend({ released: poisha, fee: poisha }) },
+  'booking.dispute_settled': { module: 'M10', version: 1, schema: bookingEvent.extend({ refund: poisha, released: poisha, fee: poisha }) },
+
+  // ---------------- M17 Disputes, Reports and Reviews
+  'dispute.opened': { module: 'M17', version: 1, schema: disputeEvent.extend({ money: z.boolean(), held: poisha }) },
+  'dispute.response_submitted': { module: 'M17', version: 1, schema: disputeEvent },
+  'dispute.respondent_reminded': { module: 'M17', version: 1, schema: disputeEvent.extend({ dueAt: iso.nullable() }) },
+  'dispute.response_expired': { module: 'M17', version: 1, schema: disputeEvent },
+  'dispute.escalated': { module: 'M17', version: 1, schema: disputeEvent },
+  'dispute.returned': { module: 'M17', version: 1, schema: disputeEvent },
+  'dispute.resolved': { module: 'M17', version: 1, schema: disputeEvent.extend({ outcome: z.string().max(20), refund: poisha }) },
+  'dispute.withdrawn': { module: 'M17', version: 1, schema: disputeEvent },
+  'dispute.sla_breached': { module: 'M17', version: 1, schema: disputeEvent.extend({ level: z.enum(['staff', 'master']) }) },
+  'report.filed': { module: 'M17', version: 1, schema: z.object({ reportId: uuid, code: z.string().max(20), subjectType, subjectId: uuid, reporterId: uuid, reasonCode: z.string().max(30), eligible: z.boolean() }) },
+  'report.threshold_reached': { module: 'M17', version: 1, schema: z.object({ subjectType, subjectId: uuid, reporters: z.number().int(), hidden: z.boolean() }) },
+  'report.escalated': { module: 'M17', version: 1, schema: z.object({ subjectType, subjectId: uuid, reports: z.number().int() }) },
+  'report.resolved': { module: 'M17', version: 1, schema: z.object({ subjectType, subjectId: uuid, subjectOwnerId: uuid.nullable().optional(), action: z.string().max(30), reports: z.number().int(), reporterIds: z.array(uuid) }) },
+  'report.dismissed': { module: 'M17', version: 1, schema: z.object({ reportId: uuid, code: z.string().max(20), subjectType, subjectId: uuid, reporterId: uuid }) },
+  'review.posted': { module: 'M17', version: 1, schema: reviewEvent.extend({ ownerId: uuid, stars: z.number().int().min(1).max(5), status: z.string().max(12) }) },
+  'review.edited': { module: 'M17', version: 1, schema: reviewEvent.extend({ stars: z.number().int().min(1).max(5), status: z.string().max(12) }) },
+  'review.hidden': { module: 'M17', version: 1, schema: reviewEvent.extend({ reason: z.string().max(60) }) },
+  'review.restored': { module: 'M17', version: 1, schema: reviewEvent },
+  'review.published': { module: 'M17', version: 1, schema: reviewEvent },
+  'review.replied': { module: 'M17', version: 1, schema: reviewEvent },
+  'review.aggregate_updated': { module: 'M17', version: 1, schema: z.object({ subjectType: z.literal('ground'), subjectId: uuid, count: z.number().int().nonnegative(), avg: z.number().nullable() }) },
+
+  // ---------------- M02 document requests (for M18)
+  'document_request.created': { module: 'M02', version: 1, schema: docRequestEvent },
+  'document_request.fulfilled': { module: 'M02', version: 1, schema: docRequestEvent },
+  'document_request.cancelled': { module: 'M02', version: 1, schema: docRequestEvent },
+  'document_request.overdue_marked': { module: 'M02', version: 1, schema: docRequestEvent },
+
+  // ---------------- M18 Risk and Trust
+  'risk.flag_raised': { module: 'M18', version: 1, schema: riskFlagEvent.extend({ reopened: z.boolean() }) },
+  'risk.flag_updated': { module: 'M18', version: 1, schema: riskFlagEvent.extend({ value: z.number().optional(), status: z.string().max(12).optional(), escalated: z.boolean().optional() }) },
+  'risk.flag_cleared': { module: 'M18', version: 1, schema: riskFlagEvent.extend({ lapsed: z.boolean() }) },
+  'risk.action_taken': { module: 'M18', version: 1, schema: z.object({ actionId: uuid, userId: uuid, action: z.string().max(30), flagId: uuid.nullable(), reversesActionId: uuid.nullable() }) },
+  'trust.score_updated': { module: 'M18', version: 1, schema: z.object({ userId: uuid, kind: z.enum(['owner', 'booker']), score: z.number().int(), shown: z.boolean(), sample: z.number().int() }) },
+  'trust.low_crossed': { module: 'M18', version: 1, schema: z.object({ userId: uuid, kind: z.enum(['owner', 'booker']), score: z.number().int() }) },
 
   // ---------------- M19 Dashboards and Analytics
   'analytics.drift_detected': { module: 'M19', version: 1, schema: z.object({ vertical: z.string().max(20), records: z.number().int(), amount: poisha, runAt: iso }) },
 };
 /** FR-19: `<aggregate>.<past_tense_verb>`, snake_case. Irregular past tenses are listed. */
-const IRREGULAR = new Set(['sent', 'paid', 'held', 'won', 'lost', 'made', 'begun', 'done', 'drawn', 'shown', 'thrown', 'given', 'taken', 'built', 'set', 'put', 'cut', 'withdrawn', 'chosen', 'written', 'frozen', 'unfrozen', 'seen', 'broken', 'sold', 'told', 'found', 'left', 'met', 'read', 'run', 'spent', 'struck']);
+const IRREGULAR = new Set(['sent', 'paid', 'held', 'won', 'lost', 'made', 'begun', 'done', 'drawn', 'shown', 'thrown', 'given', 'taken', 'built', 'set', 'put', 'cut', 'withdrawn', 'chosen', 'written', 'frozen', 'unfrozen', 'seen', 'broken', 'sold', 'told', 'found', 'left', 'met', 'read', 'run', 'spent', 'struck', 'hidden', 'unhidden']);
 function nameError(name) {
   const m = /^([a-z][a-z0-9_]*)\.([a-z][a-z0-9_]*)$/.exec(name);
   if (!m) return 'Use <aggregate>.<verb> in snake_case';

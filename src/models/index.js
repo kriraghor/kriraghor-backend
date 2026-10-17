@@ -643,6 +643,7 @@ Refund.init(
   {
     id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
     paymentId: { type: DataTypes.UUID, allowNull: false },
+    escrowHoldId: DataTypes.UUID,
     amountPoisha: poisha('amountPoisha', { defaultValue: undefined }),
     reasonCode: { type: DataTypes.STRING(40), allowNull: false },
     reasonText: DataTypes.STRING(500),
@@ -719,6 +720,7 @@ EscrowHold.init(
     purpose: { type: DataTypes.STRING(30), allowNull: false },
     purposeId: { type: DataTypes.UUID, allowNull: false },
     paymentId: { type: DataTypes.UUID, allowNull: false },
+    splitRef: DataTypes.UUID,
     groupRef: DataTypes.UUID,
     payeeId: DataTypes.UUID,
     vertical: { type: DataTypes.STRING(20), allowNull: false },
@@ -971,7 +973,7 @@ VerificationDocument.init(
   {
     id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
     userId: { type: DataTypes.UUID, allowNull: false },
-    docType: { type: DataTypes.ENUM('nid', 'trade_license', 'deed_or_lease', 'tin'), allowNull: false },
+    docType: { type: DataTypes.ENUM('nid', 'trade_license', 'deed_or_lease', 'tin', 'bin', 'credential', 'police_clearance'), allowNull: false },
     subjectKey: { type: DataTypes.STRING(64), allowNull: false, defaultValue: '' },
     version: { type: DataTypes.INTEGER, allowNull: false },
     status: { type: DataTypes.ENUM('in_review', 'changes_requested', 'approved', 'rejected', 'superseded', 'withdrawn'), allowNull: false },
@@ -1145,6 +1147,9 @@ Submission.belongsTo(ReviewRubric, { as: 'rubric', foreignKey: 'rubricId' });
 // ---- M03 places and sports catalogues (models in ./places.js) ----
 const places = require('./places');
 
+// ---- M03 item catalogue (models in ./items.js) ----
+const items = require('./items');
+
 // ---- M09 grounds (models in ./grounds.js) ----
 const grounds = require('./grounds');
 grounds.Ground.belongsTo(places.Area, { as: 'area', foreignKey: 'areaId' });
@@ -1161,6 +1166,23 @@ grounds.BookingSeries.hasMany(bookings.Booking, { as: 'bookings', foreignKey: 's
 // ---- M19 analytics read models (./analytics.js) ----
 const analytics = require('./analytics');
 
+// ---- M17 disputes, reports and reviews (./trust.js) ----
+const trust = require('./trust');
+
+// ---- M18 risk and trust, M02 document requests (./risk.js) ----
+const risk = require('./risk');
+
+// ---- M12 market catalogue, step 1 (./market.js) ----
+const market = require('./market');
+market.Shop.belongsTo(places.Area, { as: 'area', foreignKey: 'areaId' });
+market.Product.belongsTo(items.ItemType, { as: 'itemType', foreignKey: 'itemTypeId' });
+
+// ---- M03 hire taxonomy and M11 hire, step 1 (./hire.js) ----
+const hire = require('./hire');
+
+// ---- M13 orders, step 1 (./orders.js) ----
+const orders = require('./orders');
+
 // ---- M21 esports (models in ./esports.js) ----
 const esports = require('./esports');
 esports.EsportsTournament.belongsTo(EsportsGame, { as: 'game', foreignKey: 'gameId' });
@@ -1172,9 +1194,15 @@ esports.EsportsGameProfile.belongsTo(User, { as: 'user', foreignKey: 'userId' })
 module.exports = {
   ...esports,
   ...places,
+  ...items,
+  ...market,
+  ...orders,
+  ...hire,
   ...grounds,
   ...bookings,
   ...analytics,
+  ...trust,
+  ...risk,
   sequelize,
   User,
   UserRole,

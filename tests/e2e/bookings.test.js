@@ -254,10 +254,18 @@ describe('M10 v3 money', () => {
     }
     b = await moveTo(b, new Date(Date.now() - 30 * 60000));
     const r = await api().post(`${P}/me/ground-bookings/${b.id}/no-show`).set(h.bearer(o)).expect(200);
-    // ৳4,000 for two hours, paid in full: the ৳1,000 advance is retained (৳950 / ৳50), ৳3,000 refunded.
-    expect(r.body.settled).toEqual({ released: 100000, net: 95000, fee: 5000, refunded: 300000 });
+    // ৳4,000 for two hours, paid in full: ৳3,000 is refunded now; the ৳1,000 advance is retained and
+    // waits in escrow for the M17 dispute window (disputes.window_booking_hours) before it is released.
+    expect(r.body.settled).toMatchObject({ refunded: 300000, retained: 100000 });
+    expect(await balance(`payable:user:${o.user.id}`)).toBe(0);
     const [s] = await models.sequelize.query("SELECT upper(period) AS e FROM booking_slots WHERE booking_id = :id AND status = 'active'", { replacements: { id: b.id }, type: models.sequelize.QueryTypes.SELECT });
     expect(new Date(s.e).getTime()).toBeLessThan(b.endAt.getTime());
+    // Nothing is released before the window closes; after it the tick releases ৳950 to the owner, ৳50 fee.
+    expect((await bookings.tick()).noShowsSettled).toBe(0);
+    const out = await bookings.tick(new Date(Date.now() + 49 * 3600000));
+    expect(out.noShowsSettled).toBe(1);
+    expect(await balance(`payable:user:${o.user.id}`)).toBe(95000);
+    expect(await models.Booking.findByPk(b.id)).toMatchObject({ retainedPoisha: 100000, releasedPoisha: 100000, refundPoisha: 300000, settleDueAt: null });
   });
 
   it('never checked in: auto-complete after 24 h releases in full (Q68)', async () => {

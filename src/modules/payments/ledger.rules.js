@@ -80,6 +80,12 @@ const cr = (account, amount, holdId) => ({ account, credit: amount, ...(holdId ?
 /** FR-06: captured money moves from the provider into escrow (tagged with the hold). */
 const captureLines = ({ provider, escrowAccount, amount, holdId }) => [dr(`provider_clearing:${provider}`, amount), cr(escrowAccount, amount, holdId)];
 
+/** A split capture (M13 basket): one debit for the payment, one escrow credit per hold. */
+function captureSplitLines({ provider, escrowAccount, holds }) {
+  const total = holds.reduce((n, h) => n + h.amount, 0);
+  return [dr(`provider_clearing:${provider}`, total), ...holds.map((h) => cr(escrowAccount, h.amount, h.holdId))];
+}
+
 /** Edge case 3: money captured with the wrong amount waits in suspense until refunded. */
 const mismatchLines = ({ provider, amount }) => [dr(`provider_clearing:${provider}`, amount), cr('suspense', amount)];
 
@@ -157,6 +163,7 @@ module.exports = {
   netByAccount,
   mirror,
   captureLines,
+  captureSplitLines,
   mismatchLines,
   releaseLines,
   feeReceivableLines,

@@ -49,12 +49,16 @@ const lockPayment = async (id, transaction) => {
  * the same key is refused. The fee is snapshotted now, at obligation time (FR-07).
  */
 async function createIntent(
-  { purpose, purposeId, payerId, amount, title, payeeId = null, groupRef = null, releaseRule = { type: 'manual' }, expiresAt, idempotencyKey },
+  { purpose, purposeId, payerId, amount, title, payeeId = null, groupRef = null, releaseRule = { type: 'manual' }, expiresAt, idempotencyKey, splits = null },
   { transaction } = {}
 ) {
   const def = purposes.get(purpose);
   if (!Number.isSafeInteger(amount) || amount <= 0) throw new AppError(422, 'AMOUNT_INVALID', 'The amount must be a whole number of poisha above zero');
-  if (!def.pooled && !payeeId) throw new Error(`Purpose ${purpose} needs a payee`);
+  // M13: a basket split into parts, one escrow hold each ({ ref, payeeId, amount }); they add up to the amount.
+  if (splits) {
+    if (!splits.length || splits.some((s) => !s.ref || !s.payeeId || !Number.isSafeInteger(s.amount) || s.amount <= 0) || new Set(splits.map((s) => s.ref)).size !== splits.length) throw new Error('Invalid payment splits');
+    if (splits.reduce((n, s) => n + s.amount, 0) !== amount) throw new Error('Payment splits must add up to the amount');
+  } else if (!def.pooled && !payeeId) throw new Error(`Purpose ${purpose} needs a payee`);
   const run = async (t) => {
     const existing = await Payment.findOne({ where: { payerId, idempotencyKey }, transaction: t });
     if (existing) {
@@ -70,10 +74,10 @@ async function createIntent(
         purpose,
         purposeId,
         payerId,
-        payeeHintId: payeeId,
+        payeeHintId: payeeId ?? splits?.[0]?.payeeId ?? null,
         amountPoisha: amount,
         title: title.slice(0, 120),
-        escrow: { payeeId, groupRef, releaseRule, fee: fees.snapshot(def.vertical) },
+        escrow: { payeeId, groupRef, releaseRule, fee: fees.snapshot(def.vertical), ...(splits ? { splits: splits.map((s) => ({ ref: s.ref, payeeId: s.payeeId, amount: s.amount })) } : {}) },
         expiresAt: expiresAt ?? new Date(Date.now() + ttl * 60000),
         idempotencyKey,
       },
@@ -186,7 +190,7 @@ async function applyResult(attemptId, result, { source }) {
         return payment;
       }
       await payment.update({ ...base, status: 'succeeded', capturedPoisha: result.amount, succeededAt: now }, { transaction });
-      const hold = await escrow.openHold(payment, { transaction, capturedAt: now });
+      const holds = await escrow.openHolds(payment, { transaction, capturedAt: now });
       const grace = settings.get('payments.unknown_grace_minutes') * 60000;
       const late = now.getTime() > new Date(payment.expiresAt).getTime() + grace;
       const decision = await purposes.get(payment.purpose).onCaptured({ payment, late, transaction });
@@ -198,10 +202,13 @@ async function applyResult(attemptId, result, { source }) {
       });
       if (decision !== 'accept') {
         // FR-05 / §12 #2: captured after the purpose gave up → automatic full refund.
-        await refunds.createInTx(
-          { payment, amount: payment.amountPoisha, kind: 'late_capture', reasonCode: 'late_capture', actorKind: 'system', idempotencyKey: `late:${payment.id}`, hold },
-          { transaction }
-        );
+        // A split payment is refunded hold by hold (one refund per sub-order).
+        for (const [i, h] of holds.entries()) {
+          await refunds.createInTx(
+            { payment, amount: h.heldPoisha, kind: 'late_capture', reasonCode: 'late_capture', actorKind: 'system', idempotencyKey: i === 0 ? `late:${payment.id}` : `late:${payment.id}:${h.id}`, holdId: h.id },
+            { transaction }
+          );
+        }
       }
       return payment;
     }
@@ -509,7 +516,23 @@ async function getRefundable(paymentId) {
   return require('./refunds.rules').refundable(p.capturedPoisha, rs.map((r) => ({ status: r.status, amount: r.amountPoisha })));
 }
 
+/**
+ * M18 refund_rate: payments captured into the payee's escrow holds since `since`, and how many of them
+ * had a refund the payee caused (a dispute decided against them, or a reason code in `reasonCodes`).
+ */
+async function payeeRefundStats(payeeId, since, { reasonCodes = [] } = {}) {
+  const [row] = await sequelize.query(
+    `SELECT COUNT(DISTINCT h.payment_id)::int AS payments,
+            COUNT(DISTINCT r.payment_id) FILTER (WHERE r.status <> 'rejected' AND (r.kind = 'dispute' OR r.reason_code IN (:codes)))::int AS refunded
+       FROM escrow_holds h LEFT JOIN refunds r ON r.payment_id = h.payment_id
+      WHERE h.payee_id = :payeeId AND h.created_at >= :since`,
+    { replacements: { payeeId, since, codes: reasonCodes.length ? reasonCodes : ['-'] }, type: sequelize.QueryTypes.SELECT }
+  );
+  return { payments: row.payments, refunded: row.refunded };
+}
+
 module.exports = {
+  payeeRefundStats,
   paymentFact,
   exportPaymentFacts,
   createIntent,

@@ -421,13 +421,22 @@ async function staffGet(groundId) {
   };
 }
 
+/** Suspend, restore or remove a ground inside the caller's transaction (also M17 report actions). */
+async function staffActionInTx(actor, groundId, action, { reason, transaction, req = null }) {
+  const names = { suspend: 'suspended', restore: 'restored', remove: 'removed' };
+  const g = await move(actor, groundId, action, { transaction, req, reason, eventName: names[action], extra: action === 'restore' ? {} : { reason } });
+  if (action !== 'restore') await moderation.withdrawSubject('ground', g.id, { transaction });
+  return { id: g.id, status: g.status };
+}
+
 async function staffAction(actor, groundId, action, { reason }, req) {
-  return sequelize.transaction(async (transaction) => {
-    const names = { suspend: 'suspended', restore: 'restored', remove: 'removed' };
-    const g = await move(actor, groundId, action, { transaction, req, reason, eventName: names[action], extra: action === 'restore' ? {} : { reason } });
-    if (action !== 'restore') await moderation.withdrawSubject('ground', g.id, { transaction });
-    return { id: g.id, status: g.status };
-  });
+  return sequelize.transaction((transaction) => staffActionInTx(actor, groundId, action, { reason, transaction, req }));
+}
+
+/** M17: the rating from the published reviews (M09 owns the columns; the consumer of review.aggregate_updated). */
+async function setRating(groundId, { avg, count }, { transaction }) {
+  const [n] = await Ground.update({ ratingAvg: avg, ratingCount: count }, { where: { id: groundId }, transaction, silent: true });
+  return n;
 }
 
 // ---------------------------------------------------------------- M05 decisions (consumer, idempotent)
@@ -543,6 +552,8 @@ module.exports = {
   withdraw,
   setPaused,
   staffAction,
+  staffActionInTx,
+  setRating,
   staffList,
   staffGet,
   applyDecision,

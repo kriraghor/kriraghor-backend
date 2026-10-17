@@ -14,13 +14,28 @@ const SEVERITY = { high: 0, normal: 1, low: 2 };
 const PROVIDERS = {
   member: [
     (p) => require('../bookings/bookings.reads').pendingActions(p, 'member'),
+    // M13: parcels marked delivered that the buyer has not confirmed.
+    (p) => require('../orders/orders.reads').pendingActions(p, 'member'),
+    // M11: requests to pay and jobs to confirm (managers); requests to answer and today's jobs (players and pros).
+    (p) => require('../hire/hire.reads').pendingActions(p, 'member'),
+    async (p) => (['player', 'pro'].some((r) => p.roles?.[r] === 'active') ? require('../hire/hire.reads').pendingActions(p, 'pro') : []),
     async (p) => (p.roles?.member === 'active' ? [] : [{ key: p.roles?.member === 'in_review' ? 'nid_in_review' : 'verify_nid', count: 1, severity: 'normal', dueAt: null, href: '/account/verification' }]),
   ],
   ground_owner: [(p) => require('../bookings/bookings.reads').pendingActions(p, 'ground_owner'), (p) => require('../grounds/grounds.reads').pendingActions(p)],
+  // M12: the shop and products with changes requested, and stock running low, out or blocked for expiry.
+  // M13: orders to accept and to ship.
+  shop_owner: [(p) => require('../market/market.reads').pendingActions(p), (p) => require('../orders/orders.reads').pendingActions(p, 'shop_owner')],
   staff: [
     async (p) => {
       const s = await require('../moderation/moderation.service').stats(p);
       return [...(s.inQueue ? [{ key: 'review_queue', count: s.inQueue, severity: s.overdue ? 'high' : 'normal', dueAt: null, href: '/admin/moderation' }] : [])];
+    },
+    // M18: open risk flags, for staff who work the risk desk (manage_users) and masters.
+    async (p) => {
+      if (!p.isMaster && !p.permissions?.has?.('manage_users')) return [];
+      const c = await require('../risk/flags.service').counts();
+      const n = c.critical + c.high + c.medium + c.info;
+      return n ? [{ key: 'risk_flags', count: n, severity: c.critical || c.high ? 'high' : 'normal', dueAt: null, href: '/admin/risk' }] : [];
     },
   ],
 };

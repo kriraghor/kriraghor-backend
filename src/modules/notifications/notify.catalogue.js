@@ -3,7 +3,7 @@
 /**
  * Notification catalogue (M08 §6.6), as code. Each entry maps a domain event to recipients, channels
  * and template variables. Template texts are versioned rows in message_templates (EN and BN for
- * every default channel; a contract test checks it). Built so far: the M01, M02, M03, M04, M05, M06, M07, M09, M10, M19 and M21 events.
+ * every default channel; a contract test checks it). Built so far: the M01, M02, M03, M04, M05, M06, M07, M09, M10, M12, M13, M17, M18, M19 and M21 events.
  *
  * Entry: { code, events[], category, channels[], urgent, roleContext?(e), recipients(e) → userIds,
  *          values(e, { locale, userId }) → template values, link(e) → in-app link }
@@ -43,8 +43,8 @@ const KYC_REASONS = {
 };
 const reviewersOf = (kind) => directory.withPermission(require('../moderation/moderation.adapters').get(kind).permission);
 const KIND_LABELS = {
-  en: { document: 'identity document', game_profile: 'game UID', esports_tournament: 'esports tournament', ground: 'ground listing' },
-  bn: { document: 'পরিচয় ডকুমেন্ট', game_profile: 'গেম UID', esports_tournament: 'এস্পোর্টস টুর্নামেন্ট', ground: 'মাঠের তালিকা' },
+  en: { document: 'identity document', game_profile: 'game UID', esports_tournament: 'esports tournament', ground: 'ground listing', shop: 'shop', product: 'shop product' },
+  bn: { document: 'পরিচয় ডকুমেন্ট', game_profile: 'গেম UID', esports_tournament: 'এস্পোর্টস টুর্নামেন্ট', ground: 'মাঠের তালিকা', shop: 'দোকান', product: 'দোকানের পণ্য' },
 };
 const kindLabel = (kind, locale) => KIND_LABELS[locale]?.[kind] ?? KIND_LABELS.en[kind] ?? kind;
 const es = () => require('../esports/esports.facts');
@@ -53,8 +53,8 @@ const groundFacts = (id) => require('../grounds/grounds.service').facts(id);
 const vendorUrl = (p) => `${config.apps.vendor}${p}`;
 const isNid = (e) => !e.payload.role || e.payload.role === 'member';
 const DOC_LABELS = {
-  en: { trade_license: 'trade licence', deed_or_lease: 'land deed or lease', tin: 'TIN certificate' },
-  bn: { trade_license: 'ট্রেড লাইসেন্স', deed_or_lease: 'জমির দলিল বা লিজ', tin: 'টিআইএন সনদ' },
+  en: { trade_license: 'trade licence', deed_or_lease: 'land deed or lease', tin: 'TIN certificate', bin: 'VAT registration (BIN)' },
+  bn: { trade_license: 'ট্রেড লাইসেন্স', deed_or_lease: 'জমির দলিল বা লিজ', tin: 'টিআইএন সনদ', bin: 'ভ্যাট নিবন্ধন (বিআইএন)' },
 };
 const docLabel = (type, locale) => DOC_LABELS[locale]?.[type] ?? DOC_LABELS.en[type] ?? type;
 const GROUND_REASONS = {
@@ -63,7 +63,38 @@ const GROUND_REASONS = {
 };
 const groundReason = (code, locale) => GROUND_REASONS[locale]?.[code] ?? GROUND_REASONS.en[code] ?? reasonText(code, locale);
 const esportsUrl = (p) => `${config.apps.esports}${p}`;
+// M12: shops, products and stock (the shop owner), saved items (members).
+const shopFacts = (id) => require('../market/shops.service').facts(id);
+const productFacts = (id) => require('../market/products.service').facts(id);
+const variantFacts = (id) => require('../market/products.service').variantFacts(id);
+const MARKET_REASONS = {
+  en: { photos_unclear: 'the photos are unclear or not of this item', price_wrong: 'the price looks wrong', duplicate: 'it is already listed', info_incomplete: 'some information is missing', breaks_rules: 'it breaks our rules', specs_wrong: 'the details or sizes do not match the item', supplement_details: 'the importer, BSTI or expiry details are missing', shop_details: 'the shop name, type or address is not right', other: 'see the note from our team' },
+  bn: { photos_unclear: 'ছবি অস্পষ্ট বা এই পণ্যের নয়', price_wrong: 'দাম ঠিক মনে হচ্ছে না', duplicate: 'এটি আগেই তালিকায় আছে', info_incomplete: 'কিছু তথ্য নেই', breaks_rules: 'এটি আমাদের নিয়ম ভঙ্গ করে', specs_wrong: 'তথ্য বা সাইজ পণ্যের সাথে মেলে না', supplement_details: 'আমদানিকারক, BSTI বা মেয়াদের তথ্য নেই', shop_details: 'দোকানের নাম, ধরন বা ঠিকানা ঠিক নয়', other: 'আমাদের টিমের নোট দেখুন' },
+};
+const marketReason = (code, locale) => MARKET_REASONS[locale]?.[code] ?? MARKET_REASONS.en[code] ?? reasonText(code, locale);
+const variantValues = async (e, locale) => {
+  const f = await variantFacts(e.payload.variantId);
+  return { product: f.title, variant: locale === 'bn' ? f.labelBn : f.labelEn };
+};
+const webProduct = async (productId) => webUrl(`/shop/p/${(await productFacts(productId)).slug}`);
 const bookingFacts = (id) => require('../bookings/bookings.reads').facts(id);
+// M11: hire requests and jobs (the manager and the pro). Codes, role names and amounts only.
+const hireFacts = (e) => require('../hire/hire.reads').facts({ requestId: e.payload.requestId, jobId: e.payload.jobId ?? null });
+const hireProfileFacts = (id) => require('../hire/profiles.service').facts(id);
+const hireRole = async (e, locale) => {
+  const f = await hireFacts(e);
+  return locale === 'bn' ? f.roleBn : f.roleEn;
+};
+const hireReason = (code, locale) => marketReason(code, locale);
+// M13: shop orders (the buyer and the shop owner). Codes, shop names and amounts only.
+const orderFacts = (id) => require('../orders/orders.reads').facts(id);
+const ORDER_REASONS = {
+  en: { out_of_stock: 'the item is out of stock', cannot_deliver_area: 'the shop cannot deliver to your area', price_error: 'the price was wrong', shop_closed: 'the shop is closed', not_accepted: 'the shop did not accept in time', not_shipped: 'the shop did not ship in time', ship_overdue: 'you cancelled a late shipment', buyer_cancelled: 'you cancelled it', platform: 'our team cancelled it', payment_not_completed: 'the payment was not completed', payment_timeout: 'the payment was not completed in time', other: 'see the order for details' },
+  bn: { out_of_stock: 'পণ্যটি স্টকে নেই', cannot_deliver_area: 'দোকান আপনার এলাকায় পাঠাতে পারে না', price_error: 'দাম ভুল ছিল', shop_closed: 'দোকান বন্ধ', not_accepted: 'দোকান সময়মতো গ্রহণ করেনি', not_shipped: 'দোকান সময়মতো পাঠায়নি', ship_overdue: 'দেরিতে পাঠানোর কারণে আপনি বাতিল করেছেন', buyer_cancelled: 'আপনি বাতিল করেছেন', platform: 'আমাদের টিম বাতিল করেছে', payment_not_completed: 'পেমেন্ট সম্পন্ন হয়নি', payment_timeout: 'সময়মতো পেমেন্ট হয়নি', other: 'বিস্তারিত অর্ডারে দেখুন' },
+};
+const orderReason = (code, locale) => ORDER_REASONS[locale]?.[code] ?? ORDER_REASONS.en[code] ?? reasonText(code, locale);
+const orderLink = (e) => `/me/orders/${e.payload.code.replace(/-[A-Z]$/, '')}`;
+const vendorOrder = (e) => `/vendor/orders?id=${e.payload.subOrderId}`;
 const bookingValues = async (e) => {
   const f = await bookingFacts(e.payload.bookingId);
   return { code: f.code, ground: f.groundName, start: f.start, paid: f.paidOnline, due: f.dueAtVenue, refund: f.refund, retained: f.retained };
@@ -86,6 +117,44 @@ async function holdFacts(holdId) {
   const hold = await require('../payments/escrow.service').getOne(holdId);
   return { ...hold, title: (await paymentFacts(hold.paymentId)).title };
 }
+
+// M17 disputes, reports and reviews.
+const disputeFacts = (id) => require('../trust/disputes.service').facts(id);
+const reviewFacts = (id) => require('../trust/reviews.service').facts(id);
+const OUTCOMES = {
+  en: { all: 'full refund', half: 'half refunded', none: 'no refund', custom: 'part refunded', upheld: 'upheld', rejected: 'not upheld', corrected: 'results corrected' },
+  bn: { all: 'পুরো টাকা ফেরত', half: 'অর্ধেক ফেরত', none: 'ফেরত নেই', custom: 'আংশিক ফেরত', upheld: 'আপনার পক্ষে', rejected: 'গ্রহণযোগ্য নয়', corrected: 'ফলাফল সংশোধিত' },
+};
+const outcomeText = (o, locale) => OUTCOMES[locale]?.[o] ?? OUTCOMES.en[o] ?? o;
+const REPORT_OUTCOMES = {
+  en: { no_violation: 'we found nothing against our rules', content_removed: 'we removed it', owner_warned: 'we warned the owner', user_suspended: 'we suspended the account', converted_to_dispute: 'please open a dispute from the booking' },
+  bn: { no_violation: 'নিয়মবিরোধী কিছু পাইনি', content_removed: 'আমরা এটি সরিয়ে দিয়েছি', owner_warned: 'মালিককে সতর্ক করেছি', user_suspended: 'অ্যাকাউন্ট স্থগিত করেছি', converted_to_dispute: 'বুকিং থেকে বিরোধ খুলুন' },
+};
+const SUBJECT_LABELS = {
+  en: { ground: 'ground', booking: 'booking', user: 'member', review: 'review', esports_tournament: 'tournament' },
+  bn: { ground: 'মাঠ', booking: 'বুকিং', user: 'সদস্য', review: 'রিভিউ', esports_tournament: 'টুর্নামেন্ট' },
+};
+const subjectLabel = (t, locale) => SUBJECT_LABELS[locale]?.[t] ?? SUBJECT_LABELS.en[t] ?? t;
+const disputeValues = async (e, { locale }) => {
+  const f = await disputeFacts(e.payload.disputeId);
+  return { code: f.code, ref: f.ref, dueAt: f.respondentDueAt, outcome: outcomeText(f.outcome, locale), refund: f.refund };
+};
+const myDispute = (e) => `/me/disputes/${e.payload.code}`;
+const vendorDispute = (e) => vendorUrl(`/vendor/disputes/${e.payload.code}`);
+const adminDispute = (e) => `/admin/disputes?code=${e.payload.code}`;
+
+// M18 risk and trust.
+const RULE_LABELS = {
+  en: { accounts_per_nid: 'the same NID on several accounts', shared_payout_account: 'a payout wallet shared with another account', esports_uid_banned: 'a banned game UID', refund_rate: 'many refunds', dispute_loss_rate: 'many lost disputes', reports_upheld: 'upheld reports', esports_disqualified: 'esports disqualifications', velocity_breaches: 'many rate-limit hits', payout_account_change: 'a new payout account' },
+  bn: { accounts_per_nid: 'একাধিক অ্যাকাউন্টে একই NID', shared_payout_account: 'অন্য অ্যাকাউন্টের সাথে একই পেআউট ওয়ালেট', esports_uid_banned: 'নিষিদ্ধ গেম UID', refund_rate: 'অনেক রিফান্ড', dispute_loss_rate: 'অনেক বিরোধে হার', reports_upheld: 'সঠিক প্রমাণিত রিপোর্ট', esports_disqualified: 'এস্পোর্টস থেকে বাদ', velocity_breaches: 'বারবার সীমা ছোঁয়া', payout_account_change: 'নতুন পেআউট অ্যাকাউন্ট' },
+};
+const SEVERITY_LABELS = { en: { info: 'info', medium: 'medium', high: 'high', critical: 'critical' }, bn: { info: 'তথ্য', medium: 'মাঝারি', high: 'উচ্চ', critical: 'গুরুতর' } };
+const DOC_REQUEST_LABELS = { en: { nid: 'NID', trade_license: 'trade licence', deed_or_lease: 'land deed or lease', tin: 'TIN certificate' }, bn: { nid: 'NID', trade_license: 'ট্রেড লাইসেন্স', deed_or_lease: 'জমির দলিল বা লিজ', tin: 'টিআইএন সনদ' } };
+const TRUST_KINDS = { en: { owner: 'ground owner', booker: 'booking' }, bn: { owner: 'মাঠ মালিক', booker: 'বুকিং' } };
+const pick = (table, locale, key) => table[locale]?.[key] ?? table.en[key] ?? key;
+const riskDesk = (e) => `/admin/risk/accounts/${e.payload.userId}`;
+const riskDeskStaff = async () => [...new Set([...(await directory.withPermission('manage_users'))])];
+const actionIs = (name) => (e) => e.payload.action === name;
 
 const CATALOGUE = [
   // ---------------- M04: critical audit actions → every other master (FR-11)
@@ -774,6 +843,485 @@ const CATALOGUE = [
     recipients: toBooker,
     values: bookingValues,
     link: myBooking,
+  },
+  // ---------------- M17 disputes, reports and reviews
+  {
+    code: 'DISPUTE_OPENED',
+    events: ['dispute.opened'],
+    category: 'disputes_reports',
+    channels: ['in_app', 'sms'],
+    urgent: true,
+    recipients: (e) => (e.payload.respondentId ? [e.payload.respondentId] : []),
+    values: disputeValues,
+    link: vendorDispute,
+  },
+  {
+    code: 'DISPUTE_RECEIVED',
+    events: ['dispute.opened'],
+    category: 'disputes_reports',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.claimantId],
+    values: disputeValues,
+    link: myDispute,
+  },
+  {
+    code: 'DISPUTE_RESPONSE_DUE',
+    events: ['dispute.respondent_reminded'],
+    category: 'disputes_reports',
+    channels: ['in_app'],
+    recipients: (e) => (e.payload.respondentId ? [e.payload.respondentId] : []),
+    values: disputeValues,
+    link: vendorDispute,
+  },
+  {
+    code: 'DISPUTE_RESPONDED',
+    events: ['dispute.response_submitted'],
+    category: 'disputes_reports',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.claimantId],
+    values: disputeValues,
+    link: myDispute,
+  },
+  {
+    code: 'DISPUTE_DECIDED',
+    events: ['dispute.resolved'],
+    category: 'disputes_reports',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.claimantId, e.payload.respondentId].filter(Boolean),
+    values: disputeValues,
+    link: (e, { userId } = {}) => (userId && userId === e.payload.respondentId ? vendorDispute(e) : myDispute(e)),
+  },
+  {
+    code: 'DISPUTE_ESCALATED',
+    events: ['dispute.escalated'],
+    category: 'staff_ops',
+    channels: ['in_app'],
+    recipients: () => directory.masters(),
+    values: disputeValues,
+    link: adminDispute,
+  },
+  {
+    code: 'DISPUTE_SLA_BREACHED',
+    events: ['dispute.sla_breached'],
+    category: 'staff_ops',
+    channels: ['in_app'],
+    recipients: (e) => (e.payload.level === 'master' ? directory.masters() : directory.withPermission(e.payload.sourceType === 'esports_result' ? 'manage_esports' : 'resolve_reports')),
+    values: disputeValues,
+    link: adminDispute,
+  },
+  {
+    code: 'REPORT_OUTCOME',
+    events: ['report.resolved'],
+    category: 'disputes_reports',
+    channels: ['in_app'],
+    recipients: (e) => e.payload.reporterIds,
+    values: (e, { locale }) => ({ subject: subjectLabel(e.payload.subjectType, locale), outcome: REPORT_OUTCOMES[locale]?.[e.payload.action] ?? REPORT_OUTCOMES.en[e.payload.action] }),
+    link: () => '/me/reports',
+  },
+  {
+    code: 'REPORT_FLAGGED',
+    events: ['report.threshold_reached'],
+    category: 'staff_ops',
+    channels: ['in_app'],
+    recipients: () => directory.withPermission('resolve_reports'),
+    values: (e, { locale }) => ({ subject: subjectLabel(e.payload.subjectType, locale), reporters: e.payload.reporters }),
+    link: (e) => `/admin/reports?subjectType=${e.payload.subjectType}&subjectId=${e.payload.subjectId}`,
+  },
+  {
+    code: 'REVIEW_NEW',
+    events: ['review.posted'],
+    category: 'reviews',
+    channels: ['in_app'],
+    recipients: (e) => (e.payload.status === 'published' ? [e.payload.ownerId] : []),
+    values: async (e) => {
+      const f = await reviewFacts(e.payload.reviewId);
+      return { stars: f.stars, ground: f.groundName };
+    },
+    link: () => vendorUrl('/vendor/reviews'),
+  },
+  {
+    code: 'REVIEW_HIDDEN',
+    events: ['review.hidden'],
+    category: 'reviews',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.authorId],
+    values: async (e) => ({ ground: (await reviewFacts(e.payload.reviewId)).groundName }),
+    link: () => '/me/reviews',
+  },
+  // ---------------- M12 market: shop and product reviews, stock (the shop owner), saved items (members)
+  {
+    code: 'SHOP_LIVE',
+    events: ['shop.published'],
+    category: 'moderation',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e) => ({ name: (await shopFacts(e.payload.shopId)).name, url: vendorUrl('/vendor/shop') }),
+    link: () => '/vendor/shop',
+  },
+  {
+    code: 'SHOP_CHANGES_REQUESTED',
+    events: ['shop.changes_requested'],
+    category: 'moderation',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e, { locale }) => ({ name: (await shopFacts(e.payload.shopId)).name, reason: marketReason(e.payload.reasonCode, locale) }),
+    link: () => '/vendor/shop',
+  },
+  {
+    code: 'SHOP_REJECTED',
+    events: ['shop.rejected'],
+    category: 'moderation',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e, { locale }) => ({ name: (await shopFacts(e.payload.shopId)).name, reason: marketReason(e.payload.reasonCode, locale) }),
+    link: () => '/vendor/shop',
+  },
+  {
+    code: 'PRODUCT_LIVE',
+    events: ['product.published'],
+    category: 'moderation',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e) => ({ name: (await productFacts(e.payload.productId)).title, url: await webProduct(e.payload.productId) }),
+    link: (e) => `/vendor/products/${e.payload.productId}`,
+  },
+  {
+    code: 'PRODUCT_CHANGES_REQUESTED',
+    events: ['product.changes_requested'],
+    category: 'moderation',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e, { locale }) => ({ name: (await productFacts(e.payload.productId)).title, reason: marketReason(e.payload.reasonCode, locale) }),
+    link: (e) => `/vendor/products/${e.payload.productId}`,
+  },
+  {
+    code: 'PRODUCT_REJECTED',
+    events: ['product.rejected'],
+    category: 'moderation',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e, { locale }) => ({ name: (await productFacts(e.payload.productId)).title, reason: marketReason(e.payload.reasonCode, locale) }),
+    link: (e) => `/vendor/products/${e.payload.productId}`,
+  },
+  {
+    code: 'STOCK_LOW',
+    events: ['variant.low_stock_reached'],
+    category: 'orders',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e, { locale }) => ({ ...(await variantValues(e, locale)), left: e.payload.available }),
+    link: () => '/vendor/inventory?status=low',
+  },
+  {
+    code: 'STOCK_OUT',
+    events: ['variant.stock_depleted'],
+    category: 'orders',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e, { locale }) => variantValues(e, locale),
+    link: () => '/vendor/inventory?status=out',
+  },
+  {
+    code: 'SUPPLEMENT_EXPIRING',
+    events: ['variant.sale_blocked'],
+    category: 'orders',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e, { locale }) => ({ ...(await variantValues(e, locale)), expiry: e.payload.expiryDate ?? '' }),
+    link: () => '/vendor/inventory?status=blocked',
+  },
+  {
+    code: 'SAVED_BACK_IN_STOCK',
+    events: ['saved_item.alerted'],
+    category: 'offers',
+    channels: ['in_app'],
+    recipients: (e) => (e.payload.reason === 'back_in_stock' ? [e.payload.userId] : []),
+    values: async (e) => ({ name: (await productFacts(e.payload.itemId)).title }),
+    link: () => '/shop/saved',
+  },
+  {
+    code: 'SAVED_PRICE_DROP',
+    events: ['saved_item.alerted'],
+    category: 'offers',
+    channels: ['in_app'],
+    recipients: (e) => (e.payload.reason === 'price_dropped' ? [e.payload.userId] : []),
+    values: async (e) => ({ name: (await productFacts(e.payload.itemId)).title, price: e.payload.pricePoisha }),
+    link: () => '/shop/saved',
+  },
+  // ---------------- M11 hire: the manager (hirer) and the player or pro
+  {
+    code: 'HIRE_REQUEST_NEW',
+    events: ['hire_request.sent'],
+    category: 'hire',
+    channels: ['in_app', 'sms'],
+    urgent: true,
+    recipients: (e) => [e.payload.proUserId],
+    values: async (e, { locale }) => ({ code: e.payload.code, role: await hireRole(e, locale), total: e.payload.total, replyBy: e.payload.replyBy }),
+    link: () => '/pro/requests',
+  },
+  {
+    code: 'HIRE_ACCEPTED_PAY',
+    events: ['hire_request.accepted'],
+    category: 'hire',
+    channels: ['in_app', 'sms'],
+    urgent: true,
+    recipients: (e) => [e.payload.hirerId],
+    values: (e) => ({ code: e.payload.code, total: e.payload.total, payBy: e.payload.payBy }),
+    link: (e) => `/me/hire/${e.payload.code}`,
+  },
+  {
+    code: 'HIRE_DECLINED',
+    events: ['hire_request.declined', 'hire_request.expired'],
+    category: 'hire',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.hirerId],
+    values: async (e, { locale }) => ({ code: e.payload.code, role: await hireRole(e, locale) }),
+    link: () => '/hiring',
+  },
+  {
+    code: 'HIRE_LAPSED',
+    events: ['hire_request.lapsed'],
+    category: 'hire',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.hirerId, e.payload.proUserId],
+    values: (e) => ({ code: e.payload.code }),
+    link: (e) => `/me/hire/${e.payload.code}`,
+  },
+  {
+    code: 'HIRE_CONFIRMED',
+    events: ['hire_request.paid'],
+    category: 'hire',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.hirerId, e.payload.proUserId],
+    values: async (e) => ({ code: e.payload.code, start: (await hireFacts(e)).start }),
+    link: (e, { userId } = {}) => (userId === e.payload.proUserId ? '/pro/jobs' : `/me/hire/${e.payload.code}`),
+  },
+  {
+    code: 'HIRE_MESSAGE',
+    events: ['hire_message.posted'],
+    category: 'hire',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.recipientId],
+    values: (e) => ({ code: e.payload.code }),
+    link: (e) => `/me/hire/${e.payload.code}`,
+  },
+  {
+    code: 'JOB_CHECKIN_OPENS',
+    events: ['hire_job.checkin_opened'],
+    category: 'hire',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.proUserId],
+    values: (e) => ({ code: e.payload.code, start: e.payload.start }),
+    link: () => '/pro/jobs',
+  },
+  {
+    code: 'JOB_COMPLETED_CONFIRM',
+    events: ['hire_job.completed_marked'],
+    category: 'hire',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.hirerId],
+    values: (e) => ({ code: e.payload.code, releaseAt: e.payload.releaseAt }),
+    link: (e) => `/me/hire/${e.payload.code.replace(/-\d+$/, '')}`,
+  },
+  {
+    code: 'JOB_PAID',
+    events: ['hire_job.released'],
+    category: 'hire',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.proUserId],
+    values: (e) => ({ code: e.payload.code, net: e.payload.net }),
+    link: () => '/me/payouts',
+  },
+  {
+    code: 'JOB_CANCELLED',
+    events: ['hire_job.cancelled'],
+    category: 'hire',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.proUserId],
+    values: (e) => ({ code: e.payload.code, proGets: e.payload.proGets }),
+    link: () => '/pro/jobs',
+  },
+  {
+    code: 'JOB_WITHDRAWN',
+    events: ['hire_job.withdrawn'],
+    category: 'hire',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.hirerId],
+    values: (e) => ({ code: e.payload.code, refund: e.payload.refund }),
+    link: () => '/hiring',
+  },
+  {
+    code: 'HIRE_PROFILE_LIVE',
+    events: ['hire_profile.published'],
+    category: 'moderation',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => (e.payload.first ? [e.payload.userId] : []),
+    values: async (e, { locale }) => {
+      const f = await hireProfileFacts(e.payload.profileId);
+      return { role: locale === 'bn' ? f.roleBn : f.roleEn };
+    },
+    link: () => '/pro',
+  },
+  {
+    code: 'HIRE_PROFILE_CHANGES',
+    events: ['hire_profile.changes_requested', 'hire_profile.rejected'],
+    category: 'moderation',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.userId],
+    values: async (e, { locale }) => {
+      const f = await hireProfileFacts(e.payload.profileId);
+      return { role: locale === 'bn' ? f.roleBn : f.roleEn, reason: hireReason(e.payload.reasonCode, locale) };
+    },
+    link: () => '/pro',
+  },
+  // ---------------- M13 orders: the buyer and the shop owner
+  {
+    code: 'ORDER_PLACED',
+    events: ['order.placed'],
+    category: 'orders',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.buyerId],
+    values: (e) => ({ code: e.payload.code, total: e.payload.total }),
+    link: (e) => `/me/orders/${e.payload.code}`,
+  },
+  {
+    code: 'SHOP_NEW_ORDER',
+    events: ['sub_order.placed'],
+    category: 'orders',
+    channels: ['in_app', 'sms'],
+    urgent: true,
+    recipients: (e) => [e.payload.sellerId],
+    values: (e) => ({ code: e.payload.code, total: e.payload.total, acceptBy: e.payload.acceptBy }),
+    link: vendorOrder,
+  },
+  {
+    code: 'SHOP_ORDER_REMINDER',
+    events: ['sub_order.accept_reminded'],
+    category: 'orders',
+    channels: ['in_app', 'sms'],
+    urgent: true,
+    recipients: (e) => [e.payload.sellerId],
+    values: (e) => ({ code: e.payload.code, acceptBy: e.payload.acceptBy }),
+    link: vendorOrder,
+  },
+  {
+    code: 'ORDER_ACCEPTED',
+    events: ['sub_order.accepted'],
+    category: 'orders',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.buyerId],
+    values: async (e) => ({ code: e.payload.code, shop: (await orderFacts(e.payload.subOrderId)).shopName }),
+    link: orderLink,
+  },
+  {
+    code: 'ORDER_REJECTED',
+    events: ['sub_order.rejected'],
+    category: 'orders',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.buyerId],
+    values: async (e, { locale }) => ({ code: e.payload.code, shop: (await orderFacts(e.payload.subOrderId)).shopName, reason: orderReason(e.payload.reason, locale), refund: e.payload.refund }),
+    link: orderLink,
+  },
+  {
+    code: 'ORDER_SHIPPED',
+    events: ['sub_order.shipped'],
+    category: 'orders',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.buyerId],
+    values: (e) => ({ code: e.payload.code, courier: e.payload.courier, tracking: e.payload.tracking }),
+    link: orderLink,
+  },
+  {
+    code: 'ORDER_DELIVERED',
+    events: ['sub_order.delivered'],
+    category: 'orders',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.buyerId],
+    values: (e) => ({ code: e.payload.code }),
+    link: orderLink,
+  },
+  {
+    code: 'ORDER_COMPLETED',
+    events: ['sub_order.completed'],
+    category: 'orders',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.sellerId],
+    values: (e) => ({ code: e.payload.code, net: e.payload.net }),
+    link: vendorOrder,
+  },
+  {
+    code: 'ORDER_CANCELLED',
+    events: ['sub_order.cancelled', 'sub_order.expired'],
+    category: 'orders',
+    channels: ['in_app', 'sms'],
+    // An unpaid order that lapsed tells no one (nothing was paid or sent to the shop).
+    recipients: (e) => (['payment_not_completed', 'payment_timeout'].includes(e.payload.reason) ? [] : [e.payload.buyerId]),
+    values: (e, { locale }) => ({ code: e.payload.code, reason: orderReason(e.payload.reason, locale), refund: e.payload.refund }),
+    link: orderLink,
+  },
+  {
+    code: 'SHOP_ORDER_CANCELLED',
+    events: ['sub_order.cancelled', 'sub_order.expired'],
+    category: 'orders',
+    channels: ['in_app'],
+    recipients: (e) => (['payment_not_completed', 'payment_timeout'].includes(e.payload.reason) ? [] : [e.payload.sellerId]),
+    values: (e, { locale }) => ({ code: e.payload.code, reason: orderReason(e.payload.reason, locale) }),
+    link: vendorOrder,
+  },
+  // ---------------- M18 risk and trust (the payee never sees the rule)
+  {
+    code: 'RISK_FLAGGED',
+    events: ['risk.flag_raised'],
+    category: 'staff_ops',
+    channels: ['in_app'],
+    recipients: async (e) => (['high', 'critical'].includes(e.payload.severity) ? riskDeskStaff() : []),
+    values: async (e, { locale }) => ({ rule: pick(RULE_LABELS, locale, e.payload.ruleKey), severity: pick(SEVERITY_LABELS, locale, e.payload.severity), user: await nameOf(e.payload.userId) }),
+    link: riskDesk,
+  },
+  {
+    code: 'PAYOUTS_FROZEN',
+    events: ['risk.action_taken'],
+    category: 'money',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => (actionIs('freeze_payouts')(e) ? [e.payload.userId] : []),
+    values: () => ({}),
+    link: () => '/me/payouts',
+  },
+  {
+    code: 'PAYOUTS_UNFROZEN',
+    events: ['risk.action_taken'],
+    category: 'money',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => (actionIs('unfreeze_payouts')(e) ? [e.payload.userId] : []),
+    values: () => ({}),
+    link: () => '/me/payouts',
+  },
+  {
+    code: 'DOCUMENTS_REQUESTED',
+    events: ['document_request.created'],
+    category: 'security',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.userId],
+    values: (e, { locale }) => ({ doc: pick(DOC_REQUEST_LABELS, locale, e.payload.docType), dueAt: e.payload.dueAt }),
+    link: () => '/account/verification',
+  },
+  {
+    code: 'DOCUMENTS_OVERDUE',
+    events: ['document_request.overdue_marked'],
+    category: 'staff_ops',
+    channels: ['in_app'],
+    recipients: () => riskDeskStaff(),
+    values: async (e, { locale }) => ({ user: await nameOf(e.payload.userId), doc: pick(DOC_REQUEST_LABELS, locale, e.payload.docType) }),
+    link: riskDesk,
+  },
+  {
+    code: 'TRUST_LOW',
+    events: ['trust.low_crossed'],
+    category: 'bookings',
+    channels: ['in_app'],
+    recipients: (e) => (e.payload.kind === 'owner' ? [e.payload.userId] : []),
+    values: (e, { locale }) => ({ kind: pick(TRUST_KINDS, locale, e.payload.kind), score: e.payload.score }),
+    link: () => vendorUrl('/vendor'),
   },
 ];
 

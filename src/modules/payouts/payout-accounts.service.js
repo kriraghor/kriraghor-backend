@@ -208,4 +208,15 @@ async function facts(id) {
   return { masked: rules.maskAccount(a.type, a.accountNoLast4), reviewNote: a.reviewNote ?? null, holdUntil: a.holdUntil ?? null };
 }
 
-module.exports = { listMine, sendCode, add, adminList, verify, reject, activeFor, status, fullNumber, facts, serialize };
+/** M18 shared_payout_account: other verified accounts using one of this user's wallets (ids never leave). */
+async function sharedWith(userId) {
+  const mine = await PayoutAccount.findAll({ where: { userId, status: { [Op.in]: ['pending_verification', 'active'] } }, attributes: ['accountNoHash'] });
+  const hashes = [...new Set(mine.map((a) => a.accountNoHash))];
+  if (!hashes.length) return 0;
+  return PayoutAccount.count({ where: { accountNoHash: hashes, userId: { [Op.ne]: userId }, status: 'active' }, distinct: true, col: 'user_id' });
+}
+
+/** M18 payout_account_change: payout accounts added since `since` (FR-13). */
+const addedSince = (userId, since) => PayoutAccount.count({ where: { userId, createdAt: { [Op.gte]: since } } });
+
+module.exports = { sharedWith, addedSince, listMine, sendCode, add, adminList, verify, reject, activeFor, status, fullNumber, facts, serialize };

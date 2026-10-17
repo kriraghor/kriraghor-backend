@@ -40,6 +40,10 @@ meDocuments.post('/files', validate(s.uploadQuery, 'query'), limits.kycUpload, r
 meDocuments.post('/', validate(s.submitBody), async (req, res) => res.status(201).json(await kyc.submit(req.user, req.body, req)));
 meDocuments.get('/:id/files/:fileId', validate(s.fileParams, 'params'), async (req, res) => sendFile(res, await kyc.ownFile(req.user, req.params.id, req.params.fileId)));
 
+// M18-FR-07: documents our team asked for.
+const meDocumentRequests = Router();
+meDocumentRequests.get('/', authenticate, async (req, res) => res.json(await require('./requests.service').listMine(req.user)));
+
 const adminKyc = Router();
 adminKyc.use(authenticateAdmin, requireStaff, requireAnyPermission(PERMISSIONS.APPROVE_DOCUMENTS));
 adminKyc.get('/documents/:id', validate(s.idParam, 'params'), async (req, res) => res.json(await kyc.adminGet(req.params.id)));
@@ -49,4 +53,4 @@ adminKyc.post('/documents/:id/reveal-nid', validate(s.idParam, 'params'), valida
   res.json(await kyc.revealNid(req.user, req.params.id, req.body, req));
 });
 
-module.exports = { meVerification, meDocuments, adminKyc };
+module.exports = { meVerification, meDocuments, meDocumentRequests, adminKyc };

@@ -92,60 +92,72 @@ async function suspend(principal, userId, { reasonCode, note, until }, req) {
     if (ms <= 0) throw E.badRequest('UNTIL_IN_PAST', 'The end date must be in the future');
     if (ms > MAX_SUSPENSION_DAYS * 24 * 3600 * 1000) throw E.badRequest('SUSPENSION_TOO_LONG', 'Suspensions longer than a year must be bans');
   }
-  return sequelize.transaction(async (transaction) => {
-    const target = await loadTarget(userId, { transaction, lock: transaction.LOCK.UPDATE });
-    await guardTarget(principal, target, { transaction });
-    if (target.status !== 'active') throw E.conflict('USER_NOT_ACTIVE', `The account is already ${target.status}`);
+  return sequelize.transaction((transaction) => suspendInTx(principal, userId, { reasonCode, note, until }, { transaction, req }));
+}
 
-    const sanction = await UserSanction.create(
-      { userId, kind: 'suspension', reasonCode, note, endsAt: until ? new Date(until) : null, createdBy: principal.id, source: 'admin' },
-      { transaction }
-    );
-    await target.update({ status: 'suspended' }, { transaction });
-    await authz.bumpVersion(userId, { transaction });
-    const revoked = await sessions.revokeAllForUser(userId, 'sanction', { transaction });
-    await audit.record({ action: 'user.suspended', actor: principal, entityType: 'user', entityId: userId, before: { status: 'active' }, after: { status: 'suspended', until: until ?? null }, meta: { reasonCode, sanctionId: sanction.id }, req }, { transaction });
-    await events.publish(transaction, { name: 'user.suspended', aggregateType: 'user', aggregateId: userId, payload: { userId, sanctionId: sanction.id, until: until ?? null }, actor: principal, req });
-    return { sanctionId: sanction.id, status: 'suspended', sessionsRevoked: revoked };
-  });
+/**
+ * The suspension inside the caller's transaction (also M17 report actions, reasonCode reported, and
+ * M18 risk actions with source risk).
+ */
+async function suspendInTx(principal, userId, { reasonCode, note, until = null, source = 'admin' }, { transaction, req = null }) {
+  const target = await loadTarget(userId, { transaction, lock: transaction.LOCK.UPDATE });
+  await guardTarget(principal, target, { transaction });
+  if (target.status !== 'active') throw E.conflict('USER_NOT_ACTIVE', `The account is already ${target.status}`);
+
+  const sanction = await UserSanction.create(
+    { userId, kind: 'suspension', reasonCode, note, endsAt: until ? new Date(until) : null, createdBy: principal.id, source },
+    { transaction }
+  );
+  await target.update({ status: 'suspended' }, { transaction });
+  await authz.bumpVersion(userId, { transaction });
+  const revoked = await sessions.revokeAllForUser(userId, 'sanction', { transaction });
+  await audit.record({ action: 'user.suspended', actor: principal, entityType: 'user', entityId: userId, before: { status: 'active' }, after: { status: 'suspended', until: until ?? null }, meta: { reasonCode, sanctionId: sanction.id }, req }, { transaction });
+  await events.publish(transaction, { name: 'user.suspended', aggregateType: 'user', aggregateId: userId, payload: { userId, sanctionId: sanction.id, until: until ?? null }, actor: principal, req });
+  return { sanctionId: sanction.id, status: 'suspended', sessionsRevoked: revoked };
 }
 
 async function ban(principal, userId, { reasonCode, note }, req) {
-  return sequelize.transaction(async (transaction) => {
-    const target = await loadTarget(userId, { transaction, lock: transaction.LOCK.UPDATE });
-    await guardTarget(principal, target, { transaction });
-    if (target.status === 'banned') throw E.conflict('USER_ALREADY_BANNED', 'The account is already banned');
+  return sequelize.transaction((transaction) => banInTx(principal, userId, { reasonCode, note }, { transaction, req }));
+}
 
-    // Close any open suspension; the ban replaces it.
-    await UserSanction.update({ liftedAt: new Date(), liftedBy: principal.id, liftNote: 'Superseded by ban' }, { where: { userId, liftedAt: null, kind: 'suspension' }, transaction });
-    const sanction = await UserSanction.create({ userId, kind: 'ban', reasonCode, note, createdBy: principal.id, source: 'admin' }, { transaction });
-    const before = target.status;
-    await target.update({ status: 'banned' }, { transaction });
-    await authz.bumpVersion(userId, { transaction });
-    const revoked = await sessions.revokeAllForUser(userId, 'sanction', { transaction });
-    await audit.record({ action: 'user.banned', actor: principal, entityType: 'user', entityId: userId, before: { status: before }, after: { status: 'banned' }, meta: { reasonCode, sanctionId: sanction.id }, req }, { transaction });
-    await events.publish(transaction, { name: 'user.banned', aggregateType: 'user', aggregateId: userId, payload: { userId, sanctionId: sanction.id }, actor: principal, req });
-    return { sanctionId: sanction.id, status: 'banned', sessionsRevoked: revoked };
-  });
+/** The ban inside the caller's transaction (M18 risk actions pass source risk). */
+async function banInTx(principal, userId, { reasonCode, note, source = 'admin' }, { transaction, req = null }) {
+  const target = await loadTarget(userId, { transaction, lock: transaction.LOCK.UPDATE });
+  await guardTarget(principal, target, { transaction });
+  if (target.status === 'banned') throw E.conflict('USER_ALREADY_BANNED', 'The account is already banned');
+
+  // Close any open suspension; the ban replaces it.
+  await UserSanction.update({ liftedAt: new Date(), liftedBy: principal.id, liftNote: 'Superseded by ban' }, { where: { userId, liftedAt: null, kind: 'suspension' }, transaction });
+  const sanction = await UserSanction.create({ userId, kind: 'ban', reasonCode, note, createdBy: principal.id, source }, { transaction });
+  const before = target.status;
+  await target.update({ status: 'banned' }, { transaction });
+  await authz.bumpVersion(userId, { transaction });
+  const revoked = await sessions.revokeAllForUser(userId, 'sanction', { transaction });
+  await audit.record({ action: 'user.banned', actor: principal, entityType: 'user', entityId: userId, before: { status: before }, after: { status: 'banned' }, meta: { reasonCode, sanctionId: sanction.id }, req }, { transaction });
+  await events.publish(transaction, { name: 'user.banned', aggregateType: 'user', aggregateId: userId, payload: { userId, sanctionId: sanction.id }, actor: principal, req });
+  return { sanctionId: sanction.id, status: 'banned', sessionsRevoked: revoked };
 }
 
 /** Lift the active suspension or ban. Restoring a ban requires a master (route-level). */
 async function restore(principal, userId, { note }, req, { allowBan = false } = {}) {
-  return sequelize.transaction(async (transaction) => {
-    const target = await loadTarget(userId, { transaction, lock: transaction.LOCK.UPDATE });
-    await guardTarget(principal, target, { transaction });
-    if (target.status === 'active') throw E.conflict('USER_ALREADY_ACTIVE', 'The account is already active');
-    if (target.status === 'banned' && !allowBan) throw E.forbidden('MASTER_REQUIRED', 'Only a master admin can lift a ban');
-    if (target.status === 'closed') throw E.conflict('USER_CLOSED', 'Closed accounts cannot be restored');
+  return sequelize.transaction((transaction) => restoreInTx(principal, userId, { note }, { transaction, req, allowBan }));
+}
 
-    const before = target.status;
-    await UserSanction.update({ liftedAt: new Date(), liftedBy: principal.id, liftNote: note ?? null }, { where: { userId, liftedAt: null, kind: ['suspension', 'ban'] }, transaction });
-    await target.update({ status: 'active' }, { transaction });
-    await authz.bumpVersion(userId, { transaction });
-    await audit.record({ action: 'user.restored', actor: principal, entityType: 'user', entityId: userId, before: { status: before }, after: { status: 'active' }, meta: { note }, req }, { transaction });
-    await events.publish(transaction, { name: 'user.restored', aggregateType: 'user', aggregateId: userId, payload: { userId }, actor: principal, req });
-    return { status: 'active' };
-  });
+/** The restore inside the caller's transaction (M18 undoes its own suspensions and bans). */
+async function restoreInTx(principal, userId, { note }, { transaction, req = null, allowBan = false }) {
+  const target = await loadTarget(userId, { transaction, lock: transaction.LOCK.UPDATE });
+  await guardTarget(principal, target, { transaction });
+  if (target.status === 'active') throw E.conflict('USER_ALREADY_ACTIVE', 'The account is already active');
+  if (target.status === 'banned' && !allowBan) throw E.forbidden('MASTER_REQUIRED', 'Only a master admin can lift a ban');
+  if (target.status === 'closed') throw E.conflict('USER_CLOSED', 'Closed accounts cannot be restored');
+
+  const before = target.status;
+  await UserSanction.update({ liftedAt: new Date(), liftedBy: principal.id, liftNote: note ?? null }, { where: { userId, liftedAt: null, kind: ['suspension', 'ban'] }, transaction });
+  await target.update({ status: 'active' }, { transaction });
+  await authz.bumpVersion(userId, { transaction });
+  await audit.record({ action: 'user.restored', actor: principal, entityType: 'user', entityId: userId, before: { status: before }, after: { status: 'active' }, meta: { note }, req }, { transaction });
+  await events.publish(transaction, { name: 'user.restored', aggregateType: 'user', aggregateId: userId, payload: { userId }, actor: principal, req });
+  return { status: 'active' };
 }
 
 async function signOutEverywhere(principal, userId, req) {
@@ -236,4 +248,4 @@ async function liftExpiredSuspensions() {
   return lifted;
 }
 
-module.exports = { search, getOne, suspend, ban, restore, signOutEverywhere, setRoleStatus, liftExpiredSuspensions };
+module.exports = { search, getOne, suspend, suspendInTx, ban, banInTx, restore, restoreInTx, signOutEverywhere, setRoleStatus, liftExpiredSuspensions };

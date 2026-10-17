@@ -35,57 +35,75 @@ async function lockHold(id, transaction) {
   return hold;
 }
 
-/** The id of the hold opened for a payment (read only; null when it never captured). */
-const holdIdForPayment = async (paymentId) => (await EscrowHold.findOne({ where: { paymentId }, attributes: ['id'], order: [['createdAt', 'ASC']] }))?.id ?? null;
+/** The id of the hold opened for a payment (or one of its splits); null when it never captured. */
+const holdIdForPayment = async (paymentId, { splitRef = null } = {}) =>
+  (await EscrowHold.findOne({ where: { paymentId, ...(splitRef ? { splitRef } : {}) }, attributes: ['id'], order: [['createdAt', 'ASC']] }))?.id ?? null;
 
-/** The hold opened for a captured payment, locked (null when the payment never captured). */
-async function lockHoldForPayment(paymentId, transaction) {
-  return EscrowHold.findOne({ where: { paymentId }, order: [['createdAt', 'ASC']], transaction, lock: transaction.LOCK.UPDATE });
+/** The hold opened for a captured payment (or one of its splits, M13), locked; null when it never captured. */
+async function lockHoldForPayment(paymentId, transaction, { splitRef = null } = {}) {
+  return EscrowHold.findOne({ where: { paymentId, ...(splitRef ? { splitRef } : {}) }, order: [['createdAt', 'ASC']], transaction, lock: transaction.LOCK.UPDATE });
 }
 
 /**
- * FR-06: on capture, open a hold from the payment's escrow instructions (snapshotted at obligation
- * time, FR-07) and post Dr provider_clearing / Cr escrow:{purpose} tagged with it.
+ * FR-06: on capture, open the payment's holds from its escrow instructions (snapshotted at obligation
+ * time, FR-07) and post Dr provider_clearing / Cr escrow:{purpose} tagged with each hold. A split
+ * payment (M13 basket) opens one hold per split, each with its own payee and amount; every other
+ * payment opens one hold. Returns the holds (the first is the only one for a single-payee payment).
  */
-async function openHold(payment, { transaction, capturedAt }) {
+async function openHolds(payment, { transaction, capturedAt }) {
   const def = purposes.get(payment.purpose);
   const esc = payment.escrow;
-  const hold = await EscrowHold.create(
-    {
-      purpose: payment.purpose,
-      purposeId: payment.purposeId,
-      paymentId: payment.id,
-      groupRef: esc.groupRef ?? null,
-      payeeId: def.pooled ? null : esc.payeeId,
-      vertical: def.vertical,
-      feeBps: esc.fee.feeBps,
-      feeSettingKey: esc.fee.settingKey,
-      feeSettingVersion: esc.fee.settingsVersion,
-      heldPoisha: payment.amountPoisha,
-      releaseRule: esc.releaseRule,
-      releaseAt: rules.releaseAt(esc.releaseRule, capturedAt),
-    },
-    { transaction }
-  );
+  const parts = esc.splits?.length ? esc.splits : [{ ref: null, payeeId: esc.payeeId, amount: payment.amountPoisha }];
+  const holds = [];
+  for (const part of parts) {
+    holds.push(
+      await EscrowHold.create(
+        {
+          purpose: payment.purpose,
+          purposeId: payment.purposeId,
+          paymentId: payment.id,
+          splitRef: part.ref ?? null,
+          groupRef: esc.groupRef ?? null,
+          payeeId: def.pooled ? null : part.payeeId,
+          vertical: def.vertical,
+          feeBps: esc.fee.feeBps,
+          feeSettingKey: esc.fee.settingKey,
+          feeSettingVersion: esc.fee.settingsVersion,
+          heldPoisha: part.amount,
+          releaseRule: esc.releaseRule,
+          releaseAt: rules.releaseAt(esc.releaseRule, capturedAt),
+        },
+        { transaction }
+      )
+    );
+  }
   await ledger.post(
     {
       kind: 'payment.capture',
       refType: 'payment',
       refId: payment.id,
       idempotencyKey: `payment.capture:${payment.id}`,
-      lines: lrules.captureLines({ provider: payment.provider, escrowAccount: def.escrowAccount, amount: payment.amountPoisha, holdId: hold.id }),
+      lines:
+        holds.length === 1
+          ? lrules.captureLines({ provider: payment.provider, escrowAccount: def.escrowAccount, amount: payment.amountPoisha, holdId: holds[0].id })
+          : lrules.captureSplitLines({ provider: payment.provider, escrowAccount: def.escrowAccount, holds: holds.map((h) => ({ holdId: h.id, amount: h.heldPoisha })) }),
       memo: `${payment.code} captured`,
     },
     { transaction }
   );
-  await events.publish(transaction, {
-    name: 'escrow.held',
-    aggregateType: 'escrow_hold',
-    aggregateId: hold.id,
-    payload: { holdId: hold.id, paymentId: payment.id, purpose: payment.purpose, purposeId: payment.purposeId, amount: payment.amountPoisha, payeeId: hold.payeeId, groupRef: hold.groupRef },
-  });
-  return hold;
+  for (const hold of holds) {
+    await events.publish(transaction, {
+      name: 'escrow.held',
+      aggregateType: 'escrow_hold',
+      aggregateId: hold.id,
+      payload: { holdId: hold.id, paymentId: payment.id, purpose: payment.purpose, purposeId: payment.purposeId, amount: hold.heldPoisha, payeeId: hold.payeeId, groupRef: hold.groupRef, splitRef: hold.splitRef ?? null },
+    });
+  }
+  return holds;
 }
+
+/** The single hold of a payment (kept for callers that open one). */
+const openHold = async (payment, opts) => (await openHolds(payment, opts))[0];
 
 /** FR-13: release (all or part) to the payee, inside `transaction`, on a locked hold. */
 async function releaseInTx(hold, { amount, feeBase = null, actor = null, transaction, kind = 'escrow.release' }) {
@@ -143,14 +161,30 @@ async function takeForRefund(hold, amount, { transaction }) {
   await hold.update({ refundedPoisha: refunded, status: rules.statusAfter(hold, { released: hold.releasedPoisha, refunded }) }, { transaction });
 }
 
-/** FR-14: freeze (dispute, master action). Frozen holds neither release nor auto-refund. */
+/**
+ * FR-14: freeze a locked hold inside the caller's transaction (M17 opens a dispute). Frozen holds
+ * neither release nor refund until they are unfrozen.
+ */
+async function freezeInTx(hold, { reason, ref = null, actor = null, transaction }) {
+  if (!rules.OPEN.has(hold.status)) throw new AppError(409, 'ESCROW_NOT_OPEN', 'Only an open hold can be frozen', { meta: { status: hold.status } });
+  await hold.update({ statusBeforeFreeze: hold.status, status: 'frozen', frozenReason: reason, frozenRef: ref }, { transaction });
+  await events.publish(transaction, { name: 'escrow.frozen', aggregateType: 'escrow_hold', aggregateId: hold.id, payload: { holdId: hold.id, reason, payeeId: hold.payeeId }, actor });
+  return hold;
+}
+
+async function unfreezeInTx(hold, { reason, actor = null, transaction }) {
+  if (hold.status !== 'frozen') throw new AppError(409, 'ESCROW_NOT_FROZEN', 'This hold is not frozen');
+  await hold.update({ status: hold.statusBeforeFreeze ?? 'holding', statusBeforeFreeze: null, frozenReason: null, frozenRef: null }, { transaction });
+  await events.publish(transaction, { name: 'escrow.unfrozen', aggregateType: 'escrow_hold', aggregateId: hold.id, payload: { holdId: hold.id, reason, payeeId: hold.payeeId }, actor });
+  return hold;
+}
+
+/** POST /admin/escrow/:id/freeze (master + step-up escrow.manage). */
 async function freeze(actor, holdId, { reason, ref = null }, req) {
   return sequelize.transaction(async (transaction) => {
     const hold = await lockHold(holdId, transaction);
-    if (!rules.OPEN.has(hold.status)) throw new AppError(409, 'ESCROW_NOT_OPEN', 'Only an open hold can be frozen', { meta: { status: hold.status } });
-    await hold.update({ statusBeforeFreeze: hold.status, status: 'frozen', frozenReason: reason, frozenRef: ref }, { transaction });
+    await freezeInTx(hold, { reason, ref, actor, transaction });
     await audit.record({ action: 'escrow.frozen', actor, entityType: 'escrow_hold', entityId: hold.id, reason, stepUp: Boolean(req), meta: { ref }, req }, { transaction });
-    await events.publish(transaction, { name: 'escrow.frozen', aggregateType: 'escrow_hold', aggregateId: hold.id, payload: { holdId: hold.id, reason, payeeId: hold.payeeId }, actor });
     return serialize(hold);
   });
 }
@@ -158,10 +192,8 @@ async function freeze(actor, holdId, { reason, ref = null }, req) {
 async function unfreeze(actor, holdId, { reason }, req) {
   return sequelize.transaction(async (transaction) => {
     const hold = await lockHold(holdId, transaction);
-    if (hold.status !== 'frozen') throw new AppError(409, 'ESCROW_NOT_FROZEN', 'This hold is not frozen');
-    await hold.update({ status: hold.statusBeforeFreeze ?? 'holding', statusBeforeFreeze: null, frozenReason: null, frozenRef: null }, { transaction });
+    await unfreezeInTx(hold, { reason, actor, transaction });
     await audit.record({ action: 'escrow.unfrozen', actor, entityType: 'escrow_hold', entityId: hold.id, reason, stepUp: Boolean(req), req }, { transaction });
-    await events.publish(transaction, { name: 'escrow.unfrozen', aggregateType: 'escrow_hold', aggregateId: hold.id, payload: { holdId: hold.id, reason, payeeId: hold.payeeId }, actor });
     return serialize(hold);
   });
 }
@@ -303,4 +335,5 @@ async function getOne(id) {
   return serialize(hold);
 }
 
-module.exports = { openHold, holdIdForPayment, lockHoldForPayment, releaseInTx, releaseManually, takeForRefund, freeze, unfreeze, releaseDue, settlePool, reversePoolCredit, list, getOne, serialize, lockHold };
+module.exports = { openHold,
+  openHolds, holdIdForPayment, lockHoldForPayment, releaseInTx, releaseManually, takeForRefund, freeze, unfreeze, freezeInTx, unfreezeInTx, releaseDue, settlePool, reversePoolCredit, list, getOne, serialize, lockHold };

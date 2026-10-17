@@ -27,7 +27,8 @@ meRouter.get('/', validate(s.dashboardQuery, 'query'), async (req, res) => {
   res.json(q.role === 'ground_owner' ? await dashboards.ownerDashboard(req.user, q) : await dashboards.memberDashboard(req.user, q));
 });
 meRouter.get('/actions', validate(s.actionsQuery, 'query'), async (req, res) => {
-  if (req.validQuery.role === 'ground_owner' && req.user.roles?.ground_owner !== 'active') throw E.forbidden('ROLE_REQUIRED', 'This list is for active ground owners', undefined, { role: 'ground_owner' });
+  const { role } = req.validQuery;
+  if (role !== 'member' && req.user.roles?.[role] !== 'active') throw E.forbidden('ROLE_REQUIRED', 'This list is for active business owners', undefined, { role });
   res.json(await actions.list(req.user, req.validQuery.role));
 });
 meRouter.get('/export', validate(s.exportQuery, 'query'), async (req, res) => {

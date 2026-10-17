@@ -1,6 +1,6 @@
 {
-  "seedVersion": 8,
-  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code.",
+  "seedVersion": 13,
+  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code. v9: the M17 DISPUTE_*, REPORT_* and REVIEW_* codes. v10: the M18 RISK_*, PAYOUTS_*, DOCUMENTS_* and TRUST_LOW codes. v11: the M12 SHOP_*, PRODUCT_*, STOCK_*, SUPPLEMENT_EXPIRING and SAVED_* codes. v12: the M13 ORDER_* and SHOP_*ORDER* codes. v13: the M11 HIRE_* and JOB_* codes.",
   "templates": [
     {
       "code": "AUDIT_CRITICAL",
@@ -4209,6 +4209,2790 @@
         {
           "name": "amount",
           "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_OPENED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "A booking was disputed",
+      "body": "The member who booked {{ref}} opened dispute {{code}}. Give your side by {{dueAt}}.",
+      "variables": [
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "dueAt",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_OPENED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "একটি বুকিং নিয়ে বিরোধ",
+      "body": "{{ref}} বুকিংয়ের সদস্য বিরোধ {{code}} খুলেছেন। {{dueAt}}-এর মধ্যে আপনার বক্তব্য দিন।",
+      "variables": [
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "dueAt",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_OPENED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: dispute {{code}} on {{ref}}. Answer by {{dueAt}} on vendor.kriraghor.com.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "dueAt",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_OPENED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{ref}}-এ বিরোধ {{code}}। {{dueAt}}-এর মধ্যে জবাব দিন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "dueAt",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_RECEIVED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "We have your dispute",
+      "body": "Dispute {{code}} about {{ref}} is open. We will tell you when there is news.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_RECEIVED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আপনার বিরোধ পেয়েছি",
+      "body": "{{ref}} নিয়ে বিরোধ {{code}} খোলা হয়েছে। খবর হলে জানাব।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_RESPONSE_DUE",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Answer dispute {{code}} soon",
+      "body": "Give your side of dispute {{code}} ({{ref}}) by {{dueAt}}, or our team decides without it.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "dueAt",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_RESPONSE_DUE",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "বিরোধ {{code}}-এর জবাব দিন",
+      "body": "{{dueAt}}-এর মধ্যে বিরোধ {{code}} ({{ref}})-এ আপনার বক্তব্য দিন, নইলে আমাদের টিম তা ছাড়াই সিদ্ধান্ত নেবে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "dueAt",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_RESPONDED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "The other side answered",
+      "body": "The other side answered dispute {{code}} ({{ref}}). Our team decides next.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_RESPONDED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অন্য পক্ষ জবাব দিয়েছে",
+      "body": "বিরোধ {{code}} ({{ref}})-এ অন্য পক্ষ জবাব দিয়েছে। এবার আমাদের টিম সিদ্ধান্ত নেবে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_DECIDED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Dispute {{code}} decided",
+      "body": "Our decision on {{ref}}: {{outcome}}. Refund: {{refund}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "maxLen": 30
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_DECIDED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "বিরোধ {{code}}-এর সিদ্ধান্ত",
+      "body": "{{ref}} নিয়ে আমাদের সিদ্ধান্ত: {{outcome}}। ফেরত: {{refund}}।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "maxLen": 30
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_DECIDED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: dispute {{code}} decided: {{outcome}}. Refund {{refund}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "maxLen": 30
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_DECIDED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: বিরোধ {{code}}: {{outcome}}। ফেরত {{refund}}।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "maxLen": 30
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_ESCALATED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Dispute {{code}} needs a master",
+      "body": "Staff escalated dispute {{code}} ({{ref}}) to the masters.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_ESCALATED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "বিরোধ {{code}}-এ মাস্টার দরকার",
+      "body": "স্টাফ বিরোধ {{code}} ({{ref}}) মাস্টারদের কাছে পাঠিয়েছেন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_SLA_BREACHED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Dispute {{code}} is overdue",
+      "body": "Dispute {{code}} ({{ref}}) is past its deadline. Decide it or escalate it.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_SLA_BREACHED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "বিরোধ {{code}}-এর সময় পেরিয়েছে",
+      "body": "বিরোধ {{code}} ({{ref}})-এর সময়সীমা পার হয়েছে। সিদ্ধান্ত দিন বা ওপরে পাঠান।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "REPORT_OUTCOME",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "We looked at your report",
+      "body": "Thank you for reporting a {{subject}}: {{outcome}}.",
+      "variables": [
+        {
+          "name": "subject",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "REPORT_OUTCOME",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আপনার রিপোর্ট দেখেছি",
+      "body": "{{subject}} রিপোর্ট করার জন্য ধন্যবাদ: {{outcome}}।",
+      "variables": [
+        {
+          "name": "subject",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "REPORT_FLAGGED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "A {{subject}} was reported {{reporters}} times",
+      "body": "Verified members reported a {{subject}} {{reporters}} times. Look at it first.",
+      "variables": [
+        {
+          "name": "subject",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "reporters",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "REPORT_FLAGGED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "একটি {{subject}} {{reporters}} বার রিপোর্ট",
+      "body": "যাচাইকৃত সদস্যরা একটি {{subject}} {{reporters}} বার রিপোর্ট করেছেন। আগে এটি দেখুন।",
+      "variables": [
+        {
+          "name": "subject",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "reporters",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "REVIEW_NEW",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "New {{stars}}-star review",
+      "body": "A member rated {{ground}} {{stars}} stars. You can reply on vendor.kriraghor.com.",
+      "variables": [
+        {
+          "name": "stars",
+          "type": "number"
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "REVIEW_NEW",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "নতুন {{stars}} তারা রিভিউ",
+      "body": "একজন সদস্য {{ground}}-কে {{stars}} তারা দিয়েছেন। vendor.kriraghor.com থেকে উত্তর দিতে পারেন।",
+      "variables": [
+        {
+          "name": "stars",
+          "type": "number"
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "REVIEW_HIDDEN",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Your review was hidden",
+      "body": "Your review of {{ground}} was hidden because it broke our review rules.",
+      "variables": [
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "REVIEW_HIDDEN",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আপনার রিভিউ লুকানো হয়েছে",
+      "body": "{{ground}}-এর রিভিউ আমাদের নিয়ম ভাঙায় লুকানো হয়েছে।",
+      "variables": [
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "RISK_FLAGGED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Risk flag: {{rule}}",
+      "body": "A {{severity}} flag was raised on {{user}}: {{rule}}. Look at the account on the risk desk.",
+      "variables": [
+        {
+          "name": "rule",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "severity",
+          "type": "text",
+          "maxLen": 12
+        },
+        {
+          "name": "user",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "RISK_FLAGGED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "ঝুঁকির চিহ্ন: {{rule}}",
+      "body": "{{user}}-এর ওপর {{severity}} চিহ্ন: {{rule}}। ঝুঁকি ডেস্কে অ্যাকাউন্টটি দেখুন।",
+      "variables": [
+        {
+          "name": "rule",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "severity",
+          "type": "text",
+          "maxLen": 12
+        },
+        {
+          "name": "user",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "PAYOUTS_FROZEN",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Your payouts are paused",
+      "body": "We paused payouts to your account while our team checks it. Your earnings are safe and keep adding up.",
+      "variables": []
+    },
+    {
+      "code": "PAYOUTS_FROZEN",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আপনার পেআউট বন্ধ আছে",
+      "body": "আমাদের টিম যাচাই করা পর্যন্ত আপনার অ্যাকাউন্টের পেআউট বন্ধ রাখা হয়েছে। আপনার আয় নিরাপদ এবং জমা হতে থাকবে।",
+      "variables": []
+    },
+    {
+      "code": "PAYOUTS_FROZEN",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: payouts to your account are paused while we check it. Your earnings are safe.",
+      "variables": []
+    },
+    {
+      "code": "PAYOUTS_FROZEN",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: যাচাই চলাকালে আপনার পেআউট বন্ধ। আপনার আয় নিরাপদ।",
+      "variables": []
+    },
+    {
+      "code": "PAYOUTS_UNFROZEN",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Payouts are back on",
+      "body": "Our check is done and payouts to your account start again.",
+      "variables": []
+    },
+    {
+      "code": "PAYOUTS_UNFROZEN",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পেআউট আবার চালু",
+      "body": "আমাদের যাচাই শেষ, আপনার অ্যাকাউন্টের পেআউট আবার শুরু হবে।",
+      "variables": []
+    },
+    {
+      "code": "PAYOUTS_UNFROZEN",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: payouts to your account are back on.",
+      "variables": []
+    },
+    {
+      "code": "PAYOUTS_UNFROZEN",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: আপনার পেআউট আবার চালু।",
+      "variables": []
+    },
+    {
+      "code": "DOCUMENTS_REQUESTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "We need a document from you",
+      "body": "Please upload your {{doc}} by {{dueAt}} on the verification page.",
+      "variables": [
+        {
+          "name": "doc",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "dueAt",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "DOCUMENTS_REQUESTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আপনার একটি ডকুমেন্ট দরকার",
+      "body": "{{dueAt}}-এর মধ্যে যাচাই পাতায় আপনার {{doc}} আপলোড করুন।",
+      "variables": [
+        {
+          "name": "doc",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "dueAt",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "DOCUMENTS_REQUESTED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: please upload your {{doc}} by {{dueAt}} at kriraghor.com/account/verification.",
+      "variables": [
+        {
+          "name": "doc",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "dueAt",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "DOCUMENTS_REQUESTED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{dueAt}}-এর মধ্যে আপনার {{doc}} আপলোড করুন।",
+      "variables": [
+        {
+          "name": "doc",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "dueAt",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "DOCUMENTS_OVERDUE",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "A requested document is overdue",
+      "body": "{{user}} has not sent the {{doc}} we asked for. The flag was raised one level.",
+      "variables": [
+        {
+          "name": "user",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "doc",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "DOCUMENTS_OVERDUE",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "চাওয়া ডকুমেন্ট সময়মতো আসেনি",
+      "body": "{{user}} চাওয়া {{doc}} পাঠাননি। চিহ্নটি এক ধাপ বাড়ানো হয়েছে।",
+      "variables": [
+        {
+          "name": "user",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "doc",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "TRUST_LOW",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Your reliability is {{score}}%",
+      "body": "Your {{kind}} reliability fell to {{score}}%. Cancelling confirmed bookings lowers it; keeping them raises it again.",
+      "variables": [
+        {
+          "name": "kind",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "score",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "TRUST_LOW",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আপনার নির্ভরযোগ্যতা {{score}}%",
+      "body": "আপনার {{kind}} নির্ভরযোগ্যতা {{score}}%-এ নেমেছে। নিশ্চিত বুকিং বাতিল করলে কমে; রাখলে আবার বাড়ে।",
+      "variables": [
+        {
+          "name": "kind",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "score",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "SHOP_LIVE",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Shop approved",
+      "body": "{{name}} is approved and open on Kriraghor. Add your products next.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "url",
+          "type": "text",
+          "maxLen": 200
+        }
+      ]
+    },
+    {
+      "code": "SHOP_LIVE",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "দোকান অনুমোদিত",
+      "body": "{{name}} অনুমোদিত হয়েছে এবং ক্রীড়াঘরে খোলা। এবার পণ্য যোগ করুন।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "url",
+          "type": "text",
+          "maxLen": 200
+        }
+      ]
+    },
+    {
+      "code": "SHOP_LIVE",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: your shop {{name}} is approved. Add products on your business desk.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "SHOP_LIVE",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: আপনার দোকান {{name}} অনুমোদিত। বিজনেস ডেস্কে পণ্য যোগ করুন।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "SHOP_CHANGES_REQUESTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Changes needed",
+      "body": "Staff asked for changes to your shop {{name}}: {{reason}}.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "SHOP_CHANGES_REQUESTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পরিবর্তন দরকার",
+      "body": "আপনার দোকান {{name}}-এ পরিবর্তন চাওয়া হয়েছে: {{reason}}।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "SHOP_CHANGES_REQUESTED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: changes needed to your shop {{name}}: {{reason}}.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "SHOP_CHANGES_REQUESTED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: আপনার দোকান {{name}}-এ পরিবর্তন দরকার: {{reason}}।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "SHOP_REJECTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Shop not approved",
+      "body": "Your shop {{name}} was not approved: {{reason}}.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "SHOP_REJECTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "দোকান অনুমোদিত হয়নি",
+      "body": "আপনার দোকান {{name}} অনুমোদিত হয়নি: {{reason}}।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "SHOP_REJECTED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: your shop {{name}} was not approved: {{reason}}.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "SHOP_REJECTED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: আপনার দোকান {{name}} অনুমোদিত হয়নি: {{reason}}।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "PRODUCT_LIVE",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Product approved",
+      "body": "{{name}} is approved and on Kriraghor Market.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "url",
+          "type": "text",
+          "maxLen": 200
+        }
+      ]
+    },
+    {
+      "code": "PRODUCT_LIVE",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পণ্য অনুমোদিত",
+      "body": "{{name}} অনুমোদিত হয়েছে এবং ক্রীড়াঘর মার্কেটে আছে।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "url",
+          "type": "text",
+          "maxLen": 200
+        }
+      ]
+    },
+    {
+      "code": "PRODUCT_CHANGES_REQUESTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Changes needed",
+      "body": "Staff asked for changes to {{name}}: {{reason}}.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "PRODUCT_CHANGES_REQUESTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পরিবর্তন দরকার",
+      "body": "{{name}}-এ পরিবর্তন চাওয়া হয়েছে: {{reason}}।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "PRODUCT_CHANGES_REQUESTED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: changes needed to {{name}}: {{reason}}.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "PRODUCT_CHANGES_REQUESTED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{name}}-এ পরিবর্তন দরকার: {{reason}}।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "PRODUCT_REJECTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Product not approved",
+      "body": "{{name}} was not approved: {{reason}}.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "PRODUCT_REJECTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পণ্য অনুমোদিত হয়নি",
+      "body": "{{name}} অনুমোদিত হয়নি: {{reason}}।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "PRODUCT_REJECTED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{name}} was not approved: {{reason}}.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "PRODUCT_REJECTED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{name}} অনুমোদিত হয়নি: {{reason}}।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "STOCK_LOW",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Running low",
+      "body": "{{product}} ({{variant}}): {{left}} left.",
+      "variables": [
+        {
+          "name": "product",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "variant",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "left",
+          "type": "number",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "STOCK_LOW",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "স্টক কম",
+      "body": "{{product}} ({{variant}}): আর {{left}}টি বাকি।",
+      "variables": [
+        {
+          "name": "product",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "variant",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "left",
+          "type": "number",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "STOCK_OUT",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Out of stock",
+      "body": "{{product}} ({{variant}}) is out of stock.",
+      "variables": [
+        {
+          "name": "product",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "variant",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "STOCK_OUT",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "স্টক শেষ",
+      "body": "{{product}} ({{variant}})-এর স্টক শেষ।",
+      "variables": [
+        {
+          "name": "product",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "variant",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "SUPPLEMENT_EXPIRING",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Blocked for expiry",
+      "body": "{{product}} ({{variant}}) expires on {{expiry}} and is no longer sold. Add a fresh batch as a new variant.",
+      "variables": [
+        {
+          "name": "product",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "variant",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "expiry",
+          "type": "text",
+          "maxLen": 10
+        }
+      ]
+    },
+    {
+      "code": "SUPPLEMENT_EXPIRING",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "মেয়াদের কারণে বন্ধ",
+      "body": "{{product}} ({{variant}})-এর মেয়াদ {{expiry}} তারিখে শেষ, তাই আর বিক্রি হচ্ছে না। নতুন ব্যাচ নতুন ভ্যারিয়েন্ট হিসেবে যোগ করুন।",
+      "variables": [
+        {
+          "name": "product",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "variant",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "expiry",
+          "type": "text",
+          "maxLen": 10
+        }
+      ]
+    },
+    {
+      "code": "SAVED_BACK_IN_STOCK",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Back in stock",
+      "body": "{{name}} that you saved is back in stock.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "SAVED_BACK_IN_STOCK",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আবার স্টকে",
+      "body": "আপনার সংরক্ষিত {{name}} আবার স্টকে এসেছে।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "SAVED_PRICE_DROP",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Price dropped",
+      "body": "{{name}} that you saved now costs {{price}}.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "price",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "SAVED_PRICE_DROP",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "দাম কমেছে",
+      "body": "আপনার সংরক্ষিত {{name}}-এর দাম এখন {{price}}।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "price",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORDER_PLACED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Order placed",
+      "body": "Order {{code}} is paid ({{total}}). We will tell you when each shop accepts and ships.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "total",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORDER_PLACED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অর্ডার সম্পন্ন",
+      "body": "অর্ডার {{code}}-এর পেমেন্ট হয়েছে ({{total}})। প্রতিটি দোকান গ্রহণ ও পাঠালে আমরা জানাব।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "total",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORDER_PLACED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: order {{code}} paid, {{total}}. Track it in My orders.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "total",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORDER_PLACED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: অর্ডার {{code}}, {{total}} পরিশোধিত। আমার অর্ডারে দেখুন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "total",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "SHOP_NEW_ORDER",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "New order {{code}}",
+      "body": "A new order for {{total}}. Accept it by {{acceptBy}} or it is cancelled and refunded.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "acceptBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "SHOP_NEW_ORDER",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "নতুন অর্ডার {{code}}",
+      "body": "{{total}}-এর নতুন অর্ডার। {{acceptBy}}-এর মধ্যে গ্রহণ করুন, নইলে বাতিল ও ফেরত হবে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "acceptBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "SHOP_NEW_ORDER",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: new order {{code}}, {{total}}. Accept by {{acceptBy}} on vendor.kriraghor.com.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "acceptBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "SHOP_NEW_ORDER",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: নতুন অর্ডার {{code}}, {{total}}। {{acceptBy}}-এর মধ্যে গ্রহণ করুন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "acceptBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "SHOP_ORDER_REMINDER",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Accept order {{code}} soon",
+      "body": "Order {{code}} is cancelled and refunded if you do not accept it by {{acceptBy}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "acceptBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "SHOP_ORDER_REMINDER",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অর্ডার {{code}} গ্রহণ করুন",
+      "body": "{{acceptBy}}-এর মধ্যে গ্রহণ না করলে অর্ডার {{code}} বাতিল ও ফেরত হবে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "acceptBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "SHOP_ORDER_REMINDER",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: accept order {{code}} by {{acceptBy}} or it is cancelled.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "acceptBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "SHOP_ORDER_REMINDER",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{acceptBy}}-এর মধ্যে অর্ডার {{code}} গ্রহণ করুন, নইলে বাতিল হবে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "acceptBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "ORDER_ACCEPTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Order accepted",
+      "body": "{{shop}} accepted {{code}} and is getting it ready to ship.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "shop",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "ORDER_ACCEPTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অর্ডার গৃহীত",
+      "body": "{{shop}} {{code}} গ্রহণ করেছে এবং পাঠানোর প্রস্তুতি নিচ্ছে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "shop",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "ORDER_REJECTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Order not accepted",
+      "body": "{{shop}} could not take {{code}}: {{reason}}. {{refund}} is on its way back to you.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "shop",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORDER_REJECTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অর্ডার গৃহীত হয়নি",
+      "body": "{{shop}} {{code}} নিতে পারেনি: {{reason}}। {{refund}} আপনাকে ফেরত দেওয়া হচ্ছে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "shop",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORDER_REJECTED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: order {{code}} was not accepted. {{refund}} will be refunded.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORDER_REJECTED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: অর্ডার {{code}} গৃহীত হয়নি। {{refund}} ফেরত দেওয়া হবে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORDER_SHIPPED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Order shipped",
+      "body": "{{code}} is on its way with {{courier}}, tracking {{tracking}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "courier",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "tracking",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ORDER_SHIPPED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অর্ডার পাঠানো হয়েছে",
+      "body": "{{code}} {{courier}}-এর মাধ্যমে আসছে, ট্র্যাকিং {{tracking}}।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "courier",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "tracking",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ORDER_SHIPPED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{code}} shipped with {{courier}}, tracking {{tracking}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "courier",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "tracking",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ORDER_SHIPPED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{code}} {{courier}}-এ পাঠানো হয়েছে, ট্র্যাকিং {{tracking}}।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "courier",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "tracking",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "ORDER_DELIVERED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Did your order arrive?",
+      "body": "The shop marked {{code}} delivered. Tap Received if you have it, or Not received if you do not.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        }
+      ]
+    },
+    {
+      "code": "ORDER_DELIVERED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অর্ডার পেয়েছেন?",
+      "body": "দোকান {{code}} ডেলিভারি হয়েছে বলেছে। পেলে \"পেয়েছি\", না পেলে \"পাইনি\" চাপুন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        }
+      ]
+    },
+    {
+      "code": "ORDER_COMPLETED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Order {{code}} completed",
+      "body": "{{net}} is on its way to your payouts after the Kriraghor commission.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "net",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORDER_COMPLETED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অর্ডার {{code}} সম্পন্ন",
+      "body": "ক্রীড়াঘরের কমিশনের পর {{net}} আপনার পেআউটে যাচ্ছে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "net",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORDER_CANCELLED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Order cancelled",
+      "body": "{{code}} was cancelled: {{reason}}. {{refund}} is on its way back to you.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORDER_CANCELLED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অর্ডার বাতিল",
+      "body": "{{code}} বাতিল হয়েছে: {{reason}}। {{refund}} আপনাকে ফেরত দেওয়া হচ্ছে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORDER_CANCELLED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: order {{code}} cancelled. {{refund}} will be refunded.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORDER_CANCELLED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: অর্ডার {{code}} বাতিল। {{refund}} ফেরত দেওয়া হবে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "SHOP_ORDER_CANCELLED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Order {{code}} cancelled",
+      "body": "{{code}} was cancelled: {{reason}}. The stock is back on your shelf.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "SHOP_ORDER_CANCELLED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অর্ডার {{code}} বাতিল",
+      "body": "{{code}} বাতিল হয়েছে: {{reason}}। স্টক আবার আপনার তাকে ফিরেছে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "HIRE_REQUEST_NEW",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "New hire request",
+      "body": "{{code}}: a {{role}} job for {{total}}. Reply by {{replyBy}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "replyBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "HIRE_REQUEST_NEW",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "নতুন হায়ার অনুরোধ",
+      "body": "{{code}}: {{total}}-এর একটি {{role}} কাজ। {{replyBy}}-এর মধ্যে উত্তর দিন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "replyBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "HIRE_REQUEST_NEW",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: new hire request {{code}}, {{total}}. Reply by {{replyBy}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "replyBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "HIRE_REQUEST_NEW",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: নতুন হায়ার অনুরোধ {{code}}, {{total}}। {{replyBy}}-এর মধ্যে উত্তর দিন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "replyBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "HIRE_ACCEPTED_PAY",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Accepted: pay to confirm",
+      "body": "{{code}} was accepted. Pay {{total}} by {{payBy}} to confirm. We hold it until the job is done.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "payBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "HIRE_ACCEPTED_PAY",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "গৃহীত: নিশ্চিত করতে পেমেন্ট করুন",
+      "body": "{{code}} গৃহীত হয়েছে। নিশ্চিত করতে {{payBy}}-এর মধ্যে {{total}} দিন। কাজ শেষ না হওয়া পর্যন্ত টাকা আমরা ধরে রাখি।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "payBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "HIRE_ACCEPTED_PAY",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{code}} accepted. Pay {{total}} by {{payBy}} to confirm.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "payBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "HIRE_ACCEPTED_PAY",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{code}} গৃহীত। নিশ্চিত করতে {{payBy}}-এর মধ্যে {{total}} দিন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "payBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "HIRE_DECLINED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Request not taken",
+      "body": "The {{role}} could not take {{code}}. Find someone else in Hire.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "HIRE_DECLINED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অনুরোধ নেওয়া হয়নি",
+      "body": "{{role}} {{code}} নিতে পারেননি। হায়ারে অন্য কাউকে খুঁজুন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "HIRE_LAPSED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Request lapsed",
+      "body": "{{code}} was not paid in time, so the time is free again.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        }
+      ]
+    },
+    {
+      "code": "HIRE_LAPSED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অনুরোধ বাতিল",
+      "body": "{{code}}-এর সময়মতো পেমেন্ট হয়নি, তাই সময়টি আবার ফাঁকা।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        }
+      ]
+    },
+    {
+      "code": "HIRE_CONFIRMED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Hire confirmed",
+      "body": "{{code}} is paid and confirmed, starting {{start}}. You can now see each other’s phone numbers.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "HIRE_CONFIRMED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "হায়ার নিশ্চিত",
+      "body": "{{code}}-এর পেমেন্ট হয়েছে ও নিশ্চিত, শুরু {{start}}। এখন একে অপরের ফোন নম্বর দেখা যাবে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "HIRE_CONFIRMED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: hire {{code}} confirmed, starts {{start}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "HIRE_CONFIRMED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: হায়ার {{code}} নিশ্চিত, শুরু {{start}}।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "HIRE_MESSAGE",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "New message",
+      "body": "A new message on {{code}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        }
+      ]
+    },
+    {
+      "code": "HIRE_MESSAGE",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "নতুন বার্তা",
+      "body": "{{code}}-এ নতুন বার্তা।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        }
+      ]
+    },
+    {
+      "code": "JOB_CHECKIN_OPENS",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Check-in is open",
+      "body": "Check in for {{code}} (starts {{start}}) when you arrive.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "JOB_CHECKIN_OPENS",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "চেক-ইন খোলা",
+      "body": "পৌঁছে {{code}}-এ চেক-ইন করুন (শুরু {{start}})।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "JOB_CHECKIN_OPENS",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: check-in for {{code}} is open. Starts {{start}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "JOB_CHECKIN_OPENS",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{code}}-এর চেক-ইন খোলা। শুরু {{start}}।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "JOB_COMPLETED_CONFIRM",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Job done: please confirm",
+      "body": "{{code}} is marked complete. Confirm it, or report a problem; it releases automatically on {{releaseAt}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "releaseAt",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "JOB_COMPLETED_CONFIRM",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "কাজ শেষ: নিশ্চিত করুন",
+      "body": "{{code}} সম্পন্ন চিহ্নিত। নিশ্চিত করুন, বা সমস্যা জানান; {{releaseAt}}-এ নিজে থেকে ছাড় হবে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "releaseAt",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "JOB_COMPLETED_CONFIRM",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{code}} is done. Confirm or report a problem by {{releaseAt}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "releaseAt",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "JOB_COMPLETED_CONFIRM",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{code}} শেষ। {{releaseAt}}-এর মধ্যে নিশ্চিত করুন বা সমস্যা জানান।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "releaseAt",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "JOB_PAID",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "You are paid for {{code}}",
+      "body": "{{net}} is in your balance after the Kriraghor fee and goes out with your next payout.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "net",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "JOB_PAID",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "{{code}}-এর টাকা পেয়েছেন",
+      "body": "ক্রীড়াঘরের ফির পর {{net}} আপনার ব্যালেন্সে, পরের পেআউটে যাবে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "net",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "JOB_CANCELLED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Job cancelled",
+      "body": "The manager cancelled {{code}}. You get {{proGets}} from the cancellation fee.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "proGets",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "JOB_CANCELLED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "কাজ বাতিল",
+      "body": "ম্যানেজার {{code}} বাতিল করেছেন। বাতিল ফি থেকে আপনি {{proGets}} পাবেন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "proGets",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "JOB_CANCELLED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{code}} was cancelled. You get {{proGets}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "proGets",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "JOB_CANCELLED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{code}} বাতিল হয়েছে। আপনি {{proGets}} পাবেন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "proGets",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "JOB_WITHDRAWN",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Pro withdrew",
+      "body": "The pro withdrew from {{code}}. {{refund}} is on its way back to you; find someone else in Hire.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "JOB_WITHDRAWN",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "প্রো সরে গেছেন",
+      "body": "প্রো {{code}} থেকে সরে গেছেন। {{refund}} ফেরত দেওয়া হচ্ছে; হায়ারে অন্য কাউকে খুঁজুন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "JOB_WITHDRAWN",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: the pro withdrew from {{code}}. {{refund}} will be refunded.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "JOB_WITHDRAWN",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: প্রো {{code}} থেকে সরে গেছেন। {{refund}} ফেরত দেওয়া হবে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "HIRE_PROFILE_LIVE",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "You are listed in Hire",
+      "body": "Your {{role}} profile is approved and live. Managers can now send you requests.",
+      "variables": [
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "HIRE_PROFILE_LIVE",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আপনি হায়ারে তালিকাভুক্ত",
+      "body": "আপনার {{role}} প্রোফাইল অনুমোদিত ও লাইভ। ম্যানেজাররা এখন অনুরোধ পাঠাতে পারবেন।",
+      "variables": [
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "HIRE_PROFILE_LIVE",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: your {{role}} profile is live in Hire.",
+      "variables": [
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "HIRE_PROFILE_LIVE",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: আপনার {{role}} প্রোফাইল হায়ারে লাইভ।",
+      "variables": [
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "HIRE_PROFILE_CHANGES",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Your profile needs a change",
+      "body": "Your {{role}} profile was not approved: {{reason}}. Edit it and send it again.",
+      "variables": [
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "HIRE_PROFILE_CHANGES",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "প্রোফাইলে পরিবর্তন দরকার",
+      "body": "আপনার {{role}} প্রোফাইল অনুমোদিত হয়নি: {{reason}}। সম্পাদনা করে আবার পাঠান।",
+      "variables": [
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "HIRE_PROFILE_CHANGES",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: your {{role}} profile needs a change. See Hire on kriraghor.com.",
+      "variables": [
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "HIRE_PROFILE_CHANGES",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: আপনার {{role}} প্রোফাইলে পরিবর্তন দরকার। kriraghor.com-এ হায়ার দেখুন।",
+      "variables": [
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 60
         }
       ]
     }

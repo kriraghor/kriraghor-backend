@@ -112,10 +112,21 @@ function badge(items) {
   return 'verification_needed';
 }
 
-// ---------------------------------------------------------------- business-role documents (lite: ground owners, M09)
+// ---------------------------------------------------------------- business-role documents (ground owners M09, shop owners M12)
 
-/** Business document types; each belongs to a role through its requirement row. */
-const BUSINESS_TYPES = ['trade_license', 'deed_or_lease', 'tin'];
+/** Business document types; each belongs to a role through its requirement row (kept per role, M12). */
+const BUSINESS_TYPES = ['trade_license', 'deed_or_lease', 'tin', 'bin', 'credential', 'police_clearance'];
+
+/**
+ * Which business role a document is for: the one asked for, else the only applied role that needs
+ * this type. Returns { role } or { error } (ROLE_NOT_APPLIED, ROLE_AMBIGUOUS).
+ */
+function businessRoleFor({ asked, requirementRoles, appliedRoles }) {
+  if (asked) return requirementRoles.includes(asked) && appliedRoles.includes(asked) ? { role: asked } : { error: requirementRoles.includes(asked) ? 'ROLE_NOT_APPLIED' : 'DOC_TYPE_NOT_REQUIRED' };
+  const candidates = requirementRoles.filter((r) => appliedRoles.includes(r));
+  if (candidates.length === 1) return { role: candidates[0] };
+  return { error: candidates.length ? 'ROLE_AMBIGUOUS' : requirementRoles.length ? 'ROLE_NOT_APPLIED' : 'DOC_TYPE_NOT_REQUIRED' };
+}
 
 /**
  * Check submitted fields against a requirement's field_schema. Each schema entry:
@@ -170,6 +181,7 @@ const roleBadge = (items) => badge(items.filter((i) => i.required !== 'optional'
 
 module.exports = {
   BUSINESS_TYPES,
+  businessRoleFor,
   fieldsBlock,
   businessChecks,
   businessMove,

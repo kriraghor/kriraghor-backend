@@ -7,8 +7,10 @@
  *          results_pending ─player disputes─▶ disputed ─staff resolves─▶ results_pending | final
  *          results_pending ─window closes, no open dispute─▶ final (job esports.tick)
  *
- * Disputes are built into M21 until M17 exists: an entrant disputes within the window with evidence
- * (at most esports.dispute_max_per_entry per match); staff reject it or correct the results.
+ * Disputes: an entrant disputes within the window with evidence (at most esports.dispute_max_per_entry
+ * per match). Since M17 (17 Oct 2026) each dispute is also an M17 case (source esports_result, this
+ * row's id) on the unified staff desk; the decision comes back through resolveInTx (rejected or
+ * corrected), and M21 keeps its own row for the match machine and the finalise guard.
  * Standings are a projection rebuilt from posted and final results of entries still in the stage.
  */
 const { Op } = require('sequelize');
@@ -285,9 +287,25 @@ async function dispute(principal, matchId, { reason, evidenceIds = [] }, req) {
     if (open) throw fail('ESPORTS_DISPUTE_LIMIT');
     const d = await EsportsResultDispute.create({ matchId: m.id, registrationId: regId, raisedBy: principal.user.id, reason, evidenceIds }, { transaction });
     if (m.status === 'results_pending') await m.update({ status: 'disputed' }, { transaction });
+    const kase = await require('../trust/disputes.service').openFromSource(
+      {
+        sourceType: 'esports_result',
+        sourceId: d.id,
+        ref: `${t.slug.slice(0, 32)}-M${m.seq}`,
+        category: 'result_wrong',
+        claimantId: principal.user.id,
+        respondentId: null,
+        money: false,
+        policyKey: 'esports.result_dispute',
+        policy: { matchId: m.id, tournamentId: t.id, registrationId: regId, seq: m.seq, disputeClosesAt: m.disputeClosesAt.toISOString() },
+        statement: reason,
+        systemRefs: evidenceIds.map((id) => ({ type: 'esports_evidence', id })),
+      },
+      { actor: principal, transaction }
+    );
     await audit.record({ action: 'esports_result.disputed', actor: principal, entityType: 'esports_match', entityId: m.id, after: { disputeId: d.id }, req }, { transaction });
     await events.publish(transaction, { name: 'esports_result.disputed', aggregateType: 'esports_match', aggregateId: m.id, payload: { matchId: m.id, tournamentId: m.tournamentId, disputeId: d.id, registrationId: regId } });
-    return serializeDispute(d);
+    return { ...serializeDispute(d), caseCode: kase.code };
   });
 }
 
@@ -301,38 +319,55 @@ async function listDisputes({ status = 'open', tournamentId } = {}) {
 }
 
 /**
- * POST /admin/esports/disputes/:id/resolve { outcome: rejected | corrected, rows?, note }: corrections
- * replace the posted rows. With no dispute left open the match returns to results_pending, or becomes
- * final at once when its window has already closed.
+ * The decision on a result dispute, inside the M17 decision transaction (M17 targets port):
+ * corrections replace the posted rows. With no dispute left open the match returns to
+ * results_pending, or becomes final at once when its window has already closed.
+ */
+async function resolveInTx(actor, disputeId, { outcome, rows = [], note }, { transaction }) {
+  const d = await EsportsResultDispute.findByPk(disputeId, { transaction, lock: transaction.LOCK.UPDATE });
+  if (!d) throw E.notFound('Dispute');
+  if (d.status !== 'open') throw fail('ESPORTS_DISPUTE_NOT_OPEN');
+  const m = await lockMatch(d.matchId, transaction);
+  const t = await EsportsTournament.findByPk(m.tournamentId, { transaction });
+  if (outcome === 'corrected') {
+    const entries = await matchEntries(m, { transaction });
+    const current = await EsportsResult.findAll({ where: { matchId: m.id, status: 'posted' }, transaction });
+    const merged = new Map(current.map((c) => [c.registrationId, { registrationId: c.registrationId, placement: c.placement ?? null, kills: [] }]));
+    for (const r of rows) merged.set(r.registrationId, r);
+    const block = rules.resultsBlock(rows, entries) ?? rules.resultsBlock([...merged.values()].map((r) => ({ ...r, kills: [] })), entries);
+    if (block) throw fail(block);
+    for (const row of rows) await writeResult(m, t, row, { actor, status: 'posted', transaction });
+    await recomputeStandings(m.stageId, { transaction });
+    await events.publish(transaction, { name: 'esports_result.corrected', aggregateType: 'esports_match', aggregateId: m.id, payload: { matchId: m.id, tournamentId: m.tournamentId, disputeId: d.id, rows: rows.length } });
+  }
+  await d.update({ status: outcome, resolvedBy: actor.id, resolvedAt: new Date(), resolutionNote: note }, { transaction });
+  const stillOpen = await EsportsResultDispute.count({ where: { matchId: m.id, status: 'open' }, transaction });
+  if (!stillOpen && m.status === 'disputed') {
+    if (m.disputeClosesAt <= new Date()) await finaliseMatchInTx(m, { transaction });
+    else await m.update({ status: 'results_pending' }, { transaction });
+  }
+  await audit.record({ action: 'esports_result.dispute_resolved', actor, entityType: 'esports_match', entityId: m.id, after: { disputeId: d.id, outcome }, reason: note }, { transaction });
+  await events.publish(transaction, { name: 'esports_result.dispute_resolved', aggregateType: 'esports_match', aggregateId: m.id, payload: { matchId: m.id, tournamentId: m.tournamentId, disputeId: d.id, raisedBy: d.raisedBy, outcome } });
+  return serializeDispute(d);
+}
+
+/**
+ * POST /admin/esports/disputes/:id/resolve { outcome: rejected | corrected, rows?, note }: kept for the
+ * esports desk; it decides the M17 case, which calls resolveInTx.
  */
 async function resolve(actor, disputeId, { outcome, rows = [], note }, req) {
-  return sequelize.transaction(async (transaction) => {
-    const d = await EsportsResultDispute.findByPk(disputeId, { transaction, lock: transaction.LOCK.UPDATE });
-    if (!d) throw E.notFound('Dispute');
-    if (d.status !== 'open') throw fail('ESPORTS_DISPUTE_NOT_OPEN');
-    const m = await lockMatch(d.matchId, transaction);
-    const t = await EsportsTournament.findByPk(m.tournamentId, { transaction });
-    if (outcome === 'corrected') {
-      const entries = await matchEntries(m, { transaction });
-      const current = await EsportsResult.findAll({ where: { matchId: m.id, status: 'posted' }, transaction });
-      const merged = new Map(current.map((c) => [c.registrationId, { registrationId: c.registrationId, placement: c.placement ?? null, kills: [] }]));
-      for (const r of rows) merged.set(r.registrationId, r);
-      const block = rules.resultsBlock(rows, entries) ?? rules.resultsBlock([...merged.values()].map((r) => ({ ...r, kills: [] })), entries);
-      if (block) throw fail(block);
-      for (const row of rows) await writeResult(m, t, row, { actor, status: 'posted', transaction });
-      await recomputeStandings(m.stageId, { transaction });
-      await events.publish(transaction, { name: 'esports_result.corrected', aggregateType: 'esports_match', aggregateId: m.id, payload: { matchId: m.id, tournamentId: m.tournamentId, disputeId: d.id, rows: rows.length } });
-    }
-    await d.update({ status: outcome, resolvedBy: actor.id, resolvedAt: new Date(), resolutionNote: note }, { transaction });
-    const stillOpen = await EsportsResultDispute.count({ where: { matchId: m.id, status: 'open' }, transaction });
-    if (!stillOpen && m.status === 'disputed') {
-      if (m.disputeClosesAt <= new Date()) await finaliseMatchInTx(m, { transaction });
-      else await m.update({ status: 'results_pending' }, { transaction });
-    }
-    await audit.record({ action: 'esports_result.dispute_resolved', actor, entityType: 'esports_match', entityId: m.id, after: { disputeId: d.id, outcome }, reason: note, req }, { transaction });
-    await events.publish(transaction, { name: 'esports_result.dispute_resolved', aggregateType: 'esports_match', aggregateId: m.id, payload: { matchId: m.id, tournamentId: m.tournamentId, disputeId: d.id, raisedBy: d.raisedBy, outcome } });
-    return serializeDispute(d);
-  });
+  await require('../trust/disputes.service').decideForSource(actor, 'esports_result', disputeId, { outcome, rows, reason: note }, req);
+  return serializeDispute(await EsportsResultDispute.findByPk(disputeId));
+}
+
+/** M17 describe: the match a case is about (no player PII; entry names are squad names or IGNs). */
+async function disputeSummary(disputeId) {
+  const d = await EsportsResultDispute.findByPk(disputeId);
+  if (!d) return null;
+  const m = await EsportsMatch.findByPk(d.matchId);
+  const t = await EsportsTournament.findByPk(m.tournamentId);
+  const names = await entryNames([d.registrationId]);
+  return { kind: 'esports_result', id: d.id, matchId: m.id, seq: m.seq, matchStatus: m.status, tournamentId: t.id, tournamentSlug: t.slug, tournamentTitle: t.titleEn, registrationId: d.registrationId, entry: names.get(d.registrationId) ?? null, disputeStatus: d.status, disputeClosesAt: m.disputeClosesAt ?? null, evidenceIds: d.evidenceIds };
 }
 
 /** results_pending → final: results final, standings rebuilt (FR-21). */
@@ -415,6 +450,8 @@ module.exports = {
   dispute,
   listDisputes,
   resolve,
+  resolveInTx,
+  disputeSummary,
   finaliseMatchInTx,
   closeWindows,
   disqualifyInTx,

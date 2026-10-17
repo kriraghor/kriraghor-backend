@@ -34,4 +34,38 @@ function uidRegexError(pattern) {
   }
 }
 
-module.exports = { modeCapacityError, presetPointsError, uidRegexError };
+/**
+ * M12 item fields: a select needs options with unique values (and an axis is always a select);
+ * min ≤ max for numbers. Returns { field, message } or null.
+ */
+function itemFieldError(row) {
+  if (row.isVariantAxis && row.kind !== 'select') return { field: 'isVariantAxis', message: 'Only a pick-list can be a variant option' };
+  if (row.kind === 'select') {
+    const values = (row.options ?? []).map((o) => o.value);
+    if (!values.length) return { field: 'options', message: 'Add at least one option' };
+    if (new Set(values).size !== values.length) return { field: 'options', message: 'Option values must be unique' };
+  }
+  if (row.minValue !== null && row.minValue !== undefined && row.maxValue !== null && row.maxValue !== undefined && Number(row.maxValue) < Number(row.minValue)) return { field: 'maxValue', message: 'At least the minimum' };
+  return null;
+}
+
+const LEVEL_ORDER = ['amateur', 'semi_pro', 'pro', 'national'];
+
+/**
+ * M11 hire role: match formats only when the role is priced per format and hired by the match; each
+ * credential tier level at most once, in order; a role that needs a credential has tiers.
+ */
+function hireRoleError(r) {
+  const units = r.allowedUnits ?? [];
+  const formats = r.formats ?? [];
+  const tiers = r.credentialTiers ?? [];
+  if (r.formatPriced && !units.includes('match')) return { field: 'formatPriced', message: 'Only a role hired by the match is priced per format' };
+  if (r.formatPriced && !formats.length) return { field: 'formats', message: 'Add the match formats' };
+  if (!r.formatPriced && formats.length) return { field: 'formats', message: 'Formats need format pricing' };
+  const levels = tiers.map((t) => LEVEL_ORDER.indexOf(t.level));
+  if (levels.some((l, i) => l < 0 || (i > 0 && l <= levels[i - 1]))) return { field: 'credentialTiers', message: 'Levels go up once each: amateur, semi_pro, pro, national' };
+  if (r.requiresCredential && !tiers.length) return { field: 'credentialTiers', message: 'A role that needs a credential lists its tiers' };
+  return null;
+}
+
+module.exports = { modeCapacityError, presetPointsError, uidRegexError, itemFieldError, hireRoleError };

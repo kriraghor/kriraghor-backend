@@ -1,0 +1,1199 @@
+{
+  "seedVersion": 1,
+  "source": "M03-FR-09, §7 (Q77, 17 Oct 2026): item categories, item types with their price ranges (the M12-FR-03 check) and spec fields. Fields flagged isVariantAxis become product variant attributes. Rows are inserted only when the key is missing, so staff edits survive.",
+  "categories": [
+    {
+      "key": "cricket",
+      "nameEn": "Cricket",
+      "nameBn": "ক্রিকেট",
+      "sportKey": "cricket",
+      "shopTypes": [
+        "sports_gear"
+      ],
+      "icon": "cricket",
+      "sort": 1
+    },
+    {
+      "key": "football",
+      "nameEn": "Football",
+      "nameBn": "ফুটবল",
+      "sportKey": "football",
+      "shopTypes": [
+        "sports_gear"
+      ],
+      "icon": "football",
+      "sort": 2
+    },
+    {
+      "key": "badminton",
+      "nameEn": "Badminton",
+      "nameBn": "ব্যাডমিন্টন",
+      "sportKey": "badminton",
+      "shopTypes": [
+        "sports_gear"
+      ],
+      "icon": "badminton",
+      "sort": 3
+    },
+    {
+      "key": "gym",
+      "nameEn": "Gym and fitness",
+      "nameBn": "জিম ও ফিটনেস",
+      "sportKey": "gym",
+      "shopTypes": [
+        "gym_gear",
+        "sports_gear"
+      ],
+      "icon": "dumbbell",
+      "sort": 4
+    },
+    {
+      "key": "kits",
+      "nameEn": "Jerseys and kits",
+      "nameBn": "জার্সি ও কিট",
+      "sportKey": null,
+      "shopTypes": [
+        "sports_gear",
+        "gym_gear"
+      ],
+      "icon": "shirt",
+      "sort": 5
+    },
+    {
+      "key": "supplements",
+      "nameEn": "Supplements",
+      "nameBn": "সাপ্লিমেন্ট",
+      "sportKey": null,
+      "shopTypes": [
+        "supplements"
+      ],
+      "isSupplement": true,
+      "icon": "flask",
+      "sort": 6
+    }
+  ],
+  "types": [
+    {
+      "key": "cricket_bat",
+      "category": "cricket",
+      "nameEn": "Cricket bat",
+      "nameBn": "ক্রিকেট ব্যাট",
+      "priceFloorPoisha": 80000,
+      "priceCeilingPoisha": 6000000,
+      "sort": 1,
+      "placeholderEn": "e.g. SG Sunny Tonny English willow bat",
+      "placeholderBn": "যেমন: SG সানি টনি ইংলিশ উইলো ব্যাট",
+      "fields": [
+        {
+          "required": true,
+          "isVariantAxis": false,
+          "options": [
+            {
+              "value": "english",
+              "labelEn": "English willow",
+              "labelBn": "ইংলিশ উইলো"
+            },
+            {
+              "value": "kashmir",
+              "labelEn": "Kashmir willow",
+              "labelBn": "কাশ্মীর উইলো"
+            },
+            {
+              "value": "poplar",
+              "labelEn": "Poplar or tape-ball",
+              "labelBn": "পপলার বা টেপ-বল"
+            }
+          ],
+          "key": "willow",
+          "labelEn": "Willow",
+          "labelBn": "উইলো",
+          "kind": "select",
+          "sort": 1
+        },
+        {
+          "required": false,
+          "isVariantAxis": true,
+          "options": [
+            {
+              "value": "sh",
+              "labelEn": "Short handle (SH)",
+              "labelBn": "শর্ট হ্যান্ডেল (SH)"
+            },
+            {
+              "value": "lh",
+              "labelEn": "Long handle (LH)",
+              "labelBn": "লং হ্যান্ডেল (LH)"
+            },
+            {
+              "value": "harrow",
+              "labelEn": "Harrow",
+              "labelBn": "হ্যারো"
+            },
+            {
+              "value": "6",
+              "labelEn": "Size 6",
+              "labelBn": "সাইজ ৬"
+            },
+            {
+              "value": "5",
+              "labelEn": "Size 5",
+              "labelBn": "সাইজ ৫"
+            },
+            {
+              "value": "4",
+              "labelEn": "Size 4",
+              "labelBn": "সাইজ ৪"
+            }
+          ],
+          "key": "size",
+          "labelEn": "Size",
+          "labelBn": "সাইজ",
+          "kind": "select",
+          "sort": 2
+        },
+        {
+          "required": false,
+          "isVariantAxis": false,
+          "options": [],
+          "key": "weight_g",
+          "labelEn": "Weight",
+          "labelBn": "ওজন",
+          "kind": "number",
+          "minValue": 900,
+          "maxValue": 1500,
+          "unit": "g",
+          "sort": 3
+        }
+      ]
+    },
+    {
+      "key": "cricket_ball",
+      "category": "cricket",
+      "nameEn": "Cricket ball",
+      "nameBn": "ক্রিকেট বল",
+      "priceFloorPoisha": 15000,
+      "priceCeilingPoisha": 600000,
+      "sort": 2,
+      "placeholderEn": "e.g. Kookaburra Turf leather ball",
+      "placeholderBn": "যেমন: কুকাবুরা টার্ফ লেদার বল",
+      "fields": [
+        {
+          "required": true,
+          "isVariantAxis": false,
+          "options": [
+            {
+              "value": "leather",
+              "labelEn": "Leather",
+              "labelBn": "লেদার"
+            },
+            {
+              "value": "tennis",
+              "labelEn": "Tennis",
+              "labelBn": "টেনিস"
+            },
+            {
+              "value": "hard_tennis",
+              "labelEn": "Hard tennis",
+              "labelBn": "হার্ড টেনিস"
+            },
+            {
+              "value": "tape",
+              "labelEn": "Tape ball",
+              "labelBn": "টেপ বল"
+            }
+          ],
+          "key": "ball_type",
+          "labelEn": "Ball type",
+          "labelBn": "বলের ধরন",
+          "kind": "select",
+          "sort": 1
+        },
+        {
+          "required": false,
+          "isVariantAxis": true,
+          "options": [
+            {
+              "value": "red",
+              "labelEn": "Red",
+              "labelBn": "লাল"
+            },
+            {
+              "value": "white",
+              "labelEn": "White",
+              "labelBn": "সাদা"
+            },
+            {
+              "value": "pink",
+              "labelEn": "Pink",
+              "labelBn": "গোলাপি"
+            },
+            {
+              "value": "yellow",
+              "labelEn": "Yellow",
+              "labelBn": "হলুদ"
+            }
+          ],
+          "key": "colour",
+          "labelEn": "Colour",
+          "labelBn": "রং",
+          "kind": "select",
+          "sort": 2
+        },
+        {
+          "required": false,
+          "isVariantAxis": false,
+          "options": [],
+          "key": "pieces",
+          "labelEn": "Balls in the pack",
+          "labelBn": "প্যাকে বল",
+          "kind": "number",
+          "minValue": 1,
+          "maxValue": 24,
+          "unit": "pcs",
+          "sort": 3
+        }
+      ]
+    },
+    {
+      "key": "football_boots",
+      "category": "football",
+      "nameEn": "Football boots",
+      "nameBn": "ফুটবল বুট",
+      "priceFloorPoisha": 80000,
+      "priceCeilingPoisha": 4000000,
+      "sort": 1,
+      "placeholderEn": "e.g. Adidas Predator turf boots",
+      "placeholderBn": "যেমন: অ্যাডিডাস প্রিডেটর টার্ফ বুট",
+      "fields": [
+        {
+          "required": true,
+          "isVariantAxis": false,
+          "options": [
+            {
+              "value": "fg",
+              "labelEn": "Firm ground (FG)",
+              "labelBn": "শক্ত মাঠ (FG)"
+            },
+            {
+              "value": "ag",
+              "labelEn": "Artificial grass (AG)",
+              "labelBn": "কৃত্রিম ঘাস (AG)"
+            },
+            {
+              "value": "tf",
+              "labelEn": "Turf (TF)",
+              "labelBn": "টার্ফ (TF)"
+            },
+            {
+              "value": "ic",
+              "labelEn": "Indoor (IC)",
+              "labelBn": "ইনডোর (IC)"
+            }
+          ],
+          "key": "stud_type",
+          "labelEn": "Stud type",
+          "labelBn": "স্টাডের ধরন",
+          "kind": "select",
+          "sort": 1
+        },
+        {
+          "required": true,
+          "isVariantAxis": true,
+          "options": [
+            {
+              "value": "36",
+              "labelEn": "EU 36",
+              "labelBn": "EU 36"
+            },
+            {
+              "value": "37",
+              "labelEn": "EU 37",
+              "labelBn": "EU 37"
+            },
+            {
+              "value": "38",
+              "labelEn": "EU 38",
+              "labelBn": "EU 38"
+            },
+            {
+              "value": "39",
+              "labelEn": "EU 39",
+              "labelBn": "EU 39"
+            },
+            {
+              "value": "40",
+              "labelEn": "EU 40",
+              "labelBn": "EU 40"
+            },
+            {
+              "value": "41",
+              "labelEn": "EU 41",
+              "labelBn": "EU 41"
+            },
+            {
+              "value": "42",
+              "labelEn": "EU 42",
+              "labelBn": "EU 42"
+            },
+            {
+              "value": "43",
+              "labelEn": "EU 43",
+              "labelBn": "EU 43"
+            },
+            {
+              "value": "44",
+              "labelEn": "EU 44",
+              "labelBn": "EU 44"
+            },
+            {
+              "value": "45",
+              "labelEn": "EU 45",
+              "labelBn": "EU 45"
+            },
+            {
+              "value": "46",
+              "labelEn": "EU 46",
+              "labelBn": "EU 46"
+            },
+            {
+              "value": "47",
+              "labelEn": "EU 47",
+              "labelBn": "EU 47"
+            }
+          ],
+          "key": "eu_size",
+          "labelEn": "EU size",
+          "labelBn": "EU সাইজ",
+          "kind": "select",
+          "sort": 2
+        }
+      ]
+    },
+    {
+      "key": "football",
+      "category": "football",
+      "nameEn": "Football",
+      "nameBn": "ফুটবল",
+      "priceFloorPoisha": 40000,
+      "priceCeilingPoisha": 1500000,
+      "sort": 2,
+      "placeholderEn": "e.g. Nike Premier League match ball",
+      "placeholderBn": "যেমন: নাইকি প্রিমিয়ার লিগ ম্যাচ বল",
+      "fields": [
+        {
+          "required": true,
+          "isVariantAxis": true,
+          "options": [
+            {
+              "value": "3",
+              "labelEn": "Size 3",
+              "labelBn": "সাইজ ৩"
+            },
+            {
+              "value": "4",
+              "labelEn": "Size 4",
+              "labelBn": "সাইজ ৪"
+            },
+            {
+              "value": "5",
+              "labelEn": "Size 5",
+              "labelBn": "সাইজ ৫"
+            }
+          ],
+          "key": "size",
+          "labelEn": "Size",
+          "labelBn": "সাইজ",
+          "kind": "select",
+          "sort": 1
+        },
+        {
+          "required": false,
+          "isVariantAxis": false,
+          "options": [
+            {
+              "value": "grass",
+              "labelEn": "Grass",
+              "labelBn": "ঘাস"
+            },
+            {
+              "value": "turf",
+              "labelEn": "Turf",
+              "labelBn": "টার্ফ"
+            },
+            {
+              "value": "futsal",
+              "labelEn": "Futsal",
+              "labelBn": "ফুটসাল"
+            }
+          ],
+          "key": "surface",
+          "labelEn": "Made for",
+          "labelBn": "যে মাঠের জন্য",
+          "kind": "select",
+          "sort": 2
+        }
+      ]
+    },
+    {
+      "key": "badminton_racket",
+      "category": "badminton",
+      "nameEn": "Badminton racket",
+      "nameBn": "ব্যাডমিন্টন র‍্যাকেট",
+      "priceFloorPoisha": 60000,
+      "priceCeilingPoisha": 3500000,
+      "sort": 1,
+      "placeholderEn": "e.g. Yonex Astrox 88S",
+      "placeholderBn": "যেমন: ইয়োনেক্স অ্যাস্ট্রক্স ৮৮এস",
+      "fields": [
+        {
+          "required": true,
+          "isVariantAxis": true,
+          "options": [
+            {
+              "value": "2U",
+              "labelEn": "2U",
+              "labelBn": "2U"
+            },
+            {
+              "value": "3U",
+              "labelEn": "3U",
+              "labelBn": "3U"
+            },
+            {
+              "value": "4U",
+              "labelEn": "4U",
+              "labelBn": "4U"
+            },
+            {
+              "value": "5U",
+              "labelEn": "5U",
+              "labelBn": "5U"
+            }
+          ],
+          "key": "weight",
+          "labelEn": "Weight",
+          "labelBn": "ওজন",
+          "kind": "select",
+          "sort": 1
+        },
+        {
+          "required": false,
+          "isVariantAxis": true,
+          "options": [
+            {
+              "value": "G4",
+              "labelEn": "G4",
+              "labelBn": "G4"
+            },
+            {
+              "value": "G5",
+              "labelEn": "G5",
+              "labelBn": "G5"
+            },
+            {
+              "value": "G6",
+              "labelEn": "G6",
+              "labelBn": "G6"
+            }
+          ],
+          "key": "grip",
+          "labelEn": "Grip",
+          "labelBn": "গ্রিপ",
+          "kind": "select",
+          "sort": 2
+        },
+        {
+          "required": false,
+          "isVariantAxis": false,
+          "options": [
+            {
+              "value": "head_heavy",
+              "labelEn": "Head heavy",
+              "labelBn": "হেড হেভি"
+            },
+            {
+              "value": "even",
+              "labelEn": "Even",
+              "labelBn": "সমান"
+            },
+            {
+              "value": "head_light",
+              "labelEn": "Head light",
+              "labelBn": "হেড লাইট"
+            }
+          ],
+          "key": "balance",
+          "labelEn": "Balance",
+          "labelBn": "ব্যালান্স",
+          "kind": "select",
+          "sort": 3
+        }
+      ]
+    },
+    {
+      "key": "shuttlecock",
+      "category": "badminton",
+      "nameEn": "Shuttlecocks",
+      "nameBn": "শাটলকক",
+      "priceFloorPoisha": 30000,
+      "priceCeilingPoisha": 600000,
+      "sort": 2,
+      "placeholderEn": "e.g. Yonex Aerosensa 30 (tube of 12)",
+      "placeholderBn": "যেমন: ইয়োনেক্স অ্যারোসেন্সা ৩০ (১২টির টিউব)",
+      "fields": [
+        {
+          "required": true,
+          "isVariantAxis": false,
+          "options": [
+            {
+              "value": "feather",
+              "labelEn": "Feather",
+              "labelBn": "পালক"
+            },
+            {
+              "value": "nylon",
+              "labelEn": "Nylon",
+              "labelBn": "নাইলন"
+            }
+          ],
+          "key": "material",
+          "labelEn": "Material",
+          "labelBn": "উপাদান",
+          "kind": "select",
+          "sort": 1
+        },
+        {
+          "required": false,
+          "isVariantAxis": true,
+          "options": [
+            {
+              "value": "75",
+              "labelEn": "75",
+              "labelBn": "75"
+            },
+            {
+              "value": "76",
+              "labelEn": "76",
+              "labelBn": "76"
+            },
+            {
+              "value": "77",
+              "labelEn": "77",
+              "labelBn": "77"
+            },
+            {
+              "value": "78",
+              "labelEn": "78",
+              "labelBn": "78"
+            }
+          ],
+          "key": "speed",
+          "labelEn": "Speed",
+          "labelBn": "স্পিড",
+          "kind": "select",
+          "sort": 2
+        },
+        {
+          "required": true,
+          "isVariantAxis": false,
+          "options": [],
+          "key": "pieces",
+          "labelEn": "Shuttles in the tube",
+          "labelBn": "টিউবে শাটল",
+          "kind": "number",
+          "minValue": 1,
+          "maxValue": 12,
+          "unit": "pcs",
+          "sort": 3
+        }
+      ]
+    },
+    {
+      "key": "jersey",
+      "category": "kits",
+      "nameEn": "Jersey",
+      "nameBn": "জার্সি",
+      "priceFloorPoisha": 30000,
+      "priceCeilingPoisha": 800000,
+      "sort": 1,
+      "placeholderEn": "e.g. Bangladesh home jersey 2026",
+      "placeholderBn": "যেমন: বাংলাদেশ হোম জার্সি ২০২৬",
+      "fields": [
+        {
+          "required": true,
+          "isVariantAxis": true,
+          "options": [
+            {
+              "value": "XS",
+              "labelEn": "XS",
+              "labelBn": "XS"
+            },
+            {
+              "value": "S",
+              "labelEn": "S",
+              "labelBn": "S"
+            },
+            {
+              "value": "M",
+              "labelEn": "M",
+              "labelBn": "M"
+            },
+            {
+              "value": "L",
+              "labelEn": "L",
+              "labelBn": "L"
+            },
+            {
+              "value": "XL",
+              "labelEn": "XL",
+              "labelBn": "XL"
+            },
+            {
+              "value": "XXL",
+              "labelEn": "XXL",
+              "labelBn": "XXL"
+            }
+          ],
+          "key": "size",
+          "labelEn": "Size",
+          "labelBn": "সাইজ",
+          "kind": "select",
+          "sort": 1
+        },
+        {
+          "required": false,
+          "isVariantAxis": false,
+          "options": [
+            {
+              "value": "short",
+              "labelEn": "Short",
+              "labelBn": "ছোট"
+            },
+            {
+              "value": "long",
+              "labelEn": "Long",
+              "labelBn": "লম্বা"
+            },
+            {
+              "value": "sleeveless",
+              "labelEn": "Sleeveless",
+              "labelBn": "হাতাকাটা"
+            }
+          ],
+          "key": "sleeve",
+          "labelEn": "Sleeve",
+          "labelBn": "হাতা",
+          "kind": "select",
+          "sort": 2
+        },
+        {
+          "required": false,
+          "isVariantAxis": false,
+          "options": [],
+          "key": "material",
+          "labelEn": "Material",
+          "labelBn": "কাপড়",
+          "kind": "text",
+          "sort": 3
+        }
+      ]
+    },
+    {
+      "key": "dumbbells",
+      "category": "gym",
+      "nameEn": "Dumbbells and weights",
+      "nameBn": "ডাম্বেল ও ওজন",
+      "priceFloorPoisha": 50000,
+      "priceCeilingPoisha": 8000000,
+      "sort": 1,
+      "placeholderEn": "e.g. Rubber hex dumbbell",
+      "placeholderBn": "যেমন: রাবার হেক্স ডাম্বেল",
+      "fields": [
+        {
+          "required": true,
+          "isVariantAxis": true,
+          "options": [
+            {
+              "value": "1",
+              "labelEn": "1 kg",
+              "labelBn": "1 কেজি"
+            },
+            {
+              "value": "2",
+              "labelEn": "2 kg",
+              "labelBn": "2 কেজি"
+            },
+            {
+              "value": "2.5",
+              "labelEn": "2.5 kg",
+              "labelBn": "2.5 কেজি"
+            },
+            {
+              "value": "5",
+              "labelEn": "5 kg",
+              "labelBn": "5 কেজি"
+            },
+            {
+              "value": "7.5",
+              "labelEn": "7.5 kg",
+              "labelBn": "7.5 কেজি"
+            },
+            {
+              "value": "10",
+              "labelEn": "10 kg",
+              "labelBn": "10 কেজি"
+            },
+            {
+              "value": "12.5",
+              "labelEn": "12.5 kg",
+              "labelBn": "12.5 কেজি"
+            },
+            {
+              "value": "15",
+              "labelEn": "15 kg",
+              "labelBn": "15 কেজি"
+            },
+            {
+              "value": "17.5",
+              "labelEn": "17.5 kg",
+              "labelBn": "17.5 কেজি"
+            },
+            {
+              "value": "20",
+              "labelEn": "20 kg",
+              "labelBn": "20 কেজি"
+            },
+            {
+              "value": "25",
+              "labelEn": "25 kg",
+              "labelBn": "25 কেজি"
+            },
+            {
+              "value": "30",
+              "labelEn": "30 kg",
+              "labelBn": "30 কেজি"
+            }
+          ],
+          "key": "weight_kg",
+          "labelEn": "Weight",
+          "labelBn": "ওজন",
+          "kind": "select",
+          "sort": 1
+        },
+        {
+          "required": true,
+          "isVariantAxis": false,
+          "options": [
+            {
+              "value": "rubber",
+              "labelEn": "Rubber",
+              "labelBn": "রাবার"
+            },
+            {
+              "value": "cast_iron",
+              "labelEn": "Cast iron",
+              "labelBn": "ঢালাই লোহা"
+            },
+            {
+              "value": "neoprene",
+              "labelEn": "Neoprene",
+              "labelBn": "নিওপ্রিন"
+            },
+            {
+              "value": "chrome",
+              "labelEn": "Chrome",
+              "labelBn": "ক্রোম"
+            }
+          ],
+          "key": "material",
+          "labelEn": "Material",
+          "labelBn": "উপাদান",
+          "kind": "select",
+          "sort": 2
+        },
+        {
+          "required": true,
+          "isVariantAxis": false,
+          "options": [
+            {
+              "value": "single",
+              "labelEn": "Single",
+              "labelBn": "একটি"
+            },
+            {
+              "value": "pair",
+              "labelEn": "Pair",
+              "labelBn": "জোড়া"
+            }
+          ],
+          "key": "sold_as",
+          "labelEn": "Sold as",
+          "labelBn": "বিক্রি হয়",
+          "kind": "select",
+          "sort": 3
+        }
+      ]
+    },
+    {
+      "key": "gym_accessory",
+      "category": "gym",
+      "nameEn": "Gym accessories",
+      "nameBn": "জিম অ্যাকসেসরিজ",
+      "priceFloorPoisha": 15000,
+      "priceCeilingPoisha": 5000000,
+      "sort": 2,
+      "placeholderEn": "e.g. Leather lifting belt",
+      "placeholderBn": "যেমন: লেদার লিফটিং বেল্ট",
+      "fields": [
+        {
+          "required": true,
+          "isVariantAxis": false,
+          "options": [
+            {
+              "value": "belt",
+              "labelEn": "Belt",
+              "labelBn": "বেল্ট"
+            },
+            {
+              "value": "gloves",
+              "labelEn": "Gloves",
+              "labelBn": "গ্লাভস"
+            },
+            {
+              "value": "straps",
+              "labelEn": "Straps and wraps",
+              "labelBn": "স্ট্র্যাপ ও র‍্যাপ"
+            },
+            {
+              "value": "mat",
+              "labelEn": "Mat",
+              "labelBn": "ম্যাট"
+            },
+            {
+              "value": "band",
+              "labelEn": "Resistance band",
+              "labelBn": "রেজিস্ট্যান্স ব্যান্ড"
+            },
+            {
+              "value": "rope",
+              "labelEn": "Skipping rope",
+              "labelBn": "স্কিপিং দড়ি"
+            },
+            {
+              "value": "other",
+              "labelEn": "Other",
+              "labelBn": "অন্যান্য"
+            }
+          ],
+          "key": "accessory_type",
+          "labelEn": "Type",
+          "labelBn": "ধরন",
+          "kind": "select",
+          "sort": 1
+        },
+        {
+          "required": false,
+          "isVariantAxis": true,
+          "options": [
+            {
+              "value": "S",
+              "labelEn": "S",
+              "labelBn": "S"
+            },
+            {
+              "value": "M",
+              "labelEn": "M",
+              "labelBn": "M"
+            },
+            {
+              "value": "L",
+              "labelEn": "L",
+              "labelBn": "L"
+            },
+            {
+              "value": "XL",
+              "labelEn": "XL",
+              "labelBn": "XL"
+            }
+          ],
+          "key": "size",
+          "labelEn": "Size",
+          "labelBn": "সাইজ",
+          "kind": "select",
+          "sort": 2
+        }
+      ]
+    },
+    {
+      "key": "protein_powder",
+      "category": "supplements",
+      "nameEn": "Protein powder",
+      "nameBn": "প্রোটিন পাউডার",
+      "priceFloorPoisha": 100000,
+      "priceCeilingPoisha": 3000000,
+      "sort": 1,
+      "placeholderEn": "e.g. Optimum Nutrition Gold Standard Whey",
+      "placeholderBn": "যেমন: অপটিমাম নিউট্রিশন গোল্ড স্ট্যান্ডার্ড হুয়ে",
+      "fields": [
+        {
+          "required": true,
+          "isVariantAxis": false,
+          "options": [
+            {
+              "value": "whey",
+              "labelEn": "Whey",
+              "labelBn": "হুয়ে"
+            },
+            {
+              "value": "isolate",
+              "labelEn": "Whey isolate",
+              "labelBn": "হুয়ে আইসোলেট"
+            },
+            {
+              "value": "casein",
+              "labelEn": "Casein",
+              "labelBn": "ক্যাসিন"
+            },
+            {
+              "value": "plant",
+              "labelEn": "Plant",
+              "labelBn": "উদ্ভিজ্জ"
+            },
+            {
+              "value": "mass_gainer",
+              "labelEn": "Mass gainer",
+              "labelBn": "মাস গেইনার"
+            }
+          ],
+          "key": "protein_type",
+          "labelEn": "Protein type",
+          "labelBn": "প্রোটিনের ধরন",
+          "kind": "select",
+          "sort": 1
+        },
+        {
+          "required": false,
+          "isVariantAxis": true,
+          "options": [
+            {
+              "value": "chocolate",
+              "labelEn": "Chocolate",
+              "labelBn": "চকলেট"
+            },
+            {
+              "value": "vanilla",
+              "labelEn": "Vanilla",
+              "labelBn": "ভ্যানিলা"
+            },
+            {
+              "value": "strawberry",
+              "labelEn": "Strawberry",
+              "labelBn": "স্ট্রবেরি"
+            },
+            {
+              "value": "cookies_cream",
+              "labelEn": "Cookies and cream",
+              "labelBn": "কুকিজ অ্যান্ড ক্রিম"
+            },
+            {
+              "value": "mango",
+              "labelEn": "Mango",
+              "labelBn": "আম"
+            },
+            {
+              "value": "unflavoured",
+              "labelEn": "Unflavoured",
+              "labelBn": "ফ্লেভারহীন"
+            }
+          ],
+          "key": "flavour",
+          "labelEn": "Flavour",
+          "labelBn": "ফ্লেভার",
+          "kind": "select",
+          "sort": 2
+        },
+        {
+          "required": true,
+          "isVariantAxis": true,
+          "options": [
+            {
+              "value": "1lb",
+              "labelEn": "1 lb",
+              "labelBn": "১ পাউন্ড"
+            },
+            {
+              "value": "2lb",
+              "labelEn": "2 lb",
+              "labelBn": "২ পাউন্ড"
+            },
+            {
+              "value": "5lb",
+              "labelEn": "5 lb",
+              "labelBn": "৫ পাউন্ড"
+            },
+            {
+              "value": "10lb",
+              "labelEn": "10 lb",
+              "labelBn": "১০ পাউন্ড"
+            }
+          ],
+          "key": "pack_size",
+          "labelEn": "Pack size",
+          "labelBn": "প্যাকের আকার",
+          "kind": "select",
+          "sort": 3
+        },
+        {
+          "required": false,
+          "isVariantAxis": false,
+          "options": [],
+          "key": "servings",
+          "labelEn": "Servings",
+          "labelBn": "সার্ভিং",
+          "kind": "number",
+          "minValue": 5,
+          "maxValue": 300,
+          "unit": null,
+          "sort": 4
+        }
+      ]
+    },
+    {
+      "key": "pre_workout",
+      "category": "supplements",
+      "nameEn": "Pre-workout",
+      "nameBn": "প্রি-ওয়ার্কআউট",
+      "priceFloorPoisha": 80000,
+      "priceCeilingPoisha": 1200000,
+      "sort": 2,
+      "placeholderEn": "e.g. C4 Original pre-workout",
+      "placeholderBn": "যেমন: C4 অরিজিনাল প্রি-ওয়ার্কআউট",
+      "fields": [
+        {
+          "required": false,
+          "isVariantAxis": true,
+          "options": [
+            {
+              "value": "fruit_punch",
+              "labelEn": "Fruit punch",
+              "labelBn": "ফ্রুট পাঞ্চ"
+            },
+            {
+              "value": "blue_raspberry",
+              "labelEn": "Blue raspberry",
+              "labelBn": "ব্লু রাস্পবেরি"
+            },
+            {
+              "value": "watermelon",
+              "labelEn": "Watermelon",
+              "labelBn": "তরমুজ"
+            },
+            {
+              "value": "green_apple",
+              "labelEn": "Green apple",
+              "labelBn": "সবুজ আপেল"
+            },
+            {
+              "value": "unflavoured",
+              "labelEn": "Unflavoured",
+              "labelBn": "ফ্লেভারহীন"
+            }
+          ],
+          "key": "flavour",
+          "labelEn": "Flavour",
+          "labelBn": "ফ্লেভার",
+          "kind": "select",
+          "sort": 1
+        },
+        {
+          "required": true,
+          "isVariantAxis": false,
+          "options": [],
+          "key": "servings",
+          "labelEn": "Servings",
+          "labelBn": "সার্ভিং",
+          "kind": "number",
+          "minValue": 10,
+          "maxValue": 100,
+          "unit": null,
+          "sort": 2
+        },
+        {
+          "required": false,
+          "isVariantAxis": false,
+          "options": [],
+          "key": "caffeine_mg",
+          "labelEn": "Caffeine per serving",
+          "labelBn": "প্রতি সার্ভিংয়ে ক্যাফেইন",
+          "kind": "number",
+          "minValue": 0,
+          "maxValue": 400,
+          "unit": "mg",
+          "sort": 3
+        }
+      ]
+    },
+    {
+      "key": "vitamins",
+      "category": "supplements",
+      "nameEn": "Vitamins and minerals",
+      "nameBn": "ভিটামিন ও মিনারেল",
+      "priceFloorPoisha": 20000,
+      "priceCeilingPoisha": 800000,
+      "sort": 3,
+      "placeholderEn": "e.g. Multivitamin, 60 tablets",
+      "placeholderBn": "যেমন: মাল্টিভিটামিন, ৬০টি ট্যাবলেট",
+      "fields": [
+        {
+          "required": true,
+          "isVariantAxis": false,
+          "options": [
+            {
+              "value": "tablet",
+              "labelEn": "Tablet",
+              "labelBn": "ট্যাবলেট"
+            },
+            {
+              "value": "capsule",
+              "labelEn": "Capsule",
+              "labelBn": "ক্যাপসুল"
+            },
+            {
+              "value": "softgel",
+              "labelEn": "Softgel",
+              "labelBn": "সফটজেল"
+            },
+            {
+              "value": "powder",
+              "labelEn": "Powder",
+              "labelBn": "পাউডার"
+            },
+            {
+              "value": "gummy",
+              "labelEn": "Gummy",
+              "labelBn": "গামি"
+            }
+          ],
+          "key": "form",
+          "labelEn": "Form",
+          "labelBn": "ধরন",
+          "kind": "select",
+          "sort": 1
+        },
+        {
+          "required": true,
+          "isVariantAxis": false,
+          "options": [],
+          "key": "count",
+          "labelEn": "Count in the pack",
+          "labelBn": "প্যাকে সংখ্যা",
+          "kind": "number",
+          "minValue": 10,
+          "maxValue": 500,
+          "unit": "pcs",
+          "sort": 2
+        }
+      ]
+    }
+  ]
+}

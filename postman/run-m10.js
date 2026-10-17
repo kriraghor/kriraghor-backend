@@ -11,7 +11,8 @@
  *   POST /settle                         drain events
  *   POST /pay?paymentId=&who=member|member2   pay through the SSLCommerz simulator, then drain
  *   POST /shift?bookingId=&to=now|late|past   move a booking so it starts now, 30 min ago, or 26 h ago
- *   POST /tick                           run bookings.tick (holds, completion, reminders)
+ *   POST /tick?plusHours=                run bookings.tick (holds, completion, reminders, no-shows after the
+ *                                        M17 dispute window), optionally as if it were plusHours later
  *   POST /check                          ledger balances of owner A and the invariants
  * Never point this at a real database.
  */
@@ -87,7 +88,7 @@ async function main() {
       await fx.moveTo(b, to);
       return {};
     },
-    tick: async () => ({ tick: await bookings.tick() }),
+    tick: async (q) => ({ tick: await bookings.tick(q.get('plusHours') ? new Date(Date.now() + Number(q.get('plusHours')) * 3600000) : undefined) }),
     check: async () => {
       const inv = await invariants.check({ publish: false });
       return {
