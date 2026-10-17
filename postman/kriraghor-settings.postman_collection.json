@@ -146,7 +146,7 @@
                   "pm.test('status 200', () => {",
                   "  pm.response.to.have.status(200);",
                   "});",
-                  "pm.test(\"217 settings\", () => { pm.expect(j.items.length === 217).to.eql(true); });"
+                  "pm.test(\"227 settings\", () => { pm.expect(j.items.length === 227).to.eql(true); });"
                 ]
               }
             }
