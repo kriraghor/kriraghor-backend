@@ -40,5 +40,7 @@ module.exports = {
     './src/modules/analytics/analytics.rules.js': FULL,
     // M17 dispute machine, outcome maths, authority, reporter eligibility and reviews.
     './src/modules/trust/trust.rules.js': FULL,
+    // M18 flag machine, authority, undo and the reliability formula.
+    './src/modules/risk/risk.rules.js': FULL,
   },
 };
