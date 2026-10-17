@@ -3,7 +3,7 @@
 /**
  * M17 targets port: the modules a dispute can be about. M17 never reads or writes their tables; each
  * source module registers an implementation (M10 bookings.disputes, M21 esports.disputes, M13
- * orders.disputes):
+ * orders.disputes, M11 hire.disputes):
  *
  *   permission                                      the staff permission that sees and decides its cases
  *   snapshot({ sourceId, category, principal, transaction })
@@ -32,6 +32,7 @@ function ensure() {
   require('../bookings/bookings.disputes').register();
   require('../esports/esports.disputes').register();
   require('../orders/orders.disputes').register();
+  require('../hire/hire.disputes').register();
 }
 
 function get(sourceType) {

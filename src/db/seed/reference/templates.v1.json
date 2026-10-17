@@ -1,6 +1,6 @@
 {
-  "seedVersion": 12,
-  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code. v9: the M17 DISPUTE_*, REPORT_* and REVIEW_* codes. v10: the M18 RISK_*, PAYOUTS_*, DOCUMENTS_* and TRUST_LOW codes. v11: the M12 SHOP_*, PRODUCT_*, STOCK_*, SUPPLEMENT_EXPIRING and SAVED_* codes. v12: the M13 ORDER_* and SHOP_*ORDER* codes.",
+  "seedVersion": 13,
+  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code. v9: the M17 DISPUTE_*, REPORT_* and REVIEW_* codes. v10: the M18 RISK_*, PAYOUTS_*, DOCUMENTS_* and TRUST_LOW codes. v11: the M12 SHOP_*, PRODUCT_*, STOCK_*, SUPPLEMENT_EXPIRING and SAVED_* codes. v12: the M13 ORDER_* and SHOP_*ORDER* codes. v13: the M11 HIRE_* and JOB_* codes.",
   "templates": [
     {
       "code": "AUDIT_CRITICAL",
@@ -6211,6 +6211,786 @@
         },
         {
           "name": "reason",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "HIRE_REQUEST_NEW",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "New hire request",
+      "body": "{{code}}: a {{role}} job for {{total}}. Reply by {{replyBy}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "replyBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "HIRE_REQUEST_NEW",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "নতুন হায়ার অনুরোধ",
+      "body": "{{code}}: {{total}}-এর একটি {{role}} কাজ। {{replyBy}}-এর মধ্যে উত্তর দিন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "replyBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "HIRE_REQUEST_NEW",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: new hire request {{code}}, {{total}}. Reply by {{replyBy}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "replyBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "HIRE_REQUEST_NEW",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: নতুন হায়ার অনুরোধ {{code}}, {{total}}। {{replyBy}}-এর মধ্যে উত্তর দিন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "replyBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "HIRE_ACCEPTED_PAY",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Accepted: pay to confirm",
+      "body": "{{code}} was accepted. Pay {{total}} by {{payBy}} to confirm. We hold it until the job is done.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "payBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "HIRE_ACCEPTED_PAY",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "গৃহীত: নিশ্চিত করতে পেমেন্ট করুন",
+      "body": "{{code}} গৃহীত হয়েছে। নিশ্চিত করতে {{payBy}}-এর মধ্যে {{total}} দিন। কাজ শেষ না হওয়া পর্যন্ত টাকা আমরা ধরে রাখি।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "payBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "HIRE_ACCEPTED_PAY",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{code}} accepted. Pay {{total}} by {{payBy}} to confirm.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "payBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "HIRE_ACCEPTED_PAY",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{code}} গৃহীত। নিশ্চিত করতে {{payBy}}-এর মধ্যে {{total}} দিন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "payBy",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "HIRE_DECLINED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Request not taken",
+      "body": "The {{role}} could not take {{code}}. Find someone else in Hire.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "HIRE_DECLINED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অনুরোধ নেওয়া হয়নি",
+      "body": "{{role}} {{code}} নিতে পারেননি। হায়ারে অন্য কাউকে খুঁজুন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "HIRE_LAPSED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Request lapsed",
+      "body": "{{code}} was not paid in time, so the time is free again.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        }
+      ]
+    },
+    {
+      "code": "HIRE_LAPSED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অনুরোধ বাতিল",
+      "body": "{{code}}-এর সময়মতো পেমেন্ট হয়নি, তাই সময়টি আবার ফাঁকা।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        }
+      ]
+    },
+    {
+      "code": "HIRE_CONFIRMED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Hire confirmed",
+      "body": "{{code}} is paid and confirmed, starting {{start}}. You can now see each other’s phone numbers.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "HIRE_CONFIRMED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "হায়ার নিশ্চিত",
+      "body": "{{code}}-এর পেমেন্ট হয়েছে ও নিশ্চিত, শুরু {{start}}। এখন একে অপরের ফোন নম্বর দেখা যাবে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "HIRE_CONFIRMED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: hire {{code}} confirmed, starts {{start}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "HIRE_CONFIRMED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: হায়ার {{code}} নিশ্চিত, শুরু {{start}}।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "HIRE_MESSAGE",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "New message",
+      "body": "A new message on {{code}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        }
+      ]
+    },
+    {
+      "code": "HIRE_MESSAGE",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "নতুন বার্তা",
+      "body": "{{code}}-এ নতুন বার্তা।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        }
+      ]
+    },
+    {
+      "code": "JOB_CHECKIN_OPENS",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Check-in is open",
+      "body": "Check in for {{code}} (starts {{start}}) when you arrive.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "JOB_CHECKIN_OPENS",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "চেক-ইন খোলা",
+      "body": "পৌঁছে {{code}}-এ চেক-ইন করুন (শুরু {{start}})।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "JOB_CHECKIN_OPENS",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: check-in for {{code}} is open. Starts {{start}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "JOB_CHECKIN_OPENS",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{code}}-এর চেক-ইন খোলা। শুরু {{start}}।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "JOB_COMPLETED_CONFIRM",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Job done: please confirm",
+      "body": "{{code}} is marked complete. Confirm it, or report a problem; it releases automatically on {{releaseAt}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "releaseAt",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "JOB_COMPLETED_CONFIRM",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "কাজ শেষ: নিশ্চিত করুন",
+      "body": "{{code}} সম্পন্ন চিহ্নিত। নিশ্চিত করুন, বা সমস্যা জানান; {{releaseAt}}-এ নিজে থেকে ছাড় হবে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "releaseAt",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "JOB_COMPLETED_CONFIRM",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{code}} is done. Confirm or report a problem by {{releaseAt}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "releaseAt",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "JOB_COMPLETED_CONFIRM",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{code}} শেষ। {{releaseAt}}-এর মধ্যে নিশ্চিত করুন বা সমস্যা জানান।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "releaseAt",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "JOB_PAID",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "You are paid for {{code}}",
+      "body": "{{net}} is in your balance after the Kriraghor fee and goes out with your next payout.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "net",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "JOB_PAID",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "{{code}}-এর টাকা পেয়েছেন",
+      "body": "ক্রীড়াঘরের ফির পর {{net}} আপনার ব্যালেন্সে, পরের পেআউটে যাবে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "net",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "JOB_CANCELLED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Job cancelled",
+      "body": "The manager cancelled {{code}}. You get {{proGets}} from the cancellation fee.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "proGets",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "JOB_CANCELLED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "কাজ বাতিল",
+      "body": "ম্যানেজার {{code}} বাতিল করেছেন। বাতিল ফি থেকে আপনি {{proGets}} পাবেন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "proGets",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "JOB_CANCELLED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{code}} was cancelled. You get {{proGets}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "proGets",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "JOB_CANCELLED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{code}} বাতিল হয়েছে। আপনি {{proGets}} পাবেন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "proGets",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "JOB_WITHDRAWN",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Pro withdrew",
+      "body": "The pro withdrew from {{code}}. {{refund}} is on its way back to you; find someone else in Hire.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "JOB_WITHDRAWN",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "প্রো সরে গেছেন",
+      "body": "প্রো {{code}} থেকে সরে গেছেন। {{refund}} ফেরত দেওয়া হচ্ছে; হায়ারে অন্য কাউকে খুঁজুন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "JOB_WITHDRAWN",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: the pro withdrew from {{code}}. {{refund}} will be refunded.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "JOB_WITHDRAWN",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: প্রো {{code}} থেকে সরে গেছেন। {{refund}} ফেরত দেওয়া হবে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "HIRE_PROFILE_LIVE",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "You are listed in Hire",
+      "body": "Your {{role}} profile is approved and live. Managers can now send you requests.",
+      "variables": [
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "HIRE_PROFILE_LIVE",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আপনি হায়ারে তালিকাভুক্ত",
+      "body": "আপনার {{role}} প্রোফাইল অনুমোদিত ও লাইভ। ম্যানেজাররা এখন অনুরোধ পাঠাতে পারবেন।",
+      "variables": [
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "HIRE_PROFILE_LIVE",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: your {{role}} profile is live in Hire.",
+      "variables": [
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "HIRE_PROFILE_LIVE",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: আপনার {{role}} প্রোফাইল হায়ারে লাইভ।",
+      "variables": [
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "HIRE_PROFILE_CHANGES",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Your profile needs a change",
+      "body": "Your {{role}} profile was not approved: {{reason}}. Edit it and send it again.",
+      "variables": [
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "HIRE_PROFILE_CHANGES",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "প্রোফাইলে পরিবর্তন দরকার",
+      "body": "আপনার {{role}} প্রোফাইল অনুমোদিত হয়নি: {{reason}}। সম্পাদনা করে আবার পাঠান।",
+      "variables": [
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "HIRE_PROFILE_CHANGES",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: your {{role}} profile needs a change. See Hire on kriraghor.com.",
+      "variables": [
+        {
+          "name": "role",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "HIRE_PROFILE_CHANGES",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: আপনার {{role}} প্রোফাইলে পরিবর্তন দরকার। kriraghor.com-এ হায়ার দেখুন।",
+      "variables": [
+        {
+          "name": "role",
           "type": "text",
           "maxLen": 60
         }

@@ -29,10 +29,10 @@ Dispute.init(
   {
     id,
     code: req(DataTypes.STRING(20)),
-    sourceType: req(DataTypes.ENUM('booking', 'esports_result', 'sub_order')),
+    sourceType: req(DataTypes.ENUM('booking', 'esports_result', 'sub_order', 'hire_job')),
     sourceId: req(DataTypes.UUID),
     sourceRef: req(DataTypes.STRING(40)),
-    category: req(DataTypes.ENUM('no_show_contest', 'venue_problem', 'cash_problem', 'result_wrong', 'not_received')),
+    category: req(DataTypes.ENUM('no_show_contest', 'venue_problem', 'cash_problem', 'result_wrong', 'not_received', 'no_show', 'job_problem')),
     claimantId: req(DataTypes.UUID),
     respondentId: DataTypes.UUID,
     status: req(DataTypes.ENUM(...ACTIVE, 'resolved', 'withdrawn')),
@@ -94,7 +94,7 @@ Report.init(
   {
     id,
     code: req(DataTypes.STRING(20)),
-    subjectType: req(DataTypes.ENUM('ground', 'booking', 'user', 'review', 'esports_tournament', 'shop', 'product')),
+    subjectType: req(DataTypes.ENUM('ground', 'booking', 'user', 'review', 'esports_tournament', 'shop', 'product', 'hire_profile')),
     subjectId: req(DataTypes.UUID),
     subjectOwnerId: DataTypes.UUID,
     reporterId: req(DataTypes.UUID),

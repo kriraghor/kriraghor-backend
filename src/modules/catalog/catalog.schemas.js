@@ -3,7 +3,7 @@
 const { z } = require('zod');
 
 const dateTime = z.iso.datetime({ offset: true });
-const TABLES = ['esports-games', 'esports-modes', 'esports-maps', 'esports-points-presets', 'sports', 'divisions', 'districts', 'areas', 'facilities', 'surfaces', 'item-categories', 'item-types', 'item-type-fields'];
+const TABLES = ['esports-games', 'esports-modes', 'esports-maps', 'esports-points-presets', 'sports', 'divisions', 'districts', 'areas', 'facilities', 'surfaces', 'item-categories', 'item-types', 'item-type-fields', 'hire-categories', 'hire-roles'];
 
 const key = z.string().regex(/^[a-z][a-z0-9_]{1,39}$/, 'Lowercase letters, digits and _ (like squad)');
 const names = {
@@ -110,10 +110,33 @@ const itemTypeField = z.object({
   sort: z.number().int().min(-1000).max(1000).optional(),
 });
 
+const hireCategory = z.object({
+  key,
+  ...names,
+  code: z.string().regex(/^\d{2}$/, 'Two digits, like 03'),
+  forRole: z.enum(['player', 'pro']).meta({ description: 'Who lists in it: players (category 01) or pros' }),
+  tint: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional(),
+});
+const hireRole = z.object({
+  key,
+  ...names,
+  categoryId: z.uuid(),
+  sportKeys: z.array(z.string().regex(/^[a-z_]{2,40}$/)).max(10).optional(),
+  allowedUnits: z.array(z.enum(['hourly', 'match'])).min(1).max(2),
+  formatPriced: z.boolean().optional(),
+  formats: z.array(z.enum(['T10', 'T20', 'OD', 'TAPE'])).max(4).optional(),
+  baseHourlyPoisha: z.number().int().positive().meta({ description: 'The base the rate limits come from (hire.rate_band, Q74)' }),
+  specialisations: z.array(z.object({ key, labelEn: label, labelBn: label })).max(20).optional(),
+  credentialTiers: z.array(z.object({ level: z.enum(['amateur', 'semi_pro', 'pro', 'national']), labelEn: label, labelBn: label })).max(4).optional(),
+  requiresCredential: z.boolean().optional(),
+  policeCheckForU16: z.boolean().optional(),
+  isOfficial: z.boolean().optional().meta({ description: 'A match official (umpire, referee, scorer)' }),
+});
+
 /** PATCH bodies: everything optional; key and gameId may be sent but must not change. */
 const patch = (schema) => schema.partial().refine((b) => Object.keys(b).length > 0, 'Nothing to change');
 
-const CREATE = { 'esports-games': game, 'esports-modes': mode, 'esports-maps': map, 'esports-points-presets': preset, sports: sport, divisions: division, districts: district, areas: area, facilities: facility, surfaces: surface, 'item-categories': itemCategory, 'item-types': itemType, 'item-type-fields': itemTypeField };
+const CREATE = { 'esports-games': game, 'esports-modes': mode, 'esports-maps': map, 'esports-points-presets': preset, sports: sport, divisions: division, districts: district, areas: area, facilities: facility, surfaces: surface, 'item-categories': itemCategory, 'item-types': itemType, 'item-type-fields': itemTypeField, 'hire-categories': hireCategory, 'hire-roles': hireRole };
 const UPDATE = Object.fromEntries(Object.entries(CREATE).map(([t, sch]) => [t, patch(sch)]));
 
 // ---------------- responses ----------------

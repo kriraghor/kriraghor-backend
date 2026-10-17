@@ -3,17 +3,18 @@
 /**
  * M03 catalogues: esports (§7.1 [v3]: games, modes, maps, points presets) and, for M09 and later
  * verticals, sports, divisions, districts, areas, facilities and surfaces (§6.1, §6.3); for M12 the
- * item catalogue (item categories, item types and their spec fields, FR-09).
+ * item catalogue (item categories, item types and their spec fields, FR-09); for M11 the hire
+ * taxonomy (categories and roles: units, match formats, base rate, credential tiers).
  *  - Rows are never deleted: deactivate hides them from pickers, old references stay valid (M03-FR-01).
  *  - `key` (and the parent row) are immutable after create: CATALOG_KEY_IMMUTABLE.
  *  - Points presets are immutable rows: an edit inserts version n+1, so tournaments that
  *    snapshotted an older version keep scoring with it.
  */
 const { AppError, E } = require('../../common/errors');
-const { sequelize, EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset, Sport, Division, District, Area, Facility, Surface, ItemCategory, ItemType, ItemTypeField, AREA_FLAGS } = require('../../models');
+const { sequelize, EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset, Sport, Division, District, Area, Facility, Surface, ItemCategory, ItemType, ItemTypeField, HireCategory, HireRole, AREA_FLAGS } = require('../../models');
 const audit = require('../audit/audit.service');
 const events = require('../events/events.service');
-const { modeCapacityError, presetPointsError, uidRegexError, itemFieldError } = require('./catalog.validate');
+const { modeCapacityError, presetPointsError, uidRegexError, itemFieldError, hireRoleError } = require('./catalog.validate');
 
 /** parentKey: the immutable foreign key to the parent row (and the list filter). */
 const TABLES = {
@@ -31,6 +32,8 @@ const TABLES = {
   'item-types': { Model: ItemType, entity: 'item_type', parentKey: 'categoryId', Parent: ItemCategory, parentLabel: 'Item category' },
   // Field keys repeat across item types (size, flavour), so they are unique per type.
   'item-type-fields': { Model: ItemTypeField, entity: 'item_type_field', parentKey: 'itemTypeId', Parent: ItemType, parentLabel: 'Item type', scopedKey: true },
+  'hire-categories': { Model: HireCategory, entity: 'hire_category' },
+  'hire-roles': { Model: HireRole, entity: 'hire_role', parentKey: 'categoryId', Parent: HireCategory, parentLabel: 'Hire category' },
 };
 
 const invalid = (field, message) => new AppError(422, 'VALIDATION_FAILED', 'Some fields are invalid', { errors: [{ field, message }] });
@@ -75,6 +78,10 @@ function checkRow(table, row) {
   if (table === 'item-types' && Number(row.priceCeilingPoisha) <= Number(row.priceFloorPoisha)) throw invalid('priceCeilingPoisha', 'Above the lowest price');
   if (table === 'item-type-fields') {
     const err = itemFieldError(row);
+    if (err) throw invalid(err.field, err.message);
+  }
+  if (table === 'hire-roles') {
+    const err = hireRoleError(row);
     if (err) throw invalid(err.field, err.message);
   }
 }

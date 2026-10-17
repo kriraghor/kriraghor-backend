@@ -30,6 +30,9 @@ const PURPOSES = {
   // M13 shop orders: one payment for a basket, split into one hold per shop sub-order (M06 splits),
   // each released to its shop at completion with the commission on the items subtotal (feeBase).
   market_order: { vertical: 'market', escrowAccount: 'escrow:market_order', pooled: false, testOnly: false, payoutSchedule: 'shop_weekly' },
+  // M11 hire: one payment per request, split into one hold per job (payee: the pro), released when
+  // the manager confirms (or automatically) with hire_pct on the job's quote; paid out daily.
+  hire: { vertical: 'hire', escrowAccount: 'escrow:hire', pooled: false, testOnly: false, payoutSchedule: 'daily' },
   // Master test charge (dev and staging only, PAYMENTS_TEST_CHARGES): the Phase 2 exit check.
   test_charge: { vertical: 'test', escrowAccount: 'escrow:test_charge', pooled: false, testOnly: true, payoutSchedule: 'daily' },
 };

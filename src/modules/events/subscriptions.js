@@ -31,6 +31,8 @@ function registerAll() {
   require('../market/market.moderation').registerMarketConsumers();
   // M13: payment failures cancel unpaid orders (and the purpose hook loads with them).
   require('../orders/orders.consumers').registerOrdersConsumers();
+  // M11: M05 decisions on hire profiles, payment failures lapse requests, sanctions pause profiles.
+  require('../hire/hire.moderation').registerHireConsumers();
   // M10: payment failures end holds; suspended or removed grounds cancel their bookings.
   require('../bookings/bookings.consumers').registerBookingsConsumers();
   // M19: read models from bookings, closures, series, payments, the ledger and esports.

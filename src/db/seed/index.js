@@ -13,7 +13,8 @@ const kycSeed = require('./reference/kyc-requirements.v1.json');
 const moderationSeed = require('./reference/moderation.v1.json');
 const placesSeed = require('./reference/places.v1.json');
 const itemsSeed = require('./reference/items.v1.json');
-const { sequelize, PlatformSetting, SettingsHistory, EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset, MessageTemplate, DocumentRequirement, ReviewRubric, RejectionReason, Sport, Division, District, Area, Facility, Surface, ItemCategory, ItemType, ItemTypeField } = require('../../models');
+const hireSeed = require('./reference/hire.v1.json');
+const { sequelize, PlatformSetting, SettingsHistory, EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset, MessageTemplate, DocumentRequirement, ReviewRubric, RejectionReason, Sport, Division, District, Area, Facility, Surface, ItemCategory, ItemType, ItemTypeField, HireCategory, HireRole } = require('../../models');
 
 const SEED_REASON = `Seed settings v${settingsSeed.seedVersion}`;
 
@@ -179,6 +180,23 @@ async function seedItems(transaction) {
   return inserted;
 }
 
+/** M03 hire taxonomy for M11, only when the key is missing; roles by category key. */
+async function seedHire(transaction) {
+  let inserted = 0;
+  const categories = new Map();
+  for (const c of hireSeed.categories) {
+    const { key, ...rest } = c;
+    const [row, created] = await insertMissing(HireCategory, { key }, rest, transaction);
+    categories.set(key, row.id);
+    inserted += Number(created);
+  }
+  for (const r of hireSeed.roles) {
+    const { key, category, ...rest } = r;
+    inserted += Number((await insertMissing(HireRole, { key }, { ...rest, categoryId: categories.get(category) }, transaction))[1]);
+  }
+  return inserted;
+}
+
 async function seedReference() {
   return sequelize.transaction(async (transaction) => ({
     settings: await seedSettings(transaction),
@@ -188,7 +206,8 @@ async function seedReference() {
     moderation: await seedModeration(transaction),
     places: await seedPlaces(transaction),
     items: await seedItems(transaction),
+    hire: await seedHire(transaction),
   }));
 }
 
-module.exports = { seedReference, seedPlaces, placesSeed, seedItems, itemsSeed, seedSettings, seedEsports, seedTemplates, seedKycRequirements, kycSeed, seedModeration, moderationSeed, settingRow, SETTING_KEYS, settingsSeed, esportsSeed, templatesSeed };
+module.exports = { seedReference, seedPlaces, placesSeed, seedItems, itemsSeed, seedHire, hireSeed, seedSettings, seedEsports, seedTemplates, seedKycRequirements, kycSeed, seedModeration, moderationSeed, settingRow, SETTING_KEYS, settingsSeed, esportsSeed, templatesSeed };

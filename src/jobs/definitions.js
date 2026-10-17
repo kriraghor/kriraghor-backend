@@ -29,6 +29,7 @@ const riskJobs = require('../modules/risk/risk.jobs');
 const risk = require('../modules/risk/risk.nightly');
 const inventory = require('../modules/market/inventory.service');
 const orders = require('../modules/orders/orders.jobs');
+const hire = require('../modules/hire/hire.jobs');
 const { purgeExpired: purgeIdempotencyKeys } = require('../common/idempotency');
 const logger = require('../common/logger');
 
@@ -302,6 +303,15 @@ const JOBS = [
     queue: QUEUES.ORDERS,
     every: 60 * 1000,
     run: async () => orders.tick(),
+  },
+  // ---------------- M11 hire (§10). Idempotent: every step locks the row and re-checks its status.
+  {
+    // Requests past hire.reply_hours expire; unpaid ones past hire.payment_window_min lapse; check-in
+    // reminders; jobs marked complete are released after hire.auto_release_hours with no dispute (v3).
+    name: 'hire.tick',
+    queue: QUEUES.HIRE,
+    every: 60 * 1000,
+    run: async () => hire.tick(),
   },
   // ---------------- M19 analytics (§10). Idempotent: upserts and REFRESH … CONCURRENTLY under an advisory lock.
   {

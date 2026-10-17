@@ -49,4 +49,23 @@ function itemFieldError(row) {
   return null;
 }
 
-module.exports = { modeCapacityError, presetPointsError, uidRegexError, itemFieldError };
+const LEVEL_ORDER = ['amateur', 'semi_pro', 'pro', 'national'];
+
+/**
+ * M11 hire role: match formats only when the role is priced per format and hired by the match; each
+ * credential tier level at most once, in order; a role that needs a credential has tiers.
+ */
+function hireRoleError(r) {
+  const units = r.allowedUnits ?? [];
+  const formats = r.formats ?? [];
+  const tiers = r.credentialTiers ?? [];
+  if (r.formatPriced && !units.includes('match')) return { field: 'formatPriced', message: 'Only a role hired by the match is priced per format' };
+  if (r.formatPriced && !formats.length) return { field: 'formats', message: 'Add the match formats' };
+  if (!r.formatPriced && formats.length) return { field: 'formats', message: 'Formats need format pricing' };
+  const levels = tiers.map((t) => LEVEL_ORDER.indexOf(t.level));
+  if (levels.some((l, i) => l < 0 || (i > 0 && l <= levels[i - 1]))) return { field: 'credentialTiers', message: 'Levels go up once each: amateur, semi_pro, pro, national' };
+  if (r.requiresCredential && !tiers.length) return { field: 'credentialTiers', message: 'A role that needs a credential lists its tiers' };
+  return null;
+}
+
+module.exports = { modeCapacityError, presetPointsError, uidRegexError, itemFieldError, hireRoleError };

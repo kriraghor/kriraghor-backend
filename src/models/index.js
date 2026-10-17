@@ -973,7 +973,7 @@ VerificationDocument.init(
   {
     id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
     userId: { type: DataTypes.UUID, allowNull: false },
-    docType: { type: DataTypes.ENUM('nid', 'trade_license', 'deed_or_lease', 'tin', 'bin'), allowNull: false },
+    docType: { type: DataTypes.ENUM('nid', 'trade_license', 'deed_or_lease', 'tin', 'bin', 'credential', 'police_clearance'), allowNull: false },
     subjectKey: { type: DataTypes.STRING(64), allowNull: false, defaultValue: '' },
     version: { type: DataTypes.INTEGER, allowNull: false },
     status: { type: DataTypes.ENUM('in_review', 'changes_requested', 'approved', 'rejected', 'superseded', 'withdrawn'), allowNull: false },
@@ -1177,6 +1177,9 @@ const market = require('./market');
 market.Shop.belongsTo(places.Area, { as: 'area', foreignKey: 'areaId' });
 market.Product.belongsTo(items.ItemType, { as: 'itemType', foreignKey: 'itemTypeId' });
 
+// ---- M03 hire taxonomy and M11 hire, step 1 (./hire.js) ----
+const hire = require('./hire');
+
 // ---- M13 orders, step 1 (./orders.js) ----
 const orders = require('./orders');
 
@@ -1194,6 +1197,7 @@ module.exports = {
   ...items,
   ...market,
   ...orders,
+  ...hire,
   ...grounds,
   ...bookings,
   ...analytics,

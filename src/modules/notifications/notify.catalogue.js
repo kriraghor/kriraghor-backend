@@ -78,6 +78,14 @@ const variantValues = async (e, locale) => {
 };
 const webProduct = async (productId) => webUrl(`/shop/p/${(await productFacts(productId)).slug}`);
 const bookingFacts = (id) => require('../bookings/bookings.reads').facts(id);
+// M11: hire requests and jobs (the manager and the pro). Codes, role names and amounts only.
+const hireFacts = (e) => require('../hire/hire.reads').facts({ requestId: e.payload.requestId, jobId: e.payload.jobId ?? null });
+const hireProfileFacts = (id) => require('../hire/profiles.service').facts(id);
+const hireRole = async (e, locale) => {
+  const f = await hireFacts(e);
+  return locale === 'bn' ? f.roleBn : f.roleEn;
+};
+const hireReason = (code, locale) => marketReason(code, locale);
 // M13: shop orders (the buyer and the shop owner). Codes, shop names and amounts only.
 const orderFacts = (id) => require('../orders/orders.reads').facts(id);
 const ORDER_REASONS = {
@@ -1039,6 +1047,132 @@ const CATALOGUE = [
     recipients: (e) => (e.payload.reason === 'price_dropped' ? [e.payload.userId] : []),
     values: async (e) => ({ name: (await productFacts(e.payload.itemId)).title, price: e.payload.pricePoisha }),
     link: () => '/shop/saved',
+  },
+  // ---------------- M11 hire: the manager (hirer) and the player or pro
+  {
+    code: 'HIRE_REQUEST_NEW',
+    events: ['hire_request.sent'],
+    category: 'hire',
+    channels: ['in_app', 'sms'],
+    urgent: true,
+    recipients: (e) => [e.payload.proUserId],
+    values: async (e, { locale }) => ({ code: e.payload.code, role: await hireRole(e, locale), total: e.payload.total, replyBy: e.payload.replyBy }),
+    link: () => '/pro/requests',
+  },
+  {
+    code: 'HIRE_ACCEPTED_PAY',
+    events: ['hire_request.accepted'],
+    category: 'hire',
+    channels: ['in_app', 'sms'],
+    urgent: true,
+    recipients: (e) => [e.payload.hirerId],
+    values: (e) => ({ code: e.payload.code, total: e.payload.total, payBy: e.payload.payBy }),
+    link: (e) => `/me/hire/${e.payload.code}`,
+  },
+  {
+    code: 'HIRE_DECLINED',
+    events: ['hire_request.declined', 'hire_request.expired'],
+    category: 'hire',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.hirerId],
+    values: async (e, { locale }) => ({ code: e.payload.code, role: await hireRole(e, locale) }),
+    link: () => '/hiring',
+  },
+  {
+    code: 'HIRE_LAPSED',
+    events: ['hire_request.lapsed'],
+    category: 'hire',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.hirerId, e.payload.proUserId],
+    values: (e) => ({ code: e.payload.code }),
+    link: (e) => `/me/hire/${e.payload.code}`,
+  },
+  {
+    code: 'HIRE_CONFIRMED',
+    events: ['hire_request.paid'],
+    category: 'hire',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.hirerId, e.payload.proUserId],
+    values: async (e) => ({ code: e.payload.code, start: (await hireFacts(e)).start }),
+    link: (e, { userId } = {}) => (userId === e.payload.proUserId ? '/pro/jobs' : `/me/hire/${e.payload.code}`),
+  },
+  {
+    code: 'HIRE_MESSAGE',
+    events: ['hire_message.posted'],
+    category: 'hire',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.recipientId],
+    values: (e) => ({ code: e.payload.code }),
+    link: (e) => `/me/hire/${e.payload.code}`,
+  },
+  {
+    code: 'JOB_CHECKIN_OPENS',
+    events: ['hire_job.checkin_opened'],
+    category: 'hire',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.proUserId],
+    values: (e) => ({ code: e.payload.code, start: e.payload.start }),
+    link: () => '/pro/jobs',
+  },
+  {
+    code: 'JOB_COMPLETED_CONFIRM',
+    events: ['hire_job.completed_marked'],
+    category: 'hire',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.hirerId],
+    values: (e) => ({ code: e.payload.code, releaseAt: e.payload.releaseAt }),
+    link: (e) => `/me/hire/${e.payload.code.replace(/-\d+$/, '')}`,
+  },
+  {
+    code: 'JOB_PAID',
+    events: ['hire_job.released'],
+    category: 'hire',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.proUserId],
+    values: (e) => ({ code: e.payload.code, net: e.payload.net }),
+    link: () => '/me/payouts',
+  },
+  {
+    code: 'JOB_CANCELLED',
+    events: ['hire_job.cancelled'],
+    category: 'hire',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.proUserId],
+    values: (e) => ({ code: e.payload.code, proGets: e.payload.proGets }),
+    link: () => '/pro/jobs',
+  },
+  {
+    code: 'JOB_WITHDRAWN',
+    events: ['hire_job.withdrawn'],
+    category: 'hire',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.hirerId],
+    values: (e) => ({ code: e.payload.code, refund: e.payload.refund }),
+    link: () => '/hiring',
+  },
+  {
+    code: 'HIRE_PROFILE_LIVE',
+    events: ['hire_profile.published'],
+    category: 'moderation',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => (e.payload.first ? [e.payload.userId] : []),
+    values: async (e, { locale }) => {
+      const f = await hireProfileFacts(e.payload.profileId);
+      return { role: locale === 'bn' ? f.roleBn : f.roleEn };
+    },
+    link: () => '/pro',
+  },
+  {
+    code: 'HIRE_PROFILE_CHANGES',
+    events: ['hire_profile.changes_requested', 'hire_profile.rejected'],
+    category: 'moderation',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.userId],
+    values: async (e, { locale }) => {
+      const f = await hireProfileFacts(e.payload.profileId);
+      return { role: locale === 'bn' ? f.roleBn : f.roleEn, reason: hireReason(e.payload.reasonCode, locale) };
+    },
+    link: () => '/pro',
   },
   // ---------------- M13 orders: the buyer and the shop owner
   {

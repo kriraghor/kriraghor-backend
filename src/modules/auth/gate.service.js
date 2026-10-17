@@ -13,7 +13,9 @@ const { ROLES } = require('../../common/enums');
 const PHONE_VERIFIED = 'phone_verified';
 const ACTIONS = Object.freeze({
   book_ground: PHONE_VERIFIED,
-  hire: ROLES.MEMBER,
+  // M11 (17 Oct 2026): hiring is prepaid into escrow, so a verified phone is enough, as for booking
+  // and buying. Pros still need NID (the member role) to be listed and paid.
+  hire: PHONE_VERIFIED,
   // M13 (17 Oct 2026): buying from a shop is prepaid into escrow, so a verified phone is enough, as
   // for booking. Selling (list_product, sell_used) and withdrawing still need NID.
   buy: PHONE_VERIFIED,

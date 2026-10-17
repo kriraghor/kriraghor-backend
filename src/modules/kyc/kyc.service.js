@@ -118,6 +118,14 @@ const UNLOCKS = {
     en: ['List your grounds and set prices', 'Take bookings with an advance', 'Get paid at check-in'],
     bn: ['আপনার মাঠ তালিকাভুক্ত করুন ও দাম ঠিক করুন', 'অগ্রিমসহ বুকিং নিন', 'চেক-ইনে টাকা পান'],
   },
+  player: {
+    en: ['Get listed in Hire as a player', 'Take paid matches and sessions', 'Get paid when the manager confirms'],
+    bn: ['খেলোয়াড় হিসেবে হায়ারে তালিকাভুক্ত হন', 'টাকার বিনিময়ে ম্যাচ ও সেশন নিন', 'ম্যানেজার নিশ্চিত করলে টাকা পান'],
+  },
+  pro: {
+    en: ['Get listed in Hire (coaches, officials, medical, media, team staff)', 'Set your own rates', 'Get paid when the manager confirms'],
+    bn: ['হায়ারে তালিকাভুক্ত হন (কোচ, অফিসিয়াল, চিকিৎসা, মিডিয়া, দলের কর্মী)', 'নিজের রেট ঠিক করুন', 'ম্যানেজার নিশ্চিত করলে টাকা পান'],
+  },
   shop_owner: {
     en: ['Open your shop on Kriraghor', 'List new gear, supplements or gym equipment with sizes and stock', 'Sell to members across the platform'],
     bn: ['ক্রীড়াঘরে আপনার দোকান খুলুন', 'সাইজ ও স্টকসহ নতুন সরঞ্জাম, সাপ্লিমেন্ট বা জিমের জিনিস তালিকাভুক্ত করুন', 'প্ল্যাটফর্মজুড়ে সদস্যদের কাছে বিক্রি করুন'],
@@ -154,7 +162,14 @@ async function roleVerification(principal, role, locale) {
     items,
     unlocks: UNLOCKS[role]?.[bn ? 'bn' : 'en'] ?? [],
     limits: [],
+    ...(['player', 'pro'].includes(role) ? { credentials: await credentialsOf(user.id) } : {}),
   };
+}
+
+/** M11: the credentials a player or pro sent, one per hire role (the latest version of each). */
+async function credentialsOf(userId) {
+  const rows = await VerificationDocument.findAll({ where: { userId, docType: 'credential', isCurrent: true }, order: [['createdAt', 'DESC']] });
+  return rows.map((d) => ({ hireRole: d.fieldsPublic.hireRole ?? null, level: d.fieldsPublic.level ?? null, issuer: d.fieldsPublic.issuer ?? null, status: d.status, expiresOn: d.fieldsPublic.expiresOn ?? null, documentId: d.id }));
 }
 
 /** GET /me/verification: the member checklist, badge, unlocks and limits (§6.4, §6.5). */
@@ -288,8 +303,15 @@ async function submitBusiness(principal, { docType, fields = {}, files = {}, rol
     const { role } = requirement;
     const errors = rules.fieldsBlock(requirement.fieldSchema, fields, today);
     if (errors) throw E.validation(errors);
+    let subjectKey = role;
+    if (requirement.scope === 'hire_role') {
+      const hireRole = await require('../catalog/hire.reads').role(String(fields.hireRole ?? ''), { transaction });
+      if (!hireRole || hireRole.forRole !== role) throw E.validation([{ field: 'fields.hireRole', message: 'Choose one of your hire roles' }]);
+      if (!hireRole.levels.includes(String(fields.level ?? ''))) throw E.validation([{ field: 'fields.level', message: 'Choose a level of this role' }]);
+      subjectKey = `hire:${hireRole.key}`;
+    }
     if (rules.slotsBlock(requirement.fileSlots, files)) throw fail('FILES_INCOMPLETE');
-    const mine = await VerificationDocument.findAll({ where: { userId: user.id, docType, subjectKey: role }, order: [['version', 'DESC']], transaction, lock: transaction.LOCK.UPDATE });
+    const mine = await VerificationDocument.findAll({ where: { userId: user.id, docType, subjectKey }, order: [['version', 'DESC']], transaction, lock: transaction.LOCK.UPDATE });
     if (mine.some((d) => d.status === 'approved' && d.isCurrent) && !(await requested(principal.user.id, docType, transaction))) throw fail('DOC_ALREADY_APPROVED');
     const fileIds = Object.values(files);
     const rows = await DocumentFile.findAll({ where: { id: fileIds, userId: user.id, documentId: null, purgedAt: null }, transaction, lock: transaction.LOCK.UPDATE });
@@ -308,12 +330,12 @@ async function submitBusiness(principal, { docType, fields = {}, files = {}, rol
       {
         userId: user.id,
         docType,
-        subjectKey: role,
+        subjectKey,
         version: (mine[0]?.version ?? 0) + 1,
         status: 'in_review',
         isCurrent: true,
         fieldsEnc: encrypt(JSON.stringify(clean)),
-        fieldsPublic: { numberMasked: clean.number ? rules.maskNid(clean.number) : null, expiresOn: clean.expiresOn ?? null, role },
+        fieldsPublic: { numberMasked: clean.number ? rules.maskNid(clean.number) : null, expiresOn: clean.expiresOn ?? null, role, ...(docType === 'credential' ? { hireRole: clean.hireRole, level: clean.level, issuer: clean.issuer } : {}) },
         checks: rules.businessChecks({ reusedFiles, expiresOn: clean.expiresOn ?? null, today }),
       },
       { transaction }
@@ -322,8 +344,8 @@ async function submitBusiness(principal, { docType, fields = {}, files = {}, rol
     await moderation.submit(
       {
         kind: 'document',
-        subjectId: subjectIdFor(user.id, docType, role),
-        payload: { documentId: doc.id, docType, version: doc.version, role, numberMasked: doc.fieldsPublic.numberMasked, expiresOn: doc.fieldsPublic.expiresOn },
+        subjectId: subjectIdFor(user.id, docType, subjectKey),
+        payload: { documentId: doc.id, docType, version: doc.version, role, numberMasked: doc.fieldsPublic.numberMasked, expiresOn: doc.fieldsPublic.expiresOn, ...(docType === 'credential' ? { hireRole: doc.fieldsPublic.hireRole, level: doc.fieldsPublic.level, issuer: doc.fieldsPublic.issuer } : {}) },
         title: `${requirement.labelEn} · v${doc.version}`,
         submittedBy: user.id,
       },
@@ -493,6 +515,24 @@ async function getVerifiedIdentity(userId, { transaction } = {}) {
   return { legalName: f.legalName, dob: f.dob, nidHash: d.nidHash, nidLast4: f.number.slice(-4), documentId: d.id };
 }
 
+/**
+ * M11: the approved, unexpired credential a person holds for a hire role on a day (null when none):
+ * { level, issuer, expiresOn }. Levels are the M03 credential tiers (amateur → national).
+ */
+async function credentialFor(userId, roleKey, { on = new Date(), transaction } = {}) {
+  const d = await VerificationDocument.findOne({ where: { userId, docType: 'credential', subjectKey: `hire:${roleKey}`, status: 'approved', isCurrent: true }, transaction });
+  if (!d) return null;
+  const until = d.fieldsPublic.expiresOn ?? null;
+  if (until && until < rules.dhakaToday(on)) return null;
+  return { level: d.fieldsPublic.level, issuer: d.fieldsPublic.issuer ?? null, expiresOn: until };
+}
+
+/** M11: the date an approved police clearance is valid until (null when there is none). */
+async function policeClearedUntil(userId, { transaction } = {}) {
+  const d = await VerificationDocument.findOne({ where: { userId, docType: 'police_clearance', status: 'approved', isCurrent: true }, order: [['decidedAt', 'DESC']], transaction });
+  return d?.fieldsPublic.expiresOn ?? null;
+}
+
 /** Display facts for notifications (M08 reads them here). */
 async function facts(id) {
   const d = await VerificationDocument.findByPk(id, { attributes: ['docType', 'reasonCode', 'reasonText', 'fieldsPublic'] });
@@ -537,4 +577,4 @@ async function nidAttempts(userId) {
   return others + 1;
 }
 
-module.exports = { nidAttempts, verification, uploadFile, submit, ownFile, adminGet, viewFile, revealNid, checksFor, applyDecision, getVerifiedIdentity, facts, purgeDue, requirementsFor, nidHash };
+module.exports = { nidAttempts, verification, uploadFile, submit, ownFile, adminGet, viewFile, revealNid, checksFor, applyDecision, getVerifiedIdentity, credentialFor, policeClearedUntil, facts, purgeDue, requirementsFor, nidHash };

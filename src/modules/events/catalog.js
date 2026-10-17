@@ -6,7 +6,7 @@
  * invalid payloads before commit. Payloads carry IDs, codes, amounts, statuses and timestamps only:
  * no phone, NID, DOB, email or names (consumers read details through the producer's service).
  *
- * Built so far: M01, M02, M03, M04, M05, M06, M07, M09, M10, M12, M13, M17, M18, M19, M21. Each later module adds its events here when it is built.
+ * Built so far: M01, M02, M03, M04, M05, M06, M07, M09, M10, M11, M12, M13, M17, M18, M19, M21. Each later module adds its events here when it is built.
  */
 const { z } = require('zod');
 
@@ -24,6 +24,9 @@ const productEvent = z.object({ productId: uuid, shopId: uuid, ownerId: uuid });
 const variantEvent = z.object({ variantId: uuid, productId: uuid, shopId: uuid, ownerId: uuid });
 const reasonText = z.string().max(300).nullable().optional();
 const orderEvent = z.object({ orderId: uuid, code: z.string().max(20), buyerId: uuid, total: poisha });
+const hireProfileEvent = z.object({ profileId: uuid, userId: uuid, roleId: uuid });
+const hireRequestEvent = z.object({ requestId: uuid, code: z.string().max(20), profileId: uuid, hirerId: uuid, proUserId: uuid, total: poisha });
+const hireJobEvent = z.object({ jobId: uuid, code: z.string().max(24), requestId: uuid, hirerId: uuid, proUserId: uuid, quote: poisha });
 const subOrderEvent = z.object({ subOrderId: uuid, code: z.string().max(24), orderId: uuid, shopId: uuid, sellerId: uuid, buyerId: uuid, total: poisha });
 const docEvent = z.object({ documentId: uuid, userId: uuid, docType: z.string().max(30), role: z.string().max(32).optional() });
 const payoutEvent = z.object({ payoutId: uuid, code: z.string(), payeeId: uuid, amount: poisha });
@@ -33,7 +36,7 @@ const esMatch = z.object({ matchId: uuid, tournamentId: uuid });
 const esProfile = z.object({ profileId: uuid, userId: uuid, gameId: uuid });
 const esShare = z.object({ shareId: uuid, tournamentId: uuid, userId: uuid, amount: poisha });
 const bookingEvent = z.object({ bookingId: uuid, code: z.string().max(16), groundId: uuid, ownerId: uuid, bookerUserId: uuid.nullable() });
-const disputeEvent = z.object({ disputeId: uuid, code: z.string().max(20), sourceType: z.enum(['booking', 'esports_result', 'sub_order']), sourceId: uuid, category: z.string().max(30), claimantId: uuid, respondentId: uuid.nullable() });
+const disputeEvent = z.object({ disputeId: uuid, code: z.string().max(20), sourceType: z.enum(['booking', 'esports_result', 'sub_order', 'hire_job']), sourceId: uuid, category: z.string().max(30), claimantId: uuid, respondentId: uuid.nullable() });
 const subjectType = z.enum(['ground', 'booking', 'user', 'review', 'esports_tournament', 'shop', 'product']);
 const reviewEvent = z.object({ reviewId: uuid, subjectType: z.literal('ground'), subjectId: uuid, authorId: uuid });
 const docRequestEvent = z.object({ requestId: uuid, userId: uuid, docType: z.string().max(30), sourceRef: uuid.nullable(), dueAt: iso.nullable() });
@@ -252,6 +255,34 @@ const EVENTS = {
   'sub_order.cancelled': { module: 'M13', version: 1, schema: subOrderEvent.extend({ reason: z.string().max(40), refund: poisha, by: z.string().max(10).optional() }) },
   'sub_order.disputed': { module: 'M13', version: 1, schema: subOrderEvent.extend({ disputeId: uuid }) },
   'sub_order.refunded': { module: 'M13', version: 1, schema: subOrderEvent.extend({ refund: poisha, disputeId: uuid }) },
+  // ---------------- M11 hire, step 1
+  'hire_profile.submitted': { module: 'M11', version: 1, schema: hireProfileEvent.extend({ version: z.number().int(), isEdit: z.boolean() }) },
+  'hire_profile.published': { module: 'M11', version: 1, schema: hireProfileEvent.extend({ version: z.number().int(), first: z.boolean(), platformRole: z.enum(['player', 'pro']) }) },
+  'hire_profile.changes_requested': { module: 'M11', version: 1, schema: hireProfileEvent.extend({ isEdit: z.boolean(), reasonCode: z.string().max(40).nullable() }) },
+  'hire_profile.rejected': { module: 'M11', version: 1, schema: hireProfileEvent.extend({ isEdit: z.boolean(), reasonCode: z.string().max(40).nullable() }) },
+  'hire_profile.paused': { module: 'M11', version: 1, schema: hireProfileEvent.extend({ reason: z.string().max(40).optional() }) },
+  'hire_profile.resumed': { module: 'M11', version: 1, schema: hireProfileEvent },
+  'hire_profile.suspended': { module: 'M11', version: 1, schema: hireProfileEvent.extend({ reason: reasonText }) },
+  'hire_profile.restored': { module: 'M11', version: 1, schema: hireProfileEvent.extend({ reason: reasonText }) },
+  'hire_request.sent': { module: 'M11', version: 1, schema: hireRequestEvent.extend({ replyBy: iso, jobs: z.number().int() }) },
+  'hire_request.accepted': { module: 'M11', version: 1, schema: hireRequestEvent.extend({ payBy: iso }) },
+  'hire_request.declined': { module: 'M11', version: 1, schema: hireRequestEvent.extend({ reason: z.string().max(40) }) },
+  'hire_request.expired': { module: 'M11', version: 1, schema: hireRequestEvent },
+  'hire_request.withdrawn': { module: 'M11', version: 1, schema: hireRequestEvent },
+  'hire_request.lapsed': { module: 'M11', version: 1, schema: hireRequestEvent },
+  'hire_request.paid': { module: 'M11', version: 1, schema: hireRequestEvent.extend({ paymentId: uuid }) },
+  'hire_request.completed': { module: 'M11', version: 1, schema: hireRequestEvent },
+  'hire_request.cancelled': { module: 'M11', version: 1, schema: hireRequestEvent },
+  'hire_message.posted': { module: 'M11', version: 1, schema: z.object({ requestId: uuid, code: z.string().max(20), messageId: uuid, authorId: uuid, recipientId: uuid }) },
+  'hire_job.checkin_opened': { module: 'M11', version: 1, schema: hireJobEvent.extend({ start: iso }) },
+  'hire_job.check_in_recorded': { module: 'M11', version: 1, schema: hireJobEvent.extend({ late: z.boolean() }) },
+  'hire_job.started': { module: 'M11', version: 1, schema: hireJobEvent },
+  'hire_job.completed_marked': { module: 'M11', version: 1, schema: hireJobEvent.extend({ releaseAt: iso }) },
+  'hire_job.released': { module: 'M11', version: 1, schema: hireJobEvent.extend({ by: z.enum(['hirer', 'auto', 'dispute']), gross: poisha, fee: poisha, net: poisha, refund: poisha.optional() }) },
+  'hire_job.cancelled': { module: 'M11', version: 1, schema: hireJobEvent.extend({ by: z.enum(['hirer', 'staff']), refund: poisha, fee: poisha, proGets: poisha }) },
+  'hire_job.withdrawn': { module: 'M11', version: 1, schema: hireJobEvent.extend({ refund: poisha, reason: z.string().max(40) }) },
+  'hire_job.disputed': { module: 'M11', version: 1, schema: hireJobEvent.extend({ disputeId: uuid }) },
+  'hire_job.refunded': { module: 'M11', version: 1, schema: hireJobEvent.extend({ by: z.literal('dispute'), gross: poisha, fee: poisha, net: poisha, refund: poisha }) },
   // step 2: closures and series (written as M10 booking slots)
   'closure.created': { module: 'M09', version: 1, schema: z.object({ closureId: uuid, groundId: uuid, start: iso, end: iso, reason: z.string().max(30) }) },
   'closure.reopened': { module: 'M09', version: 1, schema: z.object({ closureId: uuid, groundId: uuid, start: iso, end: iso, reason: z.string().max(30) }) },

@@ -1,6 +1,6 @@
 {
   "seedVersion": 1,
-  "source": "M05 §6.2 rubrics and §6.3 rejection reasons, lite (Oct 2026): the document kind (M02 NID); game_profile and esports_tournament (M21). Kinds are added as their modules arrive (M21 game_profile and esports_tournament). Rows are inserted only when missing. Ground listings (M09): rubric rb_ground_v1 and the ground kind on the shared reasons, plus location_wrong and not_a_venue.",
+  "source": "M05 §6.2 rubrics and §6.3 rejection reasons, lite (Oct 2026): the document kind (M02 NID); game_profile and esports_tournament (M21). Kinds are added as their modules arrive (M21 game_profile and esports_tournament). Rows are inserted only when missing. Ground listings (M09): rubric rb_ground_v1 and the ground kind on the shared reasons, plus location_wrong and not_a_venue. M11: the hire_profile rubric and reasons (missing_credential, rate_wrong, profile_details).",
   "rubrics": [
     {
       "kind": "document",
@@ -157,6 +157,37 @@
           "labelBn": "সাপ্লিমেন্ট: আমদানিকারক বা BSTI তথ্য ও মেয়াদ দেওয়া আছে"
         }
       ]
+    },
+    {
+      "kind": "hire_profile",
+      "version": 1,
+      "items": [
+        {
+          "key": "identity_ok",
+          "labelEn": "Name and photo belong to this member (NID verified)",
+          "labelBn": "নাম ও ছবি এই সদস্যের (NID যাচাই)"
+        },
+        {
+          "key": "role_ok",
+          "labelEn": "Role and experience are believable",
+          "labelBn": "ভূমিকা ও অভিজ্ঞতা বিশ্বাসযোগ্য"
+        },
+        {
+          "key": "credential_ok",
+          "labelEn": "Credential covers the role and level, when the role needs one",
+          "labelBn": "প্রয়োজন হলে সনদ ভূমিকা ও স্তর কভার করে"
+        },
+        {
+          "key": "rates_ok",
+          "labelEn": "Rates are fair for the role",
+          "labelBn": "ভূমিকার জন্য রেট ন্যায্য"
+        },
+        {
+          "key": "bio_ok",
+          "labelEn": "Bio has no contact details and is allowed",
+          "labelBn": "বিবরণে যোগাযোগের তথ্য নেই এবং অনুমোদিত"
+        }
+      ]
     }
   ],
   "reasons": [
@@ -217,7 +248,8 @@
         "game_profile",
         "ground",
         "shop",
-        "product"
+        "product",
+        "hire_profile"
       ],
       "sort": 6
     },
@@ -225,7 +257,9 @@
       "code": "missing_credential",
       "labelEn": "Missing credential for this role",
       "labelBn": "এই ভূমিকার জন্য প্রয়োজনীয় সনদ নেই",
-      "kinds": [],
+      "kinds": [
+        "hire_profile"
+      ],
       "sort": 7
     },
     {
@@ -238,7 +272,8 @@
         "esports_tournament",
         "ground",
         "shop",
-        "product"
+        "product",
+        "hire_profile"
       ],
       "sort": 8
     },
@@ -252,7 +287,8 @@
         "esports_tournament",
         "ground",
         "shop",
-        "product"
+        "product",
+        "hire_profile"
       ],
       "sort": 9
     },
@@ -266,7 +302,8 @@
         "esports_tournament",
         "ground",
         "shop",
-        "product"
+        "product",
+        "hire_profile"
       ],
       "requiresText": true,
       "sort": 10
@@ -342,6 +379,24 @@
         "shop"
       ],
       "sort": 18
+    },
+    {
+      "code": "rate_wrong",
+      "labelEn": "Rates look wrong for the role",
+      "labelBn": "ভূমিকার জন্য রেট ঠিক মনে হচ্ছে না",
+      "kinds": [
+        "hire_profile"
+      ],
+      "sort": 20
+    },
+    {
+      "code": "profile_details",
+      "labelEn": "Headline, experience or bio need changes (no contact details)",
+      "labelBn": "শিরোনাম, অভিজ্ঞতা বা বিবরণ বদলাতে হবে (যোগাযোগের তথ্য নয়)",
+      "kinds": [
+        "hire_profile"
+      ],
+      "sort": 21
     }
   ]
 }

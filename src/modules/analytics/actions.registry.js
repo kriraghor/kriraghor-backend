@@ -16,6 +16,9 @@ const PROVIDERS = {
     (p) => require('../bookings/bookings.reads').pendingActions(p, 'member'),
     // M13: parcels marked delivered that the buyer has not confirmed.
     (p) => require('../orders/orders.reads').pendingActions(p, 'member'),
+    // M11: requests to pay and jobs to confirm (managers); requests to answer and today's jobs (players and pros).
+    (p) => require('../hire/hire.reads').pendingActions(p, 'member'),
+    async (p) => (['player', 'pro'].some((r) => p.roles?.[r] === 'active') ? require('../hire/hire.reads').pendingActions(p, 'pro') : []),
     async (p) => (p.roles?.member === 'active' ? [] : [{ key: p.roles?.member === 'in_review' ? 'nid_in_review' : 'verify_nid', count: 1, severity: 'normal', dueAt: null, href: '/account/verification' }]),
   ],
   ground_owner: [(p) => require('../bookings/bookings.reads').pendingActions(p, 'ground_owner'), (p) => require('../grounds/grounds.reads').pendingActions(p)],

@@ -35,6 +35,7 @@ const trustRoutes = require('./modules/trust/trust.routes');
 const riskRoutes = require('./modules/risk/risk.routes');
 const marketRoutes = require('./modules/market/market.routes');
 const orderRoutes = require('./modules/orders/orders.routes');
+const hireRoutes = require('./modules/hire/hire.routes');
 
 // ADR-004: customer and admin origins (exact or one-label wildcard). Unknown origins get no CORS headers.
 const allowedOrigin = compile([...config.corsOrigins, ...config.adminOrigins]);
@@ -110,6 +111,11 @@ function createApp() {
   api.use('/me/orders', orderRoutes.meOrders);
   api.use('/me/sub-orders', orderRoutes.meSubOrders);
   api.use('/checkout', orderRoutes.checkoutRouter);
+  api.use('/hire', hireRoutes.publicRouter);
+  api.use('/me/shortlist', hireRoutes.meShortlist);
+  api.use('/me/hire-requests', hireRoutes.meRequests);
+  api.use('/me/hire-jobs', hireRoutes.meJobs);
+  api.use('/pro', hireRoutes.proRouter);
   api.use('/me/trust', riskRoutes.meTrust);
   api.use('/trust', riskRoutes.publicTrust);
   api.use('/me/disputes', trustRoutes.meDisputes);
@@ -154,6 +160,7 @@ function createApp() {
   api.use('/admin/risk', riskRoutes.adminRouter);
   api.use('/admin/market', marketRoutes.adminRouter);
   api.use('/admin/orders', orderRoutes.adminRouter);
+  api.use('/admin/hire', hireRoutes.adminRouter);
   api.use('/admin/disputes', trustRoutes.adminDisputes);
   api.use('/admin/reports', trustRoutes.adminReports);
   api.use('/admin/reviews', trustRoutes.adminReviews);

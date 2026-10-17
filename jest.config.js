@@ -46,5 +46,7 @@ module.exports = {
     './src/modules/market/market.rules.js': FULL,
     // M13 quote, commission, the sub-order state machine and deadlines.
     './src/modules/orders/orders.rules.js': FULL,
+    // M11 quote, rate limits, checks, the request and job machines, windows and cancellation.
+    './src/modules/hire/hire.rules.js': FULL,
   },
 };
