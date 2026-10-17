@@ -143,14 +143,30 @@ async function takeForRefund(hold, amount, { transaction }) {
   await hold.update({ refundedPoisha: refunded, status: rules.statusAfter(hold, { released: hold.releasedPoisha, refunded }) }, { transaction });
 }
 
-/** FR-14: freeze (dispute, master action). Frozen holds neither release nor auto-refund. */
+/**
+ * FR-14: freeze a locked hold inside the caller's transaction (M17 opens a dispute). Frozen holds
+ * neither release nor refund until they are unfrozen.
+ */
+async function freezeInTx(hold, { reason, ref = null, actor = null, transaction }) {
+  if (!rules.OPEN.has(hold.status)) throw new AppError(409, 'ESCROW_NOT_OPEN', 'Only an open hold can be frozen', { meta: { status: hold.status } });
+  await hold.update({ statusBeforeFreeze: hold.status, status: 'frozen', frozenReason: reason, frozenRef: ref }, { transaction });
+  await events.publish(transaction, { name: 'escrow.frozen', aggregateType: 'escrow_hold', aggregateId: hold.id, payload: { holdId: hold.id, reason, payeeId: hold.payeeId }, actor });
+  return hold;
+}
+
+async function unfreezeInTx(hold, { reason, actor = null, transaction }) {
+  if (hold.status !== 'frozen') throw new AppError(409, 'ESCROW_NOT_FROZEN', 'This hold is not frozen');
+  await hold.update({ status: hold.statusBeforeFreeze ?? 'holding', statusBeforeFreeze: null, frozenReason: null, frozenRef: null }, { transaction });
+  await events.publish(transaction, { name: 'escrow.unfrozen', aggregateType: 'escrow_hold', aggregateId: hold.id, payload: { holdId: hold.id, reason, payeeId: hold.payeeId }, actor });
+  return hold;
+}
+
+/** POST /admin/escrow/:id/freeze (master + step-up escrow.manage). */
 async function freeze(actor, holdId, { reason, ref = null }, req) {
   return sequelize.transaction(async (transaction) => {
     const hold = await lockHold(holdId, transaction);
-    if (!rules.OPEN.has(hold.status)) throw new AppError(409, 'ESCROW_NOT_OPEN', 'Only an open hold can be frozen', { meta: { status: hold.status } });
-    await hold.update({ statusBeforeFreeze: hold.status, status: 'frozen', frozenReason: reason, frozenRef: ref }, { transaction });
+    await freezeInTx(hold, { reason, ref, actor, transaction });
     await audit.record({ action: 'escrow.frozen', actor, entityType: 'escrow_hold', entityId: hold.id, reason, stepUp: Boolean(req), meta: { ref }, req }, { transaction });
-    await events.publish(transaction, { name: 'escrow.frozen', aggregateType: 'escrow_hold', aggregateId: hold.id, payload: { holdId: hold.id, reason, payeeId: hold.payeeId }, actor });
     return serialize(hold);
   });
 }
@@ -158,10 +174,8 @@ async function freeze(actor, holdId, { reason, ref = null }, req) {
 async function unfreeze(actor, holdId, { reason }, req) {
   return sequelize.transaction(async (transaction) => {
     const hold = await lockHold(holdId, transaction);
-    if (hold.status !== 'frozen') throw new AppError(409, 'ESCROW_NOT_FROZEN', 'This hold is not frozen');
-    await hold.update({ status: hold.statusBeforeFreeze ?? 'holding', statusBeforeFreeze: null, frozenReason: null, frozenRef: null }, { transaction });
+    await unfreezeInTx(hold, { reason, actor, transaction });
     await audit.record({ action: 'escrow.unfrozen', actor, entityType: 'escrow_hold', entityId: hold.id, reason, stepUp: Boolean(req), req }, { transaction });
-    await events.publish(transaction, { name: 'escrow.unfrozen', aggregateType: 'escrow_hold', aggregateId: hold.id, payload: { holdId: hold.id, reason, payeeId: hold.payeeId }, actor });
     return serialize(hold);
   });
 }
@@ -303,4 +317,4 @@ async function getOne(id) {
   return serialize(hold);
 }
 
-module.exports = { openHold, holdIdForPayment, lockHoldForPayment, releaseInTx, releaseManually, takeForRefund, freeze, unfreeze, releaseDue, settlePool, reversePoolCredit, list, getOne, serialize, lockHold };
+module.exports = { openHold, holdIdForPayment, lockHoldForPayment, releaseInTx, releaseManually, takeForRefund, freeze, unfreeze, freezeInTx, unfreezeInTx, releaseDue, settlePool, reversePoolCredit, list, getOne, serialize, lockHold };

@@ -3,7 +3,7 @@
 /**
  * Notification catalogue (M08 §6.6), as code. Each entry maps a domain event to recipients, channels
  * and template variables. Template texts are versioned rows in message_templates (EN and BN for
- * every default channel; a contract test checks it). Built so far: the M01, M02, M03, M04, M05, M06, M07, M09, M10, M19 and M21 events.
+ * every default channel; a contract test checks it). Built so far: the M01, M02, M03, M04, M05, M06, M07, M09, M10, M17, M19 and M21 events.
  *
  * Entry: { code, events[], category, channels[], urgent, roleContext?(e), recipients(e) → userIds,
  *          values(e, { locale, userId }) → template values, link(e) → in-app link }
@@ -86,6 +86,31 @@ async function holdFacts(holdId) {
   const hold = await require('../payments/escrow.service').getOne(holdId);
   return { ...hold, title: (await paymentFacts(hold.paymentId)).title };
 }
+
+// M17 disputes, reports and reviews.
+const disputeFacts = (id) => require('../trust/disputes.service').facts(id);
+const reviewFacts = (id) => require('../trust/reviews.service').facts(id);
+const OUTCOMES = {
+  en: { all: 'full refund', half: 'half refunded', none: 'no refund', custom: 'part refunded', upheld: 'upheld', rejected: 'not upheld', corrected: 'results corrected' },
+  bn: { all: 'পুরো টাকা ফেরত', half: 'অর্ধেক ফেরত', none: 'ফেরত নেই', custom: 'আংশিক ফেরত', upheld: 'আপনার পক্ষে', rejected: 'গ্রহণযোগ্য নয়', corrected: 'ফলাফল সংশোধিত' },
+};
+const outcomeText = (o, locale) => OUTCOMES[locale]?.[o] ?? OUTCOMES.en[o] ?? o;
+const REPORT_OUTCOMES = {
+  en: { no_violation: 'we found nothing against our rules', content_removed: 'we removed it', owner_warned: 'we warned the owner', user_suspended: 'we suspended the account', converted_to_dispute: 'please open a dispute from the booking' },
+  bn: { no_violation: 'নিয়মবিরোধী কিছু পাইনি', content_removed: 'আমরা এটি সরিয়ে দিয়েছি', owner_warned: 'মালিককে সতর্ক করেছি', user_suspended: 'অ্যাকাউন্ট স্থগিত করেছি', converted_to_dispute: 'বুকিং থেকে বিরোধ খুলুন' },
+};
+const SUBJECT_LABELS = {
+  en: { ground: 'ground', booking: 'booking', user: 'member', review: 'review', esports_tournament: 'tournament' },
+  bn: { ground: 'মাঠ', booking: 'বুকিং', user: 'সদস্য', review: 'রিভিউ', esports_tournament: 'টুর্নামেন্ট' },
+};
+const subjectLabel = (t, locale) => SUBJECT_LABELS[locale]?.[t] ?? SUBJECT_LABELS.en[t] ?? t;
+const disputeValues = async (e, { locale }) => {
+  const f = await disputeFacts(e.payload.disputeId);
+  return { code: f.code, ref: f.ref, dueAt: f.respondentDueAt, outcome: outcomeText(f.outcome, locale), refund: f.refund };
+};
+const myDispute = (e) => `/me/disputes/${e.payload.code}`;
+const vendorDispute = (e) => vendorUrl(`/vendor/disputes/${e.payload.code}`);
+const adminDispute = (e) => `/admin/disputes?code=${e.payload.code}`;
 
 const CATALOGUE = [
   // ---------------- M04: critical audit actions → every other master (FR-11)
@@ -774,6 +799,110 @@ const CATALOGUE = [
     recipients: toBooker,
     values: bookingValues,
     link: myBooking,
+  },
+  // ---------------- M17 disputes, reports and reviews
+  {
+    code: 'DISPUTE_OPENED',
+    events: ['dispute.opened'],
+    category: 'disputes_reports',
+    channels: ['in_app', 'sms'],
+    urgent: true,
+    recipients: (e) => (e.payload.respondentId ? [e.payload.respondentId] : []),
+    values: disputeValues,
+    link: vendorDispute,
+  },
+  {
+    code: 'DISPUTE_RECEIVED',
+    events: ['dispute.opened'],
+    category: 'disputes_reports',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.claimantId],
+    values: disputeValues,
+    link: myDispute,
+  },
+  {
+    code: 'DISPUTE_RESPONSE_DUE',
+    events: ['dispute.respondent_reminded'],
+    category: 'disputes_reports',
+    channels: ['in_app'],
+    recipients: (e) => (e.payload.respondentId ? [e.payload.respondentId] : []),
+    values: disputeValues,
+    link: vendorDispute,
+  },
+  {
+    code: 'DISPUTE_RESPONDED',
+    events: ['dispute.response_submitted'],
+    category: 'disputes_reports',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.claimantId],
+    values: disputeValues,
+    link: myDispute,
+  },
+  {
+    code: 'DISPUTE_DECIDED',
+    events: ['dispute.resolved'],
+    category: 'disputes_reports',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.claimantId, e.payload.respondentId].filter(Boolean),
+    values: disputeValues,
+    link: (e, { userId } = {}) => (userId && userId === e.payload.respondentId ? vendorDispute(e) : myDispute(e)),
+  },
+  {
+    code: 'DISPUTE_ESCALATED',
+    events: ['dispute.escalated'],
+    category: 'staff_ops',
+    channels: ['in_app'],
+    recipients: () => directory.masters(),
+    values: disputeValues,
+    link: adminDispute,
+  },
+  {
+    code: 'DISPUTE_SLA_BREACHED',
+    events: ['dispute.sla_breached'],
+    category: 'staff_ops',
+    channels: ['in_app'],
+    recipients: (e) => (e.payload.level === 'master' ? directory.masters() : directory.withPermission(e.payload.sourceType === 'esports_result' ? 'manage_esports' : 'resolve_reports')),
+    values: disputeValues,
+    link: adminDispute,
+  },
+  {
+    code: 'REPORT_OUTCOME',
+    events: ['report.resolved'],
+    category: 'disputes_reports',
+    channels: ['in_app'],
+    recipients: (e) => e.payload.reporterIds,
+    values: (e, { locale }) => ({ subject: subjectLabel(e.payload.subjectType, locale), outcome: REPORT_OUTCOMES[locale]?.[e.payload.action] ?? REPORT_OUTCOMES.en[e.payload.action] }),
+    link: () => '/me/reports',
+  },
+  {
+    code: 'REPORT_FLAGGED',
+    events: ['report.threshold_reached'],
+    category: 'staff_ops',
+    channels: ['in_app'],
+    recipients: () => directory.withPermission('resolve_reports'),
+    values: (e, { locale }) => ({ subject: subjectLabel(e.payload.subjectType, locale), reporters: e.payload.reporters }),
+    link: (e) => `/admin/reports?subjectType=${e.payload.subjectType}&subjectId=${e.payload.subjectId}`,
+  },
+  {
+    code: 'REVIEW_NEW',
+    events: ['review.posted'],
+    category: 'reviews',
+    channels: ['in_app'],
+    recipients: (e) => (e.payload.status === 'published' ? [e.payload.ownerId] : []),
+    values: async (e) => {
+      const f = await reviewFacts(e.payload.reviewId);
+      return { stars: f.stars, ground: f.groundName };
+    },
+    link: () => vendorUrl('/vendor/reviews'),
+  },
+  {
+    code: 'REVIEW_HIDDEN',
+    events: ['review.hidden'],
+    category: 'reviews',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.authorId],
+    values: async (e) => ({ ground: (await reviewFacts(e.payload.reviewId)).groundName }),
+    link: () => '/me/reviews',
   },
 ];
 

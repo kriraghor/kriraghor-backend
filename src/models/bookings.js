@@ -90,6 +90,7 @@ Booking.init(
     cancelNote: DataTypes.STRING(200),
     remindedAt: DataTypes.DATE(3),
     unrecordedAt: DataTypes.DATE(3),
+    settleDueAt: DataTypes.DATE(3),
     ...by,
   },
   { sequelize, modelName: 'Booking', tableName: 'bookings' }

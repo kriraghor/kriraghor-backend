@@ -9,12 +9,16 @@
  *   courtsOfBooking(bookingId)        the courts and Dhaka days a booking touches
  *   seriesBookingIds(seriesId)        the bookings of a series (they are created without booking events)
  *   pendingActions(principal, role)   M19 "Needs your action": check-ins due today, unrecorded balances, holds to pay
+ *   reviewSource(bookingId)           M17 reviews: who booked which ground, its status and end
+ *   playedBy(userId, since)           M17 "rate your games": the member's played bookings that ended after since
  */
 const { Op } = require('sequelize');
 const { Booking } = require('../../models');
 const reads = require('../grounds/grounds.reads');
 const pr = require('../grounds/pricing.rules');
 const rules = require('./bookings.rules');
+
+const PLAYED = ['checked_in', 'completed'];
 
 async function facts(bookingId) {
   const b = await Booking.findByPk(bookingId);
@@ -112,4 +116,15 @@ async function pendingActions(principal, role, now = new Date()) {
   return holds.map((b) => ({ key: 'hold_to_pay', count: 1, severity: 'high', dueAt: b.holdExpiresAt.toISOString(), href: `/me/bookings/${b.id}` }));
 }
 
-module.exports = { pendingActions, facts, bookingFact, exportFacts, courtsOfBooking, seriesBookingIds, courtDays };
+const reviewView = (b) => ({ bookingId: b.id, code: b.code, groundId: b.groundId, ownerId: b.ownerId, bookerUserId: b.bookerUserId ?? null, status: b.status, start: b.startAt, end: b.endAt });
+
+async function reviewSource(bookingId) {
+  const b = await Booking.findByPk(bookingId);
+  return b ? reviewView(b) : null;
+}
+
+async function playedBy(userId, since, now = new Date()) {
+  const rows = await Booking.findAll({ where: { bookerUserId: userId, status: PLAYED, endAt: { [Op.gt]: since, [Op.lte]: now } }, order: [['endAt', 'DESC']], limit: 50 });
+  return rows.map(reviewView);
+}
+module.exports = { reviewSource, playedBy, pendingActions, facts, bookingFact, exportFacts, courtsOfBooking, seriesBookingIds, courtDays };

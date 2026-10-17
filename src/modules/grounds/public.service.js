@@ -21,6 +21,9 @@ const occupancy = require('./occupancy.port');
 const c = require('./grounds.common');
 const pricing = require('./pricing.service');
 
+/** M17: the average shows once the ground has reviews.min_count_display published reviews. */
+const shownRating = (g) => (g.ratingCount >= require('../settings/settings.service').get('reviews.min_count_display') ? (g.ratingAvg ?? null) : null);
+
 /** Lowest and highest hourly rate in the coming week across the public courts. */
 function priceBand(r, courtIds) {
   let lo = Infinity;
@@ -137,7 +140,7 @@ function card({ g, s, band, distanceM, openHours }, names) {
     priceFromPoisha: band.from,
     distanceM,
     openHoursToday: openHours ?? null,
-    ratingAvg: g.ratingAvg ?? null,
+    ratingAvg: shownRating(g),
     ratingCount: g.ratingCount,
   };
 }
@@ -205,7 +208,7 @@ async function detail(slug) {
       halfRefundHours: policy.advanceRefundable ? r.halfRefundHours : null,
     },
     owner: { displayName: owner?.displayName ?? null },
-    ratingAvg: g.ratingAvg ?? null,
+    ratingAvg: shownRating(g),
     ratingCount: g.ratingCount,
     bookingOpen: g.status === 'live', // M10: live grounds take bookings
     version: g.liveVersion,

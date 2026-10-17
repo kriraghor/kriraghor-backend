@@ -6,7 +6,7 @@
  * invalid payloads before commit. Payloads carry IDs, codes, amounts, statuses and timestamps only:
  * no phone, NID, DOB, email or names (consumers read details through the producer's service).
  *
- * Built so far: M01, M02, M03, M04, M05, M06, M07, M09, M10, M19, M21. Each later module adds its events here when it is built.
+ * Built so far: M01, M02, M03, M04, M05, M06, M07, M09, M10, M17, M19, M21. Each later module adds its events here when it is built.
  */
 const { z } = require('zod');
 
@@ -27,6 +27,9 @@ const esMatch = z.object({ matchId: uuid, tournamentId: uuid });
 const esProfile = z.object({ profileId: uuid, userId: uuid, gameId: uuid });
 const esShare = z.object({ shareId: uuid, tournamentId: uuid, userId: uuid, amount: poisha });
 const bookingEvent = z.object({ bookingId: uuid, code: z.string().max(16), groundId: uuid, ownerId: uuid, bookerUserId: uuid.nullable() });
+const disputeEvent = z.object({ disputeId: uuid, code: z.string().max(20), sourceType: z.enum(['booking', 'esports_result']), sourceId: uuid, category: z.string().max(30), claimantId: uuid, respondentId: uuid.nullable() });
+const subjectType = z.enum(['ground', 'booking', 'user', 'review', 'esports_tournament']);
+const reviewEvent = z.object({ reviewId: uuid, subjectType: z.literal('ground'), subjectId: uuid, authorId: uuid });
 const catalogItem = z.object({ table: z.string(), id: uuid, key: z.string(), version: z.number().int().optional(), isActive: z.boolean().optional() });
 
 const EVENTS = {
@@ -218,12 +221,37 @@ const EVENTS = {
   'booking.moved': { module: 'M10', version: 1, schema: bookingEvent.extend({ fromGroundId: uuid, newGround: z.boolean() }) },
   'booking.walk_in_recorded': { module: 'M10', version: 1, schema: bookingEvent.extend({ start: iso, price: poisha }) },
   'booking.reminded': { module: 'M10', version: 1, schema: bookingEvent.extend({ start: iso }) },
+  'booking.no_show_settled': { module: 'M10', version: 1, schema: bookingEvent.extend({ released: poisha, fee: poisha }) },
+  'booking.dispute_settled': { module: 'M10', version: 1, schema: bookingEvent.extend({ refund: poisha, released: poisha, fee: poisha }) },
+
+  // ---------------- M17 Disputes, Reports and Reviews
+  'dispute.opened': { module: 'M17', version: 1, schema: disputeEvent.extend({ money: z.boolean(), held: poisha }) },
+  'dispute.response_submitted': { module: 'M17', version: 1, schema: disputeEvent },
+  'dispute.respondent_reminded': { module: 'M17', version: 1, schema: disputeEvent.extend({ dueAt: iso.nullable() }) },
+  'dispute.response_expired': { module: 'M17', version: 1, schema: disputeEvent },
+  'dispute.escalated': { module: 'M17', version: 1, schema: disputeEvent },
+  'dispute.returned': { module: 'M17', version: 1, schema: disputeEvent },
+  'dispute.resolved': { module: 'M17', version: 1, schema: disputeEvent.extend({ outcome: z.string().max(20), refund: poisha }) },
+  'dispute.withdrawn': { module: 'M17', version: 1, schema: disputeEvent },
+  'dispute.sla_breached': { module: 'M17', version: 1, schema: disputeEvent.extend({ level: z.enum(['staff', 'master']) }) },
+  'report.filed': { module: 'M17', version: 1, schema: z.object({ reportId: uuid, code: z.string().max(20), subjectType, subjectId: uuid, reporterId: uuid, reasonCode: z.string().max(30), eligible: z.boolean() }) },
+  'report.threshold_reached': { module: 'M17', version: 1, schema: z.object({ subjectType, subjectId: uuid, reporters: z.number().int(), hidden: z.boolean() }) },
+  'report.escalated': { module: 'M17', version: 1, schema: z.object({ subjectType, subjectId: uuid, reports: z.number().int() }) },
+  'report.resolved': { module: 'M17', version: 1, schema: z.object({ subjectType, subjectId: uuid, action: z.string().max(30), reports: z.number().int(), reporterIds: z.array(uuid) }) },
+  'report.dismissed': { module: 'M17', version: 1, schema: z.object({ reportId: uuid, code: z.string().max(20), subjectType, subjectId: uuid, reporterId: uuid }) },
+  'review.posted': { module: 'M17', version: 1, schema: reviewEvent.extend({ ownerId: uuid, stars: z.number().int().min(1).max(5), status: z.string().max(12) }) },
+  'review.edited': { module: 'M17', version: 1, schema: reviewEvent.extend({ stars: z.number().int().min(1).max(5), status: z.string().max(12) }) },
+  'review.hidden': { module: 'M17', version: 1, schema: reviewEvent.extend({ reason: z.string().max(60) }) },
+  'review.restored': { module: 'M17', version: 1, schema: reviewEvent },
+  'review.published': { module: 'M17', version: 1, schema: reviewEvent },
+  'review.replied': { module: 'M17', version: 1, schema: reviewEvent },
+  'review.aggregate_updated': { module: 'M17', version: 1, schema: z.object({ subjectType: z.literal('ground'), subjectId: uuid, count: z.number().int().nonnegative(), avg: z.number().nullable() }) },
 
   // ---------------- M19 Dashboards and Analytics
   'analytics.drift_detected': { module: 'M19', version: 1, schema: z.object({ vertical: z.string().max(20), records: z.number().int(), amount: poisha, runAt: iso }) },
 };
 /** FR-19: `<aggregate>.<past_tense_verb>`, snake_case. Irregular past tenses are listed. */
-const IRREGULAR = new Set(['sent', 'paid', 'held', 'won', 'lost', 'made', 'begun', 'done', 'drawn', 'shown', 'thrown', 'given', 'taken', 'built', 'set', 'put', 'cut', 'withdrawn', 'chosen', 'written', 'frozen', 'unfrozen', 'seen', 'broken', 'sold', 'told', 'found', 'left', 'met', 'read', 'run', 'spent', 'struck']);
+const IRREGULAR = new Set(['sent', 'paid', 'held', 'won', 'lost', 'made', 'begun', 'done', 'drawn', 'shown', 'thrown', 'given', 'taken', 'built', 'set', 'put', 'cut', 'withdrawn', 'chosen', 'written', 'frozen', 'unfrozen', 'seen', 'broken', 'sold', 'told', 'found', 'left', 'met', 'read', 'run', 'spent', 'struck', 'hidden']);
 function nameError(name) {
   const m = /^([a-z][a-z0-9_]*)\.([a-z][a-z0-9_]*)$/.exec(name);
   if (!m) return 'Use <aggregate>.<verb> in snake_case';

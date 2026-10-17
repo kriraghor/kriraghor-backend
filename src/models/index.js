@@ -1161,6 +1161,9 @@ grounds.BookingSeries.hasMany(bookings.Booking, { as: 'bookings', foreignKey: 's
 // ---- M19 analytics read models (./analytics.js) ----
 const analytics = require('./analytics');
 
+// ---- M17 disputes, reports and reviews (./trust.js) ----
+const trust = require('./trust');
+
 // ---- M21 esports (models in ./esports.js) ----
 const esports = require('./esports');
 esports.EsportsTournament.belongsTo(EsportsGame, { as: 'game', foreignKey: 'gameId' });
@@ -1175,6 +1178,7 @@ module.exports = {
   ...grounds,
   ...bookings,
   ...analytics,
+  ...trust,
   sequelize,
   User,
   UserRole,

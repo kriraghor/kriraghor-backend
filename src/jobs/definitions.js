@@ -24,6 +24,7 @@ const esportsLifecycle = require('../modules/esports/esports.lifecycle');
 const esportsRankings = require('../modules/esports/rankings.service');
 const bookings = require('../modules/bookings/bookings.service');
 const analytics = require('../modules/analytics/facts.service');
+const disputes = require('../modules/trust/disputes.service');
 const { purgeExpired: purgeIdempotencyKeys } = require('../common/idempotency');
 const logger = require('../common/logger');
 
@@ -234,6 +235,15 @@ const JOBS = [
     queue: QUEUES.BOOKINGS,
     every: 60 * 1000,
     run: async () => bookings.tick(),
+  },
+  // ---------------- M17 disputes (§10). Idempotent: every step re-checks the state under a row lock.
+  {
+    // Respondent reminders (disputes.respondent_reminder_hours before) and timeouts; staff and master
+    // SLA breaches (once per level); expired desk claims. No-show advances are released by bookings.tick.
+    name: 'trust.tick',
+    queue: QUEUES.TRUST,
+    every: 60 * 1000,
+    run: async () => disputes.tick(),
   },
   // ---------------- M19 analytics (§10). Idempotent: upserts and REFRESH … CONCURRENTLY under an advisory lock.
   {

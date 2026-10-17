@@ -171,6 +171,7 @@ const Disqualified = z.object({ id: z.uuid(), registrationId: z.uuid(), status: 
 const Left = z.object({ left: z.boolean(), squadStatus: z.string() }).meta({ id: 'EsportsSquadLeft' });
 
 module.exports = {
+  resultRow,
   idParam,
   slugParam,
   handleParam,

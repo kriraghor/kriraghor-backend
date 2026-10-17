@@ -18,9 +18,10 @@ const esS = require('../modules/esports/esports.schemas');
 const grS = require('../modules/grounds/grounds.schemas');
 const bkS = require('../modules/bookings/bookings.schemas');
 const anS = require('../modules/analytics/analytics.schemas');
+const trS = require('../modules/trust/trust.schemas');
 
 /**
- * Every route (M01, M02, M03, M04, M05, M06, M07, M08, M09, M21), registered with its request and response schemas and the stable error
+ * Every route (M01 to M10, M17, M19, M21), registered with its request and response schemas and the stable error
  * codes it can return (ADR-002). When a route is added in a module, add it here: the
  * coverage test fails if an Express route has no OpenAPI entry.
  */
@@ -761,6 +762,73 @@ function register(registry) {
   p({ method: 'get', path: '/admin/analytics/export', tags: ['analytics'], summary: 'CSV of the platform day table (master or view_analytics)', security: adminBearer,
     request: { query: anS.platformExportQuery }, responses: { 200: csv, ...errors({ ...ADMIN_AUTH, 404: ['DATASET_UNKNOWN'], 422: ['VALIDATION_FAILED', 'EXPORT_TOO_LARGE'], 429: ['EXPORT_LIMIT'] }) } });
   p({ method: 'get', path: '/admin/analytics/actions', tags: ['analytics'], summary: 'Needs your action for staff (the review queue)', security: adminBearer, responses: { 200: json(anS.Actions), ...errors(ADMIN_AUTH) } });
+  // ------------------------------------------------------------------ M17 disputes, reports and reviews
+  const dCode = { params: trS.codeParam };
+  const dEv = { params: trS.evidenceParam };
+  const rvId = { params: trS.idParam };
+  const file = { description: 'The file (inline, no-store, sandboxed)', content: { 'application/octet-stream': { schema: z.string() } } };
+  const DPARTY = { ...COMMON_AUTH, 404: ['NOT_A_PARTY', 'NOT_FOUND'] };
+  const DSTAFF = { ...ADMIN_AUTH, 404: ['NOT_FOUND'] };
+  const DECIDE = {
+    403: [...ADMIN_AUTH[403], 'CONFLICT_OF_INTEREST', 'CLAIM_REQUIRED', 'REFUND_PERMISSION_REQUIRED', 'ESCALATION_REQUIRED', 'STEP_UP_REQUIRED'],
+    409: ['DISPUTE_STATE', 'DISPUTE_VERSION', 'DISPUTE_SOURCE_CHANGED', 'ESCROW_FROZEN'],
+    422: ['VALIDATION_FAILED', 'OUTCOME_NOT_ALLOWED', 'REFUND_INVALID', 'CORRECTION_REQUIRED'],
+  };
+  p({ method: 'post', path: '/disputes', tags: ['disputes'], summary: 'Open a booking dispute as the member who paid (gate file_dispute: a verified phone); the escrow hold is frozen (FR-01 to FR-04)', security: bearer,
+    request: { headers: idem, ...body(trS.openBody) }, responses: { 201: json(trS.PartyCase, 'Created'), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'NOT_YOUR_BOOKING', 'ACCOUNT_SUSPENDED'], 409: ['DISPUTE_NOT_ELIGIBLE', 'DISPUTE_WINDOW_CLOSED', 'DISPUTE_ALREADY_OPEN', 'ESCROW_NOT_OPEN'], 429: ['DISPUTE_LIMIT'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/disputes', tags: ['disputes'], summary: 'My disputes, as the claimant or the respondent', security: bearer, request: { query: trS.mineQuery }, responses: { 200: json(trS.CaseList), ...errors({ ...COMMON_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/disputes/options', tags: ['disputes'], summary: 'What I can dispute on a booking now, and its latest case', security: bearer, request: { query: trS.optionsQuery }, responses: { 200: json(trS.Options), ...errors({ ...COMMON_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/disputes/{code}', tags: ['disputes'], summary: 'A case: the booking, both sides, the timeline and what I can do', security: bearer, request: dCode, responses: { 200: json(trS.PartyCase), ...errors(DPARTY) } });
+  p({ method: 'post', path: '/me/disputes/{code}/statement', tags: ['disputes'], summary: 'Add a statement while the case is open (FR-05)', security: bearer,
+    request: { ...dCode, ...body(trS.statementBody) }, responses: { 200: json(trS.PartyCase), ...errors({ ...DPARTY, 409: ['DISPUTE_STATE', 'EVIDENCE_LIMIT'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/disputes/{code}/evidence', tags: ['disputes'], summary: 'Upload a file (raw body: JPEG, PNG, WebP or PDF, typed by its bytes; private, audited) (FR-05)', security: bearer,
+    request: { ...dCode, body: { content: { 'application/octet-stream': { schema: z.string() } } } }, responses: { 201: json(trS.EvidenceResult, 'Created'), ...errors({ ...DPARTY, 409: ['DISPUTE_STATE', 'EVIDENCE_LIMIT'], 413: ['FILE_TOO_LARGE'], 415: ['FILE_TYPE'], 429: ['UPLOAD_RATE_LIMITED'] }) } });
+  p({ method: 'get', path: '/me/disputes/{code}/evidence/{eid}/file', tags: ['disputes'], summary: 'Read a file of the case (audited)', security: bearer, request: dEv, responses: { 200: file, ...errors(DPARTY) } });
+  p({ method: 'post', path: '/me/disputes/{code}/respond', tags: ['disputes'], summary: "The respondent's side; the case goes to staff (FR-06)", security: bearer,
+    request: { ...dCode, ...body(trS.statementBody) }, responses: { 200: json(trS.PartyCase), ...errors({ ...DPARTY, 409: ['DISPUTE_STATE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/disputes/{code}/withdraw', tags: ['disputes'], summary: 'Withdraw my case; the hold is unfrozen and the booking settles as usual (FR-07)', security: bearer,
+    request: { ...dCode, ...body(trS.withdrawBody) }, responses: { 200: json(trS.PartyCase), ...errors({ ...DPARTY, 409: ['DISPUTE_STATE'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/disputes', tags: ['disputes'], summary: 'The dispute queue, escalated and most urgent first (resolve_reports for bookings, manage_esports for results)', security: adminBearer,
+    request: { query: trS.adminListQuery }, responses: { 200: json(trS.StaffList), ...errors({ ...ADMIN_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/disputes/{code}', tags: ['disputes'], summary: 'A case with both sides, the policy line, the outcomes and what each would move', security: adminBearer, request: dCode, responses: { 200: json(trS.StaffCase), ...errors(DSTAFF) } });
+  for (const [action, summary] of [['claim', 'Claim a case (one reviewer at a time; parties cannot)'], ['heartbeat', 'Keep my claim'], ['release', 'Let my claim go']]) {
+    p({ method: 'post', path: `/admin/disputes/{code}/${action}`, tags: ['disputes'], summary, security: adminBearer, request: dCode,
+      responses: { 200: json(action === 'claim' ? trS.StaffCase : z.object({}).loose()), ...errors({ ...DSTAFF, 403: [...ADMIN_AUTH[403], 'CONFLICT_OF_INTEREST', 'CLAIM_REQUIRED'], 409: ['DISPUTE_STATE', 'CLAIMED_BY_OTHER'] }) } });
+  }
+  p({ method: 'post', path: '/admin/disputes/{code}/notes', tags: ['disputes'], summary: 'A staff-only note', security: adminBearer, request: { ...dCode, ...body(trS.noteBody) }, responses: { 200: json(trS.StaffCase), ...errors({ ...DSTAFF, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/disputes/{code}/evidence/{eid}/file', tags: ['disputes'], summary: 'Read a file of the case (audited)', security: adminBearer, request: dEv, responses: { 200: file, ...errors(DSTAFF) } });
+  p({ method: 'post', path: '/admin/disputes/{code}/evidence/{eid}/hide', tags: ['disputes'], summary: 'Hide an item from the parties, with a reason', security: adminBearer, request: { ...dEv, ...body(trS.hideBody) }, responses: { 200: json(trS.StaffCase), ...errors({ ...DSTAFF, ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/disputes/{code}/decide', tags: ['disputes'], summary: 'Decide a claimed case: refunds within refunds.staff_limit_poisha need refund_small; the money moves in the same transaction (FR-11, FR-13)', security: adminBearer,
+    request: { ...dCode, headers: idem, ...body(trS.decideBody) }, responses: { 200: json(trS.StaffCase), ...errors({ ...DSTAFF, ...DECIDE }) } });
+  p({ method: 'post', path: '/admin/disputes/{code}/escalate', tags: ['disputes'], summary: 'Escalate to the masters with a recommendation (FR-12)', security: adminBearer,
+    request: { ...dCode, ...body(trS.escalateBody) }, responses: { 200: json(trS.StaffCase), ...errors({ ...DSTAFF, 403: [...ADMIN_AUTH[403], 'CONFLICT_OF_INTEREST'], 409: ['DISPUTE_STATE', 'DISPUTE_VERSION'], 422: ['VALIDATION_FAILED', 'OUTCOME_NOT_ALLOWED', 'REFUND_INVALID'] }) } });
+  p({ method: 'post', path: '/admin/disputes/{code}/master-decide', tags: ['disputes'], summary: 'A master decides any amount (step-up refund.large)', security: adminBearer,
+    request: { ...dCode, headers: stepUpHeader.extend(idem.shape), ...body(trS.decideBody) }, responses: { 200: json(trS.StaffCase), ...errors({ ...DSTAFF, ...DECIDE }) } });
+  p({ method: 'post', path: '/admin/disputes/{code}/send-back', tags: ['disputes'], summary: 'A master sends an escalated case back to staff', security: adminBearer,
+    request: { ...dCode, ...body(trS.sendBackBody) }, responses: { 200: json(trS.StaffCase), ...errors({ ...DSTAFF, 409: ['DISPUTE_STATE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/reports', tags: ['reports'], summary: 'Report a ground, booking, member, review or tournament (reports.per_day) (FR-15, FR-16)', security: bearer,
+    request: body(trS.reportBody), responses: { 201: json(trS.ReportResult, 'Created'), ...errors({ ...COMMON_AUTH, 404: ['REPORT_SUBJECT_UNKNOWN'], 409: ['REPORT_DUPLICATE'], 422: ['VALIDATION_FAILED', 'REPORT_SELF'], 429: ['REPORT_RATE_LIMITED'] }) } });
+  p({ method: 'get', path: '/me/reports', tags: ['reports'], summary: 'What I reported and how it ended', security: bearer, responses: { 200: json(trS.MyReports), ...errors(COMMON_AUTH) } });
+  p({ method: 'get', path: '/admin/reports', tags: ['reports'], summary: 'Reported subjects, flagged first (resolve_reports) (FR-17)', security: adminBearer, request: { query: trS.reportListQuery }, responses: { 200: json(trS.ReportQueue), ...errors({ ...ADMIN_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/reports/subjects/{type}/{id}', tags: ['reports'], summary: 'Every report of a subject and the actions that apply', security: adminBearer, request: { params: trS.subjectParam }, responses: { 200: json(trS.ReportSubject), ...errors({ ...ADMIN_AUTH, ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/reports/resolve', tags: ['reports'], summary: 'Resolve every open report of a subject with one action (suspensions need manage_users) (FR-18)', security: adminBearer,
+    request: body(trS.resolveBody), responses: { 200: json(trS.ReportAction), ...errors({ ...ADMIN_AUTH, 404: ['REPORT_SUBJECT_UNKNOWN'], 409: ['NOTHING_OPEN', 'USER_NOT_ACTIVE', 'GROUND_STATE'], 422: ['VALIDATION_FAILED', 'RESOLUTION_NOT_ALLOWED'] }) } });
+  p({ method: 'post', path: '/admin/reports/escalate', tags: ['reports'], summary: "Escalate a subject's reports to the masters", security: adminBearer, request: body(trS.escalateReportBody), responses: { 200: json(trS.ReportAction), ...errors({ ...ADMIN_AUTH, 409: ['NOTHING_OPEN'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/reports/{code}/dismiss', tags: ['reports'], summary: 'Dismiss one report', security: adminBearer, request: { ...dCode, ...body(trS.dismissBody) }, responses: { 200: json(trS.ReportAction), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'], 409: ['NOTHING_OPEN'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/grounds/{id}/reviews', tags: ['reviews'], summary: 'Published reviews of a ground with the summary (the average from reviews.min_count_display reviews)', request: { ...rvId, query: trS.publicReviewsQuery }, responses: { 200: json(trS.PublicReviews), ...errors(VALIDATION) } });
+  p({ method: 'post', path: '/reviews', tags: ['reviews'], summary: 'Rate a ground after playing (once per booking; held while a dispute is open) (FR-20, FR-21)', security: bearer,
+    request: body(trS.reviewBody), responses: { 201: json(trS.ReviewResult, 'Created'), ...errors({ ...COMMON_AUTH, 403: ['NOT_YOUR_BOOKING'], 404: ['NOT_FOUND'], 409: ['NOT_PLAYED', 'REVIEW_WINDOW_CLOSED', 'REVIEW_EXISTS'], ...VALIDATION }) } });
+  p({ method: 'patch', path: '/reviews/{id}', tags: ['reviews'], summary: 'Change my review within reviews.edit_days (FR-22)', security: bearer,
+    request: { ...rvId, ...body(trS.reviewPatch) }, responses: { 200: json(trS.ReviewResult), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], 409: ['REVIEW_EDIT_CLOSED', 'REVIEW_HIDDEN'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/reviewable', tags: ['reviews'], summary: 'My played bookings still waiting for a rating', security: bearer, responses: { 200: json(trS.Reviewable), ...errors(COMMON_AUTH) } });
+  p({ method: 'get', path: '/me/reviews', tags: ['reviews'], summary: 'My reviews', security: bearer, responses: { 200: json(trS.ReviewList), ...errors(COMMON_AUTH) } });
+  p({ method: 'get', path: '/me/ground-reviews', tags: ['reviews'], summary: 'Reviews of my grounds (gate list_ground)', security: bearer, request: { query: trS.ownerReviewsQuery }, responses: { 200: json(trS.ReviewList), ...errors({ ...COMMON_AUTH, 403: ['ROLE_REQUIRED', 'KYC_REQUIRED'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/ground-reviews/{id}/reply', tags: ['reviews'], summary: 'Reply to a review of my ground (FR-25)', security: bearer,
+    request: { ...rvId, ...body(trS.replyBody) }, responses: { 200: json(trS.ReviewResult), ...errors({ ...COMMON_AUTH, 403: ['NOT_OWNER', 'ROLE_REQUIRED'], 404: ['NOT_FOUND'], 409: ['REVIEW_STATE'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/reviews', tags: ['reviews'], summary: 'Held, hidden or published reviews (resolve_reports)', security: adminBearer, request: { query: trS.adminReviewsQuery }, responses: { 200: json(trS.ReviewList), ...errors({ ...ADMIN_AUTH, ...VALIDATION }) } });
+  for (const [action, summary, extra] of [['hide', 'Hide a review with a reason', body(trS.hideReviewBody)], ['restore', 'Restore a hidden review', {}], ['publish', 'Publish a held review', {}]]) {
+    p({ method: 'post', path: `/admin/reviews/{id}/${action}`, tags: ['reviews'], summary, security: adminBearer, request: { ...rvId, ...extra }, responses: { 200: json(trS.ReviewResult), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'], 409: ['REVIEW_STATE'], ...VALIDATION }) } });
+  }
 }
 
 function dateTimeOf() {

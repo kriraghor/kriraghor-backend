@@ -115,13 +115,16 @@ async function createInTx({ payment, amount, kind, reasonCode, reasonText = null
 /**
  * A purpose module refunds one of its payments by id (M21: tournament cancelled, minimum not met, a
  * player withdrew before close). System policy refunds are approved at once and reserved from escrow.
- * Returns null when the payment never captured (nothing to refund). Idempotent by key.
+ * M17 dispute decisions pass kind 'dispute' and the decider as `actor` (initiated_by): M17 has
+ * already checked the authority (staff within refunds.staff_limit_poisha, or a master), so they are
+ * approved at once too. Returns null when the payment never captured (nothing to refund).
+ * Idempotent by key.
  */
-async function refundPayment({ paymentId, amount, reasonCode, idempotencyKey, actor = null }, { transaction }) {
+async function refundPayment({ paymentId, amount, reasonCode, reasonText = null, idempotencyKey, actor = null, kind = 'policy' }, { transaction }) {
   const payment = await Payment.findByPk(paymentId, { transaction, lock: transaction.LOCK.UPDATE });
   if (!payment || !['succeeded', 'partially_refunded'].includes(payment.status)) return null;
   if (amount <= 0) return null;
-  return createInTx({ payment, amount, kind: 'policy', reasonCode, actor, actorKind: 'system', idempotencyKey }, { transaction });
+  return createInTx({ payment, amount, kind, reasonCode, reasonText, actor, actorKind: 'system', idempotencyKey }, { transaction });
 }
 
 /** POST /admin/refunds (refund_small or master; Idempotency-Key). */

@@ -36,6 +36,13 @@ function registerGroundsConsumers() {
   for (const name of ['user.suspended', 'user.banned']) {
     onEvent(name, `grounds.sanction-${name.split('.')[1]}`, (e, { transaction }) => require('./grounds.service').pauseAllOf(e.payload.userId, 'owner_sanction', { transaction }));
   }
+  // M17: the rating on the ground follows the published reviews (read at consume time, so a late or
+  // replayed event never writes an old figure).
+  onEvent('review.aggregate_updated', 'grounds.rating', async (e, { transaction }) => {
+    if (e.payload.subjectType !== 'ground') return null;
+    const r = await require('../trust/reviews.service').ratingOf('ground', e.payload.subjectId, { transaction });
+    return require('./grounds.service').setRating(e.payload.subjectId, r, { transaction });
+  });
 }
 
 module.exports = { registerGroundsConsumers };

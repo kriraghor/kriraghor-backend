@@ -38,5 +38,7 @@ module.exports = {
     './src/modules/bookings/bookings.rules.js': FULL,
     // M19 periods, deltas and KPI formulas.
     './src/modules/analytics/analytics.rules.js': FULL,
+    // M17 dispute machine, outcome maths, authority, reporter eligibility and reviews.
+    './src/modules/trust/trust.rules.js': FULL,
   },
 };

@@ -180,6 +180,30 @@ const ACTIONS = {
   // ---------------- M19 Dashboards and Analytics ----------------
   'analytics.exported': A('M19', 'info', 'Exported {meta.dataset} ({meta.rows} rows)', '{meta.dataset} এক্সপোর্ট ({meta.rows} সারি)'),
 
+  // ---------------- M17 Disputes, Reports and Reviews ----------------
+  'dispute.opened': A('M17', 'notice', 'Opened a dispute ({after.category}, held {after.held})', 'বিরোধ খোলা হয়েছে ({after.category}, আটকে {after.held})'),
+  'dispute.statement_added': A('M17', 'info', 'Added a statement ({meta.party})', 'বক্তব্য যোগ ({meta.party})'),
+  'dispute.evidence_added': A('M17', 'info', 'Added a file ({meta.party})', 'ফাইল যোগ ({meta.party})'),
+  'dispute.evidence_viewed': A('M17', 'info', 'Viewed an evidence file ({meta.party})', 'প্রমাণের ফাইল দেখা হয়েছে ({meta.party})'),
+  'dispute.evidence_hidden': A('M17', 'notice', 'Hid an evidence item: {reason}', 'প্রমাণ লুকানো: {reason}'),
+  'dispute.response_submitted': A('M17', 'info', 'Answered a dispute', 'বিরোধের জবাব'),
+  'dispute.withdrawn': A('M17', 'info', 'Withdrew a dispute', 'বিরোধ প্রত্যাহার'),
+  'dispute.claimed': A('M17', 'info', 'Claimed a dispute', 'বিরোধ নেওয়া হয়েছে'),
+  'dispute.note_added': A('M17', 'info', 'Added a staff note', 'স্টাফ নোট যোগ'),
+  'dispute.escalated': A('M17', 'notice', 'Escalated a dispute to the masters: {reason}', 'বিরোধ মাস্টারদের কাছে পাঠানো: {reason}'),
+  'dispute.returned': A('M17', 'notice', 'Sent a dispute back to staff: {reason}', 'বিরোধ স্টাফের কাছে ফেরত: {reason}'),
+  'dispute.decided': A('M17', 'notice', 'Decided a dispute: {after.outcome} (refund {after.refund})', 'বিরোধের সিদ্ধান্ত: {after.outcome} (ফেরত {after.refund})'),
+  'report.filed': A('M17', 'info', 'Reported a {after.subjectType} ({after.reasonCode})', '{after.subjectType} রিপোর্ট ({after.reasonCode})'),
+  'report.escalated': A('M17', 'notice', 'Escalated reports about a {after.subjectType}', '{after.subjectType}-এর রিপোর্ট মাস্টারদের কাছে'),
+  'report.resolved': A('M17', 'notice', 'Resolved {after.reports} reports: {after.action}', '{after.reports}টি রিপোর্ট নিষ্পত্তি: {after.action}'),
+  'report.dismissed': A('M17', 'info', 'Dismissed a report: {reason}', 'রিপোর্ট খারিজ: {reason}'),
+  'review.posted': A('M17', 'info', 'Rated a ground {after.stars} stars', 'মাঠকে {after.stars} তারা'),
+  'review.edited': A('M17', 'info', 'Edited a review', 'রিভিউ সম্পাদনা'),
+  'review.replied': A('M17', 'info', 'Replied to a review', 'রিভিউয়ের উত্তর'),
+  'review.hidden': A('M17', 'notice', 'Hid a review: {reason}', 'রিভিউ লুকানো: {reason}'),
+  'review.restored': A('M17', 'notice', 'Restored a review', 'রিভিউ ফিরিয়ে আনা'),
+  'review.published': A('M17', 'info', 'Published a held review', 'আটকে থাকা রিভিউ প্রকাশ'),
+
   // ---------------- M10 Bookings ----------------
   'booking.held': A('M10', 'info', 'Held a slot to pay ({after.choice})', 'পেমেন্টের জন্য স্লট ধরে রাখা ({after.choice})'),
   'booking.released': A('M10', 'info', 'Let a held slot go', 'ধরে রাখা স্লট ছেড়ে দেওয়া'),

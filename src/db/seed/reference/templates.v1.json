@@ -1,6 +1,6 @@
 {
-  "seedVersion": 8,
-  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code.",
+  "seedVersion": 9,
+  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code. v9: the M17 DISPUTE_*, REPORT_* and REVIEW_* codes.",
   "templates": [
     {
       "code": "AUDIT_CRITICAL",
@@ -4209,6 +4209,532 @@
         {
           "name": "amount",
           "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_OPENED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "A booking was disputed",
+      "body": "The member who booked {{ref}} opened dispute {{code}}. Give your side by {{dueAt}}.",
+      "variables": [
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "dueAt",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_OPENED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "একটি বুকিং নিয়ে বিরোধ",
+      "body": "{{ref}} বুকিংয়ের সদস্য বিরোধ {{code}} খুলেছেন। {{dueAt}}-এর মধ্যে আপনার বক্তব্য দিন।",
+      "variables": [
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "dueAt",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_OPENED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: dispute {{code}} on {{ref}}. Answer by {{dueAt}} on vendor.kriraghor.com.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "dueAt",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_OPENED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{ref}}-এ বিরোধ {{code}}। {{dueAt}}-এর মধ্যে জবাব দিন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "dueAt",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_RECEIVED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "We have your dispute",
+      "body": "Dispute {{code}} about {{ref}} is open. We will tell you when there is news.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_RECEIVED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আপনার বিরোধ পেয়েছি",
+      "body": "{{ref}} নিয়ে বিরোধ {{code}} খোলা হয়েছে। খবর হলে জানাব।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_RESPONSE_DUE",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Answer dispute {{code}} soon",
+      "body": "Give your side of dispute {{code}} ({{ref}}) by {{dueAt}}, or our team decides without it.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "dueAt",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_RESPONSE_DUE",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "বিরোধ {{code}}-এর জবাব দিন",
+      "body": "{{dueAt}}-এর মধ্যে বিরোধ {{code}} ({{ref}})-এ আপনার বক্তব্য দিন, নইলে আমাদের টিম তা ছাড়াই সিদ্ধান্ত নেবে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "dueAt",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_RESPONDED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "The other side answered",
+      "body": "The other side answered dispute {{code}} ({{ref}}). Our team decides next.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_RESPONDED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অন্য পক্ষ জবাব দিয়েছে",
+      "body": "বিরোধ {{code}} ({{ref}})-এ অন্য পক্ষ জবাব দিয়েছে। এবার আমাদের টিম সিদ্ধান্ত নেবে।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_DECIDED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Dispute {{code}} decided",
+      "body": "Our decision on {{ref}}: {{outcome}}. Refund: {{refund}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "maxLen": 30
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_DECIDED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "বিরোধ {{code}}-এর সিদ্ধান্ত",
+      "body": "{{ref}} নিয়ে আমাদের সিদ্ধান্ত: {{outcome}}। ফেরত: {{refund}}।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "maxLen": 30
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_DECIDED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: dispute {{code}} decided: {{outcome}}. Refund {{refund}}.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "maxLen": 30
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_DECIDED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: বিরোধ {{code}}: {{outcome}}। ফেরত {{refund}}।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "maxLen": 30
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_ESCALATED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Dispute {{code}} needs a master",
+      "body": "Staff escalated dispute {{code}} ({{ref}}) to the masters.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_ESCALATED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "বিরোধ {{code}}-এ মাস্টার দরকার",
+      "body": "স্টাফ বিরোধ {{code}} ({{ref}}) মাস্টারদের কাছে পাঠিয়েছেন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_SLA_BREACHED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Dispute {{code}} is overdue",
+      "body": "Dispute {{code}} ({{ref}}) is past its deadline. Decide it or escalate it.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "DISPUTE_SLA_BREACHED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "বিরোধ {{code}}-এর সময় পেরিয়েছে",
+      "body": "বিরোধ {{code}} ({{ref}})-এর সময়সীমা পার হয়েছে। সিদ্ধান্ত দিন বা ওপরে পাঠান।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "ref",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "REPORT_OUTCOME",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "We looked at your report",
+      "body": "Thank you for reporting a {{subject}}: {{outcome}}.",
+      "variables": [
+        {
+          "name": "subject",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "REPORT_OUTCOME",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আপনার রিপোর্ট দেখেছি",
+      "body": "{{subject}} রিপোর্ট করার জন্য ধন্যবাদ: {{outcome}}।",
+      "variables": [
+        {
+          "name": "subject",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "outcome",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "REPORT_FLAGGED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "A {{subject}} was reported {{reporters}} times",
+      "body": "Verified members reported a {{subject}} {{reporters}} times. Look at it first.",
+      "variables": [
+        {
+          "name": "subject",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "reporters",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "REPORT_FLAGGED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "একটি {{subject}} {{reporters}} বার রিপোর্ট",
+      "body": "যাচাইকৃত সদস্যরা একটি {{subject}} {{reporters}} বার রিপোর্ট করেছেন। আগে এটি দেখুন।",
+      "variables": [
+        {
+          "name": "subject",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "reporters",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "REVIEW_NEW",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "New {{stars}}-star review",
+      "body": "A member rated {{ground}} {{stars}} stars. You can reply on vendor.kriraghor.com.",
+      "variables": [
+        {
+          "name": "stars",
+          "type": "number"
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "REVIEW_NEW",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "নতুন {{stars}} তারা রিভিউ",
+      "body": "একজন সদস্য {{ground}}-কে {{stars}} তারা দিয়েছেন। vendor.kriraghor.com থেকে উত্তর দিতে পারেন।",
+      "variables": [
+        {
+          "name": "stars",
+          "type": "number"
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "REVIEW_HIDDEN",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Your review was hidden",
+      "body": "Your review of {{ground}} was hidden because it broke our review rules.",
+      "variables": [
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "REVIEW_HIDDEN",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আপনার রিভিউ লুকানো হয়েছে",
+      "body": "{{ground}}-এর রিভিউ আমাদের নিয়ম ভাঙায় লুকানো হয়েছে।",
+      "variables": [
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 80
         }
       ]
     }

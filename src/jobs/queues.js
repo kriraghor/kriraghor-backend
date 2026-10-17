@@ -19,6 +19,7 @@ const QUEUES = Object.freeze({
   ESPORTS: 'esports', // M21 lifecycle tick, rankings
   BOOKINGS: 'bookings', // M10 tick: hold expiry, completion, reminders, unrecorded balances
   ANALYTICS: 'analytics', // M19 view refresh, nightly reconcile and occupancy rebuild
+  TRUST: 'trust', // M17 respondent reminders and timeouts, SLA breaches, claim expiry
 });
 
 const prefix = `${config.redis.prefix}:bull`;

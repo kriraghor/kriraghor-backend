@@ -84,6 +84,12 @@ async function liveGroundsOf(ownerId, { transaction } = {}) {
   return rows.map((g) => ({ id: g.id, name: g.liveSnapshot?.name ?? g.name, areaId: g.liveSnapshot?.areaId ?? g.areaId, courts: (g.liveSnapshot?.courts ?? []).map((k) => ({ id: k.id, name: k.name, sportIds: k.sportIds })) }));
 }
 
+/** M17: the owner's grounds that ever went live (reviews and their replies), id and name. */
+async function groundsOf(ownerId) {
+  const rows = await Ground.findAll({ where: { ownerId, liveVersion: { [Op.gt]: 0 } }, attributes: ['id', 'name', 'liveSnapshot'] });
+  return rows.map((g) => ({ id: g.id, name: g.liveSnapshot?.name ?? g.name }));
+}
+
 async function pendingActions(principal) {
   const rows = await Ground.findAll({ where: { ownerId: principal.id }, attributes: ['id', 'status', 'editStatus'] });
   const changes = rows.filter((g) => g.status === 'changes_requested' || g.editStatus === 'changes_requested');
@@ -94,4 +100,4 @@ async function pendingActions(principal) {
   ];
 }
 
-module.exports = { pendingActions, ground, isOpen, hoursFor, courts, liveGroundsOf, closesAt, publishedVersionAt, versionById, price: pr.price, quote: pr.quote, advanceOf: pr.advanceOf, seriesPrice: pr.seriesPrice };
+module.exports = { groundsOf, pendingActions, ground, isOpen, hoursFor, courts, liveGroundsOf, closesAt, publishedVersionAt, versionById, price: pr.price, quote: pr.quote, advanceOf: pr.advanceOf, seriesPrice: pr.seriesPrice };
