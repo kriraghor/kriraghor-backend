@@ -1,0 +1,2937 @@
+{
+  "info": {
+    "name": "Kriraghor API: M11 Hire (step 1)",
+    "description": "A pro (an active member who applied as a pro) sends a BCB Level 2 umpire credential (M02, kept per hire role); the documents desk approves it and the pro role turns active. The pro lists as a semi-pro cricket umpire based in Dhanmondi with the design rate card (T20 ৳3,500, night 20%, short notice 15%, travel north ৳300); the listings desk approves it (M05 kind hire_profile).\n\nManager 1 asks for two T20 night matches in Mirpur; the server quotes ৳4,500 each. Manager 2 asks for the first evening too; once the pro accepts manager 1, manager 2 fails the clash check. Messages refuse phone numbers before payment. Manager 1 pays (one payment, a hold per job) and both phones show.\n\nMatch day: check in (late), start, mark complete; the manager confirms and the pro gets ৳4,050 (10% fee). The second match is cancelled 30 h before: 25% to the pro less 10% (৳1,012.50), 75% back. Manager 2 hires again and the pro withdraws (100% back). A third hire is a no-show: an M17 dispute, the hold frozen, decided all back.\n\nRequests named \"Runner\" go to the local test runner (pay, move a job in time, refresh the pro token, read the ledger).\n\nUnattended: `node postman/run-m11.js` (kriraghor_test database).\n\nRebuild this file with: node postman/build-collection-m11.js",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000/api/v1"
+    },
+    {
+      "key": "controlUrl",
+      "value": ""
+    },
+    {
+      "key": "fileId",
+      "value": ""
+    },
+    {
+      "key": "credSubmissionId",
+      "value": ""
+    },
+    {
+      "key": "profileId",
+      "value": ""
+    },
+    {
+      "key": "profileSubmissionId",
+      "value": ""
+    },
+    {
+      "key": "slug",
+      "value": ""
+    },
+    {
+      "key": "r1",
+      "value": ""
+    },
+    {
+      "key": "r1code",
+      "value": ""
+    },
+    {
+      "key": "r2",
+      "value": ""
+    },
+    {
+      "key": "r3",
+      "value": ""
+    },
+    {
+      "key": "r4",
+      "value": ""
+    },
+    {
+      "key": "payment1",
+      "value": ""
+    },
+    {
+      "key": "payment3",
+      "value": ""
+    },
+    {
+      "key": "payment4",
+      "value": ""
+    },
+    {
+      "key": "job1",
+      "value": ""
+    },
+    {
+      "key": "job2",
+      "value": ""
+    },
+    {
+      "key": "job3",
+      "value": ""
+    },
+    {
+      "key": "job4",
+      "value": ""
+    },
+    {
+      "key": "disputeCode",
+      "value": ""
+    },
+    {
+      "key": "version",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Taxonomy and the credential (M03, M02)",
+      "item": [
+        {
+          "name": "The hire taxonomy",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"6 categories, 24 roles\", () => { pm.expect(j.items.length === 6 && j.items.flatMap((c) => c.roles).length === 24).to.eql(true); });",
+                  "pm.test(\"umpires price formats\", () => { pm.expect(j.items.find((c) => c.key === 'officials').roles.find((r) => r.key === 'cricket_umpire').formatPriced === true).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/hire/taxonomy",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hire",
+                "taxonomy"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Upload the umpire certificate (PDF)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'fileId'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('fileId', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/pdf"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/documents/files?slot=document&docType=credential",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "documents",
+                "files"
+              ],
+              "query": [
+                {
+                  "key": "slot",
+                  "value": "document"
+                },
+                {
+                  "key": "docType",
+                  "value": "credential"
+                }
+              ]
+            },
+            "body": {
+              "mode": "file",
+              "file": {
+                "src": "nid-selfie.pdf"
+              }
+            }
+          }
+        },
+        {
+          "name": "A level the role does not have (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"docType\": \"credential\",\n  \"role\": \"pro\",\n  \"fields\": {\n    \"hireRole\": \"cricket_umpire\",\n    \"level\": \"grandmaster\",\n    \"issuer\": \"Bangladesh Cricket Board\"\n  },\n  \"files\": {\n    \"document\": \"{{fileId}}\"\n  },\n  \"consent\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/documents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "documents"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send the BCB Level 2 credential",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"docType\": \"credential\",\n  \"role\": \"pro\",\n  \"fields\": {\n    \"hireRole\": \"cricket_umpire\",\n    \"level\": \"pro\",\n    \"issuer\": \"Bangladesh Cricket Board\",\n    \"number\": \"BCB-L2-1188\"\n  },\n  \"files\": {\n    \"document\": \"{{fileId}}\"\n  },\n  \"consent\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/documents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "documents"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The credential on the desk",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"saves credSubmissionId\", () => { pm.expect((pm.collectionVariables.set('credSubmissionId', j.items[0].id), true)).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{docsToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/submissions?status=pending_review&kind=document",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "submissions"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending_review"
+                },
+                {
+                  "key": "kind",
+                  "value": "document"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Credential: claim",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"no failing check\", () => { pm.expect(j.checks.every((c) => c.result !== 'fail')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{docsToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/submissions/{{credSubmissionId}}/claim",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "submissions",
+                "{{credSubmissionId}}",
+                "claim"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Credential: tick the rubric",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{docsToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticks\": [\n    \"name_matches\",\n    \"readable\",\n    \"not_edited\",\n    \"face_matches\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/submissions/{{credSubmissionId}}/ticks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "submissions",
+                "{{credSubmissionId}}",
+                "ticks"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Credential: approve",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{docsToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"approve\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/submissions/{{credSubmissionId}}/decide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "submissions",
+                "{{credSubmissionId}}",
+                "decide"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: drain events and refresh the pro token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"fresh token\", () => { pm.expect((pm.environment.set('proToken', j.accessToken), typeof j.accessToken === 'string')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/refresh",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "refresh"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The pro role is active, the credential approved",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"active\", () => { pm.expect(j.roleStatus === 'active').to.eql(true); });",
+                  "pm.test(\"credential\", () => { pm.expect(j.credentials[0].hireRole === 'cricket_umpire' && j.credentials[0].status === 'approved').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/verification?role=pro",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "verification"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "pro"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. The profile and its review (FR-10 to FR-14)",
+      "item": [
+        {
+          "name": "A semi-pro umpire profile in Dhanmondi",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('profileId', v); }",
+                  "if (ok && j) { const v = get(j, 'slug'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('slug', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"draft with limits\", () => { pm.expect(j.status === 'draft' && Boolean(j.limits['match:T20'])).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roleKey\": \"cricket_umpire\",\n  \"headline\": \"BCB umpire for club and league cricket\",\n  \"experienceLevel\": \"semi_pro\",\n  \"years\": 6,\n  \"baseAreaId\": \"{{areaDhanmondi}}\",\n  \"sportKeys\": [\n    \"cricket\"\n  ],\n  \"bio\": \"Six seasons in the Dhaka leagues.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pro/profiles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pro",
+                "profiles"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sending without rates (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 RATE_CARD_REQUIRED', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('RATE_CARD_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pro/profiles/{{profileId}}/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pro",
+                "profiles",
+                "{{profileId}}",
+                "submit"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A rate under the limit (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"unit\": \"match\",\n      \"format\": \"T20\",\n      \"rate\": 1000\n    }\n  ],\n  \"nightPct\": 20,\n  \"shortNoticePct\": 15,\n  \"shortNoticeHours\": 48,\n  \"travel\": {\n    \"north\": 30000,\n    \"south\": 50000,\n    \"outside\": 150000\n  },\n  \"maxJobsPerDay\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pro/profiles/{{profileId}}/rate-card",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pro",
+                "profiles",
+                "{{profileId}}",
+                "rate-card"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The design rate card",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"version 1\", () => { pm.expect(j.rateCard.version === 1 && j.rateCard.items.length === 2).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"unit\": \"match\",\n      \"format\": \"T20\",\n      \"rate\": 350000\n    },\n    {\n      \"unit\": \"match\",\n      \"format\": \"T10\",\n      \"rate\": 250000\n    }\n  ],\n  \"nightPct\": 20,\n  \"shortNoticePct\": 15,\n  \"shortNoticeHours\": 48,\n  \"travel\": {\n    \"north\": 30000,\n    \"south\": 50000,\n    \"outside\": 150000\n  },\n  \"maxJobsPerDay\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pro/profiles/{{profileId}}/rate-card",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pro",
+                "profiles",
+                "{{profileId}}",
+                "rate-card"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send for review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"in review\", () => { pm.expect(j.status === 'pending_review').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pro/profiles/{{profileId}}/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pro",
+                "profiles",
+                "{{profileId}}",
+                "submit"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The profile on the desk",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"saves profileSubmissionId\", () => { pm.expect((pm.collectionVariables.set('profileSubmissionId', j.items[0].id), true)).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{listingsToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/submissions?status=pending_review&kind=hire_profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "submissions"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending_review"
+                },
+                {
+                  "key": "kind",
+                  "value": "hire_profile"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Profile: claim",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"no failing check\", () => { pm.expect(j.checks.every((c) => c.result !== 'fail')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{listingsToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/submissions/{{profileSubmissionId}}/claim",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "submissions",
+                "{{profileSubmissionId}}",
+                "claim"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Profile: tick the rubric",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{listingsToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticks\": [\n    \"identity_ok\",\n    \"role_ok\",\n    \"credential_ok\",\n    \"rates_ok\",\n    \"bio_ok\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/submissions/{{profileSubmissionId}}/ticks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "submissions",
+                "{{profileSubmissionId}}",
+                "ticks"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Profile: approve",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{listingsToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"approve\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/submissions/{{profileSubmissionId}}/decide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "submissions",
+                "{{profileSubmissionId}}",
+                "decide"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: deliver the decision",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/settle",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "settle"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The profile is live",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"live\", () => { pm.expect(j.status === 'live' && j.liveVersion === 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pro/profiles/{{profileId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pro",
+                "profiles",
+                "{{profileId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The directory lists it",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"one, from ৳2,500\", () => { pm.expect(j.items.length === 1 && j.items[0].rateFrom === 250000 && j.counts.officials === 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/hire/profiles?category=officials&unit=match&sort=rate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hire",
+                "profiles"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "officials"
+                },
+                {
+                  "key": "unit",
+                  "value": "match"
+                },
+                {
+                  "key": "sort",
+                  "value": "rate"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "The profile page",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"verified BCB Level 2\", () => { pm.expect(j.credential.level === 'pro' && j.credential.labelEn === 'BCB Level 2').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/hire/profiles/{{slug}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hire",
+                "profiles",
+                "{{slug}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A quote: T20 night in Mirpur",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"৳4,500 (3,500 + 700 + 300)\", () => { pm.expect(j.total === 450000 && j.lines[0].zone === 'north').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"unit\": \"match\",\n  \"engagements\": [\n    {\n      \"start\": \"{{start4}}\",\n      \"format\": \"T20\",\n      \"venueText\": \"Mirpur Turf 10\",\n      \"venueAreaId\": \"{{areaMirpur}}\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/hire/profiles/{{profileId}}/quote",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hire",
+                "profiles",
+                "{{profileId}}",
+                "quote"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Requests, accept and payment (FR-20 to FR-26)",
+      "item": [
+        {
+          "name": "Manager 1: two T20 nights",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'request.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('r1', v); }",
+                  "if (ok && j) { const v = get(j, 'request.code'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('r1code', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{m1Token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profileId\": \"{{profileId}}\",\n  \"unit\": \"match\",\n  \"engagements\": [\n    {\n      \"start\": \"{{start4}}\",\n      \"format\": \"T20\",\n      \"venueText\": \"Mirpur Turf 10\",\n      \"venueAreaId\": \"{{areaMirpur}}\"\n    },\n    {\n      \"start\": \"{{start5}}\",\n      \"format\": \"T20\",\n      \"venueText\": \"Mirpur Turf 10\",\n      \"venueAreaId\": \"{{areaMirpur}}\"\n    }\n  ],\n  \"note\": \"League match, white ball\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/hire/requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hire",
+                "requests"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Manager 2: the first night",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'request.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('r2', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{m2Token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profileId\": \"{{profileId}}\",\n  \"unit\": \"match\",\n  \"engagements\": [\n    {\n      \"start\": \"{{start4}}\",\n      \"format\": \"T20\",\n      \"venueText\": \"Mirpur Turf 10\",\n      \"venueAreaId\": \"{{areaMirpur}}\"\n    }\n  ],\n  \"note\": \"League match, white ball\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/hire/requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hire",
+                "requests"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Requests to answer, with the checks",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"two, all checks pass\", () => { pm.expect(j.items.length === 2 && j.items.every((i) => i.checks.every((c) => c.ok))).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pro/requests?status=pending",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pro",
+                "requests"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Accept manager 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"reserved\", () => { pm.expect(j.request.status === 'accepted_unpaid' && j.request.jobs.every((x) => x.status === 'reserved')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pro/requests/{{r1}}/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pro",
+                "requests",
+                "{{r1}}",
+                "accept"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Manager 2 now clashes (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 CHECKS_FAILED', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('CHECKS_FAILED');",
+                  "});",
+                  "pm.test(\"the free check\", () => { pm.expect(j.errors[0].field === 'free').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pro/requests/{{r2}}/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pro",
+                "requests",
+                "{{r2}}",
+                "accept"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A phone number before payment (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 CONTACT_NOT_ALLOWED', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('CONTACT_NOT_ALLOWED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{m1Token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Call me on 01711 000 111\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/hire-requests/{{r1}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "hire-requests",
+                "{{r1}}",
+                "messages"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A message",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{m1Token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Toss at 7:15, please come 30 minutes early\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/hire-requests/{{r1}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "hire-requests",
+                "{{r1}}",
+                "messages"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The pro sees it",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"one, not mine\", () => { pm.expect(j.items.length === 1 && j.items[0].mine === false && j.contactAllowed === false).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/hire-requests/{{r1}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "hire-requests",
+                "{{r1}}",
+                "messages"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Unpaid: the payment link",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'request.paymentId'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('payment1', v); }",
+                  "if (ok && j) { const v = get(j, 'request.jobs.0.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('job1', v); }",
+                  "if (ok && j) { const v = get(j, 'request.jobs.1.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('job2', v); }",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"pay link, no phone\", () => { pm.expect(Boolean(j.payment.payUrl) && j.request.other.phone === null).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{m1Token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/hire-requests/{{r1code}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "hire-requests",
+                "{{r1code}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: pay through the simulator",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/pay?paymentId={{payment1}}&who=m1",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "pay"
+              ],
+              "query": [
+                {
+                  "key": "paymentId",
+                  "value": "{{payment1}}"
+                },
+                {
+                  "key": "who",
+                  "value": "m1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Confirmed; the phone shows",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"confirmed\", () => { pm.expect(j.request.status === 'confirmed' && j.request.jobs.every((x) => x.status === 'scheduled')).to.eql(true); });",
+                  "pm.test(\"phone\", () => { pm.expect(/^\\+8801/.test(j.request.other.phone)).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{m1Token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/hire-requests/{{r1code}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "hire-requests",
+                "{{r1code}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Match day and confirm (FR-30 to FR-34, v3)",
+      "item": [
+        {
+          "name": "Check in too early (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 TOO_EARLY', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('TOO_EARLY');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pro/jobs/{{job1}}/check-in",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pro",
+                "jobs",
+                "{{job1}}",
+                "check-in"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: the match is in 20 minutes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/move?jobId={{job1}}&minutes=20",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "move"
+              ],
+              "query": [
+                {
+                  "key": "jobId",
+                  "value": "{{job1}}"
+                },
+                {
+                  "key": "minutes",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Check in (late)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"late\", () => { pm.expect(j.status === 'checked_in' && j.late === true).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pro/jobs/{{job1}}/check-in",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pro",
+                "jobs",
+                "{{job1}}",
+                "check-in"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: the match is in 10 minutes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/move?jobId={{job1}}&minutes=10",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "move"
+              ],
+              "query": [
+                {
+                  "key": "jobId",
+                  "value": "{{job1}}"
+                },
+                {
+                  "key": "minutes",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Start",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pro/jobs/{{job1}}/start",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pro",
+                "jobs",
+                "{{job1}}",
+                "start"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Mark complete",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"auto-release set\", () => { pm.expect(j.status === 'completed_marked' && Boolean(j.releaseAt)).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"result\": \"Dhanmondi XI won by 6 wickets\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pro/jobs/{{job1}}/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pro",
+                "jobs",
+                "{{job1}}",
+                "complete"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The manager confirms",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"released\", () => { pm.expect(j.status === 'released' && j.releasedBy === 'hirer').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{m1Token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/hire-jobs/{{job1}}/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "hire-jobs",
+                "{{job1}}",
+                "confirm"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: ledger: the pro has ৳4,050, fee ৳450",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"balanced\", () => { pm.expect(j.invariantsOk === true).to.eql(true); });",
+                  "pm.test(\"payable\", () => { pm.expect(j.proPayable === 405000 && j.feeRevenue === 45000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/check",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "check"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Cancel, withdraw and a no-show (§6.6, FR-51, FR-35)",
+      "item": [
+        {
+          "name": "Runner: the second match is in 30 hours",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/move?jobId={{job2}}&minutes=1800",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "move"
+              ],
+              "query": [
+                {
+                  "key": "jobId",
+                  "value": "{{job2}}"
+                },
+                {
+                  "key": "minutes",
+                  "value": "1800"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cancel preview: 25%",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"tier\", () => { pm.expect(j.tier === 'mid' && j.cancelFee === 112500 && j.refund === 337500 && j.proGets === 101250).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{m1Token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/hire-jobs/{{job2}}/cancel-preview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "hire-jobs",
+                "{{job2}}",
+                "cancel-preview"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cancel",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"cancelled\", () => { pm.expect(j.job.status === 'cancelled' && j.job.money.cancelFee === 112500).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{m1Token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/hire-jobs/{{job2}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "hire-jobs",
+                "{{job2}}",
+                "cancel"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: ledger: + ৳1,012.50",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"payable\", () => { pm.expect(j.proPayable === 506250).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/check",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "check"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Manager 2 is free again: accept",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pro/requests/{{r2}}/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pro",
+                "requests",
+                "{{r2}}",
+                "accept"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Manager 2 pays",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'request.paymentId'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('payment4', v); }",
+                  "if (ok && j) { const v = get(j, 'request.jobs.0.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('job4', v); }",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{m2Token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/hire-requests/{{r2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "hire-requests",
+                "{{r2}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: pay manager 2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/pay?paymentId={{payment4}}&who=m2",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "pay"
+              ],
+              "query": [
+                {
+                  "key": "paymentId",
+                  "value": "{{payment4}}"
+                },
+                {
+                  "key": "who",
+                  "value": "m2"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "The pro withdraws: 100% back",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"withdrawn\", () => { pm.expect(j.status === 'withdrawn' && j.money.refunded === 450000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"injury\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pro/jobs/{{job4}}/withdraw",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pro",
+                "jobs",
+                "{{job4}}",
+                "withdraw"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Manager 1: one more night",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'request.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('r3', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{m1Token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profileId\": \"{{profileId}}\",\n  \"unit\": \"match\",\n  \"engagements\": [\n    {\n      \"start\": \"{{start6}}\",\n      \"format\": \"T20\",\n      \"venueText\": \"Mirpur Turf 10\",\n      \"venueAreaId\": \"{{areaMirpur}}\"\n    }\n  ],\n  \"note\": \"League match, white ball\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/hire/requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hire",
+                "requests"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Accept it",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pro/requests/{{r3}}/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pro",
+                "requests",
+                "{{r3}}",
+                "accept"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Pay link",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'request.paymentId'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('payment3', v); }",
+                  "if (ok && j) { const v = get(j, 'request.jobs.0.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('job3', v); }",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{m1Token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/hire-requests/{{r3}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "hire-requests",
+                "{{r3}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: pay it",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/pay?paymentId={{payment3}}&who=m1",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "pay"
+              ],
+              "query": [
+                {
+                  "key": "paymentId",
+                  "value": "{{payment3}}"
+                },
+                {
+                  "key": "who",
+                  "value": "m1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: the match started 61 minutes ago",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/move?jobId={{job3}}&minutes=-61",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "move"
+              ],
+              "query": [
+                {
+                  "key": "jobId",
+                  "value": "{{job3}}"
+                },
+                {
+                  "key": "minutes",
+                  "value": "-61"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "No-show: an M17 dispute",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'dispute.code'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('disputeCode', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"held ৳4,500\", () => { pm.expect(j.dispute.held === 450000 && j.dispute.policyKey === 'hire.no_show').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{m1Token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"statement\": \"The umpire never came to the ground\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/hire-jobs/{{job3}}/no-show",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "hire-jobs",
+                "{{job3}}",
+                "no-show"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The pro answers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"My bike broke down on the way, sorry\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/disputes/{{disputeCode}}/respond",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "disputes",
+                "{{disputeCode}}",
+                "respond"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The desk claims it",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'dispute.version'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('version', v); }",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"a hire job\", () => { pm.expect(j.source.kind === 'hire_job').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/disputes/{{disputeCode}}/claim",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "disputes",
+                "{{disputeCode}}",
+                "claim"
+              ]
+            }
+          }
+        },
+        {
+          "name": "All back",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"resolved\", () => { pm.expect(j.dispute.status === 'resolved' && j.dispute.refund === 450000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"outcome\": \"all\",\n  \"reason\": \"No check-in and the pro agrees\",\n  \"version\": {{version}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/disputes/{{disputeCode}}/decide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "disputes",
+                "{{disputeCode}}",
+                "decide"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff: the first request with its holds",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"two jobs, holds\", () => { pm.expect(j.jobs.length === 2 && j.jobs.every((x) => x.escrow !== null)).to.eql(true); });",
+                  "pm.test(\"no phone\", () => { pm.expect(!JSON.stringify(j).includes('+8801')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/hire/requests/{{r1code}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "hire",
+                "requests",
+                "{{r1code}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: ledger still balanced",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"balanced\", () => { pm.expect(j.invariantsOk === true).to.eql(true); });",
+                  "pm.test(\"payable unchanged\", () => { pm.expect(j.proPayable === 506250).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/check",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "check"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

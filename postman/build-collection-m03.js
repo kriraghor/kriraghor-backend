@@ -78,7 +78,7 @@ const collection = {
     {
       name: '1. Admin reads (master A)',
       item: [
-        req('All settings', 'GET', '/admin/settings', { expect: { status: 200 }, checks: [['233 settings', 'j.items.length === 233']] }),
+        req('All settings', 'GET', '/admin/settings', { expect: { status: 200 }, checks: [['243 settings', 'j.items.length === 243']] }),
         req('Fees only', 'GET', '/admin/settings?category=fees', {
           expect: { status: 200 },
           checks: [['fees are four-eyes', "j.items.every((s) => s.approval === 'four_eyes')"]],
