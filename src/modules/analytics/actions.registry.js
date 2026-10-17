@@ -22,6 +22,13 @@ const PROVIDERS = {
       const s = await require('../moderation/moderation.service').stats(p);
       return [...(s.inQueue ? [{ key: 'review_queue', count: s.inQueue, severity: s.overdue ? 'high' : 'normal', dueAt: null, href: '/admin/moderation' }] : [])];
     },
+    // M18: open risk flags, for staff who work the risk desk (manage_users) and masters.
+    async (p) => {
+      if (!p.isMaster && !p.permissions?.has?.('manage_users')) return [];
+      const c = await require('../risk/flags.service').counts();
+      const n = c.critical + c.high + c.medium + c.info;
+      return n ? [{ key: 'risk_flags', count: n, severity: c.critical || c.high ? 'high' : 'normal', dueAt: null, href: '/admin/risk' }] : [];
+    },
   ],
 };
 

@@ -1164,6 +1164,9 @@ const analytics = require('./analytics');
 // ---- M17 disputes, reports and reviews (./trust.js) ----
 const trust = require('./trust');
 
+// ---- M18 risk and trust, M02 document requests (./risk.js) ----
+const risk = require('./risk');
+
 // ---- M21 esports (models in ./esports.js) ----
 const esports = require('./esports');
 esports.EsportsTournament.belongsTo(EsportsGame, { as: 'game', foreignKey: 'gameId' });
@@ -1179,6 +1182,7 @@ module.exports = {
   ...bookings,
   ...analytics,
   ...trust,
+  ...risk,
   sequelize,
   User,
   UserRole,

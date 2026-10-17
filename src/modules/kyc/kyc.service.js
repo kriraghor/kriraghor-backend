@@ -26,7 +26,7 @@ const { encrypt, decrypt, hmac } = require('../../common/crypto');
 const config = require('../../config');
 const storage = require('../../common/storage');
 const { uuid7 } = require('../../common/uuid7');
-const { sequelize, DocumentRequirement, VerificationDocument, DocumentFile } = require('../../models');
+const { sequelize, DocumentRequirement, VerificationDocument, DocumentFile, DocumentRequest } = require('../../models');
 const audit = require('../audit/audit.service');
 const events = require('../events/events.service');
 const settings = require('../settings/settings.service');
@@ -182,6 +182,9 @@ async function uploadFile(principal, { slot, docType = 'nid', contentType, body 
   return { fileId: file.id, slot, mime: file.mime, sizeBytes: file.sizeBytes };
 }
 
+/** An open M18 document request lets a verified member send the document again (M18-FR-07). */
+const requested = async (userId, docType, transaction) => (await DocumentRequest.count({ where: { userId, docType, status: ['open', 'overdue'] }, transaction })) > 0;
+
 /** POST /me/documents: submit the NID or a business document for review (a new version). */
 async function submit(principal, body, req) {
   if (body.docType !== 'nid') return submitBusiness(principal, body, req);
@@ -200,7 +203,7 @@ async function submit(principal, body, req) {
     const requirement = await nidRequirement(transaction);
     if (rules.slotsBlock(requirement.fileSlots, files)) throw fail('FILES_INCOMPLETE');
     const mine = await VerificationDocument.findAll({ where: { userId: user.id, docType, subjectKey: '' }, order: [['version', 'DESC']], transaction, lock: transaction.LOCK.UPDATE });
-    if (mine.some((d) => d.status === 'approved' && d.isCurrent)) throw fail('DOC_ALREADY_APPROVED');
+    if (mine.some((d) => d.status === 'approved' && d.isCurrent) && !(await requested(user.id, docType, transaction))) throw fail('DOC_ALREADY_APPROVED');
     const fileIds = Object.values(files);
     const rows = await DocumentFile.findAll({ where: { id: fileIds, userId: user.id, documentId: null, purgedAt: null }, transaction, lock: transaction.LOCK.UPDATE });
     if (rows.length !== fileIds.length || rows.some((f) => files[f.slot] !== f.id)) throw fail('FILES_INCOMPLETE');
@@ -270,7 +273,7 @@ async function submitBusiness(principal, { docType, fields = {}, files = {} }, r
     if (errors) throw E.validation(errors);
     if (rules.slotsBlock(requirement.fileSlots, files)) throw fail('FILES_INCOMPLETE');
     const mine = await VerificationDocument.findAll({ where: { userId: user.id, docType, subjectKey: '' }, order: [['version', 'DESC']], transaction, lock: transaction.LOCK.UPDATE });
-    if (mine.some((d) => d.status === 'approved' && d.isCurrent)) throw fail('DOC_ALREADY_APPROVED');
+    if (mine.some((d) => d.status === 'approved' && d.isCurrent) && !(await requested(principal.user.id, docType, transaction))) throw fail('DOC_ALREADY_APPROVED');
     const fileIds = Object.values(files);
     const rows = await DocumentFile.findAll({ where: { id: fileIds, userId: user.id, documentId: null, purgedAt: null }, transaction, lock: transaction.LOCK.UPDATE });
     if (rows.length !== fileIds.length || rows.some((f) => files[f.slot] !== f.id)) throw fail('FILES_INCOMPLETE');
@@ -504,4 +507,16 @@ async function purgeDue(now = new Date()) {
   return { decided: due.length, orphans: orphans.length };
 }
 
-module.exports = { verification, uploadFile, submit, ownFile, adminGet, viewFile, revealNid, checksFor, applyDecision, getVerifiedIdentity, facts, purgeDue, requirementsFor, nidHash };
+/**
+ * M18 accounts_per_nid: how many accounts (this one included) submitted an NID with the same hash as
+ * any of this user's NID submissions, whatever the review outcome. Counts only; never the number.
+ */
+async function nidAttempts(userId) {
+  const mine = await VerificationDocument.findAll({ where: { userId, docType: 'nid', nidHash: { [Op.ne]: null } }, attributes: ['nidHash'] });
+  const hashes = [...new Set(mine.map((d) => d.nidHash))];
+  if (!hashes.length) return 0;
+  const others = await VerificationDocument.count({ where: { nidHash: hashes, userId: { [Op.ne]: userId } }, distinct: true, col: 'user_id' });
+  return others + 1;
+}
+
+module.exports = { nidAttempts, verification, uploadFile, submit, ownFile, adminGet, viewFile, revealNid, checksFor, applyDecision, getVerifiedIdentity, facts, purgeDue, requirementsFor, nidHash };

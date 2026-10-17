@@ -25,6 +25,8 @@ const esportsRankings = require('../modules/esports/rankings.service');
 const bookings = require('../modules/bookings/bookings.service');
 const analytics = require('../modules/analytics/facts.service');
 const disputes = require('../modules/trust/disputes.service');
+const riskJobs = require('../modules/risk/risk.jobs');
+const risk = require('../modules/risk/risk.nightly');
 const { purgeExpired: purgeIdempotencyKeys } = require('../common/idempotency');
 const logger = require('../common/logger');
 
@@ -244,6 +246,27 @@ const JOBS = [
     queue: QUEUES.TRUST,
     every: 60 * 1000,
     run: async () => disputes.tick(),
+  },
+  // ---------------- M18 risk and trust (§10). Every step re-reads the facts, so a repeat is harmless.
+  {
+    // FR-04: one account's rules and reliability, about 30 s after its events (debounced per user).
+    name: riskJobs.JOBS.EVALUATE_USER,
+    queue: QUEUES.RISK,
+    run: async ({ userId }) => risk.evaluate(userId),
+  },
+  {
+    // FR-03: a risk.* or trust.* setting changed: re-evaluate every account with flags or metrics.
+    name: riskJobs.JOBS.REEVALUATE_ALL,
+    queue: QUEUES.RISK,
+    run: async () => risk.everyone(),
+  },
+  {
+    // FR-04, FR-07, FR-14: re-evaluate active accounts, lapse quiet flags, mark overdue document requests.
+    name: 'risk.nightly',
+    queue: QUEUES.RISK,
+    pattern: '30 2 * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => risk.nightly(),
   },
   // ---------------- M19 analytics (§10). Idempotent: upserts and REFRESH … CONCURRENTLY under an advisory lock.
   {

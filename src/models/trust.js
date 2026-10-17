@@ -96,6 +96,7 @@ Report.init(
     code: req(DataTypes.STRING(20)),
     subjectType: req(DataTypes.ENUM('ground', 'booking', 'user', 'review', 'esports_tournament')),
     subjectId: req(DataTypes.UUID),
+    subjectOwnerId: DataTypes.UUID,
     reporterId: req(DataTypes.UUID),
     reasonCode: req(DataTypes.ENUM('fake_listing', 'wrong_info', 'unsafe', 'harassment', 'fraud', 'spam', 'offensive', 'cheating', 'other')),
     note: DataTypes.STRING(500),

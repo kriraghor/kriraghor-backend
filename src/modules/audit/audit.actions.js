@@ -180,6 +180,10 @@ const ACTIONS = {
   // ---------------- M19 Dashboards and Analytics ----------------
   'analytics.exported': A('M19', 'info', 'Exported {meta.dataset} ({meta.rows} rows)', '{meta.dataset} এক্সপোর্ট ({meta.rows} সারি)'),
 
+  // ---------------- M18 Risk and Trust ----------------
+  'risk.action_taken': A('M18', 'critical', 'Risk action: {after.action}: {reason}', 'ঝুঁকি পদক্ষেপ: {after.action}: {reason}'),
+  'document_request.created': A('M02', 'notice', 'Asked for a document ({after.docType}) by {after.dueAt}', 'ডকুমেন্ট চাওয়া হয়েছে ({after.docType}), {after.dueAt}-এর মধ্যে'),
+
   // ---------------- M17 Disputes, Reports and Reviews ----------------
   'dispute.opened': A('M17', 'notice', 'Opened a dispute ({after.category}, held {after.held})', 'বিরোধ খোলা হয়েছে ({after.category}, আটকে {after.held})'),
   'dispute.statement_added': A('M17', 'info', 'Added a statement ({meta.party})', 'বক্তব্য যোগ ({meta.party})'),

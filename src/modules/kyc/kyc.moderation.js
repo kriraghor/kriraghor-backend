@@ -38,6 +38,8 @@ function registerKycModeration() {
   onEvent('submission.approved', 'kyc.apply-approved', forDocuments((e, { transaction }) => kyc().applyDecision(e.payload.submissionId, 'approved', { transaction })));
   onEvent('submission.changes_requested', 'kyc.apply-changes', forDocuments((e, { transaction }) => kyc().applyDecision(e.payload.submissionId, 'changes_requested', { transaction })));
   onEvent('submission.rejected', 'kyc.apply-rejected', forDocuments((e, { transaction }) => kyc().applyDecision(e.payload.submissionId, 'rejected', { transaction })));
+  // M18-FR-07: a submission of the requested type fulfils the member's open document request.
+  onEvent('document.submitted', 'kyc.fulfil-requests', (e, { transaction }) => require('./requests.service').fulfilOnSubmit({ userId: e.payload.userId, docType: e.payload.docType, documentId: e.payload.documentId }, { transaction }));
   onEvent('submission.withdrawn', 'kyc.apply-withdrawn', forDocuments((e, { transaction }) => (e.payload.superseded ? null : kyc().applyDecision(e.payload.submissionId, 'withdrawn', { transaction }))));
 }
 

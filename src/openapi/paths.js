@@ -19,9 +19,10 @@ const grS = require('../modules/grounds/grounds.schemas');
 const bkS = require('../modules/bookings/bookings.schemas');
 const anS = require('../modules/analytics/analytics.schemas');
 const trS = require('../modules/trust/trust.schemas');
+const rkS = require('../modules/risk/risk.schemas');
 
 /**
- * Every route (M01 to M10, M17, M19, M21), registered with its request and response schemas and the stable error
+ * Every route (M01 to M10, M17, M18, M19, M21), registered with its request and response schemas and the stable error
  * codes it can return (ADR-002). When a route is added in a module, add it here: the
  * coverage test fails if an Express route has no OpenAPI entry.
  */
@@ -829,6 +830,23 @@ function register(registry) {
   for (const [action, summary, extra] of [['hide', 'Hide a review with a reason', body(trS.hideReviewBody)], ['restore', 'Restore a hidden review', {}], ['publish', 'Publish a held review', {}]]) {
     p({ method: 'post', path: `/admin/reviews/{id}/${action}`, tags: ['reviews'], summary, security: adminBearer, request: { ...rvId, ...extra }, responses: { 200: json(trS.ReviewResult), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'], 409: ['REVIEW_STATE'], ...VALIDATION }) } });
   }
+  // ------------------------------------------------------------------ M18 risk and trust
+  const rkUser = { params: rkS.userParam };
+  const RK = { ...ADMIN_AUTH, 404: ['NOT_FOUND'] };
+  p({ method: 'get', path: '/admin/risk/overview', tags: ['risk'], summary: 'Open flags by severity and the rules with their live thresholds (manage_users or master)', security: adminBearer, responses: { 200: json(rkS.Overview), ...errors(ADMIN_AUTH) } });
+  p({ method: 'get', path: '/admin/risk/flags', tags: ['risk'], summary: 'Flags, critical first (FR-05)', security: adminBearer, request: { query: rkS.flagsQuery }, responses: { 200: json(rkS.FlagList), ...errors({ ...ADMIN_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/risk/accounts/{userId}', tags: ['risk'], summary: 'One account: flags, metrics, actions with undo, reliability, payout holds, document requests', security: adminBearer, request: rkUser, responses: { 200: json(rkS.Account), ...errors(RK) } });
+  p({ method: 'post', path: '/admin/risk/accounts/{userId}/actions', tags: ['risk'], summary: 'Freeze payouts or ban (master; step-up risk.manage / user.ban), ask for documents, clear, suspend (staff up to risk.staff_suspend_max_days) (FR-06 to FR-11)', security: adminBearer,
+    request: { ...rkUser, headers: stepUpHeader.partial(), ...body(rkS.actionBody) },
+    responses: { 201: json(rkS.Action, 'Created'), ...errors({ ...RK, 403: [...ADMIN_AUTH[403], 'STEP_UP_REQUIRED', 'SELF_ACTION_FORBIDDEN'], 409: ['ALREADY_FROZEN', 'FLAG_STATE', 'USER_NOT_ACTIVE', 'USER_ALREADY_BANNED', 'DOCUMENT_ALREADY_REQUESTED'], 422: ['VALIDATION_FAILED', 'SUSPENSION_TOO_LONG', 'FLAG_REQUIRED'] }) } });
+  p({ method: 'post', path: '/admin/risk/actions/{id}/undo', tags: ['risk'], summary: 'Undo an action with its compensating action: unfreeze, cancel the request, reopen, restore (FR-09)', security: adminBearer,
+    request: { params: rkS.idParam, headers: stepUpHeader.partial(), ...body(rkS.undoBody) },
+    responses: { 201: json(rkS.Action, 'Created'), ...errors({ ...RK, 403: [...ADMIN_AUTH[403], 'STEP_UP_REQUIRED'], 409: ['ACTION_NOT_REVERSIBLE', 'ACTION_ALREADY_REVERSED', 'FLAG_STATE', 'USER_ALREADY_ACTIVE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/admin/risk/thresholds', tags: ['risk'], summary: 'Propose new risk or trust thresholds: an M03 change request (master, step-up settings.write; re-evaluation follows) (FR-02, FR-03)', security: adminBearer,
+    request: { headers: stepUpHeader, ...body(rkS.thresholdsBody) }, responses: { 201: json(z.object({}).loose(), 'Created'), ...errors({ ...ADMIN_AUTH, 422: ['VALIDATION_FAILED', 'SETTING_UNCHANGED', 'SETTING_OUT_OF_RANGE'] }) } });
+  p({ method: 'get', path: '/me/trust', tags: ['risk'], summary: 'My reliability scores and the counts behind them (FR-14)', security: bearer, responses: { 200: json(rkS.Scores), ...errors(COMMON_AUTH) } });
+  p({ method: 'get', path: '/trust/{userId}', tags: ['risk'], summary: 'Reliability scores that are shown (enough bookings, trust.min_sample)', request: rkUser, responses: { 200: json(rkS.Scores), ...errors(VALIDATION) } });
+  p({ method: 'get', path: '/me/document-requests', tags: ['kyc'], summary: 'Documents our team asked me for (M02, from the risk desk)', security: bearer, responses: { 200: json(rkS.DocumentRequests), ...errors(COMMON_AUTH) } });
 }
 
 function dateTimeOf() {

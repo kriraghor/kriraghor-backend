@@ -594,6 +594,13 @@ async function facts(disputeId) {
   return { code: d.code, ref: d.sourceRef, category: d.category, outcome: d.outcome, refund: d.refundPoisha ?? 0, held: d.heldPoisha, respondentDueAt: d.respondentDueAt, sourceType: d.sourceType };
 }
 
+/** M18 dispute_loss_rate and owner reliability: cases decided against this user as the respondent since `since`. */
+async function statsFor(userId, since) {
+  const rows = await Dispute.findAll({ where: { respondentId: userId, status: 'resolved', resolvedAt: { [Op.gte]: since } }, attributes: ['outcome', 'refundPoisha'] });
+  const lost = rows.filter((d) => d.outcome === 'upheld' || (d.refundPoisha ?? 0) > 0).length;
+  return { decided: rows.length, lost };
+}
+
 /** M18 and the reviews: is a case open about this source? */
 const activeFor = async (sourceType, sourceId, { transaction } = {}) => (await Dispute.count({ where: { sourceType, sourceId, status: rules.ACTIVE }, transaction })) > 0;
 
@@ -623,5 +630,6 @@ module.exports = {
   tick,
   facts,
   activeFor,
+  statsFor,
   partyOf,
 };

@@ -32,6 +32,7 @@ const groundsRoutes = require('./modules/grounds/grounds.routes');
 const bookingsRoutes = require('./modules/bookings/bookings.routes');
 const analyticsRoutes = require('./modules/analytics/analytics.routes');
 const trustRoutes = require('./modules/trust/trust.routes');
+const riskRoutes = require('./modules/risk/risk.routes');
 
 // ADR-004: customer and admin origins (exact or one-label wildcard). Unknown origins get no CORS headers.
 const allowedOrigin = compile([...config.corsOrigins, ...config.adminOrigins]);
@@ -86,6 +87,7 @@ function createApp() {
   api.use('/me/withdrawals', payoutRoutes.meWithdrawals);
   api.use('/me/verification', kycRoutes.meVerification);
   api.use('/me/documents', kycRoutes.meDocuments);
+  api.use('/me/document-requests', kycRoutes.meDocumentRequests);
   api.use('/me/submissions', moderationRoutes.meSubmissions);
   api.use('/me/esports', esportsRoutes.meRouter);
   api.use('/esports', esportsRoutes.publicRouter);
@@ -98,6 +100,8 @@ function createApp() {
   api.use('/me/dashboard', analyticsRoutes.meRouter);
   api.use('/kpis', analyticsRoutes.kpiRouter);
   api.use('/me/ground-bookings', bookingsRoutes.meOwner);
+  api.use('/me/trust', riskRoutes.meTrust);
+  api.use('/trust', riskRoutes.publicTrust);
   api.use('/me/disputes', trustRoutes.meDisputes);
   api.use('/me/reports', trustRoutes.meReports);
   api.use('/me/reviewable', trustRoutes.meReviewable);
@@ -137,6 +141,7 @@ function createApp() {
   api.use('/admin/grounds', groundsRoutes.adminRouter);
   api.use('/admin/bookings', bookingsRoutes.adminRouter);
   api.use('/admin/analytics', analyticsRoutes.adminRouter);
+  api.use('/admin/risk', riskRoutes.adminRouter);
   api.use('/admin/disputes', trustRoutes.adminDisputes);
   api.use('/admin/reports', trustRoutes.adminReports);
   api.use('/admin/reviews', trustRoutes.adminReviews);

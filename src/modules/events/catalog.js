@@ -6,7 +6,7 @@
  * invalid payloads before commit. Payloads carry IDs, codes, amounts, statuses and timestamps only:
  * no phone, NID, DOB, email or names (consumers read details through the producer's service).
  *
- * Built so far: M01, M02, M03, M04, M05, M06, M07, M09, M10, M17, M19, M21. Each later module adds its events here when it is built.
+ * Built so far: M01, M02, M03, M04, M05, M06, M07, M09, M10, M17, M18, M19, M21. Each later module adds its events here when it is built.
  */
 const { z } = require('zod');
 
@@ -30,6 +30,8 @@ const bookingEvent = z.object({ bookingId: uuid, code: z.string().max(16), groun
 const disputeEvent = z.object({ disputeId: uuid, code: z.string().max(20), sourceType: z.enum(['booking', 'esports_result']), sourceId: uuid, category: z.string().max(30), claimantId: uuid, respondentId: uuid.nullable() });
 const subjectType = z.enum(['ground', 'booking', 'user', 'review', 'esports_tournament']);
 const reviewEvent = z.object({ reviewId: uuid, subjectType: z.literal('ground'), subjectId: uuid, authorId: uuid });
+const docRequestEvent = z.object({ requestId: uuid, userId: uuid, docType: z.string().max(30), sourceRef: uuid.nullable(), dueAt: iso.nullable() });
+const riskFlagEvent = z.object({ flagId: uuid, userId: uuid, ruleKey: z.string().max(40), severity: z.enum(['info', 'medium', 'high', 'critical']) });
 const catalogItem = z.object({ table: z.string(), id: uuid, key: z.string(), version: z.number().int().optional(), isActive: z.boolean().optional() });
 
 const EVENTS = {
@@ -237,7 +239,7 @@ const EVENTS = {
   'report.filed': { module: 'M17', version: 1, schema: z.object({ reportId: uuid, code: z.string().max(20), subjectType, subjectId: uuid, reporterId: uuid, reasonCode: z.string().max(30), eligible: z.boolean() }) },
   'report.threshold_reached': { module: 'M17', version: 1, schema: z.object({ subjectType, subjectId: uuid, reporters: z.number().int(), hidden: z.boolean() }) },
   'report.escalated': { module: 'M17', version: 1, schema: z.object({ subjectType, subjectId: uuid, reports: z.number().int() }) },
-  'report.resolved': { module: 'M17', version: 1, schema: z.object({ subjectType, subjectId: uuid, action: z.string().max(30), reports: z.number().int(), reporterIds: z.array(uuid) }) },
+  'report.resolved': { module: 'M17', version: 1, schema: z.object({ subjectType, subjectId: uuid, subjectOwnerId: uuid.nullable().optional(), action: z.string().max(30), reports: z.number().int(), reporterIds: z.array(uuid) }) },
   'report.dismissed': { module: 'M17', version: 1, schema: z.object({ reportId: uuid, code: z.string().max(20), subjectType, subjectId: uuid, reporterId: uuid }) },
   'review.posted': { module: 'M17', version: 1, schema: reviewEvent.extend({ ownerId: uuid, stars: z.number().int().min(1).max(5), status: z.string().max(12) }) },
   'review.edited': { module: 'M17', version: 1, schema: reviewEvent.extend({ stars: z.number().int().min(1).max(5), status: z.string().max(12) }) },
@@ -246,6 +248,20 @@ const EVENTS = {
   'review.published': { module: 'M17', version: 1, schema: reviewEvent },
   'review.replied': { module: 'M17', version: 1, schema: reviewEvent },
   'review.aggregate_updated': { module: 'M17', version: 1, schema: z.object({ subjectType: z.literal('ground'), subjectId: uuid, count: z.number().int().nonnegative(), avg: z.number().nullable() }) },
+
+  // ---------------- M02 document requests (for M18)
+  'document_request.created': { module: 'M02', version: 1, schema: docRequestEvent },
+  'document_request.fulfilled': { module: 'M02', version: 1, schema: docRequestEvent },
+  'document_request.cancelled': { module: 'M02', version: 1, schema: docRequestEvent },
+  'document_request.overdue_marked': { module: 'M02', version: 1, schema: docRequestEvent },
+
+  // ---------------- M18 Risk and Trust
+  'risk.flag_raised': { module: 'M18', version: 1, schema: riskFlagEvent.extend({ reopened: z.boolean() }) },
+  'risk.flag_updated': { module: 'M18', version: 1, schema: riskFlagEvent.extend({ value: z.number().optional(), status: z.string().max(12).optional(), escalated: z.boolean().optional() }) },
+  'risk.flag_cleared': { module: 'M18', version: 1, schema: riskFlagEvent.extend({ lapsed: z.boolean() }) },
+  'risk.action_taken': { module: 'M18', version: 1, schema: z.object({ actionId: uuid, userId: uuid, action: z.string().max(30), flagId: uuid.nullable(), reversesActionId: uuid.nullable() }) },
+  'trust.score_updated': { module: 'M18', version: 1, schema: z.object({ userId: uuid, kind: z.enum(['owner', 'booker']), score: z.number().int(), shown: z.boolean(), sample: z.number().int() }) },
+  'trust.low_crossed': { module: 'M18', version: 1, schema: z.object({ userId: uuid, kind: z.enum(['owner', 'booker']), score: z.number().int() }) },
 
   // ---------------- M19 Dashboards and Analytics
   'analytics.drift_detected': { module: 'M19', version: 1, schema: z.object({ vertical: z.string().max(20), records: z.number().int(), amount: poisha, runAt: iso }) },

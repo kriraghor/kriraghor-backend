@@ -32,6 +32,9 @@ function registerAll() {
   // M19: read models from bookings, closures, series, payments, the ledger and esports.
   require('../analytics/facts.consumers').registerAnalyticsConsumers();
 
+  // M18: events schedule risk evaluations and reliability; overdue document requests raise their flag.
+  require('../risk/risk.consumers').registerRiskConsumers();
+
   // M01 ← M02: the member role follows the NID review.
   require('../users/kyc.consumers').registerKycConsumers();
 

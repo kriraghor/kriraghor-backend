@@ -3,7 +3,7 @@
 /**
  * Notification catalogue (M08 §6.6), as code. Each entry maps a domain event to recipients, channels
  * and template variables. Template texts are versioned rows in message_templates (EN and BN for
- * every default channel; a contract test checks it). Built so far: the M01, M02, M03, M04, M05, M06, M07, M09, M10, M17, M19 and M21 events.
+ * every default channel; a contract test checks it). Built so far: the M01, M02, M03, M04, M05, M06, M07, M09, M10, M17, M18, M19 and M21 events.
  *
  * Entry: { code, events[], category, channels[], urgent, roleContext?(e), recipients(e) → userIds,
  *          values(e, { locale, userId }) → template values, link(e) → in-app link }
@@ -111,6 +111,19 @@ const disputeValues = async (e, { locale }) => {
 const myDispute = (e) => `/me/disputes/${e.payload.code}`;
 const vendorDispute = (e) => vendorUrl(`/vendor/disputes/${e.payload.code}`);
 const adminDispute = (e) => `/admin/disputes?code=${e.payload.code}`;
+
+// M18 risk and trust.
+const RULE_LABELS = {
+  en: { accounts_per_nid: 'the same NID on several accounts', shared_payout_account: 'a payout wallet shared with another account', esports_uid_banned: 'a banned game UID', refund_rate: 'many refunds', dispute_loss_rate: 'many lost disputes', reports_upheld: 'upheld reports', esports_disqualified: 'esports disqualifications', velocity_breaches: 'many rate-limit hits', payout_account_change: 'a new payout account' },
+  bn: { accounts_per_nid: 'একাধিক অ্যাকাউন্টে একই NID', shared_payout_account: 'অন্য অ্যাকাউন্টের সাথে একই পেআউট ওয়ালেট', esports_uid_banned: 'নিষিদ্ধ গেম UID', refund_rate: 'অনেক রিফান্ড', dispute_loss_rate: 'অনেক বিরোধে হার', reports_upheld: 'সঠিক প্রমাণিত রিপোর্ট', esports_disqualified: 'এস্পোর্টস থেকে বাদ', velocity_breaches: 'বারবার সীমা ছোঁয়া', payout_account_change: 'নতুন পেআউট অ্যাকাউন্ট' },
+};
+const SEVERITY_LABELS = { en: { info: 'info', medium: 'medium', high: 'high', critical: 'critical' }, bn: { info: 'তথ্য', medium: 'মাঝারি', high: 'উচ্চ', critical: 'গুরুতর' } };
+const DOC_REQUEST_LABELS = { en: { nid: 'NID', trade_license: 'trade licence', deed_or_lease: 'land deed or lease', tin: 'TIN certificate' }, bn: { nid: 'NID', trade_license: 'ট্রেড লাইসেন্স', deed_or_lease: 'জমির দলিল বা লিজ', tin: 'টিআইএন সনদ' } };
+const TRUST_KINDS = { en: { owner: 'ground owner', booker: 'booking' }, bn: { owner: 'মাঠ মালিক', booker: 'বুকিং' } };
+const pick = (table, locale, key) => table[locale]?.[key] ?? table.en[key] ?? key;
+const riskDesk = (e) => `/admin/risk/accounts/${e.payload.userId}`;
+const riskDeskStaff = async () => [...new Set([...(await directory.withPermission('manage_users'))])];
+const actionIs = (name) => (e) => e.payload.action === name;
 
 const CATALOGUE = [
   // ---------------- M04: critical audit actions → every other master (FR-11)
@@ -903,6 +916,61 @@ const CATALOGUE = [
     recipients: (e) => [e.payload.authorId],
     values: async (e) => ({ ground: (await reviewFacts(e.payload.reviewId)).groundName }),
     link: () => '/me/reviews',
+  },
+  // ---------------- M18 risk and trust (the payee never sees the rule)
+  {
+    code: 'RISK_FLAGGED',
+    events: ['risk.flag_raised'],
+    category: 'staff_ops',
+    channels: ['in_app'],
+    recipients: async (e) => (['high', 'critical'].includes(e.payload.severity) ? riskDeskStaff() : []),
+    values: async (e, { locale }) => ({ rule: pick(RULE_LABELS, locale, e.payload.ruleKey), severity: pick(SEVERITY_LABELS, locale, e.payload.severity), user: await nameOf(e.payload.userId) }),
+    link: riskDesk,
+  },
+  {
+    code: 'PAYOUTS_FROZEN',
+    events: ['risk.action_taken'],
+    category: 'money',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => (actionIs('freeze_payouts')(e) ? [e.payload.userId] : []),
+    values: () => ({}),
+    link: () => '/me/payouts',
+  },
+  {
+    code: 'PAYOUTS_UNFROZEN',
+    events: ['risk.action_taken'],
+    category: 'money',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => (actionIs('unfreeze_payouts')(e) ? [e.payload.userId] : []),
+    values: () => ({}),
+    link: () => '/me/payouts',
+  },
+  {
+    code: 'DOCUMENTS_REQUESTED',
+    events: ['document_request.created'],
+    category: 'security',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.userId],
+    values: (e, { locale }) => ({ doc: pick(DOC_REQUEST_LABELS, locale, e.payload.docType), dueAt: e.payload.dueAt }),
+    link: () => '/account/verification',
+  },
+  {
+    code: 'DOCUMENTS_OVERDUE',
+    events: ['document_request.overdue_marked'],
+    category: 'staff_ops',
+    channels: ['in_app'],
+    recipients: () => riskDeskStaff(),
+    values: async (e, { locale }) => ({ user: await nameOf(e.payload.userId), doc: pick(DOC_REQUEST_LABELS, locale, e.payload.docType) }),
+    link: riskDesk,
+  },
+  {
+    code: 'TRUST_LOW',
+    events: ['trust.low_crossed'],
+    category: 'bookings',
+    channels: ['in_app'],
+    recipients: (e) => (e.payload.kind === 'owner' ? [e.payload.userId] : []),
+    values: (e, { locale }) => ({ kind: pick(TRUST_KINDS, locale, e.payload.kind), score: e.payload.score }),
+    link: () => vendorUrl('/vendor'),
   },
 ];
 

@@ -509,7 +509,23 @@ async function getRefundable(paymentId) {
   return require('./refunds.rules').refundable(p.capturedPoisha, rs.map((r) => ({ status: r.status, amount: r.amountPoisha })));
 }
 
+/**
+ * M18 refund_rate: payments captured into the payee's escrow holds since `since`, and how many of them
+ * had a refund the payee caused (a dispute decided against them, or a reason code in `reasonCodes`).
+ */
+async function payeeRefundStats(payeeId, since, { reasonCodes = [] } = {}) {
+  const [row] = await sequelize.query(
+    `SELECT COUNT(DISTINCT h.payment_id)::int AS payments,
+            COUNT(DISTINCT r.payment_id) FILTER (WHERE r.status <> 'rejected' AND (r.kind = 'dispute' OR r.reason_code IN (:codes)))::int AS refunded
+       FROM escrow_holds h LEFT JOIN refunds r ON r.payment_id = h.payment_id
+      WHERE h.payee_id = :payeeId AND h.created_at >= :since`,
+    { replacements: { payeeId, since, codes: reasonCodes.length ? reasonCodes : ['-'] }, type: sequelize.QueryTypes.SELECT }
+  );
+  return { payments: row.payments, refunded: row.refunded };
+}
+
 module.exports = {
+  payeeRefundStats,
   paymentFact,
   exportPaymentFacts,
   createIntent,

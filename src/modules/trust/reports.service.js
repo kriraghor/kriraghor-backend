@@ -89,7 +89,7 @@ async function file(principal, { subjectType, subjectId, reasonCode, note = null
   try {
     return await sequelize.transaction(async (transaction) => {
       const before = await eligibleCount(subjectType, subjectId, { transaction });
-      const r = await Report.create({ code: await nextCode('RPT', transaction), subjectType, subjectId, reporterId: principal.id, reasonCode, note, eligible }, { transaction });
+      const r = await Report.create({ code: await nextCode('RPT', transaction), subjectType, subjectId, subjectOwnerId: subject.suspendable ?? null, reporterId: principal.id, reasonCode, note, eligible }, { transaction });
       const after = before + (eligible ? 1 : 0);
       const threshold = settings.get('reports.autohide_threshold');
       await publish(transaction, 'report.filed', { reportId: r.id, code: r.code, subjectType, subjectId, reporterId: principal.id, reasonCode, eligible }, principal);
@@ -185,7 +185,7 @@ async function resolve(actor, { subjectType, subjectId, action, note }, req) {
     if (action === 'user_suspended') await require('../admin/admin-users.service').suspendInTx(actor, subject.suspendable, { reasonCode: 'reported', note }, { transaction, req });
     const now = new Date();
     await Report.update({ status: 'resolved', resolutionAction: action, resolutionNote: note, resolvedBy: actor.id, resolvedAt: now }, { where: { id: open.map((r) => r.id) }, transaction });
-    await publish(transaction, 'report.resolved', { subjectType, subjectId, action, reports: open.length, reporterIds: [...new Set(open.map((r) => r.reporterId))] }, actor);
+    await publish(transaction, 'report.resolved', { subjectType, subjectId, subjectOwnerId: subject.suspendable ?? null, action, reports: open.length, reporterIds: [...new Set(open.map((r) => r.reporterId))] }, actor);
     await audit.record({ action: 'report.resolved', actor, entityType: 'report_subject', entityId: subjectId, after: { subjectType, action, reports: open.length }, reason: note, req }, { transaction });
     return { resolved: open.length, action };
   });
@@ -216,4 +216,11 @@ async function dismiss(actor, code, { note }, req) {
   });
 }
 
-module.exports = { file, listMine, adminList, adminSubject, resolve, escalate, dismiss, SUBJECTS };
+/** M18 reports_upheld: distinct subjects owned by this user whose reports were upheld since `since`. */
+const UPHELD = ['content_removed', 'owner_warned', 'user_suspended'];
+async function upheldAgainst(userId, since) {
+  const rows = await Report.findAll({ where: { subjectOwnerId: userId, status: 'resolved', resolutionAction: UPHELD, resolvedAt: { [Op.gte]: since } }, attributes: ['subjectType', 'subjectId'] });
+  return new Set(rows.map((r) => `${r.subjectType}:${r.subjectId}`)).size;
+}
+
+module.exports = { upheldAgainst, file, listMine, adminList, adminSubject, resolve, escalate, dismiss, SUBJECTS };
