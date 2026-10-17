@@ -122,6 +122,14 @@ describe('M17 outcomes and money (the ৳500 retained example)', () => {
     expect(() => r.outcomePlan({ held: 1000, feeBps: 500, fullPrice: 200000, outcome: 'none' })).toThrow(RangeError);
   });
 
+  it('caps the fee base at the items subtotal on a sub-order (M13: no commission on delivery)', () => {
+    // ৳5,200 items + ৳80 delivery held; 5%.
+    const base = { held: 528000, feeBps: 500, feeBaseMax: 520000 };
+    expect(r.outcomePlan({ ...base, outcome: 'none' })).toEqual({ refund: 0, release: 528000, feeBase: 520000, fee: 26000, net: 502000 });
+    expect(r.outcomePlan({ ...base, outcome: 'half' })).toEqual({ refund: 264000, release: 264000, feeBase: 264000, fee: 13200, net: 250800 });
+    expect(r.outcomePlan({ ...base, outcome: 'all' })).toEqual({ refund: 528000, release: 0, feeBase: 0, fee: 0, net: 0 });
+  });
+
   it('moves nothing on a findings-only case', () => expect(r.outcomePlan({ outcome: 'upheld', held: 0, feeBps: 500 })).toEqual({ refund: 0, release: 0, feeBase: 0, fee: 0, net: 0 }));
 });
 

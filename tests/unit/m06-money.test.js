@@ -107,6 +107,17 @@ describe('ledger rules (§6.2, FR-12)', () => {
     expect([total(m, 'debit'), total(m, 'credit')]).toEqual([total(lines, 'credit'), total(lines, 'debit')]);
   });
 
+  it('captures a split payment with one escrow credit per hold (M13 basket)', () => {
+    const cap = L.captureSplitLines({ provider: 'sslcommerz', escrowAccount: 'escrow:market_order', holds: [{ holdId: 'a', amount: 528000 }, { holdId: 'b', amount: 131500 }] });
+    expect(cap).toEqual([
+      { account: 'provider_clearing:sslcommerz', debit: 659500 },
+      { account: 'escrow:market_order', credit: 528000, holdId: 'a' },
+      { account: 'escrow:market_order', credit: 131500, holdId: 'b' },
+    ]);
+    expect(balanced(cap)).toBe(true);
+    expect(() => L.validateLines(cap)).not.toThrow();
+  });
+
   it('builds balanced postings for capture, release, refund and mismatch (§6.3)', () => {
     const cap = L.captureLines({ provider: 'sslcommerz', escrowAccount: 'escrow:test_charge', amount: 10000, holdId: 'h1' });
     expect(cap).toEqual([

@@ -169,7 +169,8 @@ describe('M19 access, actions and exports', () => {
     const o = await owner();
     const g = await liveGround(o);
     const m = await h.signupUser();
-    const b = await book(m, g);
+    // About an hour from now, so the booking is in this week's export even on a Sunday (tomorrow is next week).
+    const b = await book(m, g, { start: slot(0, 2) });
     await settle();
     const csv = await api().get(`${P}/me/dashboard/export?dataset=owner_bookings&period=7w`).set(h.bearer(o)).expect(200);
     expect(csv.headers['content-type']).toMatch(/text\/csv/);

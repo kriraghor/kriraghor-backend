@@ -157,7 +157,7 @@ describe('products and variants (FR-02 to FR-06)', () => {
     expect(page.body.variants).toHaveLength(6);
     expect(page.body.variants.find((v) => v.attributes.eu_size === '45')).toMatchObject({ purchasable: false, stock: { code: 'out_hidden' } });
     expect(page.body.variants.find((v) => v.attributes.eu_size === '43')).toMatchObject({ purchasable: true, stock: { code: 'low', available: 2 }, labelEn: 'EU 43' });
-    expect(page.body).toMatchObject({ checkoutOpen: false, shop: { name: 'Elephant Road Sports' }, specs: [expect.objectContaining({ key: 'stud_type', valueEn: 'Turf (TF)' })] });
+    expect(page.body).toMatchObject({ checkoutOpen: true, shop: { name: 'Elephant Road Sports' }, specs: [expect.objectContaining({ key: 'stud_type', valueEn: 'Turf (TF)' })] });
   });
 
   it('edits: a small price change goes live at once; a big one or a new title waits for review', async () => {
