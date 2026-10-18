@@ -29,12 +29,12 @@ async function player(reviewer, name, gameKey = 'free_fire') {
   return m;
 }
 
-/** A tournament body (solo Free Fire by default), starting six hours from now. */
-async function tournamentBody({ gameKey = 'free_fire', modeKey = 'solo', fee = 40000, maxSlots = 4, min = 2, prizes = [100000, 50000], killReward = 0, maxPaidKills, matches = 1 } = {}) {
+/** A tournament body (solo Free Fire by default), starting `startsInHours` (6) from now. M23: entryPolicy. */
+async function tournamentBody({ gameKey = 'free_fire', modeKey = 'solo', fee = 40000, maxSlots = 4, min = 2, prizes = [100000, 50000], killReward = 0, maxPaidKills, matches = 1, startsInHours = 6, entryPolicy } = {}) {
   const mode = await modeOf(gameKey, modeKey);
   const maps = await mapsOf(gameKey);
   const preset = await models.EsportsPointsPreset.findOne({ where: { gameId: mode.gameId } });
-  const start = Date.now() + 6 * 3600000;
+  const start = Date.now() + startsInHours * 3600000;
   return {
     gameId: mode.gameId,
     modeId: mode.id,
@@ -48,6 +48,7 @@ async function tournamentBody({ gameKey = 'free_fire', modeKey = 'solo', fee = 4
     prizes: prizes.map((amount, i) => ({ place: i + 1, amount })),
     killReward,
     ...(maxPaidKills !== undefined ? { maxPaidKills } : {}),
+    ...(entryPolicy ? { entryPolicy } : {}),
     pointsPresetId: preset.id,
     registrationOpensAt: new Date(Date.now() + 60000).toISOString(),
     matches: Array.from({ length: matches }, (_, i) => ({ mapId: maps[i % maps.length].id, startsAt: new Date(start + i * 3600000).toISOString() })),
