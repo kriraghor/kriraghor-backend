@@ -1,6 +1,6 @@
 {
-  "seedVersion": 3,
-  "source": "M02 §6.1, lite (Oct 2026): the member (NID) requirements, and the ground owner business documents (with M09). v2 (M12): the shop owner business documents (trade licence, TIN, and BIN when the shop is VAT registered); documents are kept per role. v3 (M11): the player and pro credentials (one per hire role, kept under hire:<role>) and the police clearance for under-16 work; organiser documents come with M22. Rows are inserted only when (role, type) is missing, so a master's edits survive.",
+  "seedVersion": 4,
+  "source": "M02 §6.1, lite (Oct 2026): the member (NID) requirements, and the ground owner business documents (with M09). v2 (M12): the shop owner business documents (trade licence, TIN, and BIN when the shop is VAT registered); documents are kept per role. v3 (M11): the player and pro credentials (one per hire role, kept under hire:<role>) and the police clearance for under-16 work; organiser documents come with M22. Rows are inserted only when (role, type) is missing, so a master's edits survive. v4 (M20): the gym owner documents, the ground owner set (trade licence, deed or lease of the premises, an optional TIN), kept per role.",
   "requirements": [
     {
       "role": "member",
@@ -434,6 +434,108 @@
       "whyEn": "Needed before you take any job with under-16 players.",
       "whyBn": "১৬ বছরের কম বয়সী খেলোয়াড়দের সাথে কোনো কাজ নেওয়ার আগে দরকার।",
       "sort": 2
+    },
+    {
+      "role": "gym_owner",
+      "docType": "trade_license",
+      "scope": "role",
+      "required": "always",
+      "fileSlots": [
+        "document"
+      ],
+      "fieldSchema": [
+        {
+          "key": "number",
+          "type": "text",
+          "min": 4,
+          "max": 40,
+          "required": true,
+          "labelEn": "Licence number",
+          "labelBn": "লাইসেন্স নম্বর"
+        },
+        {
+          "key": "holderName",
+          "type": "text",
+          "min": 3,
+          "max": 120,
+          "required": true,
+          "labelEn": "Name on the licence",
+          "labelBn": "লাইসেন্সে নাম"
+        },
+        {
+          "key": "expiresOn",
+          "type": "date",
+          "future": true,
+          "required": true,
+          "labelEn": "Valid until",
+          "labelBn": "মেয়াদ শেষ"
+        }
+      ],
+      "labelEn": "Trade licence",
+      "labelBn": "ট্রেড লাইসেন্স",
+      "whyEn": "Shows the business that runs the gym. It must still be valid.",
+      "whyBn": "জিম যে প্রতিষ্ঠান চালায় তা দেখায়। মেয়াদ থাকতে হবে।",
+      "sort": 1
+    },
+    {
+      "role": "gym_owner",
+      "docType": "deed_or_lease",
+      "scope": "role",
+      "required": "always",
+      "fileSlots": [
+        "document"
+      ],
+      "fieldSchema": [
+        {
+          "key": "kind",
+          "type": "enum",
+          "options": [
+            "deed",
+            "lease"
+          ],
+          "required": true,
+          "labelEn": "Deed or lease",
+          "labelBn": "দলিল না লিজ"
+        },
+        {
+          "key": "expiresOn",
+          "type": "date",
+          "future": true,
+          "required": false,
+          "labelEn": "Lease ends (if a lease)",
+          "labelBn": "লিজ শেষ (লিজ হলে)"
+        }
+      ],
+      "labelEn": "Deed or lease of the premises",
+      "labelBn": "জায়গার দলিল বা লিজ",
+      "whyEn": "Shows you may run the gym at this address.",
+      "whyBn": "এই ঠিকানায় জিম চালানোর অধিকার দেখায়।",
+      "sort": 2
+    },
+    {
+      "role": "gym_owner",
+      "docType": "tin",
+      "scope": "role",
+      "required": "optional",
+      "fileSlots": [
+        "document"
+      ],
+      "fieldSchema": [
+        {
+          "key": "number",
+          "type": "digits",
+          "min": 12,
+          "max": 12,
+          "required": true,
+          "labelEn": "TIN (12 digits)",
+          "labelBn": "টিআইএন (১২ সংখ্যা)"
+        }
+      ],
+      "labelEn": "TIN certificate",
+      "labelBn": "টিআইএন সনদ",
+      "whyEn": "Optional. Needed later for tax statements.",
+      "whyBn": "ঐচ্ছিক। পরে কর বিবরণীর জন্য লাগবে।",
+      "sort": 3
     }
   ]
 }

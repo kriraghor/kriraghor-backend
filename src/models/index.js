@@ -1180,6 +1180,9 @@ market.Product.belongsTo(items.ItemType, { as: 'itemType', foreignKey: 'itemType
 // ---- M03 hire taxonomy and M11 hire, step 1 (./hire.js) ----
 const hire = require('./hire');
 
+// ---- M20 gym, step 1 (./gym.js) ----
+const gym = require('./gym');
+
 // ---- M13 orders, step 1 (./orders.js) ----
 const orders = require('./orders');
 
@@ -1198,6 +1201,7 @@ module.exports = {
   ...market,
   ...orders,
   ...hire,
+  ...gym,
   ...grounds,
   ...bookings,
   ...analytics,

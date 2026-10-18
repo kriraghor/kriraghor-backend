@@ -33,6 +33,13 @@ const PURPOSES = {
   // M11 hire: one payment per request, split into one hold per job (payee: the pro), released when
   // the manager confirms (or automatically) with hire_pct on the job's quote; paid out daily.
   hire: { vertical: 'hire', escrowAccount: 'escrow:hire', pooled: false, testOnly: false, payoutSchedule: 'daily' },
+  // M20 gym packages (day, month, quarter passes): held per pass, released to the gym owner at the
+  // first admission or when an unused pass expires (Q110), with fees.gym_pct; paid out with the
+  // venue owners' weekly run.
+  gym_package: { vertical: 'gym', escrowAccount: 'escrow:gym_package', pooled: false, testOnly: false, payoutSchedule: 'ground_weekly' },
+  // M20 trainer monthly subscriptions: one payment per month, released to the trainer after the
+  // month (and the dispute window) with fees.gym_pct; paid out daily like other pros.
+  trainer_subscription: { vertical: 'gym', escrowAccount: 'escrow:trainer_subscription', pooled: false, testOnly: false, payoutSchedule: 'daily' },
   // Master test charge (dev and staging only, PAYMENTS_TEST_CHARGES): the Phase 2 exit check.
   test_charge: { vertical: 'test', escrowAccount: 'escrow:test_charge', pooled: false, testOnly: true, payoutSchedule: 'daily' },
 };

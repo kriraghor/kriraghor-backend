@@ -51,6 +51,9 @@ const es = () => require('../esports/esports.facts');
 // M09: grounds and the ground owner's business documents.
 const groundFacts = (id) => require('../grounds/grounds.service').facts(id);
 const vendorUrl = (p) => `${config.apps.vendor}${p}`;
+// M20: gyms (the owner), passes (the holder), trainer subscriptions (the member and the trainer).
+const gymFacts = (id) => require('../gym/gyms.service').facts(id);
+const passFacts = (id) => require('../gym/gym.reads').passFacts(id);
 const isNid = (e) => !e.payload.role || e.payload.role === 'member';
 const DOC_LABELS = {
   en: { trade_license: 'trade licence', deed_or_lease: 'land deed or lease', tin: 'TIN certificate', bin: 'VAT registration (BIN)' },
@@ -1322,6 +1325,110 @@ const CATALOGUE = [
     recipients: (e) => (e.payload.kind === 'owner' ? [e.payload.userId] : []),
     values: (e, { locale }) => ({ kind: pick(TRUST_KINDS, locale, e.payload.kind), score: e.payload.score }),
     link: () => vendorUrl('/vendor'),
+  },
+  // ---------------- M20 gym: owners, pass holders, trainers and their members
+  {
+    code: 'GYM_LIVE',
+    events: ['gym.published'],
+    category: 'moderation',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e) => ({ name: (await gymFacts(e.payload.gymId)).name }),
+    link: (e) => `/vendor/gyms/${e.payload.gymId}`,
+  },
+  {
+    code: 'GYM_CHANGES_REQUESTED',
+    events: ['gym.changes_requested'],
+    category: 'moderation',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e, { locale }) => ({ name: (await gymFacts(e.payload.gymId)).name, reason: groundReason(e.payload.reasonCode, locale) }),
+    link: (e) => `/vendor/gyms/${e.payload.gymId}`,
+  },
+  {
+    code: 'GYM_REJECTED',
+    events: ['gym.rejected'],
+    category: 'moderation',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e, { locale }) => ({ name: (await gymFacts(e.payload.gymId)).name, reason: groundReason(e.payload.reasonCode, locale) }),
+    link: (e) => `/vendor/gyms/${e.payload.gymId}`,
+  },
+  {
+    code: 'GYM_PASS_READY',
+    events: ['gym_pass.paid'],
+    category: 'bookings',
+    channels: ['in_app', 'sms'],
+    urgent: true,
+    recipients: (e) => [e.payload.holderId],
+    values: async (e) => {
+      const f = await passFacts(e.payload.passId);
+      return { code: e.payload.code, gym: f?.gym ?? '', from: e.payload.validFrom, price: e.payload.price };
+    },
+    link: (e) => `/me/passes/${e.payload.code}`,
+  },
+  {
+    code: 'GYM_PASS_CANCELLED',
+    events: ['gym_pass.cancelled'],
+    category: 'bookings',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.holderId],
+    values: (e) => ({ code: e.payload.code, refund: e.payload.refund }),
+    link: () => '/me/passes',
+  },
+  {
+    code: 'TRAINER_SUB_STARTED',
+    events: ['trainer_subscription.started'],
+    category: 'hire',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.memberId],
+    values: (e) => ({ code: e.payload.code, from: e.payload.periodStart, to: e.payload.periodEnd }),
+    link: () => '/me/subscriptions',
+  },
+  {
+    code: 'TRAINER_NEW_SUBSCRIBER',
+    events: ['trainer_subscription.started'],
+    category: 'hire',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.trainerId],
+    values: (e) => ({ code: e.payload.code, from: e.payload.periodStart, price: e.payload.price }),
+    link: () => '/pro/subscriptions',
+  },
+  {
+    code: 'TRAINER_SUB_RENEWAL_DUE',
+    events: ['trainer_subscription.renewal_opened'],
+    category: 'hire',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.memberId],
+    values: (e) => ({ code: e.payload.code, price: e.payload.price, payBy: e.payload.payBy }),
+    link: () => '/me/subscriptions',
+  },
+  {
+    code: 'TRAINER_SUB_LAPSED',
+    events: ['trainer_subscription.lapsed'],
+    category: 'hire',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.memberId, e.payload.trainerId],
+    values: (e) => ({ code: e.payload.code }),
+    link: () => '/me/subscriptions',
+  },
+  {
+    code: 'TRAINER_SUB_CANCELLED',
+    events: ['trainer_subscription.cancelled'],
+    category: 'hire',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.trainerId],
+    values: (e) => ({ code: e.payload.code, refund: e.payload.refund }),
+    link: () => '/pro/subscriptions',
+  },
+  {
+    code: 'TRAINER_SUB_PAID',
+    events: ['trainer_subscription.released'],
+    category: 'hire',
+    channels: ['in_app'],
+    recipients: (e) => (e.payload.net > 0 ? [e.payload.trainerId] : []),
+    values: (e) => ({ code: e.payload.code, net: e.payload.net }),
+    link: () => '/me/payouts',
   },
 ];
 

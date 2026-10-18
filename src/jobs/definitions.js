@@ -30,6 +30,7 @@ const risk = require('../modules/risk/risk.nightly');
 const inventory = require('../modules/market/inventory.service');
 const orders = require('../modules/orders/orders.jobs');
 const hire = require('../modules/hire/hire.jobs');
+const gym = require('../modules/gym/gym.jobs');
 const { purgeExpired: purgeIdempotencyKeys } = require('../common/idempotency');
 const logger = require('../common/logger');
 
@@ -312,6 +313,15 @@ const JOBS = [
     queue: QUEUES.HIRE,
     every: 60 * 1000,
     run: async () => hire.tick(),
+  },
+  // ---------------- M20 gym (§10). Idempotent: every step locks the row and re-checks its status.
+  {
+    // Unpaid passes void; passes past closing on their last day expire and pay the gym (Q110); trainer
+    // months: renewal rows and notices, lapses after the grace days, release after the dispute window.
+    name: 'gym.tick',
+    queue: QUEUES.GYM,
+    every: 60 * 1000,
+    run: async () => gym.tick(),
   },
   // ---------------- M19 analytics (§10). Idempotent: upserts and REFRESH … CONCURRENTLY under an advisory lock.
   {

@@ -126,7 +126,12 @@
     { "key": "drinking_water", "nameEn": "Drinking water", "nameBn": "খাবার পানি", "icon": "water", "sort": 12 },
     { "key": "sight_screens", "nameEn": "Sight screens", "nameBn": "সাইট স্ক্রিন", "icon": "screen", "sort": 13 },
     { "key": "scoreboard", "nameEn": "Scoreboard", "nameBn": "স্কোরবোর্ড", "icon": "scoreboard", "sort": 14 },
-    { "key": "bib_rental", "nameEn": "Bib rental", "nameBn": "বিব ভাড়া", "icon": "shirt", "sort": 15 }
+    { "key": "bib_rental", "nameEn": "Bib rental", "nameBn": "বিব ভাড়া", "icon": "shirt", "sort": 15 },
+    { "key": "free_weights", "nameEn": "Free weights", "nameBn": "ফ্রি ওয়েট", "icon": "dumbbell", "sort": 16 },
+    { "key": "cardio_floor", "nameEn": "Cardio floor", "nameBn": "কার্ডিও জোন", "icon": "heart", "sort": 17 },
+    { "key": "squat_racks", "nameEn": "Squat racks", "nameBn": "স্কোয়াট র‍্যাক", "icon": "rack", "sort": 18 },
+    { "key": "functional_zone", "nameEn": "Functional zone (TRX)", "nameBn": "ফাংশনাল জোন (টিআরএক্স)", "icon": "move", "sort": 19 },
+    { "key": "sauna", "nameEn": "Sauna", "nameBn": "সনা", "icon": "steam", "sort": 20 }
   ],
   "surfaces": [
     { "key": "artificial_turf", "nameEn": "Artificial turf", "nameBn": "কৃত্রিম টার্ফ", "indoorTypical": false, "sort": 1 },

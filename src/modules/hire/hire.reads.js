@@ -2,7 +2,8 @@
 
 /**
  * M11 reads for other modules: M19 "Needs your action" (pros: requests to answer, check-ins open;
- * managers: requests to pay, jobs to confirm) and M08 notification facts. Codes, names and amounts only.
+ * managers: requests to pay, jobs to confirm), M08 notification facts, and M20 (a trainer profile behind
+ * a monthly plan). Codes, names and amounts only.
  */
 const { Op } = require('sequelize');
 const { HireRequest, HireJob, HireProfile } = require('../../models');
@@ -38,4 +39,20 @@ async function facts({ requestId = null, jobId = null }) {
   return { code: j?.code ?? r.code, requestCode: r.code, roleEn: role?.nameEn ?? '', roleBn: role?.nameBn ?? '', headline: p.headline, total: r.totalPoisha, start: j ? c.iso(j.startAt) : first, payBy: c.iso(r.payBy), replyBy: c.iso(r.replyBy), quote: j?.quotePoisha ?? null, net: j?.netPoisha ?? r.netPoisha };
 }
 
-module.exports = { pendingActions, facts };
+/** M20: a hire profile with its role key and public status, or null. */
+async function profileRef(profileId, { transaction } = {}) {
+  const p = await HireProfile.findByPk(profileId, { attributes: ['id', 'userId', 'slug', 'status', 'roleId', 'headline', 'liveSnapshot'], transaction });
+  if (!p) return null;
+  const role = await taxonomy.role(p.roleId, { transaction });
+  return { id: p.id, userId: p.userId, slug: p.slug, status: p.status, roleKey: role?.key ?? null, headline: p.liveSnapshot?.headline ?? p.headline };
+}
+
+/** M20: a user's live or paused profiles in a role. */
+async function profilesOf(userId, roleKey) {
+  const role = await taxonomy.role(roleKey);
+  if (!role) return [];
+  const rows = await HireProfile.findAll({ where: { userId, roleId: role.id, status: ['live', 'paused'] }, attributes: ['id'] });
+  return Promise.all(rows.map((r) => profileRef(r.id)));
+}
+
+module.exports = { pendingActions, facts, profileRef, profilesOf };

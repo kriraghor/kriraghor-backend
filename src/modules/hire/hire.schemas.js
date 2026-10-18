@@ -302,6 +302,7 @@ module.exports = {
   adminProfilesQuery,
   reasonBody,
   Taxonomy,
+  Card,
   ProfileList,
   ProfilePage,
   Quote,

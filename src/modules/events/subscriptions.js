@@ -33,6 +33,8 @@ function registerAll() {
   require('../orders/orders.consumers').registerOrdersConsumers();
   // M11: M05 decisions on hire profiles, payment failures lapse requests, sanctions pause profiles.
   require('../hire/hire.moderation').registerHireConsumers();
+  // M20: M05 decisions on gyms, unpaid passes and months close, sanctions pause gyms.
+  require('../gym/gym.moderation').registerGymConsumers();
   // M10: payment failures end holds; suspended or removed grounds cancel their bookings.
   require('../bookings/bookings.consumers').registerBookingsConsumers();
   // M19: read models from bookings, closures, series, payments, the ledger and esports.

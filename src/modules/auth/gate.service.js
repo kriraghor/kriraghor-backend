@@ -25,6 +25,12 @@ const ACTIONS = Object.freeze({
   join_open_game: ROLES.MEMBER,
   list_ground: ROLES.GROUND_OWNER,
   list_product: ROLES.SHOP_OWNER,
+  // M20 (18 Oct 2026, Q109): gyms are listed by their own gym_owner role (the ground owner's
+  // documents). Passes and trainer subscriptions are prepaid into escrow, so a verified phone is
+  // enough, as for booking a ground.
+  list_gym: ROLES.GYM_OWNER,
+  buy_gym_pass: PHONE_VERIFIED,
+  subscribe_trainer: PHONE_VERIFIED,
   publish_tournament: ROLES.ORGANISER,
   accept_hire: [ROLES.PLAYER, ROLES.PRO],
   // M02 v3: withdrawing esports winnings needs NID KYC (M07, M21).

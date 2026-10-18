@@ -11,7 +11,7 @@ const locale = z.enum(['en', 'bn']).default('en');
 const day = z.string();
 
 const dashboardQuery = z.object({ role: z.enum(['member', 'ground_owner']).default('member'), period: period.default('7w'), groundId: z.uuid().optional(), locale });
-const actionsQuery = z.object({ role: z.enum(['member', 'ground_owner', 'shop_owner']).default('member') });
+const actionsQuery = z.object({ role: z.enum(['member', 'ground_owner', 'shop_owner', 'gym_owner']).default('member') });
 const exportQuery = z.object({ dataset: z.enum(['owner_bookings', 'owner_revenue', 'member_payments']), period: period.default('7w') });
 const platformQuery = z.object({ period: period.default('yr'), locale });
 const platformExportQuery = z.object({ dataset: z.enum(['platform_daily']), period: period.default('yr') });

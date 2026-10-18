@@ -19,12 +19,16 @@ const PROVIDERS = {
     // M11: requests to pay and jobs to confirm (managers); requests to answer and today's jobs (players and pros).
     (p) => require('../hire/hire.reads').pendingActions(p, 'member'),
     async (p) => (['player', 'pro'].some((r) => p.roles?.[r] === 'active') ? require('../hire/hire.reads').pendingActions(p, 'pro') : []),
+    // M20: trainer renewals to pay (members).
+    (p) => require('../gym/gym.reads').pendingActions(p, 'member'),
     async (p) => (p.roles?.member === 'active' ? [] : [{ key: p.roles?.member === 'in_review' ? 'nid_in_review' : 'verify_nid', count: 1, severity: 'normal', dueAt: null, href: '/account/verification' }]),
   ],
   ground_owner: [(p) => require('../bookings/bookings.reads').pendingActions(p, 'ground_owner'), (p) => require('../grounds/grounds.reads').pendingActions(p)],
   // M12: the shop and products with changes requested, and stock running low, out or blocked for expiry.
   // M13: orders to accept and to ship.
   shop_owner: [(p) => require('../market/market.reads').pendingActions(p), (p) => require('../orders/orders.reads').pendingActions(p, 'shop_owner')],
+  // M20: gyms with changes requested.
+  gym_owner: [(p) => require('../gym/gym.reads').pendingActions(p, 'gym_owner')],
   staff: [
     async (p) => {
       const s = await require('../moderation/moderation.service').stats(p);

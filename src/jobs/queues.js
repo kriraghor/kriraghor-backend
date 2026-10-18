@@ -22,6 +22,7 @@ const QUEUES = Object.freeze({
   TRUST: 'trust', // M17 respondent reminders and timeouts, SLA breaches, claim expiry
   MARKET: 'market', // M12 supplement expiry, inventory reconcile, visibility sweep
   HIRE: 'hire', // M11 tick: request expiry and lapse, check-in reminders, auto-release
+  GYM: 'gym', // M20 tick: unpaid and expired passes, trainer renewals, lapses and monthly releases
   ORDERS: 'orders', // M13 tick: unpaid orders, accept expiry and reminders, overdue shipping, auto-complete
   RISK: 'risk', // M18 evaluations (debounced per user), re-evaluation after a threshold change, nightly runs
 });

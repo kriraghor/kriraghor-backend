@@ -14,6 +14,7 @@ const ERRORS = {
   NOT_YOUR_BOOKING: [403, 'Only the member who paid can dispute this booking'],
   NOT_YOUR_ORDER: [403, 'Only the buyer can dispute this order'],
   NOT_YOUR_JOB: [403, 'Only the manager who paid can dispute this job'],
+  NOT_YOUR_SUBSCRIPTION: [403, 'Only the member who paid can dispute this month'],
   NOT_A_PARTY: [404, 'Dispute not found'],
   CONFLICT_OF_INTEREST: [403, 'You are part of this dispute and cannot decide it'],
   CLAIMED_BY_OTHER: [409, 'Another staff member is working on this case'],

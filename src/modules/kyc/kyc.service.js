@@ -126,6 +126,10 @@ const UNLOCKS = {
     en: ['Get listed in Hire (coaches, officials, medical, media, team staff)', 'Set your own rates', 'Get paid when the manager confirms'],
     bn: ['হায়ারে তালিকাভুক্ত হন (কোচ, অফিসিয়াল, চিকিৎসা, মিডিয়া, দলের কর্মী)', 'নিজের রেট ঠিক করুন', 'ম্যানেজার নিশ্চিত করলে টাকা পান'],
   },
+  gym_owner: {
+    en: ['List your gym with hours and photos', 'Sell day, month and quarter passes online', 'Admit members by QR at the front desk and get paid'],
+    bn: ['খোলার সময় ও ছবিসহ আপনার জিম তালিকাভুক্ত করুন', 'অনলাইনে দৈনিক, মাসিক ও ত্রৈমাসিক পাস বিক্রি করুন', 'ফ্রন্ট ডেস্কে কিউআর দিয়ে সদস্যদের ঢুকতে দিন ও টাকা পান'],
+  },
   shop_owner: {
     en: ['Open your shop on Kriraghor', 'List new gear, supplements or gym equipment with sizes and stock', 'Sell to members across the platform'],
     bn: ['ক্রীড়াঘরে আপনার দোকান খুলুন', 'সাইজ ও স্টকসহ নতুন সরঞ্জাম, সাপ্লিমেন্ট বা জিমের জিনিস তালিকাভুক্ত করুন', 'প্ল্যাটফর্মজুড়ে সদস্যদের কাছে বিক্রি করুন'],

@@ -1,6 +1,6 @@
 {
   "seedVersion": 1,
-  "source": "M05 §6.2 rubrics and §6.3 rejection reasons, lite (Oct 2026): the document kind (M02 NID); game_profile and esports_tournament (M21). Kinds are added as their modules arrive (M21 game_profile and esports_tournament). Rows are inserted only when missing. Ground listings (M09): rubric rb_ground_v1 and the ground kind on the shared reasons, plus location_wrong and not_a_venue. M11: the hire_profile rubric and reasons (missing_credential, rate_wrong, profile_details).",
+  "source": "M05 §6.2 rubrics and §6.3 rejection reasons, lite (Oct 2026): the document kind (M02 NID); game_profile and esports_tournament (M21). Kinds are added as their modules arrive (M21 game_profile and esports_tournament). Rows are inserted only when missing. Ground listings (M09): rubric rb_ground_v1 and the ground kind on the shared reasons, plus location_wrong and not_a_venue. M11: the hire_profile rubric and reasons (missing_credential, rate_wrong, profile_details). M20: the gym rubric and the gym kind on the shared reasons (photos, price, duplicate, location, not a venue, incomplete, rules, other).",
   "rubrics": [
     {
       "kind": "document",
@@ -188,6 +188,37 @@
           "labelBn": "বিবরণে যোগাযোগের তথ্য নেই এবং অনুমোদিত"
         }
       ]
+    },
+    {
+      "kind": "gym",
+      "version": 1,
+      "items": [
+        {
+          "key": "photos_real",
+          "labelEn": "Photos show this gym (inside and the entrance), no stock images",
+          "labelBn": "ছবিতে এই জিম দেখা যায় (ভেতর ও প্রবেশপথ), স্টক ছবি নয়"
+        },
+        {
+          "key": "address_matches",
+          "labelEn": "Address and area match the documents and the map",
+          "labelBn": "ঠিকানা ও এলাকা নথি ও ম্যাপের সাথে মেলে"
+        },
+        {
+          "key": "hours_sensible",
+          "labelEn": "Opening hours and women-only windows are sensible",
+          "labelBn": "খোলার সময় ও নারীদের সময় যুক্তিসঙ্গত"
+        },
+        {
+          "key": "packages_clear",
+          "labelEn": "Package names and prices are clear and within the limits",
+          "labelBn": "প্যাকেজের নাম ও দাম পরিষ্কার এবং সীমার মধ্যে"
+        },
+        {
+          "key": "no_contact_details",
+          "labelEn": "No phone numbers or links in the description",
+          "labelBn": "বিবরণে ফোন নম্বর বা লিংক নেই"
+        }
+      ]
     }
   ],
   "reasons": [
@@ -197,7 +228,8 @@
       "labelBn": "ছবি অস্পষ্ট বা জিনিসটির নয়",
       "kinds": [
         "ground",
-        "product"
+        "product",
+        "gym"
       ],
       "sort": 1
     },
@@ -207,7 +239,8 @@
       "labelBn": "দাম ঠিক মনে হচ্ছে না",
       "kinds": [
         "ground",
-        "product"
+        "product",
+        "gym"
       ],
       "sort": 2
     },
@@ -249,7 +282,8 @@
         "ground",
         "shop",
         "product",
-        "hire_profile"
+        "hire_profile",
+        "gym"
       ],
       "sort": 6
     },
@@ -273,7 +307,8 @@
         "ground",
         "shop",
         "product",
-        "hire_profile"
+        "hire_profile",
+        "gym"
       ],
       "sort": 8
     },
@@ -288,7 +323,8 @@
         "ground",
         "shop",
         "product",
-        "hire_profile"
+        "hire_profile",
+        "gym"
       ],
       "sort": 9
     },
@@ -303,7 +339,8 @@
         "ground",
         "shop",
         "product",
-        "hire_profile"
+        "hire_profile",
+        "gym"
       ],
       "requiresText": true,
       "sort": 10
@@ -340,7 +377,8 @@
       "labelEn": "Address or map pin is wrong",
       "labelBn": "ঠিকানা বা ম্যাপ পিন ভুল",
       "kinds": [
-        "ground"
+        "ground",
+        "gym"
       ],
       "sort": 14
     },
@@ -349,7 +387,8 @@
       "labelEn": "Not a bookable sports venue",
       "labelBn": "বুকিংযোগ্য খেলার মাঠ নয়",
       "kinds": [
-        "ground"
+        "ground",
+        "gym"
       ],
       "sort": 15
     },
