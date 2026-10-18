@@ -23,9 +23,17 @@ const rkS = require('../modules/risk/risk.schemas');
 const mkS = require('../modules/market/market.schemas');
 const orS = require('../modules/orders/orders.schemas');
 const hiS = require('../modules/hire/hire.schemas');
+const gyS = require('../modules/gym/gym.schemas');
+const orgS = require('../modules/organisations/organisations.schemas');
+const saS = require('../modules/organiser-saas/saas.schemas');
+const evS = require('../modules/esports-events/events.schemas');
+const tmS = require('../modules/teams/teams.schemas');
+const toS = require('../modules/tournaments/tournaments.schemas');
+const usersS = require('../modules/users/users.schemas');
+const adminSS = require('../modules/admin/admin.schemas');
 
 /**
- * Every route (M01 to M10, M12, M17, M18, M19, M21), registered with its request and response schemas and the stable error
+ * Every route (M01 to M14 lite, M17 to M23), registered with its request and response schemas and the stable error
  * codes it can return (ADR-002). When a route is added in a module, add it here: the
  * coverage test fails if an Express route has no OpenAPI entry.
  */
@@ -1008,6 +1016,323 @@ function register(registry) {
   p({ method: 'post', path: '/admin/hire/profiles/{id}/suspend', tags: ['hire'], summary: 'Suspend a profile (manage_users)', security: adminBearer, request: { ...hiId, ...body(hiS.reasonBody) }, responses: { 200: json(hiS.StaffAction), ...errors({ ...ADMIN_AUTH, 409: ['PROFILE_STATE'] }) } });
   p({ method: 'post', path: '/admin/hire/profiles/{id}/restore', tags: ['hire'], summary: 'Restore a suspended profile (masters)', security: adminBearer, request: { ...hiId, ...body(hiS.reasonBody) }, responses: { 200: json(hiS.StaffAction), ...errors({ ...ADMIN_AUTH, 409: ['PROFILE_STATE'] }) } });
   p({ method: 'post', path: '/admin/hire/jobs/{id}/cancel', tags: ['hire'], summary: 'Cancel a job for the platform with a full refund (master, step-up escrow.manage)', security: adminBearer, request: { ...hiId, headers: stepUpHeader, ...body(hiS.reasonBody) }, responses: { 200: json(hiS.Job), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'], 409: ['JOB_STATE'] }) } });
+
+  // ------------------------------------------------------------------ M20 gym (step 1)
+  const gyId = { params: gyS.idParam };
+  const gyPhoto = (description) => ({ description, content: { 'image/jpeg': { schema: z.string() }, 'image/png': { schema: z.string() }, 'image/webp': { schema: z.string() } } });
+  const GYM_OWNER = { ...COMMON_AUTH, 403: ['NOT_OWNER', 'ROLE_REQUIRED', 'ROLE_PENDING', 'KYC_REQUIRED'], 404: ['NOT_FOUND'], 409: ['GYM_IN_REVIEW', 'GYM_STATE'] };
+  const GYM_MEMBER = { ...COMMON_AUTH, 404: ['NOT_FOUND'] };
+  p({ method: 'get', path: '/gym/gyms', tags: ['gym'], summary: 'Live gyms by area, facility and name; sorted by the day pass price, rating or newest', request: { query: gyS.listQuery }, responses: { 200: json(gyS.GymList), ...errors(VALIDATION) } });
+  p({ method: 'get', path: '/gym/gyms/{slug}', tags: ['gym'], summary: 'A gym page: photos, address, weekly hours (women-only windows), facilities, packages, open now (ETag)', request: { params: gyS.slugParam }, responses: { 200: json(gyS.GymPage), 304: { description: 'Not modified' }, ...errors({ 404: ['NOT_FOUND'] }) } });
+  p({ method: 'get', path: '/gym/trainers', tags: ['gym'], summary: 'Fitness trainers (M11 profiles in role fitness_trainer) with their monthly plans', request: { query: gyS.trainersQuery }, responses: { 200: json(gyS.TrainerList) } });
+  p({ method: 'get', path: '/gym/trainers/{id}/plans', tags: ['gym'], summary: 'The active monthly plans of a trainer profile', request: gyId, responses: { 200: json(gyS.PlanOffer) } });
+  p({ method: 'post', path: '/gym/passes', tags: ['gym'], summary: 'Buy a package for a date (gate buy_gym_pass: a verified phone); one payment into escrow (FR-03)', security: bearer,
+    request: { headers: idem, ...body(gyS.buyBody) }, responses: { 201: json(gyS.PassResult, 'Created'), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED'], 409: ['GYM_NOT_AVAILABLE', 'PASS_CAPACITY_FULL'], 422: ['PACKAGE_UNKNOWN', 'DATE_OUT_OF_RANGE', 'GYM_CLOSED_ON_DATE', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'get', path: '/me/passes', tags: ['gym'], summary: 'My passes (active, used, expired)', security: bearer, request: { query: gyS.passesQuery }, responses: { 200: json(gyS.PassList), ...errors(COMMON_AUTH) } });
+  p({ method: 'get', path: '/me/passes/{code}', tags: ['gym'], summary: 'One pass with its QR token and backup code while it can be used (no-store)', security: bearer, request: { params: gyS.codeParam }, responses: { 200: json(gyS.PassResult), ...errors(GYM_MEMBER) } });
+  p({ method: 'post', path: '/me/passes/{id}/cancel', tags: ['gym'], summary: 'Cancel: a day pass before its date, a month or quarter pass before its first use, in full (FR-06)', security: bearer, request: gyId, responses: { 200: json(gyS.PassResult), ...errors({ ...GYM_MEMBER, 409: ['PASS_NOT_ACTIVE', 'PASS_NOT_REFUNDABLE'] }) } });
+  p({ method: 'post', path: '/gym/subscriptions', tags: ['gym'], summary: 'Subscribe to a trainer’s monthly plan (gate subscribe_trainer); the first month into escrow', security: bearer,
+    request: { headers: idem, ...body(gyS.subscribeBody) }, responses: { 201: json(gyS.Subscription, 'Created'), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED'], 409: ['PLAN_NOT_AVAILABLE', 'ALREADY_SUBSCRIBED'], 422: ['OWN_PLAN', 'DATE_OUT_OF_RANGE', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'get', path: '/me/subscriptions', tags: ['gym'], summary: 'My trainer subscriptions', security: bearer, responses: { 200: json(gyS.SubscriptionList), ...errors(COMMON_AUTH) } });
+  p({ method: 'get', path: '/me/subscriptions/{id}', tags: ['gym'], summary: 'A subscription (by id or code) as the member or the trainer', security: bearer, request: { params: gyS.idOrCodeParam }, responses: { 200: json(gyS.Subscription), ...errors(GYM_MEMBER) } });
+  p({ method: 'post', path: '/me/subscriptions/{id}/renew', tags: ['gym'], summary: 'The pay link of the next month (from gym.subscription_renew_notice_days before the end until the grace days end)', security: bearer, request: gyId, responses: { 200: json(gyS.Subscription), ...errors({ ...GYM_MEMBER, 409: ['RENEWAL_NOT_OPEN', 'SUBSCRIPTION_STATE'] }) } });
+  p({ method: 'post', path: '/me/subscriptions/{id}/cancel', tags: ['gym'], summary: 'Cancel: unpaid → void; the first gym.subscription_cancel_days of a paid month → full refund; later → no renewal', security: bearer, request: gyId, responses: { 200: json(gyS.Subscription), ...errors({ ...GYM_MEMBER, 409: ['SUBSCRIPTION_STATE'] }) } });
+  p({ method: 'post', path: '/me/subscriptions/{id}/problem', tags: ['gym'], summary: 'Report a problem with the current month: an M17 case (service_problem); the month’s money waits', security: bearer,
+    request: { ...gyId, headers: idem, ...body(gyS.problemBody) }, responses: { 201: json(z.object({}).loose(), 'Created'), ...errors({ ...GYM_MEMBER, 409: ['SUBSCRIPTION_STATE', 'DISPUTE_WINDOW_CLOSED', 'DISPUTE_ALREADY_OPEN'] }) } });
+  p({ method: 'get', path: '/me/gyms', tags: ['gym'], summary: 'My gyms (gate list_gym)', security: bearer, responses: { 200: json(gyS.OwnerGymList), ...errors(GYM_OWNER) } });
+  p({ method: 'post', path: '/me/gyms', tags: ['gym'], summary: 'A draft gym (FR-01)', security: bearer, request: body(gyS.createGym), responses: { 201: json(gyS.OwnerGym, 'Created'), ...errors({ ...GYM_OWNER, 422: ['AREA_UNKNOWN', 'CATALOG_ITEM_UNKNOWN', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'get', path: '/me/gyms/{id}', tags: ['gym'], summary: 'My gym (the working copy)', security: bearer, request: gyId, responses: { 200: json(gyS.OwnerGym), ...errors(GYM_OWNER) } });
+  p({ method: 'patch', path: '/me/gyms/{id}', tags: ['gym'], summary: 'Edit the working copy (an edit of a live gym waits for review)', security: bearer, request: { ...gyId, ...body(gyS.updateGym) }, responses: { 200: json(gyS.OwnerGym), ...errors({ ...GYM_OWNER, ...VALIDATION }) } });
+  p({ method: 'put', path: '/me/gyms/{id}/hours', tags: ['gym'], summary: 'The week of opening windows (some women-only)', security: bearer, request: { ...gyId, ...body(gyS.hoursBody) }, responses: { 200: json(gyS.OwnerGym), ...errors({ ...GYM_OWNER, ...VALIDATION }) } });
+  p({ method: 'put', path: '/me/gyms/{id}/packages', tags: ['gym'], summary: 'The day, month and quarter packages (a day pass within gym.day_pass_min/max_poisha)', security: bearer, request: { ...gyId, ...body(gyS.packagesBody) }, responses: { 200: json(gyS.OwnerGym), ...errors({ ...GYM_OWNER, ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/gyms/{id}/photos', tags: ['gym'], summary: 'Upload a photo (raw JPEG, PNG or WebP, checked by its first bytes) to the public bucket', security: bearer,
+    request: { ...gyId, body: gyPhoto('The photo itself, up to ground.photo_max_bytes') }, responses: { 201: json(z.object({ id: z.uuid(), url: z.string() }), 'Created'), ...errors({ ...GYM_OWNER, 409: ['GYM_IN_REVIEW', 'GYM_STATE', 'PHOTO_LIMIT'], 413: ['FILE_TOO_LARGE'], 415: ['FILE_TYPE_NOT_ALLOWED', 'FILE_TYPE_MISMATCH'], 422: ['FILE_EMPTY'], 429: ['UPLOAD_RATE_LIMITED'] }) } });
+  p({ method: 'put', path: '/me/gyms/{id}/photos/order', tags: ['gym'], summary: 'Every active photo id, first = cover', security: bearer, request: { ...gyId, ...body(gyS.photoOrder) }, responses: { 200: json(gyS.OwnerGym), ...errors({ ...GYM_OWNER, 422: ['PHOTOS_MISMATCH'] }) } });
+  p({ method: 'post', path: '/me/gyms/{id}/photos/{photoId}/remove', tags: ['gym'], summary: 'Remove a photo (status only; the object stays)', security: bearer, request: { params: gyS.photoParams }, responses: { 200: json(gyS.OwnerGym), ...errors(GYM_OWNER) } });
+  p({ method: 'post', path: '/me/gyms/{id}/submit', tags: ['gym'], summary: 'Send for review (M05 kind gym)', security: bearer, request: gyId, responses: { 200: json(gyS.OwnerGym), ...errors({ ...GYM_OWNER, 409: ['GYM_IN_REVIEW', 'GYM_STATE', 'NOTHING_TO_REVIEW'], 422: ['GYM_INCOMPLETE'] }) } });
+  for (const action of ['pause', 'resume']) p({ method: 'post', path: `/me/gyms/{id}/${action}`, tags: ['gym'], summary: `${action === 'pause' ? 'Stop' : 'Start'} selling passes`, security: bearer, request: gyId, responses: { 200: json(gyS.OwnerGym), ...errors(GYM_OWNER) } });
+  p({ method: 'post', path: '/me/gyms/{id}/redemptions', tags: ['gym'], summary: 'The front desk: admit a pass by its QR token or 6-character code (FR-05)', security: bearer,
+    request: { ...gyId, ...body(gyS.redeemBody) }, responses: { 201: json(gyS.Admission, 'Created'), ...errors({ ...GYM_OWNER, 409: ['PASS_WRONG_GYM', 'PASS_NOT_ACTIVE', 'PASS_NOT_VALID_TODAY', 'PASS_ALREADY_REDEEMED', 'GYM_CLOSED_NOW'], 422: ['INVALID_PASS_TOKEN', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'get', path: '/me/gyms/{id}/redemptions', tags: ['gym'], summary: 'The day’s admissions (default today, Dhaka)', security: bearer, request: { ...gyId, query: gyS.admissionsQuery }, responses: { 200: json(gyS.AdmissionList), ...errors(GYM_OWNER) } });
+  p({ method: 'get', path: '/me/gyms/{id}/passes', tags: ['gym'], summary: 'Passes sold (the buyer’s name only)', security: bearer, request: { ...gyId, query: gyS.soldQuery }, responses: { 200: json(gyS.SoldList), ...errors(GYM_OWNER) } });
+  p({ method: 'get', path: '/pro/trainer-plans', tags: ['gym'], summary: 'My monthly plans and my fitness trainer profiles', security: bearer, responses: { 200: json(gyS.MyPlans), ...errors(COMMON_AUTH) } });
+  p({ method: 'post', path: '/pro/trainer-plans', tags: ['gym'], summary: 'A monthly plan (a live fitness trainer profile; price within gym.trainer_plan_min/max_poisha)', security: bearer, request: body(gyS.planBody), responses: { 201: json(gyS.Plan, 'Created'), ...errors({ ...COMMON_AUTH, 403: ['NOT_A_FITNESS_TRAINER'], ...VALIDATION }) } });
+  p({ method: 'patch', path: '/pro/trainer-plans/{id}', tags: ['gym'], summary: 'Edit a plan (a new price applies to new members only)', security: bearer, request: { ...gyId, ...body(gyS.planPatch) }, responses: { 200: json(gyS.Plan), ...errors({ ...GYM_MEMBER, 409: ['PLAN_NOT_AVAILABLE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/pro/trainer-plans/{id}/retire', tags: ['gym'], summary: 'Retire a plan: no new members or renewals', security: bearer, request: gyId, responses: { 200: json(gyS.Plan), ...errors(GYM_MEMBER) } });
+  p({ method: 'get', path: '/pro/subscriptions', tags: ['gym'], summary: 'My subscribers', security: bearer, responses: { 200: json(gyS.SubscriptionList), ...errors(COMMON_AUTH) } });
+  p({ method: 'get', path: '/admin/gym/gyms', tags: ['gym'], summary: 'Gyms (manage_users, approve_listings, refund_small or view_payouts)', security: adminBearer, request: { query: gyS.adminGymsQuery }, responses: { 200: json(gyS.OwnerGymList), ...errors(ADMIN_AUTH) } });
+  p({ method: 'get', path: '/admin/gym/gyms/{id}', tags: ['gym'], summary: 'One gym with its working copy (the Moderation desk panel)', security: adminBearer, request: gyId, responses: { 200: json(gyS.OwnerGym), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'] }) } });
+  p({ method: 'post', path: '/admin/gym/gyms/{id}/suspend', tags: ['gym'], summary: 'Suspend a gym (manage_users)', security: adminBearer, request: { ...gyId, ...body(gyS.reasonBody) }, responses: { 200: json(gyS.StaffAction), ...errors({ ...ADMIN_AUTH, 409: ['GYM_STATE'] }) } });
+  p({ method: 'post', path: '/admin/gym/gyms/{id}/restore', tags: ['gym'], summary: 'Restore a suspended gym (masters)', security: adminBearer, request: { ...gyId, ...body(gyS.reasonBody) }, responses: { 200: json(gyS.StaffAction), ...errors({ ...ADMIN_AUTH, 409: ['GYM_STATE'] }) } });
+  p({ method: 'get', path: '/admin/gym/passes/{code}', tags: ['gym'], summary: 'A pass with its escrow hold', security: adminBearer, request: { params: gyS.codeParam }, responses: { 200: json(gyS.StaffPass), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'] }) } });
+  p({ method: 'post', path: '/admin/gym/passes/{code}/cancel', tags: ['gym'], summary: 'Cancel an active pass for the platform with a refund of what is held (master, step-up escrow.manage)', security: adminBearer,
+    request: { params: gyS.codeParam, headers: stepUpHeader, ...body(gyS.reasonBody) }, responses: { 200: json(gyS.StaffPass), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'], 409: ['PASS_NOT_ACTIVE'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/gym/subscriptions/{code}', tags: ['gym'], summary: 'A trainer subscription and each month with its escrow hold', security: adminBearer, request: { params: gyS.codeParam }, responses: { 200: json(gyS.StaffSubscription), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'] }) } });
+
+  // ------------------------------------------------------------------ M14 lite organisations and M22 organiser SaaS (step 1)
+  const orgP = { params: saS.orgParam };
+  const orgIdP = { params: saS.orgIdParam };
+  const orgMatchP = { params: saS.orgMatchParam };
+  const saId = { params: saS.idParam };
+  // Organiser console: not a member (or not an admin where admins are needed) is a 404 (M22-FR-03).
+  const ORG = { ...COMMON_AUTH, 404: ['NOT_FOUND'] };
+  const ORG_T = { ...ORG, 409: ['ESPORTS_TOURNAMENT_STATE', 'ESPORTS_PRIZE_TABLE_LOCKED'], 422: ['VALIDATION_FAILED'] };
+  const saImage = (description) => ({ description, content: { 'image/jpeg': { schema: z.string() }, 'image/png': { schema: z.string() }, 'image/webp': { schema: z.string() } } });
+  const saPdf = (description) => ({ description, content: { 'application/pdf': { schema: z.string() } } });
+  p({ method: 'get', path: '/me/organisations', tags: ['organisers'], summary: 'Organisations I belong to, with my role', security: bearer, responses: { 200: json(orgS.OrganisationList), ...errors(COMMON_AUTH) } });
+  p({ method: 'post', path: '/me/organisations', tags: ['organisers'], summary: 'Apply with an organisation (needs the organiser role applied for: NID and the registration document)', security: bearer,
+    request: body(orgS.createBody), responses: { 201: json(orgS.Organisation, 'Created'), ...errors({ ...COMMON_AUTH, 403: ['ORG_ROLE_REQUIRED'], 422: ['AREA_UNKNOWN', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'get', path: '/me/organisations/{id}', tags: ['organisers'], summary: 'One of my organisations', security: bearer, request: { params: orgS.idParam }, responses: { 200: json(orgS.Organisation), ...errors(ORG) } });
+  p({ method: 'patch', path: '/me/organisations/{id}', tags: ['organisers'], summary: 'Edit (owner); the name and area are fixed once verified', security: bearer, request: { params: orgS.idParam, ...body(orgS.updateBody) }, responses: { 200: json(orgS.Organisation), ...errors({ ...ORG, 409: ['ORG_IN_REVIEW', 'ORG_STATE'], 422: ['AREA_UNKNOWN', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/me/organisations/{id}/submit', tags: ['organisers'], summary: 'Send for review on the Moderation desk (M05 kind organisation)', security: bearer, request: { params: orgS.idParam }, responses: { 200: json(orgS.Organisation), ...errors({ ...ORG, 403: ['ORG_ROLE_REQUIRED'], 409: ['ORG_IN_REVIEW', 'ORG_STATE'] }) } });
+  p({ method: 'get', path: '/org/{orgId}/members', tags: ['organisers'], summary: 'Members of the organisation (any member)', security: bearer, request: orgP, responses: { 200: json(orgS.MemberList), ...errors(ORG) } });
+  p({ method: 'post', path: '/org/{orgId}/members', tags: ['organisers'], summary: 'Add an existing member by phone as admin or staff (owner or admin)', security: bearer, request: { ...orgP, ...body(orgS.memberBody) }, responses: { 201: json(orgS.MemberResult, 'Created'), ...errors({ ...ORG, 409: ['ORG_MEMBER_EXISTS'], 422: ['VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/org/{orgId}/members/{memberId}/remove', tags: ['organisers'], summary: 'Remove a member (the owner stays)', security: bearer, request: { params: orgS.memberParams }, responses: { 200: json(orgS.MemberResult), ...errors({ ...ORG, 409: ['ORG_OWNER_FIXED'] }) } });
+  p({ method: 'get', path: '/org/{orgId}/esports/dashboard', tags: ['organisers'], summary: 'Contract, unpaid invoices, whether tournaments can be submitted, tournaments by status', security: bearer, request: orgP, responses: { 200: json(saS.Dashboard), ...errors(ORG) } });
+  p({ method: 'get', path: '/org/{orgId}/esports/tournaments', tags: ['organisers'], summary: 'The organisation\'s tournaments (every status)', security: bearer, request: { ...orgP, query: saS.tournamentsQuery }, responses: { 200: json(esS.TournamentList), ...errors(ORG) } });
+  p({ method: 'post', path: '/org/{orgId}/esports/tournaments', tags: ['organisers'], summary: 'A draft owned by the organisation (FR-04); a per-kill reward needs maxPaidKills', security: bearer,
+    request: { ...orgP, ...body(esS.tournamentBody) }, responses: { 201: json(esS.Tournament, 'Created'), ...errors({ ...ORG, 422: ['ESPORTS_KILL_CAP_REQUIRED', 'POINTS_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'get', path: '/org/{orgId}/esports/tournaments/{id}', tags: ['organisers'], summary: 'A tournament with its prize fund and SaaS fee snapshot', security: bearer, request: orgIdP, responses: { 200: json(esS.Tournament.extend({ fund: z.object({}).loose(), saas: z.object({}).loose() })), ...errors(ORG) } });
+  p({ method: 'patch', path: '/org/{orgId}/esports/tournaments/{id}', tags: ['organisers'], summary: 'Edit a draft (the prize fund follows; a smaller pool than deposited is refused)', security: bearer,
+    request: { ...orgIdP, ...body(esS.tournamentPatch) }, responses: { 200: json(esS.Tournament), ...errors({ ...ORG_T, 409: ORG_T[409].concat('PRIZE_FUND_SHRINK'), 422: ['ESPORTS_KILL_CAP_REQUIRED', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/org/{orgId}/esports/tournaments/{id}/prize-fund', tags: ['organisers'], summary: 'Pay what the prize pool still needs into escrow (FR-05; org admins)', security: bearer,
+    request: { ...orgIdP, headers: idem }, responses: { 201: json(saS.FundPayment, 'Created'), ...errors({ ...ORG, ...IDEM, 409: ['PRIZE_FUND_LOCKED', 'IDEMPOTENCY_IN_PROGRESS'] }) } });
+  p({ method: 'post', path: '/org/{orgId}/esports/tournaments/{id}/submit', tags: ['organisers'], summary: 'Send for review (org admins): an active contract, no invoice overdue past grace, a funded pool', security: bearer,
+    request: orgIdP, responses: { 200: json(esS.Tournament), ...errors({ ...ORG, 409: ['ESPORTS_TOURNAMENT_STATE', 'ORG_SUSPENDED', 'ORG_CONTRACT_REQUIRED', 'ORG_CONTRACT_SUSPENDED', 'INVOICE_OVERDUE', 'PRIZE_FUND_REQUIRED', 'PRIZE_FUND_AMOUNT_MISMATCH'], 422: ['SCHEDULE_INVALID', 'PRIZE_PLACES_INVALID'] }) } });
+  p({ method: 'post', path: '/org/{orgId}/esports/tournaments/{id}/cancel', tags: ['organisers'], summary: 'Cancel a draft or a tournament in review (the prize fund returns to the owner)', security: bearer,
+    request: { ...orgIdP, ...body(esS.cancelBody) }, responses: { 200: json(esS.Tournament), ...errors({ ...ORG, 409: ['ORG_TOURNAMENT_STATE', 'ESPORTS_TOURNAMENT_STATE'] }) } });
+  p({ method: 'get', path: '/org/{orgId}/esports/tournaments/{id}/checkins', tags: ['organisers'], summary: 'The check-in board', security: bearer, request: orgIdP, responses: { 200: json(esS.Board), ...errors(ORG) } });
+  p({ method: 'get', path: '/org/{orgId}/esports/tournaments/{id}/finalise-preview', tags: ['organisers'], summary: 'The awards and totals finalising would pay', security: bearer, request: orgIdP, responses: { 200: json(esS.Preview), ...errors(ORG) } });
+  p({ method: 'post', path: '/org/{orgId}/esports/tournaments/{id}/finalise/code', tags: ['organisers'], summary: 'Send a code to the admin\'s phone to confirm the payout', security: bearer, request: orgIdP, responses: { 200: json(saS.CodeSent), ...errors({ ...ORG, 409: ['PHONE_REQUIRED'], 429: ['OTP_RATE_LIMITED'] }) } });
+  p({ method: 'post', path: '/org/{orgId}/esports/tournaments/{id}/finalise', tags: ['organisers'], summary: 'Finalise with the code: prizes from the fund, the fee, the rest to the owner (FR-07, FR-10)', security: bearer,
+    request: { ...orgIdP, ...body(saS.finaliseBody) }, responses: { 200: json(esS.Tournament), ...errors({ ...ORG, 409: ['ESPORTS_NOT_FINALISABLE', 'ESCROW_FROZEN'], 400: ['OTP_INVALID', 'OTP_EXPIRED'], 422: ['VALIDATION_FAILED'] }) } });
+  p({ method: 'get', path: '/org/{orgId}/esports/matches/{matchId}', tags: ['organisers'], summary: 'A match with its entries and results', security: bearer, request: orgMatchP, responses: { 200: json(esS.Match), ...errors(ORG) } });
+  p({ method: 'get', path: '/org/{orgId}/esports/matches/{matchId}/room', tags: ['organisers'], summary: 'The room panel (no-store)', security: bearer, request: orgMatchP, responses: { 200: json(esS.RoomPanel), ...errors(ORG) } });
+  p({ method: 'put', path: '/org/{orgId}/esports/matches/{matchId}/room', tags: ['organisers'], summary: 'Set the room (org staff, Q135; encrypted, audited)', security: bearer, request: { ...orgMatchP, ...body(esS.roomBody) }, responses: { 200: json(esS.RoomPanel), ...errors({ ...ORG, ...VALIDATION }) } });
+  p({ method: 'post', path: '/org/{orgId}/esports/matches/{matchId}/room/rotate', tags: ['organisers'], summary: 'Rotate the room credentials and push them again', security: bearer, request: { ...orgMatchP, ...body(esS.rotateBody) }, responses: { 200: json(esS.RoomPanel), ...errors({ ...ORG, ...VALIDATION }) } });
+  p({ method: 'put', path: '/org/{orgId}/esports/matches/{matchId}/results', tags: ['organisers'], summary: 'Enter placements and kills (org staff, Q135)', security: bearer, request: { ...orgMatchP, ...body(esS.resultsBody) }, responses: { 200: json(esS.Match), ...errors({ ...ORG, ...VALIDATION }) } });
+  p({ method: 'post', path: '/org/{orgId}/esports/matches/{matchId}/results/post', tags: ['organisers'], summary: 'Post the results (the dispute window opens)', security: bearer, request: orgMatchP, responses: { 200: json(esS.Match), ...errors({ ...ORG, 409: ['ESPORTS_TOO_EARLY'] }) } });
+  p({ method: 'get', path: '/org/{orgId}/billing/contracts', tags: ['organisers'], summary: 'The organisation\'s contracts (org admins)', security: bearer, request: orgP, responses: { 200: json(saS.ContractList), ...errors(ORG) } });
+  p({ method: 'get', path: '/org/{orgId}/billing/invoices', tags: ['organisers'], summary: 'The organisation\'s invoices (org admins)', security: bearer, request: orgP, responses: { 200: json(saS.InvoiceList), ...errors(ORG) } });
+  p({ method: 'post', path: '/org/{orgId}/billing/invoices/{id}/pay', tags: ['organisers'], summary: 'Pay an invoice (M06 purpose fee_invoice)', security: bearer,
+    request: { ...orgIdP, headers: idem }, responses: { 201: json(saS.PayResult, 'Created'), ...errors({ ...ORG, ...IDEM, 409: ['INVOICE_STATE', 'IDEMPOTENCY_IN_PROGRESS'] }) } });
+  p({ method: 'get', path: '/org/{orgId}/branding', tags: ['organisers'], summary: 'Logo, colours, taglines and subdomain', security: bearer, request: orgP, responses: { 200: json(saS.Branding), ...errors(ORG) } });
+  p({ method: 'put', path: '/org/{orgId}/branding', tags: ['organisers'], summary: 'Colours (WCAG AA checked) and taglines', security: bearer, request: { ...orgP, ...body(saS.brandingBody) }, responses: { 200: json(saS.Branding), ...errors({ ...ORG, 422: ['BRAND_PRIMARY_CONTRAST', 'BRAND_ACCENT_CONTRAST', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'put', path: '/org/{orgId}/branding/subdomain', tags: ['organisers'], summary: 'Claim {sub}.esports.kriraghor.com (the first claim wins)', security: bearer, request: { ...orgP, ...body(saS.subdomainBody) }, responses: { 200: json(saS.Branding), ...errors({ ...ORG, 409: ['SUBDOMAIN_TAKEN'], 422: ['SUBDOMAIN_INVALID', 'SUBDOMAIN_RESERVED'] }) } });
+  p({ method: 'post', path: '/org/{orgId}/branding/logo', tags: ['organisers'], summary: 'Upload the logo (raw JPEG, PNG or WebP, up to 2 MB, public bucket)', security: bearer,
+    request: { ...orgP, body: saImage('The logo itself') }, responses: { 201: json(saS.Branding, 'Created'), ...errors({ ...ORG, 413: ['FILE_TOO_LARGE'], 415: ['FILE_TYPE_NOT_ALLOWED', 'FILE_TYPE_MISMATCH'], 422: ['FILE_EMPTY'] }) } });
+  p({ method: 'get', path: '/esports/organisers/{subdomain}', tags: ['organisers'], summary: 'A verified organisation\'s branded page: branding and public tournaments', request: { params: saS.subdomainParam }, responses: { 200: json(saS.Organiser), ...errors({ 404: ['NOT_FOUND'] }) } });
+  const STAFF_ORG = { ...ADMIN_AUTH, 404: ['NOT_FOUND'] };
+  p({ method: 'get', path: '/admin/organisers', tags: ['organisers'], summary: 'Organisations (manage_organisers, approve_listings or manage_esports)', security: adminBearer, request: { query: orgS.adminQuery }, responses: { 200: json(orgS.OrganisationList), ...errors(ADMIN_AUTH) } });
+  p({ method: 'get', path: '/admin/organisers/{id}', tags: ['organisers'], summary: 'One organisation with its members', security: adminBearer, request: saId, responses: { 200: json(orgS.StaffOrganisation), ...errors(STAFF_ORG) } });
+  p({ method: 'post', path: '/admin/organisers/{id}/suspend', tags: ['organisers'], summary: 'Suspend an organisation (manage_organisers)', security: adminBearer, request: { ...saId, ...body(orgS.reasonBody) }, responses: { 200: json(orgS.Organisation), ...errors({ ...STAFF_ORG, 409: ['ORG_STATE'] }) } });
+  p({ method: 'post', path: '/admin/organisers/{id}/restore', tags: ['organisers'], summary: 'Restore a suspended organisation (masters)', security: adminBearer, request: { ...saId, ...body(orgS.reasonBody) }, responses: { 200: json(orgS.Organisation), ...errors({ ...STAFF_ORG, 409: ['ORG_STATE'] }) } });
+  p({ method: 'get', path: '/admin/organisers/{id}/contracts', tags: ['organisers'], summary: 'An organisation\'s contracts', security: adminBearer, request: saId, responses: { 200: json(saS.ContractList), ...errors(STAFF_ORG) } });
+  p({ method: 'post', path: '/admin/organisers/{id}/contracts', tags: ['organisers'], summary: 'A contract draft (percentage at fees.esports_saas_pct or its own pct; or flat per month or quarter)', security: adminBearer,
+    request: { ...saId, ...body(saS.contractBody) }, responses: { 201: json(saS.Contract, 'Created'), ...errors({ ...STAFF_ORG, 422: ['CONTRACT_FIELDS_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'patch', path: '/admin/organisers/contracts/{id}', tags: ['organisers'], summary: 'Edit a contract draft', security: adminBearer, request: { ...saId, ...body(saS.contractPatch) }, responses: { 200: json(saS.Contract), ...errors({ ...STAFF_ORG, 409: ['CONTRACT_STATE'], 422: ['CONTRACT_FIELDS_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/admin/organisers/contracts/{id}/document', tags: ['organisers'], summary: 'Attach the signed contract (raw PDF, private bucket)', security: adminBearer,
+    request: { ...saId, body: saPdf('The signed contract') }, responses: { 200: json(saS.Contract), ...errors({ ...STAFF_ORG, 409: ['CONTRACT_STATE'], 413: ['FILE_TOO_LARGE'], 415: ['FILE_TYPE_NOT_ALLOWED', 'FILE_TYPE_MISMATCH'], 422: ['FILE_EMPTY'] }) } });
+  p({ method: 'post', path: '/admin/organisers/contracts/{id}/activate', tags: ['organisers'], summary: 'Activate or reinstate (step-up esports.money); a flat contract is invoiced at once', security: adminBearer,
+    request: { ...saId, headers: stepUpHeader }, responses: { 200: json(saS.Contract), ...errors({ ...STAFF_ORG, ...STEP, 409: ['CONTRACT_STATE', 'ORG_NOT_VERIFIED', 'CONTRACT_DOCUMENT_REQUIRED', 'CONTRACT_ACTIVE_EXISTS'] }) } });
+  p({ method: 'post', path: '/admin/organisers/contracts/{id}/suspend', tags: ['organisers'], summary: 'Suspend (step-up): new submits stop, running tournaments finish (FR-13)', security: adminBearer,
+    request: { ...saId, headers: stepUpHeader, ...body(saS.reasonBody) }, responses: { 200: json(saS.Contract), ...errors({ ...STAFF_ORG, ...STEP, 409: ['CONTRACT_STATE'] }) } });
+  p({ method: 'post', path: '/admin/organisers/contracts/{id}/end', tags: ['organisers'], summary: 'End a contract (step-up)', security: adminBearer,
+    request: { ...saId, headers: stepUpHeader, ...body(saS.reasonBody) }, responses: { 200: json(saS.Contract), ...errors({ ...STAFF_ORG, ...STEP, 409: ['CONTRACT_STATE'] }) } });
+  p({ method: 'get', path: '/admin/organisers/invoices', tags: ['organisers'], summary: 'Organiser invoices by organisation and status', security: adminBearer, request: { query: saS.invoicesQuery }, responses: { 200: json(saS.InvoiceList), ...errors(ADMIN_AUTH) } });
+  p({ method: 'post', path: '/admin/organisers/invoices/{id}/void', tags: ['organisers'], summary: 'Void an unpaid invoice (step-up), with a reason', security: adminBearer,
+    request: { ...saId, headers: stepUpHeader, ...body(saS.reasonBody) }, responses: { 200: json(saS.Invoice), ...errors({ ...STAFF_ORG, ...STEP, 409: ['INVOICE_STATE'] }) } });
+
+  // ------------------------------------------------------------------ M23 esports big events (step 1)
+  const evId = { params: evS.idParam };
+  const EV = { 404: ['NOT_FOUND'] };
+  const EV_STAFF = { ...ADMIN_AUTH, 404: ['NOT_FOUND'] };
+  const evImage = (description) => ({ description, content: { 'image/jpeg': { schema: z.string() }, 'image/png': { schema: z.string() }, 'image/webp': { schema: z.string() } } });
+  const IMG = { 413: ['FILE_TOO_LARGE'], 415: ['FILE_TYPE_NOT_ALLOWED', 'FILE_TYPE_MISMATCH'], 422: ['FILE_EMPTY'] };
+  p({ method: 'get', path: '/esports/events', tags: ['esports-events'], summary: 'Big events: live first, then upcoming, then ended (cacheable)', request: { query: evS.listQuery }, responses: { 200: json(evS.EventList), 304: noContent } });
+  p({ method: 'get', path: '/esports/events/{slug}', tags: ['esports-events'], summary: 'An event page: stages, qualifications, streams with embeds, sponsors, polls with totals, the feed (no viewer data; cacheable)',
+    request: { params: evS.slugParam }, responses: { 200: json(evS.Bundle), 304: noContent, ...errors(EV) } });
+  p({ method: 'get', path: '/esports/events/{id}/feed', tags: ['esports-events'], summary: 'The event feed, newest first', request: { ...evId, query: evS.feedQuery }, responses: { 200: json(evS.Feed) } });
+  p({ method: 'get', path: '/esports/events/{id}/me', tags: ['esports-events'], summary: 'Whether I follow the event and my poll votes', security: bearer, request: evId, responses: { 200: json(evS.Me), ...errors(COMMON_AUTH) } });
+  p({ method: 'post', path: '/esports/events/{id}/follow', tags: ['esports-events'], summary: 'Follow the event (in-app alerts when it starts, a stream goes live and before the final)', security: bearer,
+    request: evId, responses: { 200: json(evS.Follow), ...errors({ ...COMMON_AUTH, ...EV, ...RATE }) } });
+  p({ method: 'post', path: '/esports/events/{id}/unfollow', tags: ['esports-events'], summary: 'Stop following', security: bearer, request: evId, responses: { 200: json(evS.Follow), ...errors({ ...COMMON_AUTH, ...EV, ...RATE }) } });
+  p({ method: 'post', path: '/esports/events/{id}/polls/{pollId}/vote', tags: ['esports-events'], summary: 'Vote in a free poll (verified phone; one vote, final; no stakes)', security: bearer,
+    request: { params: evS.pollParam, ...body(evS.voteBody) },
+    responses: { 200: json(evS.Poll), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'ACCOUNT_SUSPENDED', 'ACCOUNT_BANNED'], ...EV, 409: ['POLL_CLOSED', 'POLL_ALREADY_VOTED'], 422: ['POLL_OPTION_UNKNOWN', 'VALIDATION_FAILED'], ...RATE }) } });
+  p({ method: 'get', path: '/me/esports/events', tags: ['esports-events'], summary: 'Events I follow', security: bearer, responses: { 200: json(evS.EventList), ...errors(COMMON_AUTH) } });
+  p({ method: 'get', path: '/admin/esports/events', tags: ['esports-events'], summary: 'Every event (manage_esports)', security: adminBearer, request: { query: evS.adminListQuery }, responses: { 200: json(evS.EventList), ...errors(ADMIN_AUTH) } });
+  p({ method: 'post', path: '/admin/esports/events', tags: ['esports-events'], summary: 'A draft event', security: adminBearer,
+    request: body(evS.eventBody), responses: { 201: json(evS.EventDraft, 'Created'), ...errors({ ...ADMIN_AUTH, 422: ['EVENT_DATES_INVALID', 'EVENT_ACCENT_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'get', path: '/admin/esports/events/{id}', tags: ['esports-events'], summary: 'An event with drafts, polls in draft and the link check', security: adminBearer, request: evId, responses: { 200: json(evS.AdminEvent), ...errors(EV_STAFF) } });
+  p({ method: 'patch', path: '/admin/esports/events/{id}', tags: ['esports-events'], summary: 'Change a draft or published event (the slug stays)', security: adminBearer,
+    request: { ...evId, ...body(evS.eventPatch) }, responses: { 200: json(evS.EventDraft), ...errors({ ...EV_STAFF, 409: ['EVENT_STATE'], 422: ['EVENT_DATES_INVALID', 'EVENT_ACCENT_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/admin/esports/events/{id}/banner', tags: ['esports-events'], summary: 'Upload the banner (public bucket)', security: adminBearer,
+    request: { ...evId, body: evImage('The banner') }, responses: { 200: json(evS.EventDraft), ...errors({ ...EV_STAFF, ...IMG }) } });
+  p({ method: 'put', path: '/admin/esports/events/{id}/stages', tags: ['esports-events'], summary: 'Link tournaments: qualifiers feeding invite-only finals (each link checked)', security: adminBearer,
+    request: { ...evId, ...body(evS.stagesBody) },
+    responses: { 200: json(evS.StageList), ...errors({ ...EV_STAFF, 409: ['EVENT_STATE', 'EVENT_TOURNAMENT_IN_OTHER_EVENT', 'EVENT_TOURNAMENT_STATE'], 422: ['EVENT_STAGES_INVALID', 'EVENT_TOURNAMENT_NOT_OURS', 'EVENT_FINAL_NOT_INVITE', 'EVENT_LINK_MISMATCH', 'EVENT_FINAL_SLOTS', 'EVENT_FINAL_MIN', 'EVENT_QUALIFY_GAP', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/admin/esports/events/{id}/publish', tags: ['esports-events'], summary: 'Publish (a published tournament must be linked)', security: adminBearer,
+    request: evId, responses: { 200: json(evS.EventDraft), ...errors({ ...EV_STAFF, 409: ['EVENT_STATE', 'EVENT_NOT_PUBLISHABLE'] }) } });
+  p({ method: 'post', path: '/admin/esports/events/{id}/cancel', tags: ['esports-events'], summary: 'Cancel the event (never its tournaments; refused while one runs)', security: adminBearer,
+    request: { ...evId, ...body(evS.reasonBody) }, responses: { 200: json(evS.EventDraft), ...errors({ ...EV_STAFF, 409: ['EVENT_STATE', 'EVENT_TOURNAMENT_RUNNING'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/esports/events/{id}/qualifications', tags: ['esports-events'], summary: 'Every qualification with its reason', security: adminBearer, request: evId, responses: { 200: json(evS.QualificationList), ...errors(EV_STAFF) } });
+  p({ method: 'post', path: '/admin/esports/events/{id}/qualifications', tags: ['esports-events'], summary: 'Invite a squad or a player into a final', security: adminBearer,
+    request: { ...evId, ...body(evS.inviteBody) }, responses: { 201: json(evS.Qualification, 'Created'), ...errors({ ...EV_STAFF, 409: ['EVENT_STATE', 'EVENT_QUALIFICATION_STATE', 'EVENT_ALREADY_QUALIFIED'], 422: ['EVENT_INVITE_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/admin/esports/events/{id}/qualifications/{qualificationId}/revoke', tags: ['esports-events'], summary: 'Withdraw a place not yet used', security: adminBearer,
+    request: { params: evS.qualParam, ...body(evS.reasonBody) }, responses: { 200: json(evS.Qualification), ...errors({ ...EV_STAFF, 409: ['EVENT_QUALIFICATION_STATE'], ...VALIDATION }) } });
+  p({ method: 'put', path: '/admin/esports/events/{id}/streams', tags: ['esports-events'], summary: 'The event broadcast links; a stream turning live alerts followers (cooldown)', security: adminBearer,
+    request: { ...evId, ...body(evS.streamsBody) }, responses: { 200: json(evS.StreamList), ...errors({ ...EV_STAFF, 409: ['EVENT_STATE'], 422: ['STREAM_URL_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/admin/esports/events/{id}/sponsors', tags: ['esports-events'], summary: 'Add a sponsor placement (no money in the app)', security: adminBearer,
+    request: { ...evId, ...body(evS.sponsorBody) }, responses: { 201: json(evS.Sponsor, 'Created'), ...errors({ ...EV_STAFF, 409: ['EVENT_STATE', 'SPONSOR_LIMIT'], 422: ['SPONSOR_URL_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'patch', path: '/admin/esports/events/{id}/sponsors/{sponsorId}', tags: ['esports-events'], summary: 'Change a sponsor', security: adminBearer,
+    request: { params: evS.sponsorParam, ...body(evS.sponsorPatch) }, responses: { 200: json(evS.Sponsor), ...errors({ ...EV_STAFF, 422: ['SPONSOR_URL_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/admin/esports/events/{id}/sponsors/{sponsorId}/remove', tags: ['esports-events'], summary: 'Remove a sponsor (kept, status removed)', security: adminBearer,
+    request: { params: evS.sponsorParam }, responses: { 200: json(evS.Removed), ...errors(EV_STAFF) } });
+  p({ method: 'post', path: '/admin/esports/events/{id}/sponsors/{sponsorId}/logo', tags: ['esports-events'], summary: 'Upload a sponsor logo (public bucket)', security: adminBearer,
+    request: { params: evS.sponsorParam, body: evImage('The logo') }, responses: { 200: json(evS.Sponsor), ...errors({ ...EV_STAFF, ...IMG }) } });
+  p({ method: 'post', path: '/admin/esports/events/{id}/polls', tags: ['esports-events'], summary: 'A draft poll', security: adminBearer,
+    request: { ...evId, ...body(evS.pollBody) }, responses: { 201: json(evS.Poll, 'Created'), ...errors({ ...EV_STAFF, 409: ['EVENT_STATE'], 422: ['POLL_OPTIONS_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/admin/esports/events/{id}/polls/{pollId}/open', tags: ['esports-events'], summary: 'Open a poll (the event must be published)', security: adminBearer,
+    request: { params: evS.pollParam }, responses: { 200: json(evS.Poll), ...errors({ ...EV_STAFF, 409: ['POLL_STATE'] }) } });
+  p({ method: 'post', path: '/admin/esports/events/{id}/polls/{pollId}/close', tags: ['esports-events'], summary: 'Close a poll', security: adminBearer,
+    request: { params: evS.pollParam }, responses: { 200: json(evS.Poll), ...errors({ ...EV_STAFF, 409: ['POLL_STATE'] }) } });
+  p({ method: 'post', path: '/admin/esports/events/{id}/feed', tags: ['esports-events'], summary: 'Post an announcement to the feed', security: adminBearer,
+    request: { ...evId, ...body(evS.announceBody) }, responses: { 201: json(evS.Announcement, 'Created'), ...errors({ ...EV_STAFF, 409: ['EVENT_STATE'], ...VALIDATION }) } });
+
+  // ------------------------------------------------------------------ M16 teams and players (step 1), and the M01 additions
+  const tmId = { params: tmS.idParam };
+  const TM = { ...COMMON_AUTH, 404: ['NOT_FOUND'] };
+  const CAPT = { ...TM, 403: ['CAPTAIN_ONLY'], 409: ['TEAM_ARCHIVED'] };
+  const tmImage = (description) => ({ description, content: { 'image/jpeg': { schema: z.string() }, 'image/png': { schema: z.string() }, 'image/webp': { schema: z.string() } } });
+  p({ method: 'post', path: '/me/phone', tags: ['me'], summary: 'Add a phone to an account without a verified one (sends a code)', security: bearer,
+    request: body(usersS.startPhone), responses: { 202: json(C.OtpSent, 'Accepted'), ...errors({ ...COMMON_AUTH, 409: ['PHONE_ALREADY_VERIFIED', 'PHONE_IN_USE'], 422: ['PHONE_INVALID', 'VALIDATION_FAILED'], 429: ['OTP_RATE_LIMITED', 'OTP_COOLDOWN', 'RATE_LIMITED'] }) } });
+  p({ method: 'post', path: '/me/phone/verify', tags: ['me'], summary: 'Confirm the code: the phone becomes verified (user.phone_verified)', security: bearer,
+    request: body(usersS.verifyPhone), responses: { 200: json(z.object({ phoneVerified: z.boolean() })), ...errors({ ...COMMON_AUTH, 400: ['OTP_INVALID', 'OTP_EXPIRED'], 409: ['PHONE_ALREADY_VERIFIED', 'PHONE_IN_USE'], 422: ['PHONE_INVALID', 'VALIDATION_FAILED'], ...RATE }) } });
+  p({ method: 'put', path: '/me/gender', tags: ['me'], summary: 'Record my gender once (private; only men\'s and women\'s events read it)', security: bearer,
+    request: body(usersS.setGender), responses: { 200: json(z.object({ gender: z.string() })), ...errors({ ...COMMON_AUTH, 409: ['GENDER_ALREADY_SET'], ...VALIDATION }) } });
+  p({ method: 'put', path: '/admin/users/{id}/gender', tags: ['admin'], summary: 'Correct a member\'s gender (manage_users, with a reason)', security: adminBearer,
+    request: { params: adminSS.idParam, ...body(adminSS.gender) }, responses: { 200: json(C.AdminUser), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/teams', tags: ['teams'], summary: 'Create a team (verified phone); I become its captain', security: bearer,
+    request: body(tmS.createBody), responses: { 201: json(tmS.Team, 'Created'), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'ACCOUNT_SUSPENDED', 'ACCOUNT_BANNED'], 404: ['NOT_FOUND'], 409: ['TOO_MANY_TEAMS'], 422: ['TEAM_NAME_INVALID', 'TEAM_SHORT_CODE_INVALID', 'TEAM_SPORT_UNKNOWN', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'get', path: '/me/teams', tags: ['teams'], summary: 'My teams with my role', security: bearer, responses: { 200: json(tmS.TeamList), ...errors(COMMON_AUTH) } });
+  p({ method: 'get', path: '/teams/{id}', tags: ['teams'], summary: 'A team I am in (members with the NID-verified boolean; invites for captains)', security: bearer, request: tmId, responses: { 200: json(tmS.Team), ...errors(TM) } });
+  p({ method: 'patch', path: '/teams/{id}', tags: ['teams'], summary: 'Change the name, short code or home area (captain)', security: bearer,
+    request: { ...tmId, ...body(tmS.updateBody) }, responses: { 200: json(tmS.Team), ...errors({ ...CAPT, 422: ['TEAM_NAME_INVALID', 'TEAM_SHORT_CODE_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/teams/{id}/logo', tags: ['teams'], summary: 'Upload the team logo (captain; public bucket)', security: bearer,
+    request: { ...tmId, body: tmImage('The logo') }, responses: { 200: json(tmS.Team), ...errors({ ...CAPT, 413: ['FILE_TOO_LARGE'], 415: ['FILE_TYPE_NOT_ALLOWED', 'FILE_TYPE_MISMATCH'], 422: ['FILE_EMPTY'] }) } });
+  p({ method: 'post', path: '/teams/{id}/archive', tags: ['teams'], summary: 'Archive the team (captain)', security: bearer, request: tmId, responses: { 200: json(tmS.Team), ...errors(CAPT) } });
+  p({ method: 'post', path: '/teams/{id}/leave', tags: ['teams'], summary: 'Leave (a captain hands over first; the last member archives the team)', security: bearer,
+    request: tmId, responses: { 200: json(tmS.Left), ...errors({ ...TM, 409: ['CAPTAIN_MUST_HAND_OVER'] }) } });
+  p({ method: 'post', path: '/teams/{id}/captain', tags: ['teams'], summary: 'Hand the captaincy to a member (captain)', security: bearer,
+    request: { ...tmId, ...body(tmS.captainBody) }, responses: { 200: json(tmS.Team), ...errors({ ...CAPT, 404: ['NOT_FOUND', 'NOT_A_MEMBER'] }) } });
+  p({ method: 'post', path: '/teams/{id}/members/{userId}/remove', tags: ['teams'], summary: 'Remove a member (captain or vice-captain; never the captain)', security: bearer,
+    request: { params: tmS.memberParam }, responses: { 200: json(tmS.Team), ...errors({ ...TM, 403: ['CAPTAIN_ONLY'], 404: ['NOT_FOUND', 'NOT_A_MEMBER'], 409: ['CANNOT_REMOVE_CAPTAIN'] }) } });
+  p({ method: 'put', path: '/teams/{id}/members/{userId}', tags: ['teams'], summary: 'Set a member\'s role (one vice-captain) or jersey number (captain)', security: bearer,
+    request: { params: tmS.memberParam, ...body(tmS.memberBody) }, responses: { 200: json(tmS.Team), ...errors({ ...CAPT, 404: ['NOT_FOUND', 'NOT_A_MEMBER'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/teams/{id}/invites', tags: ['teams'], summary: 'Invite a phone: a share link always; members with an account also get it in-app and by SMS', security: bearer,
+    request: { ...tmId, ...body(tmS.inviteBody) },
+    responses: { 201: json(tmS.Invited, 'Created'), ...errors({ ...TM, 403: ['CAPTAIN_ONLY'], 409: ['TEAM_ARCHIVED', 'ALREADY_MEMBER', 'TEAM_FULL'], 422: ['PHONE_INVALID', 'INVITE_SELF', 'VALIDATION_FAILED'], ...RATE }) } });
+  p({ method: 'post', path: '/teams/{id}/invites/{inviteId}/cancel', tags: ['teams'], summary: 'Cancel a pending invite', security: bearer,
+    request: { params: tmS.inviteParam }, responses: { 200: json(tmS.Invite), ...errors({ ...TM, 403: ['CAPTAIN_ONLY'], 409: ['INVITE_STATE'] }) } });
+  p({ method: 'post', path: '/teams/{id}/invites/{inviteId}/resend', tags: ['teams'], summary: 'Send again (new link, renewed expiry) after the cooldown', security: bearer,
+    request: { params: tmS.inviteParam }, responses: { 200: json(tmS.Invited), ...errors({ ...TM, 403: ['CAPTAIN_ONLY'], 409: ['INVITE_STATE'], 429: ['INVITE_RESEND_TOO_SOON'] }) } });
+  p({ method: 'get', path: '/me/team-invites', tags: ['teams'], summary: 'Invites sent to my verified phone', security: bearer, responses: { 200: json(tmS.MyInvites), ...errors(COMMON_AUTH) } });
+  p({ method: 'post', path: '/me/team-invites/{id}/accept', tags: ['teams'], summary: 'Accept (verified phone; expiry, team size and my team count re-checked)', security: bearer,
+    request: tmId, responses: { 200: json(tmS.Accepted), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'ACCOUNT_INACTIVE'], 404: ['INVITE_NOT_YOURS'], 409: ['INVITE_STATE', 'INVITE_EXPIRED', 'TEAM_ARCHIVED', 'ALREADY_MEMBER', 'TEAM_FULL', 'TOO_MANY_TEAMS'] }) } });
+  p({ method: 'post', path: '/me/team-invites/{id}/decline', tags: ['teams'], summary: 'Decline', security: bearer,
+    request: tmId, responses: { 200: json(tmS.Archived), ...errors({ ...COMMON_AUTH, 404: ['INVITE_NOT_YOURS'], 409: ['INVITE_STATE'] }) } });
+  p({ method: 'get', path: '/team-invites/{token}', tags: ['teams'], summary: 'What a share link opens: the team, sport, inviter\'s first name, the masked number', request: { params: tmS.tokenParam }, responses: { 200: json(tmS.InviteLink), ...errors({ 404: ['NOT_FOUND'] }) } });
+  p({ method: 'get', path: '/me/player-profile', tags: ['players'], summary: 'My player profile', security: bearer, responses: { 200: json(tmS.Profile), ...errors(COMMON_AUTH) } });
+  p({ method: 'put', path: '/me/player-profile', tags: ['players'], summary: 'Set my sports, positions, bio and visibility', security: bearer,
+    request: body(tmS.profileBody), responses: { 200: json(tmS.Profile), ...errors({ ...COMMON_AUTH, 422: ['PROFILE_SPORTS_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'get', path: '/players/{handle}', tags: ['players'], summary: 'A public player page (never DOB, age, gender or phone)', request: { params: tmS.handleParam }, responses: { 200: json(tmS.PublicPlayer), ...errors({ 404: ['NOT_FOUND'] }) } });
+  p({ method: 'get', path: '/me/eligibility', tags: ['players'], summary: 'My readiness, and a preview against an event\'s age and gender rules (me only)', security: bearer,
+    request: { query: tmS.eligibilityQuery }, responses: { 200: json(tmS.Eligibility), ...errors({ ...COMMON_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/teams', tags: ['teams'], summary: 'Search teams (manage_users)', security: adminBearer, request: { query: tmS.adminQuery }, responses: { 200: json(tmS.TeamList), ...errors(ADMIN_AUTH) } });
+  p({ method: 'get', path: '/admin/teams/{id}', tags: ['teams'], summary: 'A team with members (NID booleans) and invites (masked)', security: adminBearer, request: tmId, responses: { 200: json(tmS.AdminTeam), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'] }) } });
+  p({ method: 'post', path: '/admin/teams/{id}/archive', tags: ['teams'], summary: 'Archive a team with a reason (e.g. an offensive name)', security: adminBearer,
+    request: { ...tmId, ...body(tmS.reasonBody) }, responses: { 200: json(tmS.Archived), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'], 409: ['TEAM_ARCHIVED'], ...VALIDATION }) } });
+
+  // ------------------------------------------------------------------ M14 tournaments (step 1) with M15 lite results
+  const tParams = { params: toS.orgTournamentParam };
+  const mParams = { params: toS.orgMatchParam };
+  const rParams = { params: toS.orgRegParam };
+  const TORG = { ...COMMON_AUTH, 404: ['NOT_FOUND'] };
+  const TSTATE = { ...TORG, 409: ['TOURNAMENT_STATE', 'VERSION_CONFLICT'] };
+  const T_INVALID = ['RULE_OUT_OF_RANGE', 'RULE_PRESET_UNKNOWN', 'RULE_UNKNOWN_FIELD', 'TIEBREAKER_INVALID', 'VENUE_INVALID', 'VALIDATION_FAILED'];
+  const RESULT = ['RESULT_INVALID', 'KNOCKOUT_NEEDS_WINNER', 'VALIDATION_FAILED'];
+  p({ method: 'get', path: '/catalog/sport-rules/{sportKey}', tags: ['catalog'], summary: 'A sport\'s rule fields, presets and allowed tiebreakers (M03, for the tournament wizard)', request: { params: toS.sportKeyParam }, responses: { 200: json(toS.SportRules), ...cached, ...errors({ 404: ['NOT_FOUND'] }) } });
+  p({ method: 'get', path: '/org/{orgId}/sports/tournaments', tags: ['tournaments'], summary: 'My sports organisation\'s tournaments (organisation staff)', security: bearer,
+    request: { params: orgS.orgParam, query: toS.listQuery }, responses: { 200: json(toS.TournamentList), ...errors(TORG) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/tournaments', tags: ['tournaments'], summary: 'A draft tournament; rules start from the sport\'s first preset', security: bearer,
+    request: { params: orgS.orgParam, ...body(toS.createBody) }, responses: { 201: json(toS.Tournament, 'Created'), ...errors({ ...TORG, 422: ['SPORT_NOT_SUPPORTED', ...T_INVALID], ...RATE }) } });
+  p({ method: 'get', path: '/org/{orgId}/sports/tournaments/{id}', tags: ['tournaments'], summary: 'A tournament in the console', security: bearer, request: tParams, responses: { 200: json(toS.Tournament), ...errors(TORG) } });
+  p({ method: 'patch', path: '/org/{orgId}/sports/tournaments/{id}', tags: ['tournaments'], summary: 'Edit a draft; a running tournament takes cosmetic edits only; rules while unlocked (FR-07/09)', security: bearer,
+    request: { ...tParams, ...body(toS.updateBody) }, responses: { 200: json(toS.Tournament), ...errors({ ...TORG, 409: ['TOURNAMENT_STATE', 'RULES_LOCKED', 'VERSION_CONFLICT', 'VENUE_IN_USE', 'NAME_TAKEN'], 422: T_INVALID, ...RATE }) } });
+  p({ method: 'get', path: '/org/{orgId}/sports/tournaments/{id}/overview', tags: ['tournaments'], summary: 'KPIs, money from escrow and the setup checklist (§4.1)', security: bearer, request: tParams, responses: { 200: json(toS.Overview), ...errors(TORG) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/tournaments/{id}/submit', tags: ['tournaments'], summary: 'Send for staff review (M05 kind tournament) after the automatic checks (organisation admins)', security: bearer,
+    request: tParams, responses: { 200: json(toS.Tournament), ...errors({ ...TSTATE, 422: ['TOURNAMENT_INCOMPLETE'] }) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/tournaments/{id}/cancel', tags: ['tournaments'], summary: 'Cancel with refunds (before the first result 100%, after it what is still held)', security: bearer,
+    request: { ...tParams, ...body(toS.reasonBody) }, responses: { 200: json(toS.Tournament), ...errors({ ...TSTATE, 403: ['ORG_OWNER_ONLY'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/tournaments/{id}/registration/close', tags: ['tournaments'], summary: 'Close registration now: unpaid places, offers and the reserve list lapse', security: bearer, request: tParams, responses: { 200: json(toS.Tournament), ...errors(TSTATE) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/tournaments/{id}/registration/extend', tags: ['tournaments'], summary: 'Reopen registration once, before fixtures (FR-14)', security: bearer,
+    request: { ...tParams, ...body(toS.extendBody) }, responses: { 200: json(toS.Tournament), ...errors({ ...TORG, 409: ['EXTEND_NOT_ALLOWED'], 422: ['REGISTRATION_WINDOW_INVALID', 'REGISTRATION_CLOSES_TOO_LATE', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/tournaments/{id}/rules/unlock', tags: ['tournaments'], summary: 'Unlock the rules with a reason (audited; they lock again after tournament.rules_relock_hours)', security: bearer,
+    request: { ...tParams, ...body(toS.unlockBody) }, responses: { 200: json(toS.Tournament), ...errors({ ...TSTATE, ...VALIDATION }) } });
+  p({ method: 'get', path: '/org/{orgId}/sports/tournaments/{id}/registrations', tags: ['tournaments'], summary: 'Registrations with squad readiness (names and NID booleans only)', security: bearer,
+    request: { ...tParams, query: toS.regQuery }, responses: { 200: json(toS.OrgRegistrations), ...errors(TORG) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/registrations/{regId}/approve', tags: ['tournaments'], summary: 'Approve a team (a ready squad and a free place, under the tournament lock)', security: bearer,
+    request: rParams, responses: { 200: json(toS.Decision), ...errors({ ...TORG, 409: ['REGISTRATION_STATE', 'CAPACITY_FULL', 'ROSTER_NOT_READY'] }) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/registrations/{regId}/reject', tags: ['tournaments'], summary: 'Reject with a reason: a 100% refund; the place goes to the next reserve team', security: bearer,
+    request: { ...rParams, ...body(toS.reasonBody) }, responses: { 200: json(toS.Decision), ...errors({ ...TORG, 409: ['REGISTRATION_STATE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/registrations/{regId}/remove', tags: ['tournaments'], summary: 'Remove an approved team (refund per §6.9; its matches become walkovers)', security: bearer,
+    request: { ...rParams, ...body(toS.reasonBody) }, responses: { 200: json(toS.Decision), ...errors({ ...TORG, 409: ['REGISTRATION_STATE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/registrations/{regId}/waive', tags: ['tournaments'], summary: 'Waive the entry fee (organisation admins, audited; no escrow)', security: bearer,
+    request: { ...rParams, ...body(toS.reasonBody) }, responses: { 200: json(toS.Decision), ...errors({ ...TORG, 409: ['REGISTRATION_STATE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/tournaments/{id}/draw', tags: ['tournaments'], summary: 'Preview the draw (a random draw is made at confirm)', security: bearer,
+    request: { ...tParams, ...body(toS.drawBody) },
+    responses: { 200: json(toS.DrawPreview), ...errors({ ...TORG, 409: ['REGISTRATION_STILL_OPEN', 'PENDING_DECISIONS', 'NOT_ENOUGH_TEAMS', 'RESULTS_EXIST', 'TOURNAMENT_STATE'], 422: ['DRAW_INVALID', 'GROUPS_INVALID', 'QUALIFIERS_INVALID', 'KNOCKOUT_TOP_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/tournaments/{id}/draw/confirm', tags: ['tournaments'], summary: 'Confirm the draw: seeds, stages and groups; a random draw publishes its seed', security: bearer,
+    request: { ...tParams, ...body(toS.drawBody) },
+    responses: { 200: json(z.object({ draw: toS.Draw })), ...errors({ ...TORG, 409: ['REGISTRATION_STILL_OPEN', 'PENDING_DECISIONS', 'NOT_ENOUGH_TEAMS', 'RESULTS_EXIST', 'TOURNAMENT_STATE'], 422: ['DRAW_INVALID', 'GROUPS_INVALID', 'QUALIFIERS_INVALID', 'KNOCKOUT_TOP_INVALID', 'VALIDATION_FAILED'], ...RATE }) } });
+  p({ method: 'get', path: '/org/{orgId}/sports/tournaments/{id}/fixtures', tags: ['tournaments'], summary: 'Every match (drafts too), the venues and the draw', security: bearer, request: tParams, responses: { 200: json(toS.Fixtures), ...errors(TORG) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/tournaments/{id}/fixtures/generate', tags: ['tournaments'], summary: 'Generate matches from the draw, optionally scheduled (§6.2–6.6); a dry run writes nothing', security: bearer,
+    request: { ...tParams, ...body(toS.generateBody) }, responses: { 200: json(toS.Generated), ...errors({ ...TORG, 409: ['TOURNAMENT_STATE', 'RESULTS_EXIST', 'DRAW_NOT_CONFIRMED'], ...VALIDATION, ...RATE }) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/tournaments/{id}/fixtures/publish', tags: ['tournaments'], summary: 'Publish the fixtures (captains are told)', security: bearer, request: tParams, responses: { 200: json(z.object({ fixtures: toS.Fixtures })), ...errors({ ...TORG, 409: ['FIXTURES_MISSING'] }) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/tournaments/{id}/lots', tags: ['tournaments'], summary: 'Record a draw of lots for a tie nothing breaks (organisation admins, audited)', security: bearer,
+    request: { ...tParams, ...body(toS.lotsBody) }, responses: { 200: json(z.object({ standings: z.array(toS.Table) })), ...errors({ ...TORG, 409: ['LOTS_NOT_NEEDED'], 422: ['LOTS_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'patch', path: '/org/{orgId}/sports/matches/{matchId}', tags: ['tournaments'], summary: 'Move a match (time, venue, court) with clash checks (FR-18)', security: bearer,
+    request: { ...mParams, ...body(toS.moveBody) }, responses: { 200: json(toS.Match), ...errors({ ...TORG, 409: ['MATCH_STATE', 'SCHEDULE_CLASH', 'VERSION_CONFLICT'], 422: ['VENUE_INVALID', 'VALIDATION_FAILED'], ...RATE }) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/matches/{matchId}/postpone', tags: ['tournaments'], summary: 'Postpone with a reason, optionally to a new time', security: bearer,
+    request: { ...mParams, ...body(toS.postponeBody) }, responses: { 200: json(toS.Match), ...errors({ ...TORG, 409: ['MATCH_STATE', 'SCHEDULE_CLASH'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/matches/{matchId}/walkover', tags: ['tournaments'], summary: 'Give the match to one team (organisation admins)', security: bearer,
+    request: { ...mParams, ...body(toS.walkoverBody) }, responses: { 200: json(toS.Match), ...errors({ ...TORG, 409: ['MATCH_STATE', 'MATCH_TEAMS_UNKNOWN', 'RESULT_EXISTS'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/matches/{matchId}/cancel', tags: ['tournaments'], summary: 'Cancel a match (no result; it no longer counts)', security: bearer,
+    request: { ...mParams, ...body(toS.reasonBody) }, responses: { 200: json(toS.Match), ...errors({ ...TORG, 409: ['MATCH_STATE'], ...VALIDATION }) } });
+  p({ method: 'put', path: '/org/{orgId}/sports/matches/{matchId}/result', tags: ['tournaments'], summary: 'Enter the final result (M15 lite): placeholders resolve, the first result releases tranche 1', security: bearer,
+    request: { ...mParams, ...body(toS.resultBody) }, responses: { 200: json(toS.MatchResultView), ...errors({ ...TORG, 409: ['MATCH_STATE', 'MATCH_TEAMS_UNKNOWN', 'RESULT_EXISTS'], 422: RESULT, ...RATE }) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/matches/{matchId}/result/amend', tags: ['tournaments'], summary: 'Correct a result with a reason (organisation admins), unless a later match already used it', security: bearer,
+    request: { ...mParams, ...body(toS.amendBody) }, responses: { 200: json(toS.MatchResultView), ...errors({ ...TORG, 409: ['NO_RESULT_YET', 'AMEND_BLOCKED'], 422: RESULT }) } });
+  p({ method: 'get', path: '/tournaments', tags: ['tournaments'], summary: 'Discover tournaments (public statuses only)', request: { query: toS.publicQuery }, responses: { 200: json(toS.TournamentList), ...errors(VALIDATION) } });
+  p({ method: 'get', path: '/tournaments/{slug}', tags: ['tournaments'], summary: 'The hub: facts, rules, fixtures, standings, teams (no DOB, gender or phone)', request: { params: toS.slugParam }, responses: { 200: json(toS.Hub), ...errors({ 404: ['NOT_FOUND'] }) } });
+  p({ method: 'post', path: '/tournaments/{id}/registrations', tags: ['tournaments'], summary: 'Register my team with a squad (captain or vice-captain, NID member); pay into escrow or join the reserve list', security: bearer,
+    request: { params: toS.idParam, headers: idem, ...body(toS.registerBody) },
+    responses: {
+      201: json(toS.MyRegistration, 'Created'),
+      ...errors({ ...COMMON_AUTH, ...IDEM, 403: ['ROLE_REQUIRED', 'KYC_REQUIRED', 'PHONE_REQUIRED', 'NOT_TEAM_CAPTAIN'], 404: ['NOT_FOUND'], 409: ['REGISTRATION_NOT_YET_OPEN', 'REGISTRATION_CLOSED', 'TEAM_ALREADY_REGISTERED', 'TEAM_ARCHIVED', 'PLAYER_IN_OTHER_TEAM', 'IDEMPOTENCY_IN_PROGRESS'], 422: IDEM[422].concat('TEAM_SPORT_MISMATCH', 'SQUAD_TOO_SMALL', 'SQUAD_TOO_LARGE', 'PLAYER_NOT_IN_TEAM') }),
+    } });
+  p({ method: 'get', path: '/me/registrations', tags: ['tournaments'], summary: 'Registrations of the teams I captain or vice-captain', security: bearer, responses: { 200: json(toS.MyRegistrations), ...errors(COMMON_AUTH) } });
+  p({ method: 'post', path: '/me/registrations/{id}/accept-offer', tags: ['tournaments'], summary: 'Take an offered reserve place (pay within the hold)', security: bearer,
+    request: { params: toS.idParam, headers: idem }, responses: { 200: json(toS.MyRegistration), ...errors({ ...COMMON_AUTH, ...IDEM, 404: ['NOT_FOUND'], 409: ['REGISTRATION_STATE', 'IDEMPOTENCY_IN_PROGRESS'] }) } });
+  p({ method: 'post', path: '/me/registrations/{id}/withdraw', tags: ['tournaments'], summary: 'Withdraw (refund per §6.9: 100% before close, 50% after, none after the first result)', security: bearer,
+    request: { params: toS.idParam }, responses: { 200: json(toS.MyRegistration), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], 409: ['REGISTRATION_STATE'] }) } });
+  p({ method: 'put', path: '/me/registrations/{id}/roster', tags: ['tournaments'], summary: 'Change the squad before it freezes (the first result)', security: bearer,
+    request: { params: toS.idParam, ...body(toS.rosterBody) }, responses: { 200: json(toS.MyRegistration), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], 409: ['REGISTRATION_STATE', 'ROSTER_FROZEN', 'PLAYER_IN_OTHER_TEAM'], 422: ['SQUAD_TOO_SMALL', 'SQUAD_TOO_LARGE', 'PLAYER_NOT_IN_TEAM', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'get', path: '/admin/tournaments', tags: ['tournaments'], summary: 'All tournaments (approve_listings or manage_organisers)', security: adminBearer, request: { query: toS.adminQuery }, responses: { 200: json(toS.TournamentList), ...errors(ADMIN_AUTH) } });
+  p({ method: 'get', path: '/admin/tournaments/{id}', tags: ['tournaments'], summary: 'A tournament with its registrations and escrow', security: adminBearer, request: { params: toS.idParam }, responses: { 200: json(toS.AdminTournament), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'] }) } });
+  p({ method: 'post', path: '/admin/tournaments/{id}/cancel', tags: ['tournaments'], summary: 'Cancel a tournament with refunds (masters, step-up escrow.manage)', security: adminBearer,
+    request: { params: toS.idParam, ...body(toS.reasonBody) }, responses: { 200: json(toS.AdminTournament), ...errors({ ...ADMIN_AUTH, 403: ADMIN_AUTH[403].concat('STEP_UP_REQUIRED'), 404: ['NOT_FOUND'], 409: ['TOURNAMENT_STATE'], ...VALIDATION }) } });
 }
 
 function dateTimeOf() {

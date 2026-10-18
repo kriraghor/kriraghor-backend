@@ -20,6 +20,8 @@ const FEE_KEYS = {
   hire: 'fees.hire_pct',
   tournaments: 'fees.tournament_pct',
   gym: 'fees.gym_pct',
+  // M22: organiser tournaments (the contract may override it; snapshotted on the tournament at publish).
+  esports_saas: 'fees.esports_saas_pct',
   test: 'payments.test_charge_fee_pct',
 };
 const NO_FEE = new Set(['esports']);

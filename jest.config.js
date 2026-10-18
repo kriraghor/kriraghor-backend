@@ -31,6 +31,7 @@ module.exports = {
     // M05 SLA, claim lock, rubric, checks and decisions.
     './src/modules/moderation/moderation.rules.js': FULL,
     './src/modules/esports/esports.rules.js': FULL,
+    './src/modules/esports/streams.rules.js': FULL,
     // M09 price formula and limits (shared with M10), listing rules.
     './src/modules/grounds/pricing.rules.js': FULL,
     './src/modules/grounds/grounds.rules.js': FULL,
@@ -48,5 +49,19 @@ module.exports = {
     './src/modules/orders/orders.rules.js': FULL,
     // M11 quote, rate limits, checks, the request and job machines, windows and cancellation.
     './src/modules/hire/hire.rules.js': FULL,
+    // M20 gym money, validity, redemption, cancellation, tokens and subscription periods.
+    './src/modules/gym/gym.rules.js': FULL,
+    // M22 fees, prize fund, contracts, invoices, subdomains and contrast.
+    './src/modules/organiser-saas/saas.rules.js': FULL,
+    // M23 event phase, stage links, the qualifying cut, core players, alerts and polls.
+    './src/modules/esports-events/events.rules.js': FULL,
+    // M16 names, invites, succession, age and the eligibility evaluator.
+    './src/modules/teams/teams.rules.js': FULL,
+    // M14 tournaments and M15 lite results: fixtures, scheduling, money and refunds, rule schemas, standings.
+    './src/modules/tournaments/fixtures.rules.js': FULL,
+    './src/modules/tournaments/schedule.rules.js': FULL,
+    './src/modules/tournaments/tournaments.rules.js': FULL,
+    './src/modules/catalog/sport-rules.rules.js': FULL,
+    './src/modules/scoring/standings.rules.js': FULL,
   },
 };

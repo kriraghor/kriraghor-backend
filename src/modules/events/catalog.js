@@ -6,7 +6,7 @@
  * invalid payloads before commit. Payloads carry IDs, codes, amounts, statuses and timestamps only:
  * no phone, NID, DOB, email or names (consumers read details through the producer's service).
  *
- * Built so far: M01, M02, M03, M04, M05, M06, M07, M09, M10, M11, M12, M13, M17, M18, M19, M21. Each later module adds its events here when it is built.
+ * Built so far: M01, M02, M03, M04, M05, M06, M07, M09, M10, M11, M12, M13, M14 lite, M17, M18, M19, M20, M21, M22, M23. Each later module adds its events here when it is built.
  */
 const { z } = require('zod');
 
@@ -19,6 +19,9 @@ const poisha = z.number().int().nonnegative();
 const paymentClosed = z.object({ paymentId: uuid, purpose: z.string(), purposeId: uuid, amount: poisha, payerId: uuid, reason: z.string().max(60) });
 const refundEvent = z.object({ refundId: uuid, paymentId: uuid, amount: poisha, purpose: z.string(), purposeId: uuid, payerId: uuid });
 const groundEvent = z.object({ groundId: uuid, ownerId: uuid });
+const tourEvent = z.object({ tournamentId: uuid, organisationId: uuid });
+const regEvent = z.object({ registrationId: uuid, tournamentId: uuid, teamId: uuid, captainId: uuid });
+const matchEvent = z.object({ matchId: uuid, tournamentId: uuid, matchNo: z.number().int() });
 const shopEvent = z.object({ shopId: uuid, ownerId: uuid });
 const productEvent = z.object({ productId: uuid, shopId: uuid, ownerId: uuid });
 const variantEvent = z.object({ variantId: uuid, productId: uuid, shopId: uuid, ownerId: uuid });
@@ -27,6 +30,14 @@ const orderEvent = z.object({ orderId: uuid, code: z.string().max(20), buyerId: 
 const hireProfileEvent = z.object({ profileId: uuid, userId: uuid, roleId: uuid });
 const hireRequestEvent = z.object({ requestId: uuid, code: z.string().max(20), profileId: uuid, hirerId: uuid, proUserId: uuid, total: poisha });
 const hireJobEvent = z.object({ jobId: uuid, code: z.string().max(24), requestId: uuid, hirerId: uuid, proUserId: uuid, quote: poisha });
+const gymEvent = z.object({ gymId: uuid, ownerId: uuid });
+const gymPassEvent = z.object({ passId: uuid, code: z.string().max(20), gymId: uuid, holderId: uuid, ownerId: uuid, kind: z.enum(['day', 'month', 'quarter']), price: poisha });
+const trainerSubEvent = z.object({ subscriptionId: uuid, code: z.string().max(20), memberId: uuid, trainerId: uuid, price: poisha });
+const orgEvent = z.object({ organisationId: uuid, ownerId: uuid });
+const qualEvent = z.object({ qualificationId: uuid, eventId: uuid, finalTournamentId: uuid });
+const contractEvent = z.object({ contractId: uuid, organisationId: uuid });
+const invoiceEvent = z.object({ invoiceId: uuid, number: z.string().max(24), organisationId: uuid, total: poisha });
+const fundEvent = z.object({ fundId: uuid, tournamentId: uuid, organisationId: uuid, amount: poisha });
 const subOrderEvent = z.object({ subOrderId: uuid, code: z.string().max(24), orderId: uuid, shopId: uuid, sellerId: uuid, buyerId: uuid, total: poisha });
 const docEvent = z.object({ documentId: uuid, userId: uuid, docType: z.string().max(30), role: z.string().max(32).optional() });
 const payoutEvent = z.object({ payoutId: uuid, code: z.string(), payeeId: uuid, amount: poisha });
@@ -36,7 +47,7 @@ const esMatch = z.object({ matchId: uuid, tournamentId: uuid });
 const esProfile = z.object({ profileId: uuid, userId: uuid, gameId: uuid });
 const esShare = z.object({ shareId: uuid, tournamentId: uuid, userId: uuid, amount: poisha });
 const bookingEvent = z.object({ bookingId: uuid, code: z.string().max(16), groundId: uuid, ownerId: uuid, bookerUserId: uuid.nullable() });
-const disputeEvent = z.object({ disputeId: uuid, code: z.string().max(20), sourceType: z.enum(['booking', 'esports_result', 'sub_order', 'hire_job']), sourceId: uuid, category: z.string().max(30), claimantId: uuid, respondentId: uuid.nullable() });
+const disputeEvent = z.object({ disputeId: uuid, code: z.string().max(20), sourceType: z.enum(['booking', 'esports_result', 'sub_order', 'hire_job', 'trainer_subscription']), sourceId: uuid, category: z.string().max(30), claimantId: uuid, respondentId: uuid.nullable() });
 const subjectType = z.enum(['ground', 'booking', 'user', 'review', 'esports_tournament', 'shop', 'product']);
 const reviewEvent = z.object({ reviewId: uuid, subjectType: z.literal('ground'), subjectId: uuid, authorId: uuid });
 const docRequestEvent = z.object({ requestId: uuid, userId: uuid, docType: z.string().max(30), sourceRef: uuid.nullable(), dueAt: iso.nullable() });
@@ -49,6 +60,8 @@ const EVENTS = {
   'user.suspended': { module: 'M01', version: 1, schema: z.object({ userId: uuid, sanctionId: uuid, until: iso.nullable() }) },
   'user.banned': { module: 'M01', version: 1, schema: z.object({ userId: uuid, sanctionId: uuid }) },
   'user.restored': { module: 'M01', version: 1, schema: z.object({ userId: uuid }) },
+  'user.phone_verified': { module: 'M01', version: 1, schema: z.object({ userId: uuid }) },
+  'user.identity_changed': { module: 'M01', version: 1, schema: z.object({ userId: uuid, fields: z.array(z.enum(['gender', 'dob', 'legal_name'])) }) },
   'user.email_changed': { module: 'M01', version: 1, schema: z.object({ userId: uuid }) },
   'user_role.applied': { module: 'M01', version: 1, schema: z.object({ userId: uuid, role }) },
   'user_role.activated': { module: 'M01', version: 1, schema: z.object({ userId: uuid, role }) },
@@ -196,6 +209,64 @@ const EVENTS = {
   'esports_prize.credited': { module: 'M21', version: 1, schema: esShare },
   'esports_prize.reversed': { module: 'M21', version: 1, schema: esShare },
   'esports_prize.forfeited': { module: 'M21', version: 1, schema: z.object({ awardId: uuid, tournamentId: uuid, registrationId: uuid, amount: poisha }) },
+  'esports_stream.live_started': { module: 'M21', version: 1, schema: z.object({ tournamentId: uuid, streamId: uuid, platform: z.string().max(20) }) },
+
+  // ---------------- M16 Teams and players (ids only; never phones)
+  'team.created': { module: 'M16', version: 1, schema: z.object({ teamId: uuid, sportId: uuid, captainId: uuid }) },
+  'team.archived': { module: 'M16', version: 1, schema: z.object({ teamId: uuid }) },
+  'team.captain_changed': { module: 'M16', version: 1, schema: z.object({ teamId: uuid, fromUserId: uuid.nullable(), toUserId: uuid }) },
+  'team_member.added': { module: 'M16', version: 1, schema: z.object({ teamId: uuid, userId: uuid, role: z.enum(['captain', 'vice_captain', 'player']) }) },
+  'team_member.removed': { module: 'M16', version: 1, schema: z.object({ teamId: uuid, userId: uuid, reasonCode: z.string().max(40) }) },
+  'team_member.role_changed': { module: 'M16', version: 1, schema: z.object({ teamId: uuid, userId: uuid, role: z.enum(['vice_captain', 'player']) }) },
+  'team_invite.sent': { module: 'M16', version: 1, schema: z.object({ inviteId: uuid, teamId: uuid, linked: z.boolean(), resent: z.boolean() }) },
+  'team_invite.linked': { module: 'M16', version: 1, schema: z.object({ inviteId: uuid, teamId: uuid, userId: uuid }) },
+  'team_invite.accepted': { module: 'M16', version: 1, schema: z.object({ inviteId: uuid, teamId: uuid, userId: uuid }) },
+  'team_invite.declined': { module: 'M16', version: 1, schema: z.object({ inviteId: uuid, teamId: uuid }) },
+  'team_invite.cancelled': { module: 'M16', version: 1, schema: z.object({ inviteId: uuid, teamId: uuid }) },
+  'team_invite.expired': { module: 'M16', version: 1, schema: z.object({ inviteId: uuid, teamId: uuid }) },
+  'eligibility.changed': { module: 'M16', version: 1, schema: z.object({ tournamentId: uuid, userId: uuid, eligible: z.boolean() }) },
+
+  // ---------------- M14 Tournaments and M15 lite results (ids only) ----------------
+  'tournament.created': { module: 'M14', version: 1, schema: tourEvent },
+  'tournament.submitted': { module: 'M14', version: 1, schema: tourEvent },
+  'tournament.approved': { module: 'M14', version: 1, schema: tourEvent },
+  'tournament.changes_requested': { module: 'M14', version: 1, schema: tourEvent.extend({ reasonCode: z.string().max(40).nullable() }) },
+  'tournament.rejected': { module: 'M14', version: 1, schema: tourEvent.extend({ reasonCode: z.string().max(40).nullable() }) },
+  'tournament.registration_closed': { module: 'M14', version: 1, schema: tourEvent.extend({ approved: z.number().int(), belowMin: z.boolean() }) },
+  'tournament.rules_changed': { module: 'M14', version: 1, schema: z.object({ tournamentId: uuid }) },
+  'tournament.rules_unlocked': { module: 'M14', version: 1, schema: z.object({ tournamentId: uuid, until: iso }) },
+  'tournament.rules_relocked': { module: 'M14', version: 1, schema: z.object({ tournamentId: uuid }) },
+  'tournament.fixtures_published': { module: 'M14', version: 1, schema: tourEvent.extend({ matches: z.number().int() }) },
+  'tournament.first_match_completed': { module: 'M14', version: 1, schema: z.object({ tournamentId: uuid, released: poisha }) },
+  'tournament.completed': { module: 'M14', version: 1, schema: z.object({ tournamentId: uuid, released: poisha }) },
+  'tournament.cancelled': { module: 'M14', version: 1, schema: tourEvent },
+  'tournament.lots_needed': { module: 'M14', version: 1, schema: z.object({ tournamentId: uuid, stageId: uuid, groupId: uuid.nullable() }) },
+  'registration.submitted': { module: 'M14', version: 1, schema: regEvent.extend({ status: z.string().max(20), organisationId: uuid }) },
+  'registration.paid': { module: 'M14', version: 1, schema: regEvent.extend({ amount: poisha }) },
+  'registration.approved': { module: 'M14', version: 1, schema: regEvent },
+  'registration.rejected': { module: 'M14', version: 1, schema: regEvent.extend({ reason: z.string().max(255).nullable() }) },
+  'registration.withdrawn': { module: 'M14', version: 1, schema: regEvent.extend({ reason: z.string().max(255).nullable() }) },
+  'registration.removed': { module: 'M14', version: 1, schema: regEvent.extend({ reason: z.string().max(255).nullable() }) },
+  'registration.lapsed': { module: 'M14', version: 1, schema: regEvent.extend({ reason: z.string().max(255).nullable() }) },
+  'registration.cancelled': { module: 'M14', version: 1, schema: regEvent.extend({ reason: z.string().max(255).nullable() }) },
+  'registration.promoted': { module: 'M14', version: 1, schema: regEvent.extend({ offerExpiresAt: iso }) },
+  'registration.fee_waived': { module: 'M14', version: 1, schema: regEvent },
+  'match.rescheduled': { module: 'M14', version: 1, schema: matchEvent },
+  'match.postponed': { module: 'M14', version: 1, schema: matchEvent },
+  'match.cancelled': { module: 'M14', version: 1, schema: matchEvent },
+  'match.walkover_awarded': { module: 'M14', version: 1, schema: z.object({ matchId: uuid, tournamentId: uuid, winnerTeamId: uuid.nullable() }) },
+  'match.teams_resolved': { module: 'M14', version: 1, schema: z.object({ matchId: uuid, tournamentId: uuid, teamAId: uuid, teamBId: uuid }) },
+  'match.result_saved': { module: 'M15', version: 1, schema: matchEvent.extend({ outcome: z.string().max(20), winnerTeamId: uuid.nullable() }) },
+  'match.result_corrected': { module: 'M15', version: 1, schema: matchEvent.extend({ outcome: z.string().max(20), winnerTeamId: uuid.nullable() }) },
+  'standings.updated': { module: 'M15', version: 1, schema: z.object({ tournamentId: uuid, stageId: uuid, groupId: uuid.nullable() }) },
+
+  // ---------------- M23 Esports big events (ids only; follower pages are user-id ranges, never lists) ----------------
+  'esports_event.published': { module: 'M23', version: 1, schema: z.object({ eventId: uuid, startsAt: iso }) },
+  'esports_event.cancelled': { module: 'M23', version: 1, schema: z.object({ eventId: uuid }) },
+  'esports_event.followers_alerted': { module: 'M23', version: 1, schema: z.object({ eventId: uuid, alertId: uuid, kind: z.enum(['event_started', 'stream_live', 'final_soon']), fromUserId: uuid, toUserId: uuid }) },
+  'esports_event_qualification.granted': { module: 'M23', version: 1, schema: qualEvent.extend({ status: z.enum(['qualified', 'invited']) }) },
+  'esports_event_qualification.revoked': { module: 'M23', version: 1, schema: qualEvent.extend({ reasonCode: z.string().max(40) }) },
+  'esports_event_qualification.missed': { module: 'M23', version: 1, schema: qualEvent },
 // ---------------- M09 Grounds (ids and keys only) ----------------
   'ground.submitted': { module: 'M09', version: 1, schema: groundEvent.extend({ version: z.number().int(), isEdit: z.boolean() }) },
   'ground.published': { module: 'M09', version: 1, schema: groundEvent.extend({ version: z.number().int(), first: z.boolean() }) },
@@ -283,6 +354,46 @@ const EVENTS = {
   'hire_job.withdrawn': { module: 'M11', version: 1, schema: hireJobEvent.extend({ refund: poisha, reason: z.string().max(40) }) },
   'hire_job.disputed': { module: 'M11', version: 1, schema: hireJobEvent.extend({ disputeId: uuid }) },
   'hire_job.refunded': { module: 'M11', version: 1, schema: hireJobEvent.extend({ by: z.literal('dispute'), gross: poisha, fee: poisha, net: poisha, refund: poisha }) },
+  // ---------------- M20 gym, step 1
+  'gym.submitted': { module: 'M20', version: 1, schema: gymEvent.extend({ version: z.number().int(), isEdit: z.boolean() }) },
+  'gym.published': { module: 'M20', version: 1, schema: gymEvent.extend({ version: z.number().int(), first: z.boolean() }) },
+  'gym.changes_requested': { module: 'M20', version: 1, schema: gymEvent.extend({ isEdit: z.boolean(), reasonCode: z.string().max(40).nullable() }) },
+  'gym.rejected': { module: 'M20', version: 1, schema: gymEvent.extend({ isEdit: z.boolean(), reasonCode: z.string().max(40).nullable() }) },
+  'gym.paused': { module: 'M20', version: 1, schema: gymEvent.extend({ reason: z.string().max(40).optional() }) },
+  'gym.resumed': { module: 'M20', version: 1, schema: gymEvent },
+  'gym.suspended': { module: 'M20', version: 1, schema: gymEvent.extend({ reason: reasonText }) },
+  'gym.restored': { module: 'M20', version: 1, schema: gymEvent.extend({ reason: reasonText }) },
+  'gym_pass.paid': { module: 'M20', version: 1, schema: gymPassEvent.extend({ validFrom: iso, validTo: iso, paymentId: uuid }) },
+  'gym_pass.redeemed': { module: 'M20', version: 1, schema: gymPassEvent.extend({ method: z.enum(['qr', 'code']), released: poisha, net: poisha }) },
+  'gym_pass.expired': { module: 'M20', version: 1, schema: gymPassEvent.extend({ used: z.boolean(), released: poisha, net: poisha }) },
+  'gym_pass.cancelled': { module: 'M20', version: 1, schema: gymPassEvent.extend({ refund: poisha, by: z.enum(['holder', 'staff']) }) },
+  'trainer_subscription.started': { module: 'M20', version: 1, schema: trainerSubEvent.extend({ seq: z.number().int(), periodStart: iso, periodEnd: iso, paymentId: uuid }) },
+  'trainer_subscription.renewed': { module: 'M20', version: 1, schema: trainerSubEvent.extend({ seq: z.number().int(), periodStart: iso, periodEnd: iso, paymentId: uuid }) },
+  'trainer_subscription.renewal_opened': { module: 'M20', version: 1, schema: trainerSubEvent.extend({ seq: z.number().int(), periodStart: iso, payBy: iso }) },
+  // M14 lite organisations and M22 organiser SaaS
+  'organisation.submitted': { module: 'M14', version: 1, schema: orgEvent },
+  'organisation.verified': { module: 'M14', version: 1, schema: orgEvent },
+  'organisation.changes_requested': { module: 'M14', version: 1, schema: orgEvent.extend({ reasonCode: z.string().max(40).nullable() }) },
+  'organisation.rejected': { module: 'M14', version: 1, schema: orgEvent.extend({ reasonCode: z.string().max(40).nullable() }) },
+  'organisation.suspended': { module: 'M14', version: 1, schema: orgEvent.extend({ reason: reasonText }) },
+  'organisation.restored': { module: 'M14', version: 1, schema: orgEvent.extend({ reason: reasonText }) },
+  'organisation.member_added': { module: 'M14', version: 1, schema: orgEvent.extend({ userId: uuid, role: z.enum(['admin', 'staff']) }) },
+  'organiser_contract.activated': { module: 'M22', version: 1, schema: contractEvent.extend({ model: z.enum(['percentage', 'flat']), reinstated: z.boolean() }) },
+  'organiser_contract.suspended': { module: 'M22', version: 1, schema: contractEvent.extend({ reason: reasonText }) },
+  'organiser_contract.ended': { module: 'M22', version: 1, schema: contractEvent.extend({ reason: reasonText }) },
+  'organiser_contract.expiry_notified': { module: 'M22', version: 1, schema: contractEvent.extend({ endsOn: z.string().max(10) }) },
+  'organiser_invoice.issued': { module: 'M22', version: 1, schema: invoiceEvent },
+  'organiser_invoice.paid': { module: 'M22', version: 1, schema: invoiceEvent },
+  'organiser_invoice.overdue_flagged': { module: 'M22', version: 1, schema: invoiceEvent },
+  'organiser_invoice.voided': { module: 'M22', version: 1, schema: invoiceEvent },
+  'organiser_prize_fund.deposited': { module: 'M22', version: 1, schema: fundEvent.extend({ deposited: poisha, funded: z.boolean() }) },
+  'organiser_prize_fund.returned': { module: 'M22', version: 1, schema: fundEvent },
+  'organisation_branding.published': { module: 'M22', version: 1, schema: z.object({ organisationId: uuid, version: z.number().int(), subdomain: z.string().max(30).nullable() }) },
+  'trainer_subscription.cancelled': { module: 'M20', version: 1, schema: trainerSubEvent.extend({ refund: poisha, seq: z.number().int().optional(), endsOn: iso.nullable().optional() }) },
+  'trainer_subscription.ended': { module: 'M20', version: 1, schema: trainerSubEvent },
+  'trainer_subscription.lapsed': { module: 'M20', version: 1, schema: trainerSubEvent },
+  'trainer_subscription.released': { module: 'M20', version: 1, schema: trainerSubEvent.extend({ seq: z.number().int(), gross: poisha, fee: poisha, net: poisha, refund: poisha.optional(), by: z.literal('dispute').optional() }) },
+  'trainer_subscription.disputed': { module: 'M20', version: 1, schema: trainerSubEvent.extend({ seq: z.number().int(), disputeId: uuid }) },
   // step 2: closures and series (written as M10 booking slots)
   'closure.created': { module: 'M09', version: 1, schema: z.object({ closureId: uuid, groundId: uuid, start: iso, end: iso, reason: z.string().max(30) }) },
   'closure.reopened': { module: 'M09', version: 1, schema: z.object({ closureId: uuid, groundId: uuid, start: iso, end: iso, reason: z.string().max(30) }) },

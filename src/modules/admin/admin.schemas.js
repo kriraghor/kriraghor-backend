@@ -24,6 +24,7 @@ module.exports = {
   suspend: sanctionBody,
   ban: sanctionBody.omit({ until: true }),
   restore: z.object({ note: z.string().max(2000).optional() }),
+  gender: z.object({ gender: z.enum(['male', 'female', 'third']), reason: z.string().trim().min(5).max(255) }),
   unban: z.object({ note: z.string().min(5).max(2000) }),
   roleStatusParams: z.object({ id: z.uuid(), role: z.enum(ROLE_LIST) }),
   roleStatus: z.object({

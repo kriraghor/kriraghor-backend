@@ -34,4 +34,8 @@ module.exports = {
   startEmail: z.object({ email: emailSchema }),
   verifyEmail: z.object({ email: emailSchema, code: z.string().regex(/^\d{6}$/, 'Enter the 6-digit code') }),
   linkGoogle: z.object({ idToken: z.string().min(100).max(4096) }),
+  // M16: add a phone (accounts without one), and the member's own gender (once).
+  startPhone: z.object({ phone: z.string().trim().min(10).max(20) }),
+  verifyPhone: z.object({ phone: z.string().trim().min(10).max(20), code: z.string().regex(/^\d{6}$/, 'Enter the 6-digit code') }),
+  setGender: z.object({ gender: z.enum(['male', 'female', 'third']) }),
 };

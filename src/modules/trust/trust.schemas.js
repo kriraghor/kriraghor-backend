@@ -14,7 +14,7 @@ const text = (max) => z.string().trim().min(2).max(max);
 const limit = (max, dflt) => z.coerce.number().int().min(1).max(max).default(dflt);
 
 const OUTCOMES = ['all', 'half', 'none', 'custom', 'upheld', 'rejected', 'corrected'];
-const CATEGORIES = ['no_show_contest', 'venue_problem', 'cash_problem', 'not_received', 'no_show', 'job_problem'];
+const CATEGORIES = ['no_show_contest', 'venue_problem', 'cash_problem', 'not_received', 'no_show', 'job_problem', 'service_problem'];
 const SUBJECTS = ['ground', 'booking', 'user', 'review', 'esports_tournament', 'shop', 'product'];
 const REASONS = ['fake_listing', 'wrong_info', 'unsafe', 'harassment', 'fraud', 'spam', 'offensive', 'cheating', 'other'];
 const RESOLUTIONS = ['no_violation', 'content_removed', 'owner_warned', 'user_suspended', 'converted_to_dispute'];
@@ -26,18 +26,18 @@ const idParam = z.object({ id });
 const subjectParam = z.object({ type: z.enum(SUBJECTS), id });
 
 const openBody = z.object({
-  sourceType: z.enum(['booking', 'sub_order', 'hire_job']).meta({ description: 'A booking, a shop sub-order (M13) or a hire job (M11). Esports result disputes open from the match page (POST /me/esports/matches/{id}/disputes)' }),
+  sourceType: z.enum(['booking', 'sub_order', 'hire_job', 'trainer_subscription']).meta({ description: 'A booking, a shop sub-order (M13), a hire job (M11) or a month of a trainer subscription (M20; the source id is the month). Esports result disputes open from the match page (POST /me/esports/matches/{id}/disputes)' }),
   sourceId: id,
   category: z.enum(CATEGORIES),
   statement: text(2000),
 });
-const optionsQuery = z.object({ sourceType: z.enum(['booking', 'esports_result', 'sub_order', 'hire_job']).default('booking'), sourceId: id });
+const optionsQuery = z.object({ sourceType: z.enum(['booking', 'esports_result', 'sub_order', 'hire_job', 'trainer_subscription']).default('booking'), sourceId: id });
 const mineQuery = z.object({ role: z.enum(['claimant', 'respondent']).default('claimant'), status: z.enum(['active', 'closed']).optional(), sourceId: id.optional(), cursor: dateTime.optional(), limit: limit(50, 20) });
 const statementBody = z.object({ text: text(2000) });
 const withdrawBody = z.object({ reason: text(500).optional() });
 const adminListQuery = z.object({
   status: z.enum(['active', 'awaiting_response', 'under_review', 'escalated', 'resolved', 'withdrawn', 'all']).default('active'),
-  sourceType: z.enum(['booking', 'esports_result', 'sub_order', 'hire_job']).optional(),
+  sourceType: z.enum(['booking', 'esports_result', 'sub_order', 'hire_job', 'trainer_subscription']).optional(),
   mine: z.enum(['true', 'false']).transform((v) => v === 'true').optional(),
   code: code.optional(),
   cursor: z.string().regex(/^\d+$/).optional(),

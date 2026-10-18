@@ -30,6 +30,11 @@ const risk = require('../modules/risk/risk.nightly');
 const inventory = require('../modules/market/inventory.service');
 const orders = require('../modules/orders/orders.jobs');
 const hire = require('../modules/hire/hire.jobs');
+const gym = require('../modules/gym/gym.jobs');
+const saas = require('../modules/organiser-saas/saas.jobs');
+const esportsEvents = require('../modules/esports-events/events.jobs');
+const teamsJobs = require('../modules/teams/teams.jobs');
+const tournamentsJobs = require('../modules/tournaments/tournaments.jobs');
 const { purgeExpired: purgeIdempotencyKeys } = require('../common/idempotency');
 const logger = require('../common/logger');
 
@@ -312,6 +317,47 @@ const JOBS = [
     queue: QUEUES.HIRE,
     every: 60 * 1000,
     run: async () => hire.tick(),
+  },
+  // ---------------- M20 gym (§10). Idempotent: every step locks the row and re-checks its status.
+  {
+    // Unpaid passes void; passes past closing on their last day expire and pay the gym (Q110); trainer
+    // months: renewal rows and notices, lapses after the grace days, release after the dispute window.
+    name: 'gym.tick',
+    queue: QUEUES.GYM,
+    every: 60 * 1000,
+    run: async () => gym.tick(),
+  },
+  // ---------------- M22 organiser SaaS (§10). Idempotent: every step locks the row and re-checks its status.
+  {
+    // Flat-fee invoices per month or quarter (one per period), overdue invoices, contract expiry and
+    // its reminder. Prize funds settle inside M21's finalise and cancel, not here.
+    name: 'saas.tick',
+    queue: QUEUES.SAAS,
+    every: 60 * 1000,
+    run: async () => saas.tick(),
+  },
+  {
+    // M23: big events. Follow alerts when an event starts and before its final, the final's live feed
+    // item, polls past closes_at, and qualified places nobody took once the final's registration closed.
+    name: 'esports_events.tick',
+    queue: QUEUES.ESPORTS_EVENTS,
+    every: 60 * 1000,
+    run: async () => esportsEvents.tick(),
+  },
+  {
+    // M16: team invites past their expiry (accept re-checks the time anyway).
+    name: 'teams.tick',
+    queue: QUEUES.TEAMS,
+    every: 5 * 60 * 1000,
+    run: async () => teamsJobs.tick(),
+  },
+  {
+    // M14: registration closes at its time, unpaid holds and lapsed offers end (places go to the
+    // next reserve team), unlocked rules lock again.
+    name: 'tournaments.tick',
+    queue: QUEUES.TOURNAMENTS,
+    every: 60 * 1000,
+    run: async () => tournamentsJobs.tick(),
   },
   // ---------------- M19 analytics (§10). Idempotent: upserts and REFRESH … CONCURRENTLY under an advisory lock.
   {

@@ -113,6 +113,13 @@ EsportsTournament.init(
     format: req(DataTypes.ENUM('single_match', 'series')),
     organiserType: { type: DataTypes.ENUM('kriraghor', 'organisation'), allowNull: false, defaultValue: 'kriraghor' },
     organisationId: DataTypes.UUID,
+    // M22: the fee snapshotted at publish for an organiser tournament, its contract, and the per-kill cap.
+    saasFeeModel: { type: DataTypes.ENUM('none', 'percentage', 'flat'), allowNull: false, defaultValue: 'none' },
+    saasFeeBps: DataTypes.INTEGER,
+    contractId: DataTypes.UUID,
+    maxPaidKills: DataTypes.INTEGER,
+    // M23: `invite` admits only entries the entry-policy hook allows (qualifications and invites).
+    entryPolicy: { type: DataTypes.ENUM('open', 'invite'), allowNull: false, defaultValue: 'open' },
     entryUnit: req(DataTypes.ENUM('player', 'squad')),
     entryFeePoisha: poisha('entryFeePoisha'),
     maxSlots: req(DataTypes.SMALLINT),
@@ -426,6 +433,7 @@ EsportsStream.init(
     matchId: DataTypes.UUID,
     platform: req(DataTypes.ENUM('youtube', 'facebook', 'tiktok', 'other')),
     url: req(DataTypes.STRING(500)),
+    videoRef: DataTypes.STRING(120),
     title: req(DataTypes.STRING(120)),
     isLive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
     startsAt: DataTypes.DATE(3),

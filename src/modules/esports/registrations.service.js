@@ -26,7 +26,7 @@ const gates = require('../auth/gate.service');
 const payments = require('../payments/payments.service');
 const refunds = require('../payments/refunds.service');
 const squads = require('./squads.service');
-const { fail, setting, rooms, money } = require('./esports.common');
+const { fail, setting, rooms, money, entryPolicy } = require('./esports.common');
 const rules = require('./esports.rules');
 
 const { sequelize, EsportsTournament, EsportsRegistration, EsportsRegistrationPlayer, EsportsGameProfile, EsportsSquad, EsportsMode, EsportsStage, EsportsCheckin, EsportsMatch } = models;
@@ -127,12 +127,19 @@ async function register(principal, tournamentId, { squadId = null, players, subs
     if (ids.some((id) => !members.has(byId.get(id).userId))) throw fail('ESPORTS_NOT_IN_SQUAD');
   }
   for (const p of profiles) if (await require('./profiles.service').isBanned(p.gameId, p.uid)) throw fail('ESPORTS_UID_BANNED');
+  // M22 edge case: the organising team does not play in its own tournament.
+  if (t.organiserType === 'organisation' && (await require('./esports.common').organiser.isMember([userId, ...profiles.map((p) => p.userId)], t.organisationId))) throw fail('ESPORTS_CONFLICT_OF_INTEREST');
 
   try {
     const out = await sequelize.transaction(async (transaction) => {
       const locked = await EsportsTournament.findByPk(t.id, { transaction, lock: transaction.LOCK.UPDATE });
       const now = new Date();
       if (locked.status !== 'registration_open' || now >= locked.registrationClosesAt) throw fail('ESPORTS_REGISTRATION_CLOSED');
+      // M23: an invite-only tournament (a big event's final) admits only qualified or invited entries.
+      if (locked.entryPolicy === 'invite') {
+        if (!entryPolicy.entryBlock) throw fail('ESPORTS_INVITE_ONLY');
+        await entryPolicy.entryBlock(locked, { registrantUserId: userId, squadId: t.entryUnit === 'squad' ? squadId : null, playerUserIds: ids.map((id) => byId.get(id).userId), transaction });
+      }
       const already = await EsportsRegistrationPlayer.count({ where: { tournamentId: t.id, status: 'active', [Op.or]: [{ userId: ids.map((id) => byId.get(id).userId) }, { gameProfileId: ids }] }, transaction });
       if (already) throw fail('ESPORTS_ALREADY_REGISTERED');
       const taken = await holdingSlots(locked, transaction);
@@ -168,6 +175,7 @@ async function register(principal, tournamentId, { squadId = null, players, subs
         { transaction }
       );
       if (r.status === 'pending_payment') await attachPayment(r, locked, transaction);
+      if (locked.entryPolicy === 'invite' && entryPolicy.onEntered) await entryPolicy.onEntered(locked, r, { transaction });
       await audit.record({ action: 'esports_registration.created', actor: principal, entityType: 'esports_registration', entityId: r.id, after: { status: r.status, slotNo: r.slotNo }, req }, { transaction });
       await regEvent(transaction, r.status === 'waitlisted' ? 'esports_registration.waitlisted' : 'esports_registration.created', r, { status: r.status });
       if (r.status === 'confirmed') await regEvent(transaction, 'esports_registration.confirmed', r, { paid: false });

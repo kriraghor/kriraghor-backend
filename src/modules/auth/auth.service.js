@@ -90,7 +90,13 @@ async function verifyOtp({ target, purpose, code }, req) {
   if (existing) {
     // Verified possession of the phone/email = sign in (non-enumerating signup).
     const verifiedField = target.type === 'phone' ? 'phoneVerifiedAt' : 'emailVerifiedAt';
-    if (!existing[verifiedField]) await existing.update({ [verifiedField]: new Date() });
+    if (!existing[verifiedField]) {
+      await sequelize.transaction(async (transaction) => {
+        await existing.update({ [verifiedField]: new Date() }, { transaction });
+        // M16: a phone verified for the first time can pick up team invites sent to it.
+        if (target.type === 'phone') await events.publish(transaction, { name: 'user.phone_verified', aggregateType: 'user', aggregateId: existing.id, payload: { userId: existing.id } });
+      });
+    }
     return completePrimaryAuth(existing, req, 'otp');
   }
   const { token, expiresAt } = tokens.signSpecial('signup', { idt: target.type, idv: target.value }, 'signup');

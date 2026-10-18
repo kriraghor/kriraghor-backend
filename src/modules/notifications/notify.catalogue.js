@@ -43,14 +43,28 @@ const KYC_REASONS = {
 };
 const reviewersOf = (kind) => directory.withPermission(require('../moderation/moderation.adapters').get(kind).permission);
 const KIND_LABELS = {
-  en: { document: 'identity document', game_profile: 'game UID', esports_tournament: 'esports tournament', ground: 'ground listing', shop: 'shop', product: 'shop product' },
-  bn: { document: 'পরিচয় ডকুমেন্ট', game_profile: 'গেম UID', esports_tournament: 'এস্পোর্টস টুর্নামেন্ট', ground: 'মাঠের তালিকা', shop: 'দোকান', product: 'দোকানের পণ্য' },
+  en: { document: 'identity document', game_profile: 'game UID', esports_tournament: 'esports tournament', ground: 'ground listing', shop: 'shop', product: 'shop product', tournament: 'tournament' },
+  bn: { document: 'পরিচয় ডকুমেন্ট', game_profile: 'গেম UID', esports_tournament: 'এস্পোর্টস টুর্নামেন্ট', ground: 'মাঠের তালিকা', shop: 'দোকান', product: 'দোকানের পণ্য', tournament: 'টুর্নামেন্ট' },
 };
 const kindLabel = (kind, locale) => KIND_LABELS[locale]?.[kind] ?? KIND_LABELS.en[kind] ?? kind;
 const es = () => require('../esports/esports.facts');
 // M09: grounds and the ground owner's business documents.
 const groundFacts = (id) => require('../grounds/grounds.service').facts(id);
 const vendorUrl = (p) => `${config.apps.vendor}${p}`;
+// M20: gyms (the owner), passes (the holder), trainer subscriptions (the member and the trainer).
+const gymFacts = (id) => require('../gym/gyms.service').facts(id);
+// M14 lite and M22: the organisation (its name) and its admins (owner and admins get organiser news).
+const orgAdmins = (id) => require('../organisations/organisations.service').adminIds(id);
+// M14: tournament names, registrations and captains.
+const tf = () => require('../tournaments/tournaments.facts');
+const eventOf = async (id) => require('../../models').EsportsEvent.findByPk(id, { attributes: ['id', 'slug', 'titleEn'] });
+const eventTitle = async (id) => (await eventOf(id))?.titleEn ?? '';
+// Links take the id: the esports app's /e/[slug] page accepts an id too.
+const eventLink = (id) => `/e/${id}`;
+const followerPage = (kind) => (e) => (e.payload.kind === kind ? require('../esports-events/alerts.service').pageRecipients(e.payload) : []);
+const teamName = async (id) => (await require('../teams/teams.service').getTeam(id))?.name ?? '';
+const orgName = async (id) => (await require('../organisations/organisations.service').publicRefs([id])).get(id)?.name ?? '';
+const passFacts = (id) => require('../gym/gym.reads').passFacts(id);
 const isNid = (e) => !e.payload.role || e.payload.role === 'member';
 const DOC_LABELS = {
   en: { trade_license: 'trade licence', deed_or_lease: 'land deed or lease', tin: 'TIN certificate', bin: 'VAT registration (BIN)' },
@@ -1322,6 +1336,422 @@ const CATALOGUE = [
     recipients: (e) => (e.payload.kind === 'owner' ? [e.payload.userId] : []),
     values: (e, { locale }) => ({ kind: pick(TRUST_KINDS, locale, e.payload.kind), score: e.payload.score }),
     link: () => vendorUrl('/vendor'),
+  },
+  // ---------------- M20 gym: owners, pass holders, trainers and their members
+  {
+    code: 'GYM_LIVE',
+    events: ['gym.published'],
+    category: 'moderation',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e) => ({ name: (await gymFacts(e.payload.gymId)).name }),
+    link: (e) => `/vendor/gyms/${e.payload.gymId}`,
+  },
+  {
+    code: 'GYM_CHANGES_REQUESTED',
+    events: ['gym.changes_requested'],
+    category: 'moderation',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e, { locale }) => ({ name: (await gymFacts(e.payload.gymId)).name, reason: groundReason(e.payload.reasonCode, locale) }),
+    link: (e) => `/vendor/gyms/${e.payload.gymId}`,
+  },
+  {
+    code: 'GYM_REJECTED',
+    events: ['gym.rejected'],
+    category: 'moderation',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e, { locale }) => ({ name: (await gymFacts(e.payload.gymId)).name, reason: groundReason(e.payload.reasonCode, locale) }),
+    link: (e) => `/vendor/gyms/${e.payload.gymId}`,
+  },
+  {
+    code: 'GYM_PASS_READY',
+    events: ['gym_pass.paid'],
+    category: 'bookings',
+    channels: ['in_app', 'sms'],
+    urgent: true,
+    recipients: (e) => [e.payload.holderId],
+    values: async (e) => {
+      const f = await passFacts(e.payload.passId);
+      return { code: e.payload.code, gym: f?.gym ?? '', from: e.payload.validFrom, price: e.payload.price };
+    },
+    link: (e) => `/me/passes/${e.payload.code}`,
+  },
+  {
+    code: 'GYM_PASS_CANCELLED',
+    events: ['gym_pass.cancelled'],
+    category: 'bookings',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.holderId],
+    values: (e) => ({ code: e.payload.code, refund: e.payload.refund }),
+    link: () => '/me/passes',
+  },
+  {
+    code: 'TRAINER_SUB_STARTED',
+    events: ['trainer_subscription.started'],
+    category: 'hire',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.memberId],
+    values: (e) => ({ code: e.payload.code, from: e.payload.periodStart, to: e.payload.periodEnd }),
+    link: () => '/me/subscriptions',
+  },
+  {
+    code: 'TRAINER_NEW_SUBSCRIBER',
+    events: ['trainer_subscription.started'],
+    category: 'hire',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.trainerId],
+    values: (e) => ({ code: e.payload.code, from: e.payload.periodStart, price: e.payload.price }),
+    link: () => '/pro/subscriptions',
+  },
+  {
+    code: 'TRAINER_SUB_RENEWAL_DUE',
+    events: ['trainer_subscription.renewal_opened'],
+    category: 'hire',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.memberId],
+    values: (e) => ({ code: e.payload.code, price: e.payload.price, payBy: e.payload.payBy }),
+    link: () => '/me/subscriptions',
+  },
+  {
+    code: 'TRAINER_SUB_LAPSED',
+    events: ['trainer_subscription.lapsed'],
+    category: 'hire',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.memberId, e.payload.trainerId],
+    values: (e) => ({ code: e.payload.code }),
+    link: () => '/me/subscriptions',
+  },
+  {
+    code: 'TRAINER_SUB_CANCELLED',
+    events: ['trainer_subscription.cancelled'],
+    category: 'hire',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.trainerId],
+    values: (e) => ({ code: e.payload.code, refund: e.payload.refund }),
+    link: () => '/pro/subscriptions',
+  },
+  {
+    code: 'TRAINER_SUB_PAID',
+    events: ['trainer_subscription.released'],
+    category: 'hire',
+    channels: ['in_app'],
+    recipients: (e) => (e.payload.net > 0 ? [e.payload.trainerId] : []),
+    values: (e) => ({ code: e.payload.code, net: e.payload.net }),
+    link: () => '/me/payouts',
+  },
+  // ---------------- M14 lite organisations and M22 organiser SaaS: the organisation's owner and admins
+  {
+    code: 'ORG_VERIFIED',
+    events: ['organisation.verified'],
+    category: 'moderation',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e) => ({ name: await orgName(e.payload.organisationId) }),
+    link: (e) => `/vendor/esports/${e.payload.organisationId}`,
+  },
+  {
+    code: 'ORG_CHANGES_REQUESTED',
+    events: ['organisation.changes_requested'],
+    category: 'moderation',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e) => ({ name: await orgName(e.payload.organisationId) }),
+    link: () => '/account/business?as=organiser',
+  },
+  {
+    code: 'ORG_CONTRACT_ACTIVE',
+    events: ['organiser_contract.activated'],
+    category: 'tournaments',
+    channels: ['in_app', 'email'],
+    recipients: (e) => orgAdmins(e.payload.organisationId),
+    values: async (e) => ({ name: await orgName(e.payload.organisationId) }),
+    link: (e) => `/vendor/esports/${e.payload.organisationId}/billing`,
+  },
+  {
+    code: 'ORG_CONTRACT_SUSPENDED',
+    events: ['organiser_contract.suspended'],
+    category: 'tournaments',
+    channels: ['in_app', 'email'],
+    urgent: true,
+    recipients: (e) => orgAdmins(e.payload.organisationId),
+    values: async (e) => ({ name: await orgName(e.payload.organisationId) }),
+    link: (e) => `/vendor/esports/${e.payload.organisationId}/billing`,
+  },
+  {
+    code: 'ORG_CONTRACT_ENDING',
+    events: ['organiser_contract.expiry_notified'],
+    category: 'tournaments',
+    channels: ['in_app', 'email'],
+    recipients: (e) => orgAdmins(e.payload.organisationId),
+    values: (e) => ({ endsOn: e.payload.endsOn }),
+    link: (e) => `/vendor/esports/${e.payload.organisationId}/billing`,
+  },
+  {
+    code: 'ORG_INVOICE_ISSUED',
+    events: ['organiser_invoice.issued'],
+    category: 'money',
+    channels: ['in_app', 'email'],
+    recipients: (e) => orgAdmins(e.payload.organisationId),
+    values: (e) => ({ number: e.payload.number, total: e.payload.total }),
+    link: (e) => `/vendor/esports/${e.payload.organisationId}/billing`,
+  },
+  {
+    code: 'ORG_INVOICE_OVERDUE',
+    events: ['organiser_invoice.overdue_flagged'],
+    category: 'money',
+    channels: ['in_app', 'email', 'sms'],
+    urgent: true,
+    recipients: (e) => orgAdmins(e.payload.organisationId),
+    values: (e) => ({ number: e.payload.number, total: e.payload.total }),
+    link: (e) => `/vendor/esports/${e.payload.organisationId}/billing`,
+  },
+  {
+    code: 'ORG_INVOICE_PAID',
+    events: ['organiser_invoice.paid'],
+    category: 'money',
+    channels: ['in_app'],
+    recipients: (e) => orgAdmins(e.payload.organisationId),
+    values: (e) => ({ number: e.payload.number, total: e.payload.total }),
+    link: (e) => `/vendor/esports/${e.payload.organisationId}/billing`,
+  },
+  {
+    code: 'ORG_FUND_RECEIVED',
+    events: ['organiser_prize_fund.deposited'],
+    category: 'money',
+    channels: ['in_app'],
+    recipients: (e) => orgAdmins(e.payload.organisationId),
+    values: (e) => ({ amount: e.payload.amount, deposited: e.payload.deposited }),
+    link: (e) => `/vendor/esports/${e.payload.organisationId}/tournaments/${e.payload.tournamentId}`,
+  },
+  {
+    code: 'ORG_FUND_RETURNED',
+    events: ['organiser_prize_fund.returned'],
+    category: 'money',
+    channels: ['in_app'],
+    recipients: (e) => orgAdmins(e.payload.organisationId),
+    values: (e) => ({ amount: e.payload.amount }),
+    link: (e) => `/vendor/esports/${e.payload.organisationId}/tournaments/${e.payload.tournamentId}`,
+  },
+  // ---------------- M16 teams: invites (members with an account only; unknown numbers get the captain's link)
+  {
+    code: 'TEAM_INVITE',
+    events: ['team_invite.sent', 'team_invite.linked'],
+    category: 'teams',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => (e.name === 'team_invite.linked' || e.payload.linked ? require('../teams/invites.service').recipientOf(e.payload.inviteId) : []),
+    values: (e) => require('../teams/invites.service').noticeValues(e.payload.inviteId),
+    link: () => '/me/teams',
+  },
+  {
+    code: 'TEAM_INVITE_ACCEPTED',
+    events: ['team_invite.accepted'],
+    category: 'teams',
+    channels: ['in_app'],
+    recipients: async (e) => {
+      const members = await require('../teams/teams.service').activeMembers(e.payload.teamId);
+      return members.filter((m) => ['captain', 'vice_captain'].includes(m.role) && m.userId !== e.payload.userId).map((m) => m.userId);
+    },
+    values: async (e) => ({ team: await teamName(e.payload.teamId), name: (await require('../users/directory.service').publicNames([e.payload.userId])).get(e.payload.userId)?.displayName ?? '' }),
+    link: (e) => `/me/teams/${e.payload.teamId}`,
+  },
+  {
+    code: 'TEAM_MEMBER_REMOVED',
+    events: ['team_member.removed'],
+    category: 'teams',
+    channels: ['in_app'],
+    recipients: (e) => (e.payload.reasonCode === 'removed' ? [e.payload.userId] : []),
+    values: async (e) => ({ team: await teamName(e.payload.teamId) }),
+    link: () => '/me/teams',
+  },
+  {
+    code: 'TEAM_CAPTAIN_GIVEN',
+    events: ['team.captain_changed'],
+    category: 'teams',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.toUserId],
+    values: async (e) => ({ team: await teamName(e.payload.teamId) }),
+    link: (e) => `/me/teams/${e.payload.teamId}`,
+  },
+  // ---------------- M14 tournaments (physical sports): organisers (admins) and captains (who registered)
+  {
+    code: 'TOURNAMENT_APPROVED',
+    events: ['tournament.approved'],
+    category: 'tournaments',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => orgAdmins(e.payload.organisationId),
+    values: async (e) => ({ tournament: (await tf().tournament(e.payload.tournamentId)).name }),
+    link: (e) => `/vendor/tournaments/${e.payload.organisationId}/t/${e.payload.tournamentId}`,
+  },
+  {
+    code: 'TOURNAMENT_CHANGES_REQUESTED',
+    events: ['tournament.changes_requested'],
+    category: 'tournaments',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => orgAdmins(e.payload.organisationId),
+    values: async (e) => ({ tournament: (await tf().tournament(e.payload.tournamentId)).name }),
+    link: (e) => `/vendor/tournaments/${e.payload.organisationId}/t/${e.payload.tournamentId}`,
+  },
+  {
+    code: 'TOURNAMENT_REJECTED',
+    events: ['tournament.rejected'],
+    category: 'tournaments',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => orgAdmins(e.payload.organisationId),
+    values: async (e) => ({ tournament: (await tf().tournament(e.payload.tournamentId)).name }),
+    link: (e) => `/vendor/tournaments/${e.payload.organisationId}/t/${e.payload.tournamentId}`,
+  },
+  {
+    code: 'REGISTRATION_SUBMITTED',
+    events: ['registration.submitted', 'registration.paid'],
+    category: 'tournaments',
+    channels: ['in_app'],
+    recipients: async (e) => (e.name === 'registration.submitted' && e.payload.status === 'pending_payment' ? [] : orgAdmins((await tf().tournament(e.payload.tournamentId)).organisationId)),
+    values: async (e) => {
+      const r = await tf().registration(e.payload.registrationId);
+      return { team: r.team, tournament: r.tournament };
+    },
+    link: () => '/vendor/tournaments',
+  },
+  {
+    code: 'REGISTRATION_APPROVED',
+    events: ['registration.approved'],
+    category: 'tournaments',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.captainId],
+    values: async (e) => {
+      const r = await tf().registration(e.payload.registrationId);
+      return { team: r.team, tournament: r.tournament };
+    },
+    link: () => '/me/tournaments',
+  },
+  {
+    code: 'REGISTRATION_REJECTED',
+    events: ['registration.rejected'],
+    category: 'tournaments',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.captainId],
+    values: async (e) => {
+      const r = await tf().registration(e.payload.registrationId);
+      return { team: r.team, tournament: r.tournament, refund: r.refund };
+    },
+    link: () => '/me/tournaments',
+  },
+  {
+    code: 'RESERVE_OFFERED',
+    events: ['registration.promoted'],
+    category: 'tournaments',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.captainId],
+    values: async (e) => {
+      const r = await tf().registration(e.payload.registrationId);
+      return { team: r.team, tournament: r.tournament, until: e.payload.offerExpiresAt };
+    },
+    link: () => '/me/tournaments',
+  },
+  {
+    code: 'TOURNAMENT_CANCELLED',
+    events: ['registration.cancelled'],
+    category: 'tournaments',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.captainId],
+    values: async (e) => {
+      const r = await tf().registration(e.payload.registrationId);
+      return { tournament: r.tournament, refund: r.refund };
+    },
+    link: () => '/me/tournaments',
+  },
+  {
+    code: 'FIXTURES_PUBLISHED',
+    events: ['tournament.fixtures_published'],
+    category: 'tournaments',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => tf().captains(e.payload.tournamentId),
+    values: async (e) => ({ tournament: (await tf().tournament(e.payload.tournamentId)).name }),
+    link: () => '/me/tournaments',
+  },
+  {
+    code: 'MATCH_RESCHEDULED',
+    events: ['match.rescheduled', 'match.postponed'],
+    category: 'tournaments',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => tf().matchCaptains(e.payload.matchId),
+    values: async (e) => ({ tournament: (await tf().tournament(e.payload.tournamentId)).name, match: e.payload.matchNo }),
+    link: () => '/me/tournaments',
+  },
+  {
+    code: 'REGISTRATION_BELOW_MIN',
+    events: ['tournament.registration_closed'],
+    category: 'tournaments',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => (e.payload.belowMin ? orgAdmins(e.payload.organisationId) : []),
+    values: async (e) => ({ tournament: (await tf().tournament(e.payload.tournamentId)).name, approved: e.payload.approved }),
+    link: (e) => `/vendor/tournaments/${e.payload.organisationId}/t/${e.payload.tournamentId}`,
+  },
+  {
+    code: 'LOTS_NEEDED',
+    events: ['tournament.lots_needed'],
+    category: 'tournaments',
+    channels: ['in_app'],
+    recipients: async (e) => orgAdmins((await tf().tournament(e.payload.tournamentId)).organisationId),
+    values: async (e) => ({ tournament: (await tf().tournament(e.payload.tournamentId)).name }),
+    link: () => '/vendor/tournaments',
+  },
+  // ---------------- M23 big events: follow alerts (paged; in-app only) and final places
+  {
+    code: 'ESPORTS_EVENT_STARTED',
+    events: ['esports_event.followers_alerted'],
+    category: 'event_alerts',
+    channels: ['in_app'],
+    recipients: followerPage('event_started'),
+    values: async (e) => ({ title: await eventTitle(e.payload.eventId) }),
+    link: (e) => eventLink(e.payload.eventId),
+  },
+  {
+    code: 'ESPORTS_EVENT_STREAM_LIVE',
+    events: ['esports_event.followers_alerted'],
+    category: 'event_alerts',
+    channels: ['in_app'],
+    recipients: followerPage('stream_live'),
+    values: async (e) => ({ title: await eventTitle(e.payload.eventId) }),
+    link: (e) => eventLink(e.payload.eventId),
+  },
+  {
+    code: 'ESPORTS_EVENT_FINAL_SOON',
+    events: ['esports_event.followers_alerted'],
+    category: 'event_alerts',
+    channels: ['in_app'],
+    recipients: followerPage('final_soon'),
+    values: async (e) => ({ title: await eventTitle(e.payload.eventId) }),
+    link: (e) => eventLink(e.payload.eventId),
+  },
+  {
+    code: 'ESPORTS_EVENT_QUALIFIED',
+    events: ['esports_event_qualification.granted'],
+    category: 'tournaments',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => require('../esports-events/qualifications.service').recipientsOf(e.payload.qualificationId),
+    values: async (e) => ({ title: await eventTitle(e.payload.eventId) }),
+    link: (e) => eventLink(e.payload.eventId),
+  },
+  {
+    code: 'ESPORTS_EVENT_QUALIFICATION_REVOKED',
+    events: ['esports_event_qualification.revoked'],
+    category: 'tournaments',
+    channels: ['in_app'],
+    recipients: (e) => require('../esports-events/qualifications.service').recipientsOf(e.payload.qualificationId),
+    values: async (e) => ({ title: await eventTitle(e.payload.eventId) }),
+    link: (e) => eventLink(e.payload.eventId),
+  },
+  {
+    code: 'ESPORTS_EVENT_QUALIFICATION_MISSED',
+    events: ['esports_event_qualification.missed'],
+    category: 'staff_ops',
+    channels: ['in_app'],
+    recipients: () => require('../users/directory.service').withPermission('manage_esports'),
+    values: async (e) => ({ title: await eventTitle(e.payload.eventId) }),
+    link: (e) => `/admin/esports/events?id=${e.payload.eventId}`,
   },
 ];
 

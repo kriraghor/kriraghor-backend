@@ -87,4 +87,28 @@ async function counts() {
   return { verifiedMembers, businesses };
 }
 
-module.exports = { counts, contactFor, masters, withPermission, accounts, identities, nidHashHolders, byUsername, publicNames };
+/** M16: the active account whose verified phone this is (E.164), or null. Phones never leave the backend. */
+async function byVerifiedPhone(e164, { transaction } = {}) {
+  const u = await User.findOne({ where: { phone: e164, status: 'active', phoneVerifiedAt: { [Op.ne]: null } }, attributes: ['id'], transaction });
+  return u ? u.id : null;
+}
+
+/** M16: the caller's own verified phone (E.164) or null, for matching invites sent to it. */
+async function verifiedPhoneOf(userId, { transaction } = {}) {
+  const u = await User.findByPk(userId, { attributes: ['phone', 'phoneVerifiedAt'], transaction });
+  return u && u.phoneVerifiedAt ? u.phone : null;
+}
+
+/**
+ * M16 eligibility (internal only, never serialised): KYC status, whether the member role is active,
+ * the NID date of birth and the self-declared gender.
+ */
+async function eligibilityIdentity(userIds, { transaction } = {}) {
+  const ids = [...new Set(userIds.filter(Boolean))];
+  if (!ids.length) return new Map();
+  const users = await User.findAll({ where: { id: ids }, attributes: ['id', 'kycStatus', 'dob', 'gender', 'status', 'phoneVerifiedAt'], transaction });
+  const members = new Set((await UserRole.findAll({ where: { userId: ids, role: 'member', status: 'active' }, attributes: ['userId'], transaction })).map((r) => r.userId));
+  return new Map(users.map((u) => [u.id, { kycStatus: u.kycStatus, memberActive: members.has(u.id), dob: u.dob ?? null, gender: u.gender ?? null, active: u.status === 'active', phoneVerified: Boolean(u.phoneVerifiedAt) }]));
+}
+
+module.exports = { counts, contactFor, masters, withPermission, accounts, identities, nidHashHolders, byUsername, publicNames, byVerifiedPhone, verifiedPhoneOf, eligibilityIdentity };

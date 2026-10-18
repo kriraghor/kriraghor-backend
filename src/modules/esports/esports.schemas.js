@@ -63,6 +63,7 @@ const tournamentFields = {
   minParticipants: z.number().int().min(1).max(200),
   prizes: z.array(prize).min(1).max(50),
   killReward: poisha.meta({ description: 'Per kill, per player, in poisha' }),
+  maxPaidKills: z.number().int().min(1).max(10000).nullable().optional().meta({ description: 'M22: the most kills paid in the tournament (organisers with a per-kill reward must set it; the prize fund covers places + reward × this)' }),
   pointsPresetId: z.uuid().optional(),
   placementPoints: z.array(z.number().int().min(0).max(100)).min(1).max(100).optional(),
   killPoints: z.number().int().min(0).max(10).optional(),
@@ -71,8 +72,9 @@ const tournamentFields = {
   matches: z.array(matchIn).min(1).max(10),
   rulesMd: z.string().max(10000),
   featured: z.boolean(),
+  entryPolicy: z.enum(['open', 'invite']).meta({ description: 'M23: invite = only qualified or invited entries (a big event final); locked after publish' }),
 };
-const tournamentBody = z.object({ ...tournamentFields, killReward: tournamentFields.killReward.default(0), rulesMd: tournamentFields.rulesMd.default(''), featured: tournamentFields.featured.default(false) });
+const tournamentBody = z.object({ ...tournamentFields, killReward: tournamentFields.killReward.default(0), rulesMd: tournamentFields.rulesMd.default(''), featured: tournamentFields.featured.default(false), entryPolicy: tournamentFields.entryPolicy.default('open') });
 // No defaults: a patch carries only the fields it changes (locked ones are refused after publish).
 const tournamentPatch = z.object(tournamentFields).partial();
 const cancelBody = z.object({ reason: z.string().trim().min(5).max(255) });
@@ -116,6 +118,9 @@ const Card = z
     entryFee: Money,
     prizePool: Money,
     killReward: Money,
+    maxPaidKills: z.number().int().nullable().meta({ description: 'M22: the most kills paid (organiser tournaments with a per-kill reward)' }),
+    organisationId: z.uuid().nullable(),
+    organiser: z.object({ id: z.uuid(), slug: z.string(), name: z.string() }).nullable().meta({ description: 'M22: the organisation running it; null for Kriraghor\'s own' }),
     maxSlots: z.number().int(),
     minParticipants: z.number().int(),
     slotsTaken: z.number().int(),
@@ -125,6 +130,7 @@ const Card = z
     startsAt: dateTime,
     status: z.string(),
     featured: z.boolean(),
+    entryPolicy: z.enum(['open', 'invite']),
   })
   .loose();
 const TournamentList = z.object({ items: z.array(Card), nextCursor: z.string().nullable() }).meta({ id: 'EsportsTournamentList' });
@@ -135,7 +141,7 @@ const Tournament = Card.extend({
   prizes: z.array(z.object({ place: z.number().int(), amount: Money })),
   stages: z.array(z.object({ id: z.uuid(), seq: z.number().int(), checkinOpensAt: dateTime, checkinClosesAt: dateTime }).loose()),
   matches: z.array(z.object({ id: z.uuid(), seq: z.number().int(), map: Named.nullable(), startsAt: dateTime, status: z.string() }).loose()),
-  streams: z.array(z.object({ id: z.uuid(), platform: z.string(), url: z.string(), title: z.string(), isLive: z.boolean() }).loose()),
+  streams: z.array(z.object({ id: z.uuid(), platform: z.string(), url: z.string(), title: z.string(), isLive: z.boolean(), embedUrl: z.string().nullable().meta({ description: 'The player URL built from the parsed video reference; null = show the link' }) }).loose()),
 }).meta({ id: 'EsportsTournament' });
 const Profile = z.object({ id: z.uuid(), gameId: z.uuid(), uid: z.string(), uidMasked: z.string(), ign: z.string(), status: z.string() }).loose().meta({ id: 'EsportsGameProfile' });
 const ProfileList = z.object({ items: z.array(Profile) }).meta({ id: 'EsportsGameProfileList' });

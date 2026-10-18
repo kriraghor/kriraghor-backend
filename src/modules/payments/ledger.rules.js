@@ -6,7 +6,7 @@
  *   { account: 'escrow:test_charge', debit: 10000, holdId? }  or  { account, credit, holdId? }
  * Amounts are integer poisha. Every builder returns balanced lines; validateLines() re-checks.
  */
-const { assertPoisha, sum } = require('../../common/money');
+const { assertPoisha, sum, feeOf } = require('../../common/money');
 
 // §6.2 chart of accounts, by the part before the first ':'.
 const ACCOUNT_TYPES = {
@@ -153,6 +153,48 @@ function poolSettlement({ escrowAccount, vertical, holds, prizes }) {
   return { lines, collected, paid, subsidy, remainder, feeByHold };
 }
 
+/**
+ * M22 organiser settlement (§6.2, FR-07, FR-10): an organiser tournament settles from two pools and is
+ * never subsidised. Two postings, so M07 schedules each side right:
+ *   prizes:    Dr escrow:esports_prize_fund (fund holds, in order)  /  Cr payable:user:{winner}
+ *   organiser: Dr escrow:esports_entry (every entry hold) + Dr the fund's unused remainder
+ *              /  Cr fee_revenue:{vertical} (feeBps × entries collected)  +  Cr payable:user:{organiser}
+ * Entries are counted after refunds (Q129: a hold's available amount). Throws when the prizes exceed
+ * the fund (the fund is sized to cover them, FR-05). Both pools end at zero.
+ */
+function organiserSettlement({ entryAccount, fundAccount, vertical, entryHolds, fundHolds, prizes, feeBps, organiserId }) {
+  const collected = sum(entryHolds.map((h) => assertPoisha(h.available, 'entry hold available')));
+  const funded = sum(fundHolds.map((h) => assertPoisha(h.available, 'fund hold available')));
+  const paid = sum(prizes.map((p) => assertPoisha(p.amount, 'prize')));
+  if (prizes.some((p) => p.amount === 0)) throw new LedgerError('A prize line must be more than zero');
+  if (paid > funded) throw new LedgerError('The prizes exceed the prize fund');
+  const fee = feeOf(collected, feeBps);
+  const fundReturn = funded - paid;
+  // The prizes take the fund holds in order; what is left of each hold goes to the organiser.
+  const forPrizes = allocate(paid, fundHolds);
+  const prizeLines = paid
+    ? [...fundHolds.map((h, i) => [h, forPrizes[i]]).filter(([, a]) => a > 0).map(([h, a]) => dr(fundAccount, a, h.id)), ...prizes.map((p) => cr(`payable:user:${p.payeeId}`, p.amount))]
+    : [];
+  const organiserCredit = collected - fee + fundReturn;
+  const organiserLines =
+    collected + fundReturn > 0
+      ? [
+          ...entryHolds.filter((h) => h.available > 0).map((h) => dr(entryAccount, h.available, h.id)),
+          ...fundHolds.map((h, i) => [h, h.available - forPrizes[i]]).filter(([, a]) => a > 0).map(([h, a]) => dr(fundAccount, a, h.id)),
+          ...(fee ? [cr(`fee_revenue:${vertical}`, fee)] : []),
+          ...(organiserCredit ? [cr(`payable:user:${organiserId}`, organiserCredit)] : []),
+        ]
+      : [];
+  return { prizeLines, organiserLines, collected, funded, paid, fee, net: collected - fee, fundReturn, feeByHold: allocate(fee, entryHolds) };
+}
+
+/** M22 invoices (FR-09): a paid fee invoice leaves its hold straight for revenue. */
+function revenueLines({ escrowAccount, holdId, vertical, amount }) {
+  assertPoisha(amount, 'amount');
+  if (amount === 0) throw new LedgerError('Nothing to collect');
+  return [dr(escrowAccount, amount, holdId), cr(`fee_revenue:${vertical}`, amount)];
+}
+
 module.exports = {
   ACCOUNT_TYPES,
   accountType,
@@ -171,5 +213,7 @@ module.exports = {
   refundSettleLines,
   allocate,
   poolSettlement,
+  organiserSettlement,
+  revenueLines,
   LedgerError,
 };

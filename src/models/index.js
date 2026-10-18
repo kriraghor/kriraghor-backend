@@ -7,7 +7,7 @@ const { uuid7 } = require('../common/uuid7');
 const { toPoisha } = require('../common/money');
 
 const ROLE_STATUSES = ['applied', 'documents_pending', 'in_review', 'changes_requested', 'active', 'rejected', 'suspended', 'withdrawn'];
-const PERMS = ['approve_listings', 'approve_documents', 'resolve_reports', 'refund_small', 'view_payouts', 'release_payouts', 'edit_fees', 'manage_staff', 'manage_users', 'manage_catalog', 'manage_esports', 'enter_results', 'view_analytics'];
+const PERMS = ['approve_listings', 'approve_documents', 'resolve_reports', 'refund_small', 'view_payouts', 'release_payouts', 'edit_fees', 'manage_staff', 'manage_users', 'manage_catalog', 'manage_esports', 'enter_results', 'view_analytics', 'manage_organisers'];
 
 const uuidPk = { type: DataTypes.UUID, primaryKey: true, defaultValue: DataTypes.UUIDV4 };
 
@@ -18,8 +18,10 @@ class User extends Model {
       id: this.id,
       displayName: this.displayName,
       phone: this.phone,
+      phoneVerified: Boolean(this.phone && this.phoneVerifiedAt),
       email: this.email,
       emailVerified: Boolean(this.emailVerifiedAt),
+      gender: this.gender ?? null,
       username: this.username,
       locale: this.locale,
       status: this.status,
@@ -44,6 +46,9 @@ User.init(
     displayName: { type: DataTypes.STRING(80), allowNull: false },
     legalName: DataTypes.STRING(120),
     dob: DataTypes.DATEONLY,
+    // M16 (Q27): self-declared, private; only men's and women's events read it (never public).
+    gender: DataTypes.ENUM('male', 'female', 'third'),
+    genderSource: DataTypes.ENUM('self_declared', 'staff_corrected'),
     nidHash: { type: DataTypes.CHAR(64), unique: true },
     nidLast4: DataTypes.CHAR(4),
     locale: { type: DataTypes.ENUM('en', 'bn'), allowNull: false, defaultValue: 'en' },
@@ -1180,6 +1185,21 @@ market.Product.belongsTo(items.ItemType, { as: 'itemType', foreignKey: 'itemType
 // ---- M03 hire taxonomy and M11 hire, step 1 (./hire.js) ----
 const hire = require('./hire');
 
+// ---- M20 gym, step 1 (./gym.js) ----
+const gym = require('./gym');
+
+// ---- M14 lite organisations and M22 organiser SaaS (./organisations.js) ----
+const organisations = require('./organisations');
+
+// ---- M16 teams and players, step 1 (./teams.js) ----
+const teams = require('./teams');
+
+// ---- M14 tournaments step 1, with M15 lite results (./tournaments.js) ----
+const tournaments = require('./tournaments');
+
+// ---- M23 esports big events, step 1 (./esports-events.js) ----
+const esportsEvents = require('./esports-events');
+
 // ---- M13 orders, step 1 (./orders.js) ----
 const orders = require('./orders');
 
@@ -1198,6 +1218,11 @@ module.exports = {
   ...market,
   ...orders,
   ...hire,
+  ...gym,
+  ...organisations,
+  ...esportsEvents,
+  ...teams,
+  ...tournaments,
   ...grounds,
   ...bookings,
   ...analytics,

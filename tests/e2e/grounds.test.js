@@ -122,7 +122,7 @@ describe('M03 places catalogue', () => {
     expect((await api().get(`${P}/catalog/areas?q=${encodeURIComponent('উত্তরা')}`).expect(200)).body.items.map((a) => a.key)).toEqual(['uttara']);
     const district = dhaka.districts.find((d) => d.key === 'dhaka');
     expect((await api().get(`${P}/catalog/areas?districtId=${district.id}`).expect(200)).body.items.length).toBe(18);
-    expect((await api().get(`${P}/catalog/facilities`).expect(200)).body.items).toHaveLength(15);
+    expect((await api().get(`${P}/catalog/facilities`).expect(200)).body.items).toHaveLength(20); // 15 ground facilities + 5 gym facilities (M20)
     expect((await api().get(`${P}/catalog/surfaces`).expect(200)).body.items).toHaveLength(7);
   });
 

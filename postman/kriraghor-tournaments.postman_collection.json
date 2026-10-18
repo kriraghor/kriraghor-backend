@@ -1,0 +1,2879 @@
+{
+  "info": {
+    "name": "Kriraghor API: M14 Tournaments (step 1)",
+    "description": "A verified sports organisation (M14 lite, kind sports) drafts a badminton league for four teams: ৳18,000 a team, a prize pool shown on the page (Q86: not held), a venue with two courts. Its submission fails without a venue; with one it goes to the Moderation desk (kind tournament) and the runner approves it: registration opens with the 5% fee and the 50% first release snapshotted.\n\nFour captains (NID members with a badminton team) register with a squad and pay into escrow (M06 purpose tournament_entry); a fifth joins the reserve list. Registering the same team twice is refused.\n\nThe organiser approves the four (squads ready), closes registration (the reserve team lapses), draws at random (the seed is published), dry-runs and then generates the schedule, and publishes the fixtures.\n\nResults: the first locks the rules and releases half of every entry less 5% (৳34,200 to the owner); a stale move is refused; an amendment needs a reason; the last result completes the tournament and releases the rest (৳68,400 in all, ৳3,600 fee). The public hub shows the standings without any personal data.\n\nUnattended: `node postman/run-m14.js` (kriraghor_test database). Rebuild with: node postman/build-collection-m14.js",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000/api/v1"
+    },
+    {
+      "key": "controlUrl",
+      "value": ""
+    },
+    {
+      "key": "tournamentId",
+      "value": ""
+    },
+    {
+      "key": "slug",
+      "value": ""
+    },
+    {
+      "key": "reg1",
+      "value": ""
+    },
+    {
+      "key": "reg2",
+      "value": ""
+    },
+    {
+      "key": "reg3",
+      "value": ""
+    },
+    {
+      "key": "reg4",
+      "value": ""
+    },
+    {
+      "key": "reg5",
+      "value": ""
+    },
+    {
+      "key": "pay1",
+      "value": ""
+    },
+    {
+      "key": "pay2",
+      "value": ""
+    },
+    {
+      "key": "pay3",
+      "value": ""
+    },
+    {
+      "key": "pay4",
+      "value": ""
+    },
+    {
+      "key": "pay5",
+      "value": ""
+    },
+    {
+      "key": "m1",
+      "value": ""
+    },
+    {
+      "key": "m2",
+      "value": ""
+    },
+    {
+      "key": "m3",
+      "value": ""
+    },
+    {
+      "key": "m4",
+      "value": ""
+    },
+    {
+      "key": "m5",
+      "value": ""
+    },
+    {
+      "key": "m6",
+      "value": ""
+    },
+    {
+      "key": "mv1",
+      "value": ""
+    },
+    {
+      "key": "draftId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Draft and review (M14-FR-04 to FR-08)",
+      "item": [
+        {
+          "name": "The sport's rules for the wizard",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"presets and tiebreakers\", () => { pm.expect(j.presets.length === 3 && j.tiebreakers.includes('game_difference')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/catalog/sport-rules/badminton",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "catalog",
+                "sport-rules",
+                "badminton"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Not the esports console (expect 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 404', () => {",
+                  "  pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/esports/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "esports",
+                "dashboard"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A draft without a venue",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('draftId', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sportKey\": \"badminton\",\n  \"name\": \"Draft without a venue {{run}}\",\n  \"format\": \"league\",\n  \"minTeams\": 4,\n  \"maxTeams\": 4,\n  \"squadMin\": 1,\n  \"squadMax\": 2,\n  \"entryFeePoisha\": 1800000,\n  \"prizePoolPoisha\": 5000000,\n  \"prizeSplit\": [\n    {\n      \"label\": \"Winner\",\n      \"pct\": 70\n    },\n    {\n      \"label\": \"Runner-up\",\n      \"pct\": 30\n    }\n  ],\n  \"registrationOpensAt\": \"{{opensAt}}\",\n  \"registrationClosesAt\": \"{{closesAt}}\",\n  \"startDate\": \"{{startDate}}\",\n  \"endDate\": \"{{endDate}}\",\n  \"venues\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/tournaments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "tournaments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "…cannot be submitted (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 TOURNAMENT_INCOMPLETE', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('TOURNAMENT_INCOMPLETE');",
+                  "});",
+                  "pm.test(\"venue check\", () => { pm.expect(j.checks.includes('venue_present')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/tournaments/{{draftId}}/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "tournaments",
+                "{{draftId}}",
+                "submit"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A rule out of range (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 RULE_OUT_OF_RANGE', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('RULE_OUT_OF_RANGE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sportKey\": \"badminton\",\n  \"name\": \"Mirpur Badminton League {{run}}\",\n  \"format\": \"league\",\n  \"minTeams\": 4,\n  \"maxTeams\": 4,\n  \"squadMin\": 1,\n  \"squadMax\": 2,\n  \"entryFeePoisha\": 1800000,\n  \"prizePoolPoisha\": 5000000,\n  \"prizeSplit\": [\n    {\n      \"label\": \"Winner\",\n      \"pct\": 70\n    },\n    {\n      \"label\": \"Runner-up\",\n      \"pct\": 30\n    }\n  ],\n  \"registrationOpensAt\": \"{{opensAt}}\",\n  \"registrationClosesAt\": \"{{closesAt}}\",\n  \"startDate\": \"{{startDate}}\",\n  \"endDate\": \"{{endDate}}\",\n  \"venues\": [\n    {\n      \"venueText\": \"Mirpur Indoor Stadium\",\n      \"areaId\": \"{{venueArea}}\",\n      \"courts\": [\n        \"Court 1\",\n        \"Court 2\"\n      ]\n    }\n  ],\n  \"rules\": {\n    \"points\": 50\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/tournaments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "tournaments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The league draft",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('tournamentId', v); }",
+                  "if (ok && j) { const v = get(j, 'slug'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('slug', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"preset rules\", () => { pm.expect(j.rules.presetKey === 'b3x21' && j.rules.tiebreakers[0] === 'points').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sportKey\": \"badminton\",\n  \"name\": \"Mirpur Badminton League {{run}}\",\n  \"format\": \"league\",\n  \"minTeams\": 4,\n  \"maxTeams\": 4,\n  \"squadMin\": 1,\n  \"squadMax\": 2,\n  \"entryFeePoisha\": 1800000,\n  \"prizePoolPoisha\": 5000000,\n  \"prizeSplit\": [\n    {\n      \"label\": \"Winner\",\n      \"pct\": 70\n    },\n    {\n      \"label\": \"Runner-up\",\n      \"pct\": 30\n    }\n  ],\n  \"registrationOpensAt\": \"{{opensAt}}\",\n  \"registrationClosesAt\": \"{{closesAt}}\",\n  \"startDate\": \"{{startDate}}\",\n  \"endDate\": \"{{endDate}}\",\n  \"venues\": [\n    {\n      \"venueText\": \"Mirpur Indoor Stadium\",\n      \"areaId\": \"{{venueArea}}\",\n      \"courts\": [\n        \"Court 1\",\n        \"Court 2\"\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/tournaments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "tournaments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Choose the 1-game preset",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"summary\", () => { pm.expect(j.rules.values.bestOf === '1' && /Games: 1 game/.test(j.rules.summaryEn)).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"presetKey\": \"b1x21\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/tournaments/{{tournamentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "tournaments",
+                "{{tournamentId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Back to best of 3",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"presetKey\": \"b3x21\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/tournaments/{{tournamentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "tournaments",
+                "{{tournamentId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Submit for review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"in review\", () => { pm.expect(j.status === 'pending_review').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/tournaments/{{tournamentId}}/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "tournaments",
+                "{{tournamentId}}",
+                "submit"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Not public yet (expect 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 404', () => {",
+                  "  pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tournaments/{{slug}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournaments",
+                "{{slug}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: staff approve it on the Moderation desk",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/approve?kind=tournament&id={{tournamentId}}",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "approve"
+              ],
+              "query": [
+                {
+                  "key": "kind",
+                  "value": "tournament"
+                },
+                {
+                  "key": "id",
+                  "value": "{{tournamentId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Registration is open with the fee snapshotted",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"open\", () => { pm.expect(j.status === 'registration_open' && j.feeBps === 500 && j.releasePct === 50).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/tournaments/{{tournamentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "tournaments",
+                "{{tournamentId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listed in discover",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"one\", () => { pm.expect(j.items.some((t) => t.id === pm.collectionVariables.get('tournamentId'))).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tournaments?status=open&sport=badminton",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournaments"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "open"
+                },
+                {
+                  "key": "sport",
+                  "value": "badminton"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Registrations and escrow (FR-10 to FR-13)",
+      "item": [
+        {
+          "name": "Captain 1 registers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('reg1', v); }",
+                  "if (ok && j) { const v = get(j, 'payment.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('pay1', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cap1Token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teamId\": \"{{team1}}\",\n  \"rosterUserIds\": [\n    \"{{cap1Id}}\"\n  ],\n  \"acceptRules\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tournaments/{{tournamentId}}/registrations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournaments",
+                "{{tournamentId}}",
+                "registrations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: captain 1 pays with bKash",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/pay?payment={{pay1}}&captain=1",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "pay"
+              ],
+              "query": [
+                {
+                  "key": "payment",
+                  "value": "{{pay1}}"
+                },
+                {
+                  "key": "captain",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Captain 2 registers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('reg2', v); }",
+                  "if (ok && j) { const v = get(j, 'payment.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('pay2', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cap2Token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teamId\": \"{{team2}}\",\n  \"rosterUserIds\": [\n    \"{{cap2Id}}\"\n  ],\n  \"acceptRules\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tournaments/{{tournamentId}}/registrations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournaments",
+                "{{tournamentId}}",
+                "registrations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: captain 2 pays with bKash",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/pay?payment={{pay2}}&captain=2",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "pay"
+              ],
+              "query": [
+                {
+                  "key": "payment",
+                  "value": "{{pay2}}"
+                },
+                {
+                  "key": "captain",
+                  "value": "2"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Captain 3 registers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('reg3', v); }",
+                  "if (ok && j) { const v = get(j, 'payment.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('pay3', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cap3Token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teamId\": \"{{team3}}\",\n  \"rosterUserIds\": [\n    \"{{cap3Id}}\"\n  ],\n  \"acceptRules\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tournaments/{{tournamentId}}/registrations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournaments",
+                "{{tournamentId}}",
+                "registrations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: captain 3 pays with bKash",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/pay?payment={{pay3}}&captain=3",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "pay"
+              ],
+              "query": [
+                {
+                  "key": "payment",
+                  "value": "{{pay3}}"
+                },
+                {
+                  "key": "captain",
+                  "value": "3"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Captain 4 registers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('reg4', v); }",
+                  "if (ok && j) { const v = get(j, 'payment.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('pay4', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cap4Token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teamId\": \"{{team4}}\",\n  \"rosterUserIds\": [\n    \"{{cap4Id}}\"\n  ],\n  \"acceptRules\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tournaments/{{tournamentId}}/registrations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournaments",
+                "{{tournamentId}}",
+                "registrations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: captain 4 pays with bKash",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/pay?payment={{pay4}}&captain=4",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "pay"
+              ],
+              "query": [
+                {
+                  "key": "payment",
+                  "value": "{{pay4}}"
+                },
+                {
+                  "key": "captain",
+                  "value": "4"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "The same team again (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 TEAM_ALREADY_REGISTERED', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('TEAM_ALREADY_REGISTERED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cap1Token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teamId\": \"{{team1}}\",\n  \"rosterUserIds\": [\n    \"{{cap1Id}}\"\n  ],\n  \"acceptRules\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tournaments/{{tournamentId}}/registrations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournaments",
+                "{{tournamentId}}",
+                "registrations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A fifth team: the reserve list",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('reg5', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"reserve\", () => { pm.expect(j.status === 'reserve' && j.reservePosition === 1 && j.payment === null).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cap5Token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teamId\": \"{{team5}}\",\n  \"rosterUserIds\": [\n    \"{{cap5Id}}\"\n  ],\n  \"acceptRules\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tournaments/{{tournamentId}}/registrations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournaments",
+                "{{tournamentId}}",
+                "registrations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: drain events",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/settle",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "settle"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Paid: waiting for the organiser",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"waiting\", () => { pm.expect(j.items[0].status === 'pending_approval').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cap1Token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/registrations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "registrations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The organiser sees four ready squads (NID booleans only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"four ready\", () => { pm.expect(j.items.length === 4 && j.items.every((r) => r.roster.ready && r.roster.players[0].nidVerified)).to.eql(true); });",
+                  "pm.test(\"no personal data\", () => { pm.expect(!/gender|dob|phone/i.test(JSON.stringify(j))).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/tournaments/{{tournamentId}}/registrations?status=pending_approval",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "tournaments",
+                "{{tournamentId}}",
+                "registrations"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending_approval"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Approve team 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/registrations/{{reg1}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "registrations",
+                "{{reg1}}",
+                "approve"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Approve team 2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/registrations/{{reg2}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "registrations",
+                "{{reg2}}",
+                "approve"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Approve team 3",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/registrations/{{reg3}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "registrations",
+                "{{reg3}}",
+                "approve"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Approve team 4",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/registrations/{{reg4}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "registrations",
+                "{{reg4}}",
+                "approve"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Approve twice (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 REGISTRATION_STATE', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('REGISTRATION_STATE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/registrations/{{reg1}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "registrations",
+                "{{reg1}}",
+                "approve"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Overview: four approved, ৳72,000 held",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"kpis\", () => { pm.expect(j.kpis.approved === 4 && j.money.held === 7200000 && j.money.released === 0).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/tournaments/{{tournamentId}}/overview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "tournaments",
+                "{{tournamentId}}",
+                "overview"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Draw and fixtures (FR-14 to FR-18)",
+      "item": [
+        {
+          "name": "A draw before registration closes (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 REGISTRATION_STILL_OPEN', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('REGISTRATION_STILL_OPEN');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"seeding\": \"random\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/tournaments/{{tournamentId}}/draw",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "tournaments",
+                "{{tournamentId}}",
+                "draw"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Close registration",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"closed\", () => { pm.expect(j.status === 'registration_closed').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/tournaments/{{tournamentId}}/registration/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "tournaments",
+                "{{tournamentId}}",
+                "registration",
+                "close"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The reserve team lapsed",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"lapsed\", () => { pm.expect(j.items[0].status === 'lapsed').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cap5Token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/registrations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "registrations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Draw preview",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"six matches\", () => { pm.expect(j.teams === 4 && j.matchCount === 6).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"seeding\": \"random\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/tournaments/{{tournamentId}}/draw",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "tournaments",
+                "{{tournamentId}}",
+                "draw"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Confirm the random draw",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"seed published\", () => { pm.expect(/^[0-9a-f]{32}$/.test(j.draw.seed)).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"seeding\": \"random\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/tournaments/{{tournamentId}}/draw/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "tournaments",
+                "{{tournamentId}}",
+                "draw",
+                "confirm"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dry run with a schedule",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"all placed\", () => { pm.expect(j.dryRun === true && j.matchCount === 6 && j.unscheduled.length === 0 && j.matches.every((m) => m.scheduledStart)).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dryRun\": true,\n  \"schedule\": {\n    \"weekdays\": [\n      5,\n      6\n    ],\n    \"slots\": [\n      \"17:00\",\n      \"19:00\"\n    ]\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/tournaments/{{tournamentId}}/fixtures/generate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "tournaments",
+                "{{tournamentId}}",
+                "fixtures",
+                "generate"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Generate",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schedule\": {\n    \"weekdays\": [\n      5,\n      6\n    ],\n    \"slots\": [\n      \"17:00\",\n      \"19:00\"\n    ]\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/tournaments/{{tournamentId}}/fixtures/generate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "tournaments",
+                "{{tournamentId}}",
+                "fixtures",
+                "generate"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Publish",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"saves m1\", () => { pm.expect((pm.collectionVariables.set('m1', j.fixtures.matches[0].id), true)).to.eql(true); });",
+                  "pm.test(\"saves mv1\", () => { pm.expect((pm.collectionVariables.set('mv1', j.fixtures.matches[0].version), true)).to.eql(true); });",
+                  "pm.test(\"saves m2\", () => { pm.expect((pm.collectionVariables.set('m2', j.fixtures.matches[1].id), true)).to.eql(true); });",
+                  "pm.test(\"saves m3\", () => { pm.expect((pm.collectionVariables.set('m3', j.fixtures.matches[2].id), true)).to.eql(true); });",
+                  "pm.test(\"saves m4\", () => { pm.expect((pm.collectionVariables.set('m4', j.fixtures.matches[3].id), true)).to.eql(true); });",
+                  "pm.test(\"saves m5\", () => { pm.expect((pm.collectionVariables.set('m5', j.fixtures.matches[4].id), true)).to.eql(true); });",
+                  "pm.test(\"saves m6\", () => { pm.expect((pm.collectionVariables.set('m6', j.fixtures.matches[5].id), true)).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/tournaments/{{tournamentId}}/fixtures/publish",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "tournaments",
+                "{{tournamentId}}",
+                "fixtures",
+                "publish"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: captains are told",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"fixtures notice\", () => { pm.expect(j.fixturesNotices === 4).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/check",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "check"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A stale move (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 VERSION_CONFLICT', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('VERSION_CONFLICT');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"court\": \"Court 2\",\n  \"version\": 999\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/matches/{{m1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "matches",
+                "{{m1}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Results, money and the hub (FR-09, FR-16, FR-24, M15 lite)",
+      "item": [
+        {
+          "name": "A result that does not fit the rules (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 RESULT_INVALID', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('RESULT_INVALID');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sets\": [\n    [\n      21,\n      20\n    ],\n    [\n      21,\n      15\n    ]\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/matches/{{m1}}/result",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "matches",
+                "{{m1}}",
+                "result"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Result of match 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sets\": [\n    [\n      21,\n      15\n    ],\n    [\n      21,\n      17\n    ]\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/matches/{{m1}}/result",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "matches",
+                "{{m1}}",
+                "result"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: tranche 1 released",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"৳34,200\", () => { pm.expect(j.payable === 3420000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/check",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "check"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The rules are locked (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 RULES_LOCKED', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('RULES_LOCKED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rules\": {\n    \"pW\": 3\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/tournaments/{{tournamentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "tournaments",
+                "{{tournamentId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Amend without a reason (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sets\": [\n    [\n      21,\n      11\n    ],\n    [\n      21,\n      13\n    ]\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/matches/{{m1}}/result/amend",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "matches",
+                "{{m1}}",
+                "result",
+                "amend"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Amend with a reason",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"version 2\", () => { pm.expect(j.result.version === 2).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sets\": [\n    [\n      21,\n      11\n    ],\n    [\n      21,\n      13\n    ]\n  ],\n  \"reason\": \"Points were typed wrong\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/matches/{{m1}}/result/amend",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "matches",
+                "{{m1}}",
+                "result",
+                "amend"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The hub is live",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"live\", () => { pm.expect(j.status === 'live' && j.rulesLockedAt !== null).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tournaments/{{slug}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournaments",
+                "{{slug}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Result of match 2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sets\": [\n    [\n      21,\n      15\n    ],\n    [\n      21,\n      17\n    ]\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/matches/{{m2}}/result",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "matches",
+                "{{m2}}",
+                "result"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Result of match 3",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sets\": [\n    [\n      21,\n      15\n    ],\n    [\n      21,\n      17\n    ]\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/matches/{{m3}}/result",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "matches",
+                "{{m3}}",
+                "result"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Result of match 4",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sets\": [\n    [\n      21,\n      15\n    ],\n    [\n      21,\n      17\n    ]\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/matches/{{m4}}/result",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "matches",
+                "{{m4}}",
+                "result"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Result of match 5",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sets\": [\n    [\n      21,\n      15\n    ],\n    [\n      21,\n      17\n    ]\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/matches/{{m5}}/result",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "matches",
+                "{{m5}}",
+                "result"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Result of match 6",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sets\": [\n    [\n      21,\n      15\n    ],\n    [\n      21,\n      17\n    ]\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/matches/{{m6}}/result",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "matches",
+                "{{m6}}",
+                "result"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: the rest released",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"৳68,400\", () => { pm.expect(j.payable === 6840000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/check",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "check"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The hub: completed with standings",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"completed\", () => { pm.expect(j.status === 'completed' && j.standings[0].rows.length === 4 && j.standings[0].rows.reduce((s, r) => s + r.played, 0) === 12).to.eql(true); });",
+                  "pm.test(\"no personal data\", () => { pm.expect(!/gender|\"dob\"|phone/i.test(JSON.stringify(j))).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tournaments/{{slug}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournaments",
+                "{{slug}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Overview money",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"all released\", () => { pm.expect(j.money.released === 7200000 && j.money.fees === 360000 && j.money.held === 0).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/tournaments/{{tournamentId}}/overview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "tournaments",
+                "{{tournamentId}}",
+                "overview"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff see it with its money",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"registrations\", () => { pm.expect(j.registrationList.length === 5 && j.money.collected === 7200000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{modToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/tournaments/{{tournamentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "tournaments",
+                "{{tournamentId}}"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

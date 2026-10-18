@@ -25,11 +25,23 @@ const ACTIONS = Object.freeze({
   join_open_game: ROLES.MEMBER,
   list_ground: ROLES.GROUND_OWNER,
   list_product: ROLES.SHOP_OWNER,
+  // M20 (18 Oct 2026, Q109): gyms are listed by their own gym_owner role (the ground owner's
+  // documents). Passes and trainer subscriptions are prepaid into escrow, so a verified phone is
+  // enough, as for booking a ground.
+  list_gym: ROLES.GYM_OWNER,
+  buy_gym_pass: PHONE_VERIFIED,
+  subscribe_trainer: PHONE_VERIFIED,
   publish_tournament: ROLES.ORGANISER,
   accept_hire: [ROLES.PLAYER, ROLES.PRO],
   // M02 v3: withdrawing esports winnings needs NID KYC (M07, M21).
   withdraw_winnings: ROLES.MEMBER,
   join_esports: PHONE_VERIFIED,
+  // M23 (18 Oct 2026): free polls on big events need a verified phone (one vote per member, no stakes).
+  vote_poll: PHONE_VERIFIED,
+  // M16 (18 Oct 2026): creating and joining a sports team needs a verified phone; entering a
+  // tournament (register_team, M14) still needs NID.
+  create_team: PHONE_VERIFIED,
+  join_team: PHONE_VERIFIED,
   // M17 (17 Oct 2026): the member who paid can dispute with a verified phone, like booking.
   file_dispute: PHONE_VERIFIED,
 });

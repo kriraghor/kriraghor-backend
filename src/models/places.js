@@ -39,6 +39,8 @@ Sport.init(
     verticalFlags: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
     icon: DataTypes.STRING(40),
     tint: DataTypes.STRING(16),
+    // M16: positions a player can list, [{ key, en, bn }].
+    positions: { type: DataTypes.JSONB, allowNull: false, defaultValue: [] },
   },
   { sequelize, modelName: 'Sport', tableName: 'sports' }
 );
@@ -80,4 +82,21 @@ Area.belongsTo(District, { as: 'district', foreignKey: 'districtId' });
 /** Area service flags (bits). */
 const AREA_FLAGS = { GROUNDS: 1, DELIVERY: 2 };
 
-module.exports = { Sport, Division, District, Area, Facility, Surface, AREA_FLAGS };
+/** M03 rule schemas per sport and version, for M14 (migration 20261105000002). */
+class SportRuleSchema extends Model {}
+SportRuleSchema.init(
+  {
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
+    sportId: { type: DataTypes.UUID, allowNull: false },
+    version: { type: DataTypes.SMALLINT, allowNull: false },
+    fields: { type: DataTypes.JSONB, allowNull: false },
+    presets: { type: DataTypes.JSONB, allowNull: false, defaultValue: [] },
+    tiebreakers: { type: DataTypes.JSONB, allowNull: false, defaultValue: [] },
+    isActive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+    createdAt: DataTypes.DATE(3),
+    updatedAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'SportRuleSchema', tableName: 'sport_rule_schemas', createdAt: 'createdAt', updatedAt: 'updatedAt' }
+);
+
+module.exports = { Sport, Division, District, Area, Facility, Surface, AREA_FLAGS, SportRuleSchema };

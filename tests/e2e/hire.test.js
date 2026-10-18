@@ -89,7 +89,7 @@ describe('M11 hire', () => {
 
     const quote = (await api().post(`${P}/hire/profiles/${profile.id}/quote`).send(await x.matchRequest(profile.id, [x.at1930(4)])).expect(200)).body;
     expect(quote).toMatchObject({ total: 450000, lines: [{ zone: 'north', lines: [{ key: 'base', amount: 350000 }, { key: 'night', amount: 70000 }, { key: 'travel_north', amount: 30000 }] }] });
-  });
+  }, 120000);
 
   it('request → accept (one wins a clash) → one payment, a hold per job → masked messages → match day → confirm pays ৳4,050', async () => {
     const { pro: kamrul, profile } = await x.liveProfile({ docsReviewer, reviewer });

@@ -14,7 +14,8 @@ const moderationSeed = require('./reference/moderation.v1.json');
 const placesSeed = require('./reference/places.v1.json');
 const itemsSeed = require('./reference/items.v1.json');
 const hireSeed = require('./reference/hire.v1.json');
-const { sequelize, PlatformSetting, SettingsHistory, EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset, MessageTemplate, DocumentRequirement, ReviewRubric, RejectionReason, Sport, Division, District, Area, Facility, Surface, ItemCategory, ItemType, ItemTypeField, HireCategory, HireRole } = require('../../models');
+const rulesSeed = require('./reference/rules.v1.json');
+const { sequelize, PlatformSetting, SettingsHistory, EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset, MessageTemplate, DocumentRequirement, ReviewRubric, RejectionReason, Sport, Division, District, Area, Facility, Surface, ItemCategory, ItemType, ItemTypeField, HireCategory, HireRole, SportRuleSchema } = require('../../models');
 
 const SEED_REASON = `Seed settings v${settingsSeed.seedVersion}`;
 
@@ -197,6 +198,16 @@ async function seedHire(transaction) {
   return inserted;
 }
 
+/** M03 sport rule schemas for M14, only when (sport, version) is missing (places must be seeded first). */
+async function seedRules(transaction) {
+  let inserted = 0;
+  for (const r of rulesSeed.sportRules) {
+    const sport = await Sport.findOne({ where: { key: r.sport }, transaction });
+    inserted += Number((await insertMissing(SportRuleSchema, { sportId: sport.id, version: r.version }, { fields: r.fields, presets: r.presets, tiebreakers: r.tiebreakers }, transaction))[1]);
+  }
+  return inserted;
+}
+
 async function seedReference() {
   return sequelize.transaction(async (transaction) => ({
     settings: await seedSettings(transaction),
@@ -207,7 +218,8 @@ async function seedReference() {
     places: await seedPlaces(transaction),
     items: await seedItems(transaction),
     hire: await seedHire(transaction),
+    rules: await seedRules(transaction),
   }));
 }
 
-module.exports = { seedReference, seedPlaces, placesSeed, seedItems, itemsSeed, seedHire, hireSeed, seedSettings, seedEsports, seedTemplates, seedKycRequirements, kycSeed, seedModeration, moderationSeed, settingRow, SETTING_KEYS, settingsSeed, esportsSeed, templatesSeed };
+module.exports = { seedReference, seedPlaces, placesSeed, seedItems, itemsSeed, seedHire, hireSeed, seedRules, rulesSeed, seedSettings, seedEsports, seedTemplates, seedKycRequirements, kycSeed, seedModeration, moderationSeed, settingRow, SETTING_KEYS, settingsSeed, esportsSeed, templatesSeed };

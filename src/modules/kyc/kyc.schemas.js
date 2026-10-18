@@ -11,8 +11,8 @@ const DOC_STATUSES = ['in_review', 'changes_requested', 'approved', 'rejected', 
 
 const idParam = z.object({ id: z.uuid() });
 const fileParams = z.object({ id: z.uuid(), fileId: z.uuid() });
-const BUSINESS_TYPES = ['trade_license', 'deed_or_lease', 'tin', 'bin', 'credential', 'police_clearance'];
-const BUSINESS_ROLES = ['ground_owner', 'shop_owner', 'player', 'pro'];
+const BUSINESS_TYPES = ['trade_license', 'deed_or_lease', 'tin', 'bin', 'credential', 'police_clearance', 'org_registration'];
+const BUSINESS_ROLES = ['ground_owner', 'shop_owner', 'gym_owner', 'organiser', 'player', 'pro'];
 const verificationQuery = z.object({ locale: z.enum(['en', 'bn']).default('en'), role: z.enum(['member', ...BUSINESS_ROLES]).default('member') });
 const uploadQuery = z.object({ slot: z.enum(['front', 'back', 'selfie', 'document']), docType: z.enum(['nid', ...BUSINESS_TYPES]).default('nid') });
 

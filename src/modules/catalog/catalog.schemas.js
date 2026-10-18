@@ -161,7 +161,7 @@ const EsportsGame = z
 const EsportsGameWithChildren = EsportsGame.extend({ modes: z.array(EsportsMode), maps: z.array(EsportsMap), presets: z.array(EsportsPointsPreset) }).meta({ id: 'EsportsGameCatalog' });
 const placeBase = { id: z.uuid(), key: z.string(), nameEn: z.string(), nameBn: z.string(), sort: z.number().int() };
 const Sport = z
-  .object({ ...placeBase, engine: z.string(), officialLabelEn: z.string().nullable(), officialLabelBn: z.string().nullable(), defaultTiebreakers: z.array(z.string()), verticalFlags: z.number().int(), icon: z.string().nullable(), tint: z.string().nullable() })
+  .object({ ...placeBase, engine: z.string(), officialLabelEn: z.string().nullable(), officialLabelBn: z.string().nullable(), defaultTiebreakers: z.array(z.string()), verticalFlags: z.number().int(), icon: z.string().nullable(), tint: z.string().nullable(), positions: z.array(z.object({ key: z.string(), en: z.string(), bn: z.string() })).optional().meta({ description: 'M16: positions a player can list' }) })
   .meta({ id: 'Sport' });
 const District = z.object({ ...placeBase, divisionId: z.uuid(), bbsCode: z.string(), lat: z.number().nullable(), lng: z.number().nullable() }).meta({ id: 'District' });
 const Division = z.object({ ...placeBase, bbsCode: z.string(), districts: z.array(District) }).meta({ id: 'DivisionWithDistricts' });
@@ -173,7 +173,10 @@ const Surface = z.object({ ...placeBase, indoorTypical: z.boolean() }).meta({ id
 const list = (item, id) => z.object({ items: z.array(item) }).meta({ id });
 const CatalogItem = z.union([EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset, z.looseObject({ ...base })]);
 
+const sportKeyParam = z.object({ sportKey: z.string().min(2).max(40) });
+
 module.exports = {
+  sportKeyParam,
   TABLES,
   CREATE,
   UPDATE,

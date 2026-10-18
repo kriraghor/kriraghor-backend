@@ -20,8 +20,9 @@ const audit = require('../audit/audit.service');
 const events = require('../events/events.service');
 const settings = require('../settings/settings.service');
 const moderation = require('../moderation/moderation.service');
-const { fail, game: gameRow, mode: modeRow, maps: mapRows, preset: presetRow, snapshot, setting, rooms, money } = require('./esports.common');
+const { organiser, isOrganised, fail, game: gameRow, mode: modeRow, maps: mapRows, preset: presetRow, snapshot, setting, rooms, money } = require('./esports.common');
 const rules = require('./esports.rules');
+const streamRules = require('./streams.rules');
 
 const { sequelize, EsportsTournament, EsportsPrizePlace, EsportsStage, EsportsMatch, EsportsStream, EsportsRegistration, EsportsGame, EsportsMode, EsportsMap } = models;
 
@@ -35,6 +36,12 @@ async function catalogueNames(gameIds, modeIds, mapIds) {
   ]);
   const by = (rows) => new Map(rows.map((r) => [r.id, r]));
   return { games: by(games), modes: by(modes), maps: by(maps) };
+}
+
+/** M22: the organisers of these tournaments (M14 lite), for "by {organisation}" on cards. */
+async function organisersOf(rows) {
+  const ids = rows.map((t) => t.organisationId).filter(Boolean);
+  return ids.length ? require('../organisations/organisations.service').publicRefs(ids) : new Map();
 }
 const named = (r) => (r ? { id: r.id, key: r.key, nameEn: r.nameEn, nameBn: r.nameBn } : null);
 
@@ -71,6 +78,9 @@ function card(t, names, counts) {
     entryFee: money(t.entryFeePoisha),
     prizePool: money(t.prizePoolPoisha),
     killReward: money(t.killRewardPoisha),
+    maxPaidKills: t.maxPaidKills ?? null,
+    organisationId: t.organisationId ?? null,
+    organiser: t.organisationId ? (names.orgs?.get(t.organisationId) ?? null) : null,
     maxSlots: t.maxSlots,
     minParticipants: t.minParticipants,
     slotsTaken: counts.get(t.id)?.taken ?? 0,
@@ -80,6 +90,7 @@ function card(t, names, counts) {
     startsAt: t.startsAt,
     status: t.status,
     featured: t.featured,
+    entryPolicy: t.entryPolicy,
   };
 }
 
@@ -91,6 +102,7 @@ async function detailOf(t, { staff = false, transaction } = {}) {
     EsportsStream.findAll({ where: { tournamentId: t.id, status: 'active' }, order: [['sort', 'ASC']], transaction }),
   ]);
   const names = await catalogueNames([t.gameId], [t.modeId], matches.map((m) => m.mapId));
+  names.orgs = await organisersOf([t]);
   const counts = await slotCounts([t.id]);
   return {
     ...card(t, names, counts),
@@ -100,7 +112,7 @@ async function detailOf(t, { staff = false, transaction } = {}) {
     prizes: prizes.map((p) => ({ place: p.place, amount: money(p.amountPoisha) })),
     stages: stages.map((s) => ({ id: s.id, seq: s.seq, nameEn: s.nameEn, nameBn: s.nameBn, kind: s.kind, checkinOpensAt: s.checkinOpensAt, checkinClosesAt: s.checkinClosesAt })),
     matches: matches.map((m) => ({ id: m.id, stageId: m.stageId, seq: m.seq, map: named(names.maps.get(m.mapId)), startsAt: m.startsAt, status: m.status, resultsPostedAt: m.resultsPostedAt ?? null, disputeClosesAt: m.disputeClosesAt ?? null })),
-    streams: streams.map((s) => ({ id: s.id, matchId: s.matchId ?? null, platform: s.platform, url: s.url, title: s.title, isLive: s.isLive, startsAt: s.startsAt ?? null })),
+    streams: streams.map((s) => ({ id: s.id, matchId: s.matchId ?? null, platform: s.platform, url: s.url, title: s.title, isLive: s.isLive, startsAt: s.startsAt ?? null, embedUrl: streamRules.embedFor(s.videoRef) })),
     publishedAt: t.publishedAt ?? null,
     finalisedAt: t.finalisedAt ?? null,
     cancelReason: t.cancelReason ?? null,
@@ -127,8 +139,9 @@ const decodeCursor = (c) => {
 };
 
 /** GET /esports/tournaments (public) and /admin/esports/tournaments (staff, every status). */
-async function list({ game, mode, tier, status, featured, cursor, limit = 20, staff = false }) {
+async function list({ game, mode, tier, status, featured, organisationId, cursor, limit = 20, staff = false }) {
   const where = {};
+  if (organisationId) where.organisationId = organisationId;
   if (game) {
     const g = await EsportsGame.findOne({ where: { [Op.or]: [{ key: game }, ...(/^[0-9a-f-]{36}$/.test(game) ? [{ id: game }] : [])] } });
     where.gameId = g ? g.id : null;
@@ -143,6 +156,7 @@ async function list({ game, mode, tier, status, featured, cursor, limit = 20, st
   const rows = await EsportsTournament.findAll({ where, order: [['startsAt', 'ASC'], ['id', 'ASC']], limit: limit + 1 });
   const page = rows.slice(0, limit);
   const names = await catalogueNames(page.map((t) => t.gameId), page.map((t) => t.modeId), []);
+  names.orgs = await organisersOf(page);
   const counts = await slotCounts(page.map((t) => t.id));
   const last = page[page.length - 1];
   return { items: page.map((t) => card(t, names, counts)), nextCursor: rows.length > limit ? `${last.startsAt.toISOString()}_${last.id}` : null };
@@ -195,6 +209,7 @@ async function resolveDraft(body, { transaction } = {}) {
       minParticipants: body.minParticipants,
       prizePoolPoisha: prizes.reduce((s, p) => s + p.amount, 0),
       killRewardPoisha: body.killReward ?? 0,
+      maxPaidKills: body.maxPaidKills ?? null,
       pointsPresetId: body.pointsPresetId ?? null,
       placementPoints,
       killPoints,
@@ -203,6 +218,7 @@ async function resolveDraft(body, { transaction } = {}) {
       startsAt,
       rulesMd: body.rulesMd ?? '',
       featured: Boolean(body.featured),
+      entryPolicy: body.entryPolicy ?? 'open',
     },
     prizes,
     matches,
@@ -220,12 +236,24 @@ async function writeSchedule(t, matches, { transaction, snap = null }) {
   }
 }
 
-/** POST /admin/esports/tournaments (manage_esports): a draft. */
-async function createDraft(actor, body, req) {
+/** M22: an organiser's per-kill reward needs a cap, so the prize fund can be sized (Q126 for organisers). */
+function killCapBlock(fields, organised) {
+  return organised && fields.killRewardPoisha > 0 && !fields.maxPaidKills ? 'ESPORTS_KILL_CAP_REQUIRED' : null;
+}
+
+/**
+ * POST /admin/esports/tournaments (manage_esports): a draft. With `org` (the M22 console) the draft
+ * belongs to that organisation (organiser_type organisation).
+ */
+async function createDraft(actor, body, req, { org = null } = {}) {
   return sequelize.transaction(async (transaction) => {
     const d = await resolveDraft(body, { transaction });
+    if (killCapBlock(d.fields, Boolean(org))) throw fail('ESPORTS_KILL_CAP_REQUIRED');
+    // Invite-only entry belongs to Kriraghor's big events (M23); organisers' tournaments stay open (Q150).
+    if (org) d.fields.entryPolicy = 'open';
     const id = uuid7();
-    const t = await EsportsTournament.create({ id, slug: rules.slugify(d.fields.titleEn, id.slice(-6)), ...d.fields, status: 'draft', createdBy: actor.id }, { transaction });
+    const owner = org ? { organiserType: 'organisation', organisationId: org.id } : {};
+    const t = await EsportsTournament.create({ id, slug: rules.slugify(d.fields.titleEn, id.slice(-6)), ...d.fields, ...owner, status: 'draft', createdBy: actor.id }, { transaction });
     await EsportsPrizePlace.bulkCreate(d.prizes.map((p) => ({ tournamentId: t.id, place: p.place, amountPoisha: p.amount })), { transaction });
     await writeSchedule(t, d.matches, { transaction });
     await audit.record({ action: 'esports_tournament.created', actor, entityType: 'esports_tournament', entityId: t.id, after: { titleEn: t.titleEn, entryFee: t.entryFeePoisha, prizePool: t.prizePoolPoisha }, req }, { transaction });
@@ -247,12 +275,16 @@ async function update(actor, id, body, req) {
     const before = { titleEn: t.titleEn, status: t.status, lockVersion: t.lockVersion };
     if (t.status === 'draft' && body.gameId) {
       const d = await resolveDraft({ ...body }, { transaction });
+      if (killCapBlock(d.fields, isOrganised(t))) throw fail('ESPORTS_KILL_CAP_REQUIRED');
+      if (isOrganised(t)) d.fields.entryPolicy = 'open';
       await t.update({ ...d.fields, updatedBy: actor.id, lockVersion: t.lockVersion + 1 }, { transaction });
       await EsportsPrizePlace.destroy({ where: { tournamentId: t.id }, transaction });
       await EsportsMatch.destroy({ where: { tournamentId: t.id }, transaction });
       await EsportsStage.destroy({ where: { tournamentId: t.id }, transaction });
       await EsportsPrizePlace.bulkCreate(d.prizes.map((p) => ({ tournamentId: t.id, place: p.place, amountPoisha: p.amount })), { transaction });
       await writeSchedule(t, d.matches, { transaction });
+      // M22: the prize fund follows the draft (a top-up is needed; a smaller pool than deposited is refused).
+      if (isOrganised(t)) await organiser.onDraftChanged(t, { transaction });
     } else {
       if (rules.lockedChange(body).length) throw fail('ESPORTS_PRIZE_TABLE_LOCKED', { fields: rules.lockedChange(body) });
       const patch = Object.fromEntries(EDITABLE_AFTER_PUBLISH.filter((k) => body[k] !== undefined).map((k) => [k, typeof body[k] === 'string' ? body[k].trim() : body[k]]));
@@ -290,7 +322,10 @@ async function submit(actor, id, req) {
       new Date()
     );
     if (block) throw fail(block);
+    // M22: an organiser tournament needs an active contract, no long-overdue invoice and a funded prize pool.
+    if (isOrganised(t)) await organiser.submitBlock(t, { transaction });
     const game = await EsportsGame.findByPk(t.gameId, { transaction });
+    const org = isOrganised(t) ? (await organisersOf([t])).get(t.organisationId) : null;
     const sub = await moderation.submit(
       {
         kind: 'esports_tournament',
@@ -306,6 +341,10 @@ async function submit(actor, id, req) {
           prizes: prizes.map((p) => ({ place: p.place, amount: p.amountPoisha })).sort((a, b) => a.place - b.place),
           prizePool: t.prizePoolPoisha,
           killReward: t.killRewardPoisha,
+          maxPaidKills: t.maxPaidKills ?? null,
+          organisationId: t.organisationId ?? null,
+          organiserName: org?.name ?? null,
+          entryPolicy: t.entryPolicy,
           matches: matches.length,
           registrationOpensAt: t.registrationOpensAt.toISOString(),
           startsAt: t.startsAt.toISOString(),
@@ -346,10 +385,12 @@ async function checksFor(tournamentId, { transaction }) {
     new Date()
   );
   // At the minimum fill, prizes beyond fees are a guaranteed subsidy (FR-25): a warning, not a block.
+  // An organiser's prizes are pre-funded (M22-FR-05), so Kriraghor never covers a gap there.
   const atMinimum = t.entryFeePoisha * t.minParticipants;
+  const gap = isOrganised(t) ? 0 : t.prizePoolPoisha - atMinimum;
   return [
     { key: 'schedule_and_prizes', severity: 'hard', result: block ? 'fail' : 'pass', detail: block },
-    { key: 'subsidy_at_minimum', severity: 'soft', result: t.prizePoolPoisha > atMinimum ? 'warn' : 'pass', detail: t.prizePoolPoisha > atMinimum ? `Prizes exceed fees at the minimum fill by ৳${(t.prizePoolPoisha - atMinimum) / 100}` : null },
+    { key: 'subsidy_at_minimum', severity: 'soft', result: gap > 0 ? 'warn' : 'pass', detail: gap > 0 ? `Prizes exceed fees at the minimum fill by ৳${gap / 100}` : null },
   ];
 }
 
@@ -374,6 +415,7 @@ async function applyDecision(submissionId, status, { transaction }) {
   const w = rules.checkinWindow(matches[0].startsAt, snap['esports.checkin_open_minutes'], snap['esports.checkin_close_minutes']);
   await EsportsStage.update({ checkinOpensAt: w.opensAt, checkinClosesAt: w.closesAt }, { where: { tournamentId: t.id }, transaction });
   await t.update({ status: 'scheduled', settingsSnapshot: snap, publishedAt: new Date() }, { transaction });
+  if (isOrganised(t)) await organiser.onPublished(t, { transaction });
   await audit.record({ action: 'esports_tournament.published', actor: null, entityType: 'esports_tournament', entityId: t.id, after: { status: 'scheduled' }, meta: { submissionId: sub.id, decidedBy: sub.decidedBy } }, { transaction });
   await events.publish(transaction, {
     name: 'esports_tournament.published',
@@ -406,6 +448,7 @@ async function cancel(actor, id, { reason }, req) {
 /** Cancel inside a transaction (staff cancel, or min_participants not met at close, FR-12). */
 async function cancelInTx(t, { situation, reason, actor = null, transaction }) {
   const refunded = await require('./registrations.service').closeAllInTx(t, { situation, actor, transaction });
+  if (isOrganised(t)) await organiser.onCancelled(t, { actor, transaction });
   await EsportsMatch.update({ status: 'cancelled', cancelledAt: new Date(), cancelReason: reason }, { where: { tournamentId: t.id, status: { [Op.notIn]: ['final', 'cancelled'] } }, transaction });
   await t.update({ status: 'cancelled', cancelReason: reason, cancelledAt: new Date() }, { transaction });
   await events.publish(transaction, {
@@ -423,15 +466,16 @@ async function setStreams(actor, id, { streams }, req) {
   return sequelize.transaction(async (transaction) => {
     const t = await EsportsTournament.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
     if (!t) throw E.notFound('Tournament');
-    for (const s of streams) {
-      const block = rules.streamBlock(s.platform, s.url);
-      if (block) throw fail(block);
-    }
+    const parsed = streams.map((s) => streamRules.parseStream(s.platform, s.url));
+    if (parsed.some((p) => p.error)) throw fail('STREAM_URL_INVALID');
+    const wasLive = new Set((await EsportsStream.findAll({ where: { tournamentId: t.id, status: 'active', isLive: true }, attributes: ['url'], transaction })).map((s) => s.url));
     const matchIds = new Set((await EsportsMatch.findAll({ where: { tournamentId: t.id }, attributes: ['id'], transaction })).map((m) => m.id));
     if (streams.some((s) => s.matchId && !matchIds.has(s.matchId))) throw E.notFound('Match');
     await EsportsStream.update({ status: 'removed' }, { where: { tournamentId: t.id, status: 'active' }, transaction });
     for (const [i, s] of streams.entries()) {
-      await EsportsStream.create({ tournamentId: t.id, matchId: s.matchId ?? null, platform: s.platform, url: s.url, title: s.title, isLive: Boolean(s.isLive), startsAt: s.startsAt ?? null, sort: i }, { transaction });
+      const row = await EsportsStream.create({ tournamentId: t.id, matchId: s.matchId ?? null, platform: s.platform, url: s.url, videoRef: parsed[i].ref, title: s.title, isLive: Boolean(s.isLive), startsAt: s.startsAt ?? null, sort: i }, { transaction });
+      // M23 follow alerts: a stream that was not live before has gone live.
+      if (row.isLive && !wasLive.has(row.url)) await events.publish(transaction, { name: 'esports_stream.live_started', aggregateType: 'esports_tournament', aggregateId: t.id, payload: { tournamentId: t.id, streamId: row.id, platform: row.platform } });
     }
     await audit.record({ action: 'esports_tournament.streams_set', actor, entityType: 'esports_tournament', entityId: t.id, after: { streams: streams.length, live: streams.filter((s) => s.isLive).length }, req }, { transaction });
     if (streams.some((s) => s.isLive)) realtime.toRoom(rooms.tournament(t.id), 'esports.stream_live', { tournamentId: t.id });

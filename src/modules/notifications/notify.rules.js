@@ -19,6 +19,10 @@ const CATEGORIES = {
   moderation: { mandatory: ['in_app'], defaults: ['in_app', 'sms'] },
   disputes_reports: { mandatory: ['in_app', 'sms'], defaults: ['in_app', 'sms', 'email'] },
   reviews: { mandatory: [], defaults: ['in_app'] },
+  // M23 follow alerts: in-app only (an entry's channels all go out unless turned off, so no SMS here, Q148).
+  event_alerts: { mandatory: [], defaults: ['in_app'] },
+  // M16 sports teams: invites, membership and captaincy.
+  teams: { mandatory: ['in_app'], defaults: ['in_app', 'sms'] },
   staff_ops: { mandatory: ['in_app'], defaults: ['in_app', 'email'] },
 };
 const CHANNELS = ['in_app', 'sms', 'email'];

@@ -61,6 +61,18 @@ r.post('/email/verify', limits.credential, validate(s.verifyEmail), async (req, 
   res.json(await identity.confirmEmailChange(req.user, req.body, req));
 });
 
+r.post('/phone', limits.otpSend, validate(s.startPhone), async (req, res) => {
+  res.status(202).json(await identity.startPhoneAdd(req.user, req.body.phone, req));
+});
+
+r.post('/phone/verify', limits.credential, validate(s.verifyPhone), async (req, res) => {
+  res.json(await identity.confirmPhoneAdd(req.user, req.body, req));
+});
+
+r.put('/gender', validate(s.setGender), async (req, res) => {
+  res.json(await identity.setGender(req.user, req.body.gender, req));
+});
+
 r.post('/identities/google', validate(s.linkGoogle), async (req, res) => {
   res.status(201).json(await identity.linkGoogle(req.user, req.body.idToken, req));
 });

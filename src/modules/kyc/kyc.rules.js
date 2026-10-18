@@ -115,7 +115,7 @@ function badge(items) {
 // ---------------------------------------------------------------- business-role documents (ground owners M09, shop owners M12)
 
 /** Business document types; each belongs to a role through its requirement row (kept per role, M12). */
-const BUSINESS_TYPES = ['trade_license', 'deed_or_lease', 'tin', 'bin', 'credential', 'police_clearance'];
+const BUSINESS_TYPES = ['trade_license', 'deed_or_lease', 'tin', 'bin', 'credential', 'police_clearance', 'org_registration'];
 
 /**
  * Which business role a document is for: the one asked for, else the only applied role that needs
