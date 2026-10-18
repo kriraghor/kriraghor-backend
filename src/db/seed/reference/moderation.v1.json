@@ -1,6 +1,6 @@
 {
-  "seedVersion": 1,
-  "source": "M05 §6.2 rubrics and §6.3 rejection reasons, lite (Oct 2026): the document kind (M02 NID); game_profile and esports_tournament (M21). Kinds are added as their modules arrive (M21 game_profile and esports_tournament). Rows are inserted only when missing. Ground listings (M09): rubric rb_ground_v1 and the ground kind on the shared reasons, plus location_wrong and not_a_venue. M11: the hire_profile rubric and reasons (missing_credential, rate_wrong, profile_details). M20: the gym rubric and the gym kind on the shared reasons (photos, price, duplicate, location, not a venue, incomplete, rules, other).",
+  "seedVersion": 2,
+  "source": "M05 §6.2 rubrics and §6.3 rejection reasons, lite (Oct 2026): the document kind (M02 NID); game_profile and esports_tournament (M21). Kinds are added as their modules arrive (M21 game_profile and esports_tournament). Rows are inserted only when missing. Ground listings (M09): rubric rb_ground_v1 and the ground kind on the shared reasons, plus location_wrong and not_a_venue. M11: the hire_profile rubric and reasons (missing_credential, rate_wrong, profile_details). M20: the gym rubric and the gym kind on the shared reasons (photos, price, duplicate, location, not a venue, incomplete, rules, other). M22: the organisation rubric and reasons.",
   "rubrics": [
     {
       "kind": "document",
@@ -219,6 +219,32 @@
           "labelBn": "বিবরণে ফোন নম্বর বা লিংক নেই"
         }
       ]
+    },
+    {
+      "kind": "organisation",
+      "version": 1,
+      "items": [
+        {
+          "key": "identity_matches",
+          "labelEn": "The owner's NID name matches the registration holder or an officer of the organisation",
+          "labelBn": "মালিকের এনআইডি নাম নিবন্ধনধারী বা প্রতিষ্ঠানের কর্মকর্তার সাথে মেলে"
+        },
+        {
+          "key": "registration_valid",
+          "labelEn": "The registration document is real, readable and in date",
+          "labelBn": "নিবন্ধনের ডকুমেন্ট আসল, পড়া যায় এবং মেয়াদ আছে"
+        },
+        {
+          "key": "name_appropriate",
+          "labelEn": "The name is the organisation's own, not Kriraghor's or another brand's",
+          "labelBn": "নামটি প্রতিষ্ঠানের নিজের, ক্রীড়াঘর বা অন্য ব্র্যান্ডের নয়"
+        },
+        {
+          "key": "no_contact_details",
+          "labelEn": "No phone numbers or links in the description",
+          "labelBn": "বিবরণে ফোন নম্বর বা লিংক নেই"
+        }
+      ]
     }
   ],
   "reasons": [
@@ -283,7 +309,8 @@
         "shop",
         "product",
         "hire_profile",
-        "gym"
+        "gym",
+        "organisation"
       ],
       "sort": 6
     },
@@ -308,7 +335,8 @@
         "shop",
         "product",
         "hire_profile",
-        "gym"
+        "gym",
+        "organisation"
       ],
       "sort": 8
     },
@@ -324,7 +352,8 @@
         "shop",
         "product",
         "hire_profile",
-        "gym"
+        "gym",
+        "organisation"
       ],
       "sort": 9
     },
@@ -340,7 +369,8 @@
         "shop",
         "product",
         "hire_profile",
-        "gym"
+        "gym",
+        "organisation"
       ],
       "requiresText": true,
       "sort": 10
@@ -436,6 +466,15 @@
         "hire_profile"
       ],
       "sort": 21
+    },
+    {
+      "code": "identity_mismatch",
+      "labelEn": "The owner does not match the organisation's documents",
+      "labelBn": "মালিক প্রতিষ্ঠানের ডকুমেন্টের সাথে মেলে না",
+      "kinds": [
+        "organisation"
+      ],
+      "sort": 40
     }
   ]
 }

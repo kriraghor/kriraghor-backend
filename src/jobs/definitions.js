@@ -31,6 +31,7 @@ const inventory = require('../modules/market/inventory.service');
 const orders = require('../modules/orders/orders.jobs');
 const hire = require('../modules/hire/hire.jobs');
 const gym = require('../modules/gym/gym.jobs');
+const saas = require('../modules/organiser-saas/saas.jobs');
 const { purgeExpired: purgeIdempotencyKeys } = require('../common/idempotency');
 const logger = require('../common/logger');
 
@@ -322,6 +323,15 @@ const JOBS = [
     queue: QUEUES.GYM,
     every: 60 * 1000,
     run: async () => gym.tick(),
+  },
+  // ---------------- M22 organiser SaaS (§10). Idempotent: every step locks the row and re-checks its status.
+  {
+    // Flat-fee invoices per month or quarter (one per period), overdue invoices, contract expiry and
+    // its reminder. Prize funds settle inside M21's finalise and cancel, not here.
+    name: 'saas.tick',
+    queue: QUEUES.SAAS,
+    every: 60 * 1000,
+    run: async () => saas.tick(),
   },
   // ---------------- M19 analytics (§10). Idempotent: upserts and REFRESH … CONCURRENTLY under an advisory lock.
   {

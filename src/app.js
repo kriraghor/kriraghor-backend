@@ -37,6 +37,7 @@ const marketRoutes = require('./modules/market/market.routes');
 const orderRoutes = require('./modules/orders/orders.routes');
 const hireRoutes = require('./modules/hire/hire.routes');
 const gymRoutes = require('./modules/gym/gym.routes');
+const saasRoutes = require('./modules/organiser-saas/saas.routes');
 
 // ADR-004: customer and admin origins (exact or one-label wildcard). Unknown origins get no CORS headers.
 const allowedOrigin = compile([...config.corsOrigins, ...config.adminOrigins]);
@@ -94,6 +95,8 @@ function createApp() {
   api.use('/me/document-requests', kycRoutes.meDocumentRequests);
   api.use('/me/submissions', moderationRoutes.meSubmissions);
   api.use('/me/esports', esportsRoutes.meRouter);
+  // M22 branded organiser pages (before /esports: a subdomain is not a tournament path).
+  api.use('/esports/organisers', saasRoutes.publicRouter);
   api.use('/esports', esportsRoutes.publicRouter);
   api.use('/me/grounds', groundsRoutes.meGrounds);
   api.use('/me/grounds', bookingsRoutes.meWalkIns);
@@ -120,6 +123,9 @@ function createApp() {
   api.use('/me/passes', gymRoutes.mePasses);
   api.use('/me/subscriptions', gymRoutes.meSubs);
   api.use('/me/gyms', gymRoutes.ownerRouter);
+  // M14 lite and the M22 organiser console (scoped by membership of :orgId).
+  api.use('/me/organisations', saasRoutes.meOrgs);
+  api.use('/org/:orgId', saasRoutes.orgRouter);
   api.use('/pro/trainer-plans', gymRoutes.proPlans);
   api.use('/pro/subscriptions', gymRoutes.proSubs);
   api.use('/pro', hireRoutes.proRouter);
@@ -169,6 +175,7 @@ function createApp() {
   api.use('/admin/orders', orderRoutes.adminRouter);
   api.use('/admin/hire', hireRoutes.adminRouter);
   api.use('/admin/gym', gymRoutes.adminRouter);
+  api.use('/admin/organisers', saasRoutes.adminRouter);
   api.use('/admin/disputes', trustRoutes.adminDisputes);
   api.use('/admin/reports', trustRoutes.adminReports);
   api.use('/admin/reviews', trustRoutes.adminReviews);

@@ -53,6 +53,9 @@ const groundFacts = (id) => require('../grounds/grounds.service').facts(id);
 const vendorUrl = (p) => `${config.apps.vendor}${p}`;
 // M20: gyms (the owner), passes (the holder), trainer subscriptions (the member and the trainer).
 const gymFacts = (id) => require('../gym/gyms.service').facts(id);
+// M14 lite and M22: the organisation (its name) and its admins (owner and admins get organiser news).
+const orgAdmins = (id) => require('../organisations/organisations.service').adminIds(id);
+const orgName = async (id) => (await require('../organisations/organisations.service').publicRefs([id])).get(id)?.name ?? '';
 const passFacts = (id) => require('../gym/gym.reads').passFacts(id);
 const isNid = (e) => !e.payload.role || e.payload.role === 'member';
 const DOC_LABELS = {
@@ -1429,6 +1432,99 @@ const CATALOGUE = [
     recipients: (e) => (e.payload.net > 0 ? [e.payload.trainerId] : []),
     values: (e) => ({ code: e.payload.code, net: e.payload.net }),
     link: () => '/me/payouts',
+  },
+  // ---------------- M14 lite organisations and M22 organiser SaaS: the organisation's owner and admins
+  {
+    code: 'ORG_VERIFIED',
+    events: ['organisation.verified'],
+    category: 'moderation',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e) => ({ name: await orgName(e.payload.organisationId) }),
+    link: (e) => `/vendor/esports/${e.payload.organisationId}`,
+  },
+  {
+    code: 'ORG_CHANGES_REQUESTED',
+    events: ['organisation.changes_requested'],
+    category: 'moderation',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e) => ({ name: await orgName(e.payload.organisationId) }),
+    link: () => '/account/business?as=organiser',
+  },
+  {
+    code: 'ORG_CONTRACT_ACTIVE',
+    events: ['organiser_contract.activated'],
+    category: 'tournaments',
+    channels: ['in_app', 'email'],
+    recipients: (e) => orgAdmins(e.payload.organisationId),
+    values: async (e) => ({ name: await orgName(e.payload.organisationId) }),
+    link: (e) => `/vendor/esports/${e.payload.organisationId}/billing`,
+  },
+  {
+    code: 'ORG_CONTRACT_SUSPENDED',
+    events: ['organiser_contract.suspended'],
+    category: 'tournaments',
+    channels: ['in_app', 'email'],
+    urgent: true,
+    recipients: (e) => orgAdmins(e.payload.organisationId),
+    values: async (e) => ({ name: await orgName(e.payload.organisationId) }),
+    link: (e) => `/vendor/esports/${e.payload.organisationId}/billing`,
+  },
+  {
+    code: 'ORG_CONTRACT_ENDING',
+    events: ['organiser_contract.expiry_notified'],
+    category: 'tournaments',
+    channels: ['in_app', 'email'],
+    recipients: (e) => orgAdmins(e.payload.organisationId),
+    values: (e) => ({ endsOn: e.payload.endsOn }),
+    link: (e) => `/vendor/esports/${e.payload.organisationId}/billing`,
+  },
+  {
+    code: 'ORG_INVOICE_ISSUED',
+    events: ['organiser_invoice.issued'],
+    category: 'money',
+    channels: ['in_app', 'email'],
+    recipients: (e) => orgAdmins(e.payload.organisationId),
+    values: (e) => ({ number: e.payload.number, total: e.payload.total }),
+    link: (e) => `/vendor/esports/${e.payload.organisationId}/billing`,
+  },
+  {
+    code: 'ORG_INVOICE_OVERDUE',
+    events: ['organiser_invoice.overdue_flagged'],
+    category: 'money',
+    channels: ['in_app', 'email', 'sms'],
+    urgent: true,
+    recipients: (e) => orgAdmins(e.payload.organisationId),
+    values: (e) => ({ number: e.payload.number, total: e.payload.total }),
+    link: (e) => `/vendor/esports/${e.payload.organisationId}/billing`,
+  },
+  {
+    code: 'ORG_INVOICE_PAID',
+    events: ['organiser_invoice.paid'],
+    category: 'money',
+    channels: ['in_app'],
+    recipients: (e) => orgAdmins(e.payload.organisationId),
+    values: (e) => ({ number: e.payload.number, total: e.payload.total }),
+    link: (e) => `/vendor/esports/${e.payload.organisationId}/billing`,
+  },
+  {
+    code: 'ORG_FUND_RECEIVED',
+    events: ['organiser_prize_fund.deposited'],
+    category: 'money',
+    channels: ['in_app'],
+    recipients: (e) => orgAdmins(e.payload.organisationId),
+    values: (e) => ({ amount: e.payload.amount, deposited: e.payload.deposited }),
+    link: (e) => `/vendor/esports/${e.payload.organisationId}/tournaments/${e.payload.tournamentId}`,
+  },
+  {
+    code: 'ORG_FUND_RETURNED',
+    events: ['organiser_prize_fund.returned'],
+    category: 'money',
+    channels: ['in_app'],
+    recipients: (e) => orgAdmins(e.payload.organisationId),
+    values: (e) => ({ amount: e.payload.amount }),
+    link: (e) => `/vendor/esports/${e.payload.organisationId}/tournaments/${e.payload.tournamentId}`,
   },
 ];
 

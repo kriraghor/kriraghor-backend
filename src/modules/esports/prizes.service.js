@@ -20,7 +20,7 @@ const models = require('../../models');
 const audit = require('../audit/audit.service');
 const events = require('../events/events.service');
 const escrow = require('../payments/escrow.service');
-const { fail, money } = require('./esports.common');
+const { organiser, isOrganised, fail, money } = require('./esports.common');
 const rules = require('./esports.rules');
 
 const {
@@ -82,14 +82,17 @@ async function compute(t, transaction) {
     const m = killsByPlayer.get(regId);
     m.set(p.userId, (m.get(p.userId) ?? 0) + p.kills);
   }
-  const awards = rules.awards({ ranking, prizes, killReward: t.killRewardPoisha, killsByEntry });
+  // M22: an organiser's capped kills share the capped total (the fund covers reward × cap).
+  const totalKills = [...killsByEntry.values()].reduce((s, k) => s + k, 0);
+  const killReward = rules.cappedKillReward(t.killRewardPoisha, totalKills, isOrganised(t) ? t.maxPaidKills : null);
+  const awards = rules.awards({ ranking, prizes, killReward, killsByEntry });
   // Who played for each entry: its listed players who checked in (substitutes who stepped in included).
   const checkins = await EsportsCheckin.findAll({ where: { stageId: stage.id, registrationId: ranking.map((r) => r.registrationId) }, transaction });
   const players = await EsportsRegistrationPlayer.findAll({ where: { registrationId: ranking.map((r) => r.registrationId), status: 'active' }, transaction });
   for (const a of awards) {
     const r = regs.get(a.registrationId);
     if (a.kind === 'kill_reward') {
-      a.shares = rules.killShares([...(killsByPlayer.get(a.registrationId) ?? new Map()).entries()].map(([userId, kills]) => ({ userId, kills })), t.killRewardPoisha);
+      a.shares = rules.killShares([...(killsByPlayer.get(a.registrationId) ?? new Map()).entries()].map(([userId, kills]) => ({ userId, kills })), killReward);
       continue;
     }
     const played = checkins.filter((c) => c.registrationId === a.registrationId).map((c) => c.userId);
@@ -138,10 +141,11 @@ async function finalise(actor, tournamentId, req) {
     // One posting for the whole pool (M06): payable per player, subsidy or revenue for the difference.
     const byPayee = new Map();
     for (const s of shareRows) byPayee.set(s.userId, (byPayee.get(s.userId) ?? 0) + s.amountPoisha);
-    const settled = await escrow.settlePool(
-      { purpose: 'esports_entry', groupRef: t.id, prizes: [...byPayee.entries()].map(([payeeId, amount]) => ({ payeeId, amount })), actor },
-      { transaction }
-    );
+    const prizeLines = [...byPayee.entries()].map(([payeeId, amount]) => ({ payeeId, amount }));
+    // M22: an organiser tournament settles from its entries and its prize fund, never with a subsidy.
+    const settled = isOrganised(t)
+      ? await organiser.settle(t, { prizes: prizeLines, actor, transaction })
+      : await escrow.settlePool({ purpose: 'esports_entry', groupRef: t.id, prizes: prizeLines, actor }, { transaction });
     const now = new Date();
     await EsportsPrizeAward.update({ status: 'credited', ledgerTxnId: settled.transactionId }, { where: { tournamentId: t.id, status: 'pending' }, transaction });
     await EsportsPrizeShare.update({ status: 'credited', ledgerTxnId: settled.transactionId }, { where: { tournamentId: t.id, status: 'pending' }, transaction });
@@ -195,7 +199,9 @@ async function reverseShare(actor, s, t, transaction) {
     await audit.record({ action: 'esports_prize.reversal_blocked', actor, entityType: 'esports_prize_share', entityId: s.id, after: { userId: s.userId, amount: s.amountPoisha, balance } }, { transaction });
     return false;
   }
-  const posted = await escrow.reversePoolCredit({ purpose: 'esports_entry', groupRef: t.id, payeeId: s.userId, amount: s.amountPoisha, key: s.id, actor }, { transaction });
+  const posted = isOrganised(t)
+    ? await organiser.reverse(t, s, { actor, transaction })
+    : await escrow.reversePoolCredit({ purpose: 'esports_entry', groupRef: t.id, payeeId: s.userId, amount: s.amountPoisha, key: s.id, actor }, { transaction });
   await s.update({ status: 'reversed', reversalTxnId: posted.id }, { transaction });
   await audit.record({ action: 'esports_prize.reversed', actor, entityType: 'esports_prize_share', entityId: s.id, after: { userId: s.userId, amount: s.amountPoisha } }, { transaction });
   await events.publish(transaction, { name: 'esports_prize.reversed', aggregateType: 'esports_prize_share', aggregateId: s.id, payload: { shareId: s.id, tournamentId: t.id, userId: s.userId, amount: s.amountPoisha } });

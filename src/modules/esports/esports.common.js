@@ -29,6 +29,9 @@ const ERRORS = {
   ESPORTS_PRIZE_TABLE_LOCKED: [409, 'The prize table, fee, slots and schedule are locked after publishing'],
   ESPORTS_TOURNAMENT_STATE: [409, 'The tournament cannot do that in its current state'],
   ESPORTS_NOT_FINALISABLE: [409, 'Every match must be final and no dispute open before finalising'],
+  // M22 organiser tournaments
+  ESPORTS_KILL_CAP_REQUIRED: [422, 'Set the most kills that are paid, so the prize fund can cover the per-kill reward'],
+  ESPORTS_CONFLICT_OF_INTEREST: [403, 'Members of the organising team cannot play in its tournament'],
   PRIZE_TABLE_REQUIRED: [422, 'Add the prize table'],
   PRIZE_PLACES_INVALID: [422, 'Prize places must run 1, 2, 3… and fit the slots'],
   PRIZE_AMOUNT_INVALID: [422, 'Each prize must be more than zero'],
@@ -120,4 +123,18 @@ const rooms = {
 
 const money = (poisha) => ({ amount: poisha, currency: 'BDT' });
 
-module.exports = { ERRORS, fail, game, mode, maps, preset, maxSquadSize, SNAPSHOT_KEYS, snapshot, setting, rooms, money };
+/**
+ * M22 organiser hooks. M21 stays unaware of contracts and prize funds: M22 registers these at load
+ * time (like M06 purposes). Each runs inside the caller's transaction:
+ *   submitBlock(t, { transaction })            throws when an organiser tournament may not be submitted
+ *   onPublished(t, { transaction })            snapshots the SaaS fee on approval
+ *   onCancelled(t, { actor, transaction })     returns the prize fund
+ *   settle(t, { prizes, actor, transaction })  settles entries and fund (replaces settlePool)
+ *   reverse(t, share, { actor, transaction })  takes a prize back to the organiser
+ *   isMember(userIds, organisationId)          conflict of interest at registration
+ */
+const organiser = {};
+const registerOrganiser = (hooks) => Object.assign(organiser, hooks);
+const isOrganised = (t) => t.organiserType === 'organisation';
+
+module.exports = { organiser, registerOrganiser, isOrganised, ERRORS, fail, game, mode, maps, preset, maxSquadSize, SNAPSHOT_KEYS, snapshot, setting, rooms, money };

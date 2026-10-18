@@ -237,6 +237,16 @@ function splitAward(amount, { playerIds, captainId, split }) {
 }
 
 /** A kill-reward award goes to each player for their own kills. */
+/**
+ * M22: the per-kill reward actually paid when an organiser capped the paid kills (the fund covers
+ * reward × cap): the full reward while the tournament's kills stay within the cap, else the capped
+ * total shared over every kill, rounded down (the rest returns to the organiser's fund).
+ */
+function cappedKillReward(killReward, totalKills, cap) {
+  if (!cap || totalKills <= cap) return killReward;
+  return Math.floor((killReward * cap) / totalKills);
+}
+
 const killShares = (perPlayerKills, killReward) => perPlayerKills.filter((k) => k.kills > 0).map((k) => ({ userId: k.userId, amount: k.kills * killReward }));
 
 /** What finalising costs and earns (§6.5): the subsidy when prizes exceed fees, else revenue. */
@@ -356,6 +366,7 @@ module.exports = {
   awards,
   splitAward,
   killShares,
+  cappedKillReward,
   settlementPreview,
   disputeBlock,
   placementScore,

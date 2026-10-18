@@ -113,6 +113,11 @@ EsportsTournament.init(
     format: req(DataTypes.ENUM('single_match', 'series')),
     organiserType: { type: DataTypes.ENUM('kriraghor', 'organisation'), allowNull: false, defaultValue: 'kriraghor' },
     organisationId: DataTypes.UUID,
+    // M22: the fee snapshotted at publish for an organiser tournament, its contract, and the per-kill cap.
+    saasFeeModel: { type: DataTypes.ENUM('none', 'percentage', 'flat'), allowNull: false, defaultValue: 'none' },
+    saasFeeBps: DataTypes.INTEGER,
+    contractId: DataTypes.UUID,
+    maxPaidKills: DataTypes.INTEGER,
     entryUnit: req(DataTypes.ENUM('player', 'squad')),
     entryFeePoisha: poisha('entryFeePoisha'),
     maxSlots: req(DataTypes.SMALLINT),

@@ -126,6 +126,10 @@ const UNLOCKS = {
     en: ['Get listed in Hire (coaches, officials, medical, media, team staff)', 'Set your own rates', 'Get paid when the manager confirms'],
     bn: ['হায়ারে তালিকাভুক্ত হন (কোচ, অফিসিয়াল, চিকিৎসা, মিডিয়া, দলের কর্মী)', 'নিজের রেট ঠিক করুন', 'ম্যানেজার নিশ্চিত করলে টাকা পান'],
   },
+  organiser: {
+    en: ['Register your esports organisation', 'Run PUBG Mobile and Free Fire tournaments on Kriraghor under a contract', 'Paid entries, room reveal, results and prize payouts handled for you'],
+    bn: ['আপনার ইস্পোর্টস প্রতিষ্ঠান নিবন্ধন করুন', 'চুক্তির অধীনে ক্রীড়াঘরে পাবজি মোবাইল ও ফ্রি ফায়ার টুর্নামেন্ট চালান', 'পেইড এন্ট্রি, রুম রিভিল, ফলাফল ও পুরস্কার প্রদান আমরা সামলাই'],
+  },
   gym_owner: {
     en: ['List your gym with hours and photos', 'Sell day, month and quarter passes online', 'Admit members by QR at the front desk and get paid'],
     bn: ['খোলার সময় ও ছবিসহ আপনার জিম তালিকাভুক্ত করুন', 'অনলাইনে দৈনিক, মাসিক ও ত্রৈমাসিক পাস বিক্রি করুন', 'ফ্রন্ট ডেস্কে কিউআর দিয়ে সদস্যদের ঢুকতে দিন ও টাকা পান'],

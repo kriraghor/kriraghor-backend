@@ -262,6 +262,89 @@ async function settlePool({ purpose, groupRef, prizes, actor = null }, { transac
 }
 
 /**
+ * M22 organiser settlement (§6.2, FR-07, FR-10): an organiser tournament's entry pool (groupRef = the
+ * tournament) and its prize fund (groupRef = the fund) settle together, never with a subsidy:
+ *   1. prizes out of the fund (ref escrow_group = the tournament, so winners withdraw them like any
+ *      esports prize);
+ *   2. the entries less the SaaS fee, and the fund's unused remainder, to the organiser (ref
+ *      escrow_group = the fund, so M07 pays them on the fund purpose's daily schedule).
+ * Idempotent per pool: a second call returns the first result. Inside the caller's transaction.
+ */
+async function settleOrganiserPool({ tournamentId, fundId, prizes, feeBps, organiserId, actor = null }, { transaction }) {
+  const entry = purposes.get('esports_entry');
+  const fund = purposes.get('esports_prize_fund');
+  const holdsOf = (purpose, groupRef) => EscrowHold.findAll({ where: { purpose, groupRef }, order: [['id', 'ASC']], transaction, lock: transaction.LOCK.UPDATE });
+  const [entryRows, fundRows] = await Promise.all([holdsOf('esports_entry', tournamentId), holdsOf('esports_prize_fund', fundId)]);
+  if ([...entryRows, ...fundRows].some((h) => h.status === 'frozen')) throw blocked('ESCROW_FROZEN');
+  const open = (rows) => rows.filter((h) => rules.OPEN.has(h.status)).map((h) => ({ hold: h, id: h.id, available: rules.available(h) }));
+  const entryHolds = open(entryRows);
+  const fundHolds = open(fundRows);
+  const s = lrules.organiserSettlement({ entryAccount: entry.escrowAccount, fundAccount: fund.escrowAccount, vertical: fund.vertical, entryHolds, fundHolds, prizes, feeBps, organiserId });
+  const post = (lines, refId, key, memo) =>
+    lines.length ? ledger.post({ kind: 'escrow.pool_settle', refType: 'escrow_group', refId, idempotencyKey: key, lines, postedBy: actor?.id ?? null, memo }, { transaction }) : null;
+  const prizeTxn = await post(s.prizeLines, tournamentId, `escrow.pool:esports_entry:${tournamentId}`, `Organiser prizes ${tournamentId}`);
+  const orgTxn = await post(s.organiserLines, fundId, `escrow.pool:esports_prize_fund:${fundId}`, `Organiser settlement ${tournamentId}`);
+  const result = { collected: s.collected, funded: s.funded, paid: s.paid, fee: s.fee, net: s.net, fundReturn: s.fundReturn, subsidy: 0, transactionId: prizeTxn?.id ?? orgTxn?.id ?? null, organiserTransactionId: orgTxn?.id ?? null };
+  if (prizeTxn?.existing || orgTxn?.existing) return { ...result, existing: true };
+  for (const [i, o] of entryHolds.entries()) {
+    const released = o.hold.releasedPoisha + o.available;
+    await o.hold.update({ releasedPoisha: released, feeTakenPoisha: o.hold.feeTakenPoisha + s.feeByHold[i], releaseCount: o.hold.releaseCount + 1, status: rules.statusAfter(o.hold, { released, refunded: o.hold.refundedPoisha }) }, { transaction });
+  }
+  for (const o of fundHolds) {
+    const released = o.hold.releasedPoisha + o.available;
+    await o.hold.update({ releasedPoisha: released, releaseCount: o.hold.releaseCount + 1, status: rules.statusAfter(o.hold, { released, refunded: o.hold.refundedPoisha }) }, { transaction });
+  }
+  await events.publish(transaction, {
+    name: 'escrow.pool_settled',
+    aggregateType: 'escrow_group',
+    aggregateId: tournamentId,
+    payload: { groupRef: tournamentId, purpose: 'esports_entry', collected: s.collected, paid: s.paid, subsidy: 0, fee: s.fee, transactionId: result.transactionId },
+    actor,
+  });
+  return result;
+}
+
+/**
+ * M22 invoices (FR-09): a captured fee invoice is collected at once (Dr escrow:fee_invoice / Cr
+ * fee_revenue). Idempotent per hold. Inside the caller's transaction.
+ */
+async function collectToRevenueInTx(hold, { actor = null, transaction }) {
+  const def = purposes.get(hold.purpose);
+  const amount = rules.available(hold);
+  if (amount <= 0) return null;
+  const posted = await ledger.post(
+    { kind: 'escrow.collect', refType: 'escrow_hold', refId: hold.id, idempotencyKey: `escrow.collect:${hold.id}`, lines: lrules.revenueLines({ escrowAccount: def.escrowAccount, holdId: hold.id, vertical: def.vertical, amount }), postedBy: actor?.id ?? null, memo: `Fee collected (hold ${hold.id})` },
+    { transaction }
+  );
+  const released = hold.releasedPoisha + amount;
+  await hold.update({ releasedPoisha: released, feeTakenPoisha: hold.feeTakenPoisha + amount, releaseCount: hold.releaseCount + 1, status: rules.statusAfter(hold, { released, refunded: hold.refundedPoisha }) }, { transaction });
+  return posted;
+}
+
+/**
+ * M22 (FR-10): an organiser tournament's prize taken back from a disqualified winner goes back to the
+ * organiser, not to Kriraghor (Dr payable:user:{winner} / Cr payable:user:{organiser}). Referenced to
+ * the tournament's pool, so both sides follow the esports withdrawal flow.
+ */
+async function reverseToOrganiser({ groupRef, payeeId, organiserId, amount, key, actor = null }, { transaction }) {
+  return ledger.post(
+    {
+      kind: 'escrow.pool_reverse',
+      refType: 'escrow_group',
+      refId: groupRef,
+      idempotencyKey: `escrow.pool_reverse:${key}`,
+      lines: [
+        { account: `payable:user:${payeeId}`, debit: amount },
+        { account: `payable:user:${organiserId}`, credit: amount },
+      ],
+      postedBy: actor?.id ?? null,
+      memo: `Prize returned to the organiser (${groupRef})`,
+    },
+    { transaction }
+  );
+}
+
+/**
  * M21 §6.7 (Q123): a prize credited from a pool is taken back from the winner's unwithdrawn balance
  * and becomes platform revenue (Dr payable:user / Cr fee_revenue:{vertical}). Idempotent by key; the
  * ledger refuses it (LEDGER_INSUFFICIENT_BALANCE) when the money was already withdrawn.
@@ -336,4 +419,4 @@ async function getOne(id) {
 }
 
 module.exports = { openHold,
-  openHolds, holdIdForPayment, lockHoldForPayment, releaseInTx, releaseManually, takeForRefund, freeze, unfreeze, freezeInTx, unfreezeInTx, releaseDue, settlePool, reversePoolCredit, list, getOne, serialize, lockHold };
+  openHolds, holdIdForPayment, lockHoldForPayment, releaseInTx, releaseManually, takeForRefund, freeze, unfreeze, freezeInTx, unfreezeInTx, releaseDue, settlePool, settleOrganiserPool, collectToRevenueInTx, reverseToOrganiser, reversePoolCredit, list, getOne, serialize, lockHold };

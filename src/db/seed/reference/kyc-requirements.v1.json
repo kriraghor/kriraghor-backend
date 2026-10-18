@@ -1,6 +1,6 @@
 {
-  "seedVersion": 4,
-  "source": "M02 §6.1, lite (Oct 2026): the member (NID) requirements, and the ground owner business documents (with M09). v2 (M12): the shop owner business documents (trade licence, TIN, and BIN when the shop is VAT registered); documents are kept per role. v3 (M11): the player and pro credentials (one per hire role, kept under hire:<role>) and the police clearance for under-16 work; organiser documents come with M22. Rows are inserted only when (role, type) is missing, so a master's edits survive. v4 (M20): the gym owner documents, the ground owner set (trade licence, deed or lease of the premises, an optional TIN), kept per role.",
+  "seedVersion": 5,
+  "source": "M02 §6.1, lite (Oct 2026): the member (NID) requirements, and the ground owner business documents (with M09). v2 (M12): the shop owner business documents (trade licence, TIN, and BIN when the shop is VAT registered); documents are kept per role. v3 (M11): the player and pro credentials (one per hire role, kept under hire:<role>) and the police clearance for under-16 work. Rows are inserted only when (role, type) is missing, so a master's edits survive. v4 (M20): the gym owner documents, the ground owner set (trade licence, deed or lease of the premises, an optional TIN), kept per role. v5 (M22): the organiser's organisation registration (trade licence, company or society registration, or an institution letter), kept under the organiser role.",
   "requirements": [
     {
       "role": "member",
@@ -536,6 +536,61 @@
       "whyEn": "Optional. Needed later for tax statements.",
       "whyBn": "ঐচ্ছিক। পরে কর বিবরণীর জন্য লাগবে।",
       "sort": 3
+    },
+    {
+      "role": "organiser",
+      "docType": "org_registration",
+      "scope": "role",
+      "required": "always",
+      "fileSlots": [
+        "document"
+      ],
+      "fieldSchema": [
+        {
+          "key": "kind",
+          "type": "enum",
+          "options": [
+            "trade_licence",
+            "company",
+            "society",
+            "institution"
+          ],
+          "required": true,
+          "labelEn": "What it is",
+          "labelBn": "কী ধরনের"
+        },
+        {
+          "key": "number",
+          "type": "text",
+          "min": 3,
+          "max": 40,
+          "required": true,
+          "labelEn": "Registration or licence number",
+          "labelBn": "নিবন্ধন বা লাইসেন্স নম্বর"
+        },
+        {
+          "key": "holderName",
+          "type": "text",
+          "min": 3,
+          "max": 120,
+          "required": true,
+          "labelEn": "Name on the document",
+          "labelBn": "ডকুমেন্টে নাম"
+        },
+        {
+          "key": "expiresOn",
+          "type": "date",
+          "future": true,
+          "required": false,
+          "labelEn": "Valid until (if it expires)",
+          "labelBn": "মেয়াদ শেষ (যদি থাকে)"
+        }
+      ],
+      "labelEn": "Organisation registration",
+      "labelBn": "প্রতিষ্ঠানের নিবন্ধন",
+      "whyEn": "Shows who runs the organisation: a trade licence, company or society registration, or a letter from your college or university.",
+      "whyBn": "প্রতিষ্ঠানটি কে চালায় তা দেখায়: ট্রেড লাইসেন্স, কোম্পানি বা সোসাইটি নিবন্ধন, অথবা কলেজ বা বিশ্ববিদ্যালয়ের চিঠি।",
+      "sort": 1
     }
   ]
 }

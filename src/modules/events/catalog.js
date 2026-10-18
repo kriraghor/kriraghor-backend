@@ -30,6 +30,10 @@ const hireJobEvent = z.object({ jobId: uuid, code: z.string().max(24), requestId
 const gymEvent = z.object({ gymId: uuid, ownerId: uuid });
 const gymPassEvent = z.object({ passId: uuid, code: z.string().max(20), gymId: uuid, holderId: uuid, ownerId: uuid, kind: z.enum(['day', 'month', 'quarter']), price: poisha });
 const trainerSubEvent = z.object({ subscriptionId: uuid, code: z.string().max(20), memberId: uuid, trainerId: uuid, price: poisha });
+const orgEvent = z.object({ organisationId: uuid, ownerId: uuid });
+const contractEvent = z.object({ contractId: uuid, organisationId: uuid });
+const invoiceEvent = z.object({ invoiceId: uuid, number: z.string().max(24), organisationId: uuid, total: poisha });
+const fundEvent = z.object({ fundId: uuid, tournamentId: uuid, organisationId: uuid, amount: poisha });
 const subOrderEvent = z.object({ subOrderId: uuid, code: z.string().max(24), orderId: uuid, shopId: uuid, sellerId: uuid, buyerId: uuid, total: poisha });
 const docEvent = z.object({ documentId: uuid, userId: uuid, docType: z.string().max(30), role: z.string().max(32).optional() });
 const payoutEvent = z.object({ payoutId: uuid, code: z.string(), payeeId: uuid, amount: poisha });
@@ -302,6 +306,25 @@ const EVENTS = {
   'trainer_subscription.started': { module: 'M20', version: 1, schema: trainerSubEvent.extend({ seq: z.number().int(), periodStart: iso, periodEnd: iso, paymentId: uuid }) },
   'trainer_subscription.renewed': { module: 'M20', version: 1, schema: trainerSubEvent.extend({ seq: z.number().int(), periodStart: iso, periodEnd: iso, paymentId: uuid }) },
   'trainer_subscription.renewal_opened': { module: 'M20', version: 1, schema: trainerSubEvent.extend({ seq: z.number().int(), periodStart: iso, payBy: iso }) },
+  // M14 lite organisations and M22 organiser SaaS
+  'organisation.submitted': { module: 'M14', version: 1, schema: orgEvent },
+  'organisation.verified': { module: 'M14', version: 1, schema: orgEvent },
+  'organisation.changes_requested': { module: 'M14', version: 1, schema: orgEvent.extend({ reasonCode: z.string().max(40).nullable() }) },
+  'organisation.rejected': { module: 'M14', version: 1, schema: orgEvent.extend({ reasonCode: z.string().max(40).nullable() }) },
+  'organisation.suspended': { module: 'M14', version: 1, schema: orgEvent.extend({ reason: reasonText }) },
+  'organisation.restored': { module: 'M14', version: 1, schema: orgEvent.extend({ reason: reasonText }) },
+  'organisation.member_added': { module: 'M14', version: 1, schema: orgEvent.extend({ userId: uuid, role: z.enum(['admin', 'staff']) }) },
+  'organiser_contract.activated': { module: 'M22', version: 1, schema: contractEvent.extend({ model: z.enum(['percentage', 'flat']), reinstated: z.boolean() }) },
+  'organiser_contract.suspended': { module: 'M22', version: 1, schema: contractEvent.extend({ reason: reasonText }) },
+  'organiser_contract.ended': { module: 'M22', version: 1, schema: contractEvent.extend({ reason: reasonText }) },
+  'organiser_contract.expiry_notified': { module: 'M22', version: 1, schema: contractEvent.extend({ endsOn: z.string().max(10) }) },
+  'organiser_invoice.issued': { module: 'M22', version: 1, schema: invoiceEvent },
+  'organiser_invoice.paid': { module: 'M22', version: 1, schema: invoiceEvent },
+  'organiser_invoice.overdue_flagged': { module: 'M22', version: 1, schema: invoiceEvent },
+  'organiser_invoice.voided': { module: 'M22', version: 1, schema: invoiceEvent },
+  'organiser_prize_fund.deposited': { module: 'M22', version: 1, schema: fundEvent.extend({ deposited: poisha, funded: z.boolean() }) },
+  'organiser_prize_fund.returned': { module: 'M22', version: 1, schema: fundEvent },
+  'organisation_branding.published': { module: 'M22', version: 1, schema: z.object({ organisationId: uuid, version: z.number().int(), subdomain: z.string().max(30).nullable() }) },
   'trainer_subscription.cancelled': { module: 'M20', version: 1, schema: trainerSubEvent.extend({ refund: poisha, seq: z.number().int().optional(), endsOn: iso.nullable().optional() }) },
   'trainer_subscription.ended': { module: 'M20', version: 1, schema: trainerSubEvent },
   'trainer_subscription.lapsed': { module: 'M20', version: 1, schema: trainerSubEvent },

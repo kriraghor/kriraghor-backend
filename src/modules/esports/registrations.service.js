@@ -127,6 +127,8 @@ async function register(principal, tournamentId, { squadId = null, players, subs
     if (ids.some((id) => !members.has(byId.get(id).userId))) throw fail('ESPORTS_NOT_IN_SQUAD');
   }
   for (const p of profiles) if (await require('./profiles.service').isBanned(p.gameId, p.uid)) throw fail('ESPORTS_UID_BANNED');
+  // M22 edge case: the organising team does not play in its own tournament.
+  if (t.organiserType === 'organisation' && (await require('./esports.common').organiser.isMember([userId, ...profiles.map((p) => p.userId)], t.organisationId))) throw fail('ESPORTS_CONFLICT_OF_INTEREST');
 
   try {
     const out = await sequelize.transaction(async (transaction) => {

@@ -50,5 +50,7 @@ module.exports = {
     './src/modules/hire/hire.rules.js': FULL,
     // M20 gym money, validity, redemption, cancellation, tokens and subscription periods.
     './src/modules/gym/gym.rules.js': FULL,
+    // M22 fees, prize fund, contracts, invoices, subdomains and contrast.
+    './src/modules/organiser-saas/saas.rules.js': FULL,
   },
 };

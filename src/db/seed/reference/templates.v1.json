@@ -1,6 +1,6 @@
 {
-  "seedVersion": 14,
-  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code. v9: the M17 DISPUTE_*, REPORT_* and REVIEW_* codes. v10: the M18 RISK_*, PAYOUTS_*, DOCUMENTS_* and TRUST_LOW codes. v11: the M12 SHOP_*, PRODUCT_*, STOCK_*, SUPPLEMENT_EXPIRING and SAVED_* codes. v12: the M13 ORDER_* and SHOP_*ORDER* codes. v13: the M11 HIRE_* and JOB_* codes. v14 (M20): gyms (live, changes, rejected), passes (ready, cancelled) and trainer subscriptions (started, new subscriber, renewal due, lapsed, cancelled, paid).",
+  "seedVersion": 15,
+  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code. v9: the M17 DISPUTE_*, REPORT_* and REVIEW_* codes. v10: the M18 RISK_*, PAYOUTS_*, DOCUMENTS_* and TRUST_LOW codes. v11: the M12 SHOP_*, PRODUCT_*, STOCK_*, SUPPLEMENT_EXPIRING and SAVED_* codes. v12: the M13 ORDER_* and SHOP_*ORDER* codes. v13: the M11 HIRE_* and JOB_* codes. v14 (M20): gyms (live, changes, rejected), passes (ready, cancelled) and trainer subscriptions (started, new subscriber, renewal due, lapsed, cancelled, paid). v15 (M14 lite, M22): organisations (verified, changes) and the organiser SaaS (contract active, suspended, ending; invoices issued, overdue, paid; prize fund received, returned).",
   "templates": [
     {
       "code": "AUDIT_CRITICAL",
@@ -7646,6 +7646,530 @@
         },
         {
           "name": "net",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORG_VERIFIED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Your organisation is verified",
+      "body": "{{name}} is verified. Kriraghor will set up your esports contract next.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "ORG_VERIFIED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আপনার প্রতিষ্ঠান যাচাই হয়েছে",
+      "body": "{{name}} যাচাই হয়েছে। এরপর ক্রীড়াঘর আপনার ইস্পোর্টস চুক্তি ঠিক করবে।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "ORG_VERIFIED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{name}} is verified. We will set up your esports contract next.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "ORG_VERIFIED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{name}} যাচাই হয়েছে। এরপর আপনার ইস্পোর্টস চুক্তি ঠিক হবে।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        }
+      ]
+    },
+    {
+      "code": "ORG_CHANGES_REQUESTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Changes needed on your organisation",
+      "body": "Staff asked for changes to {{name}}. See the details and send it again.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "ORG_CHANGES_REQUESTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আপনার প্রতিষ্ঠানে পরিবর্তন দরকার",
+      "body": "স্টাফ {{name}}-এ পরিবর্তন চেয়েছেন। বিস্তারিত দেখে আবার পাঠান।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "ORG_CONTRACT_ACTIVE",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Your esports contract is active",
+      "body": "{{name}} can now run tournaments on Kriraghor. Create one in the organiser console.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "ORG_CONTRACT_ACTIVE",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আপনার ইস্পোর্টস চুক্তি চালু",
+      "body": "{{name}} এখন ক্রীড়াঘরে টুর্নামেন্ট চালাতে পারবে। আয়োজক কনসোলে একটি তৈরি করুন।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "ORG_CONTRACT_ACTIVE",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Your esports contract is active",
+      "body": "{{name}} can now run tournaments on Kriraghor. Create one in the organiser console.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "ORG_CONTRACT_ACTIVE",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "আপনার ইস্পোর্টস চুক্তি চালু",
+      "body": "{{name}} এখন ক্রীড়াঘরে টুর্নামেন্ট চালাতে পারবে। আয়োজক কনসোলে একটি তৈরি করুন।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "ORG_CONTRACT_SUSPENDED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Your esports contract is suspended",
+      "body": "New tournaments of {{name}} are on hold. Tournaments already open will finish.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "ORG_CONTRACT_SUSPENDED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আপনার ইস্পোর্টস চুক্তি স্থগিত",
+      "body": "{{name}}-এর নতুন টুর্নামেন্ট বন্ধ। যেগুলো চলছে সেগুলো শেষ হবে।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "ORG_CONTRACT_SUSPENDED",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Your esports contract is suspended",
+      "body": "New tournaments of {{name}} are on hold. Tournaments already open will finish.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "ORG_CONTRACT_SUSPENDED",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "আপনার ইস্পোর্টস চুক্তি স্থগিত",
+      "body": "{{name}}-এর নতুন টুর্নামেন্ট বন্ধ। যেগুলো চলছে সেগুলো শেষ হবে।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "ORG_CONTRACT_ENDING",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Your esports contract ends soon",
+      "body": "Your contract ends on {{endsOn}}. Talk to Kriraghor to renew it.",
+      "variables": [
+        {
+          "name": "endsOn",
+          "type": "text",
+          "maxLen": 10
+        }
+      ]
+    },
+    {
+      "code": "ORG_CONTRACT_ENDING",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আপনার ইস্পোর্টস চুক্তি শিগগির শেষ",
+      "body": "আপনার চুক্তি {{endsOn}} তারিখে শেষ হবে। নবায়নের জন্য ক্রীড়াঘরের সাথে কথা বলুন।",
+      "variables": [
+        {
+          "name": "endsOn",
+          "type": "text",
+          "maxLen": 10
+        }
+      ]
+    },
+    {
+      "code": "ORG_CONTRACT_ENDING",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Your esports contract ends soon",
+      "body": "Your contract ends on {{endsOn}}. Talk to Kriraghor to renew it.",
+      "variables": [
+        {
+          "name": "endsOn",
+          "type": "text",
+          "maxLen": 10
+        }
+      ]
+    },
+    {
+      "code": "ORG_CONTRACT_ENDING",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "আপনার ইস্পোর্টস চুক্তি শিগগির শেষ",
+      "body": "আপনার চুক্তি {{endsOn}} তারিখে শেষ হবে। নবায়নের জন্য ক্রীড়াঘরের সাথে কথা বলুন।",
+      "variables": [
+        {
+          "name": "endsOn",
+          "type": "text",
+          "maxLen": 10
+        }
+      ]
+    },
+    {
+      "code": "ORG_INVOICE_ISSUED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "New invoice {{number}}",
+      "body": "Invoice {{number}} for {{total}} is ready. Pay it in the organiser console.",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORG_INVOICE_ISSUED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "নতুন ইনভয়েস {{number}}",
+      "body": "{{total}}-এর ইনভয়েস {{number}} তৈরি। আয়োজক কনসোলে পরিশোধ করুন।",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORG_INVOICE_ISSUED",
+      "channel": "email",
+      "locale": "en",
+      "subject": "New invoice {{number}}",
+      "body": "Invoice {{number}} for {{total}} is ready. Pay it in the organiser console.",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORG_INVOICE_ISSUED",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "নতুন ইনভয়েস {{number}}",
+      "body": "{{total}}-এর ইনভয়েস {{number}} তৈরি। আয়োজক কনসোলে পরিশোধ করুন।",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORG_INVOICE_OVERDUE",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Invoice {{number}} is overdue",
+      "body": "Invoice {{number}} ({{total}}) is overdue. Pay it soon: new tournaments are blocked after the grace days.",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORG_INVOICE_OVERDUE",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "ইনভয়েস {{number}} বকেয়া",
+      "body": "ইনভয়েস {{number}} ({{total}}) বকেয়া। দ্রুত পরিশোধ করুন: সময় পার হলে নতুন টুর্নামেন্ট বন্ধ হবে।",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORG_INVOICE_OVERDUE",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Invoice {{number}} is overdue",
+      "body": "Invoice {{number}} ({{total}}) is overdue. Pay it soon: new tournaments are blocked after the grace days.",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORG_INVOICE_OVERDUE",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "ইনভয়েস {{number}} বকেয়া",
+      "body": "ইনভয়েস {{number}} ({{total}}) বকেয়া। দ্রুত পরিশোধ করুন: সময় পার হলে নতুন টুর্নামেন্ট বন্ধ হবে।",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORG_INVOICE_OVERDUE",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: invoice {{number}} ({{total}}) is overdue. Pay it to keep sending new tournaments.",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORG_INVOICE_OVERDUE",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: ইনভয়েস {{number}} ({{total}}) বকেয়া। নতুন টুর্নামেন্ট চালাতে পরিশোধ করুন।",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORG_INVOICE_PAID",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Invoice {{number}} paid",
+      "body": "Thank you. {{total}} was received for invoice {{number}}.",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORG_INVOICE_PAID",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "ইনভয়েস {{number}} পরিশোধিত",
+      "body": "ধন্যবাদ। ইনভয়েস {{number}}-এর {{total}} পাওয়া গেছে।",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORG_FUND_RECEIVED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Prize fund received",
+      "body": "{{amount}} received. The prize fund now holds {{deposited}}.",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "deposited",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORG_FUND_RECEIVED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পুরস্কার তহবিল পাওয়া গেছে",
+      "body": "{{amount}} পাওয়া গেছে। পুরস্কার তহবিলে এখন {{deposited}}।",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "deposited",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORG_FUND_RETURNED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Prize fund returned",
+      "body": "{{amount}} of the prize fund came back to your balance and goes out with your next payout.",
+      "variables": [
+        {
+          "name": "amount",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "ORG_FUND_RETURNED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পুরস্কার তহবিল ফেরত",
+      "body": "পুরস্কার তহবিলের {{amount}} আপনার ব্যালেন্সে ফিরেছে, পরের পেআউটে যাবে।",
+      "variables": [
+        {
+          "name": "amount",
           "type": "money"
         }
       ]

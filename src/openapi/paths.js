@@ -24,6 +24,8 @@ const mkS = require('../modules/market/market.schemas');
 const orS = require('../modules/orders/orders.schemas');
 const hiS = require('../modules/hire/hire.schemas');
 const gyS = require('../modules/gym/gym.schemas');
+const orgS = require('../modules/organisations/organisations.schemas');
+const saS = require('../modules/organiser-saas/saas.schemas');
 
 /**
  * Every route (M01 to M10, M12, M17, M18, M19, M21), registered with its request and response schemas and the stable error
@@ -1061,6 +1063,80 @@ function register(registry) {
   p({ method: 'post', path: '/admin/gym/passes/{code}/cancel', tags: ['gym'], summary: 'Cancel an active pass for the platform with a refund of what is held (master, step-up escrow.manage)', security: adminBearer,
     request: { params: gyS.codeParam, headers: stepUpHeader, ...body(gyS.reasonBody) }, responses: { 200: json(gyS.StaffPass), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'], 409: ['PASS_NOT_ACTIVE'], ...VALIDATION }) } });
   p({ method: 'get', path: '/admin/gym/subscriptions/{code}', tags: ['gym'], summary: 'A trainer subscription and each month with its escrow hold', security: adminBearer, request: { params: gyS.codeParam }, responses: { 200: json(gyS.StaffSubscription), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'] }) } });
+
+  // ------------------------------------------------------------------ M14 lite organisations and M22 organiser SaaS (step 1)
+  const orgP = { params: saS.orgParam };
+  const orgIdP = { params: saS.orgIdParam };
+  const orgMatchP = { params: saS.orgMatchParam };
+  const saId = { params: saS.idParam };
+  // Organiser console: not a member (or not an admin where admins are needed) is a 404 (M22-FR-03).
+  const ORG = { ...COMMON_AUTH, 404: ['NOT_FOUND'] };
+  const ORG_T = { ...ORG, 409: ['ESPORTS_TOURNAMENT_STATE', 'ESPORTS_PRIZE_TABLE_LOCKED'], 422: ['VALIDATION_FAILED'] };
+  const saImage = (description) => ({ description, content: { 'image/jpeg': { schema: z.string() }, 'image/png': { schema: z.string() }, 'image/webp': { schema: z.string() } } });
+  const saPdf = (description) => ({ description, content: { 'application/pdf': { schema: z.string() } } });
+  p({ method: 'get', path: '/me/organisations', tags: ['organisers'], summary: 'Organisations I belong to, with my role', security: bearer, responses: { 200: json(orgS.OrganisationList), ...errors(COMMON_AUTH) } });
+  p({ method: 'post', path: '/me/organisations', tags: ['organisers'], summary: 'Apply with an organisation (needs the organiser role applied for: NID and the registration document)', security: bearer,
+    request: body(orgS.createBody), responses: { 201: json(orgS.Organisation, 'Created'), ...errors({ ...COMMON_AUTH, 403: ['ORG_ROLE_REQUIRED'], 422: ['AREA_UNKNOWN', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'get', path: '/me/organisations/{id}', tags: ['organisers'], summary: 'One of my organisations', security: bearer, request: { params: orgS.idParam }, responses: { 200: json(orgS.Organisation), ...errors(ORG) } });
+  p({ method: 'patch', path: '/me/organisations/{id}', tags: ['organisers'], summary: 'Edit (owner); the name and area are fixed once verified', security: bearer, request: { params: orgS.idParam, ...body(orgS.updateBody) }, responses: { 200: json(orgS.Organisation), ...errors({ ...ORG, 409: ['ORG_IN_REVIEW', 'ORG_STATE'], 422: ['AREA_UNKNOWN', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/me/organisations/{id}/submit', tags: ['organisers'], summary: 'Send for review on the Moderation desk (M05 kind organisation)', security: bearer, request: { params: orgS.idParam }, responses: { 200: json(orgS.Organisation), ...errors({ ...ORG, 403: ['ORG_ROLE_REQUIRED'], 409: ['ORG_IN_REVIEW', 'ORG_STATE'] }) } });
+  p({ method: 'get', path: '/org/{orgId}/members', tags: ['organisers'], summary: 'Members of the organisation (any member)', security: bearer, request: orgP, responses: { 200: json(orgS.MemberList), ...errors(ORG) } });
+  p({ method: 'post', path: '/org/{orgId}/members', tags: ['organisers'], summary: 'Add an existing member by phone as admin or staff (owner or admin)', security: bearer, request: { ...orgP, ...body(orgS.memberBody) }, responses: { 201: json(orgS.MemberResult, 'Created'), ...errors({ ...ORG, 409: ['ORG_MEMBER_EXISTS'], 422: ['VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/org/{orgId}/members/{memberId}/remove', tags: ['organisers'], summary: 'Remove a member (the owner stays)', security: bearer, request: { params: orgS.memberParams }, responses: { 200: json(orgS.MemberResult), ...errors({ ...ORG, 409: ['ORG_OWNER_FIXED'] }) } });
+  p({ method: 'get', path: '/org/{orgId}/esports/dashboard', tags: ['organisers'], summary: 'Contract, unpaid invoices, whether tournaments can be submitted, tournaments by status', security: bearer, request: orgP, responses: { 200: json(saS.Dashboard), ...errors(ORG) } });
+  p({ method: 'get', path: '/org/{orgId}/esports/tournaments', tags: ['organisers'], summary: 'The organisation\'s tournaments (every status)', security: bearer, request: { ...orgP, query: saS.tournamentsQuery }, responses: { 200: json(esS.TournamentList), ...errors(ORG) } });
+  p({ method: 'post', path: '/org/{orgId}/esports/tournaments', tags: ['organisers'], summary: 'A draft owned by the organisation (FR-04); a per-kill reward needs maxPaidKills', security: bearer,
+    request: { ...orgP, ...body(esS.tournamentBody) }, responses: { 201: json(esS.Tournament, 'Created'), ...errors({ ...ORG, 422: ['ESPORTS_KILL_CAP_REQUIRED', 'POINTS_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'get', path: '/org/{orgId}/esports/tournaments/{id}', tags: ['organisers'], summary: 'A tournament with its prize fund and SaaS fee snapshot', security: bearer, request: orgIdP, responses: { 200: json(esS.Tournament.extend({ fund: z.object({}).loose(), saas: z.object({}).loose() })), ...errors(ORG) } });
+  p({ method: 'patch', path: '/org/{orgId}/esports/tournaments/{id}', tags: ['organisers'], summary: 'Edit a draft (the prize fund follows; a smaller pool than deposited is refused)', security: bearer,
+    request: { ...orgIdP, ...body(esS.tournamentPatch) }, responses: { 200: json(esS.Tournament), ...errors({ ...ORG_T, 409: ORG_T[409].concat('PRIZE_FUND_SHRINK'), 422: ['ESPORTS_KILL_CAP_REQUIRED', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/org/{orgId}/esports/tournaments/{id}/prize-fund', tags: ['organisers'], summary: 'Pay what the prize pool still needs into escrow (FR-05; org admins)', security: bearer,
+    request: { ...orgIdP, headers: idem }, responses: { 201: json(saS.FundPayment, 'Created'), ...errors({ ...ORG, ...IDEM, 409: ['PRIZE_FUND_LOCKED', 'IDEMPOTENCY_IN_PROGRESS'] }) } });
+  p({ method: 'post', path: '/org/{orgId}/esports/tournaments/{id}/submit', tags: ['organisers'], summary: 'Send for review (org admins): an active contract, no invoice overdue past grace, a funded pool', security: bearer,
+    request: orgIdP, responses: { 200: json(esS.Tournament), ...errors({ ...ORG, 409: ['ESPORTS_TOURNAMENT_STATE', 'ORG_SUSPENDED', 'ORG_CONTRACT_REQUIRED', 'ORG_CONTRACT_SUSPENDED', 'INVOICE_OVERDUE', 'PRIZE_FUND_REQUIRED', 'PRIZE_FUND_AMOUNT_MISMATCH'], 422: ['SCHEDULE_INVALID', 'PRIZE_PLACES_INVALID'] }) } });
+  p({ method: 'post', path: '/org/{orgId}/esports/tournaments/{id}/cancel', tags: ['organisers'], summary: 'Cancel a draft or a tournament in review (the prize fund returns to the owner)', security: bearer,
+    request: { ...orgIdP, ...body(esS.cancelBody) }, responses: { 200: json(esS.Tournament), ...errors({ ...ORG, 409: ['ORG_TOURNAMENT_STATE', 'ESPORTS_TOURNAMENT_STATE'] }) } });
+  p({ method: 'get', path: '/org/{orgId}/esports/tournaments/{id}/checkins', tags: ['organisers'], summary: 'The check-in board', security: bearer, request: orgIdP, responses: { 200: json(esS.Board), ...errors(ORG) } });
+  p({ method: 'get', path: '/org/{orgId}/esports/tournaments/{id}/finalise-preview', tags: ['organisers'], summary: 'The awards and totals finalising would pay', security: bearer, request: orgIdP, responses: { 200: json(esS.Preview), ...errors(ORG) } });
+  p({ method: 'post', path: '/org/{orgId}/esports/tournaments/{id}/finalise/code', tags: ['organisers'], summary: 'Send a code to the admin\'s phone to confirm the payout', security: bearer, request: orgIdP, responses: { 200: json(saS.CodeSent), ...errors({ ...ORG, 409: ['PHONE_REQUIRED'], 429: ['OTP_RATE_LIMITED'] }) } });
+  p({ method: 'post', path: '/org/{orgId}/esports/tournaments/{id}/finalise', tags: ['organisers'], summary: 'Finalise with the code: prizes from the fund, the fee, the rest to the owner (FR-07, FR-10)', security: bearer,
+    request: { ...orgIdP, ...body(saS.finaliseBody) }, responses: { 200: json(esS.Tournament), ...errors({ ...ORG, 409: ['ESPORTS_NOT_FINALISABLE', 'ESCROW_FROZEN'], 400: ['OTP_INVALID', 'OTP_EXPIRED'], 422: ['VALIDATION_FAILED'] }) } });
+  p({ method: 'get', path: '/org/{orgId}/esports/matches/{matchId}', tags: ['organisers'], summary: 'A match with its entries and results', security: bearer, request: orgMatchP, responses: { 200: json(esS.Match), ...errors(ORG) } });
+  p({ method: 'get', path: '/org/{orgId}/esports/matches/{matchId}/room', tags: ['organisers'], summary: 'The room panel (no-store)', security: bearer, request: orgMatchP, responses: { 200: json(esS.RoomPanel), ...errors(ORG) } });
+  p({ method: 'put', path: '/org/{orgId}/esports/matches/{matchId}/room', tags: ['organisers'], summary: 'Set the room (org staff, Q135; encrypted, audited)', security: bearer, request: { ...orgMatchP, ...body(esS.roomBody) }, responses: { 200: json(esS.RoomPanel), ...errors({ ...ORG, ...VALIDATION }) } });
+  p({ method: 'post', path: '/org/{orgId}/esports/matches/{matchId}/room/rotate', tags: ['organisers'], summary: 'Rotate the room credentials and push them again', security: bearer, request: { ...orgMatchP, ...body(esS.rotateBody) }, responses: { 200: json(esS.RoomPanel), ...errors({ ...ORG, ...VALIDATION }) } });
+  p({ method: 'put', path: '/org/{orgId}/esports/matches/{matchId}/results', tags: ['organisers'], summary: 'Enter placements and kills (org staff, Q135)', security: bearer, request: { ...orgMatchP, ...body(esS.resultsBody) }, responses: { 200: json(esS.Match), ...errors({ ...ORG, ...VALIDATION }) } });
+  p({ method: 'post', path: '/org/{orgId}/esports/matches/{matchId}/results/post', tags: ['organisers'], summary: 'Post the results (the dispute window opens)', security: bearer, request: orgMatchP, responses: { 200: json(esS.Match), ...errors({ ...ORG, 409: ['ESPORTS_TOO_EARLY'] }) } });
+  p({ method: 'get', path: '/org/{orgId}/billing/contracts', tags: ['organisers'], summary: 'The organisation\'s contracts (org admins)', security: bearer, request: orgP, responses: { 200: json(saS.ContractList), ...errors(ORG) } });
+  p({ method: 'get', path: '/org/{orgId}/billing/invoices', tags: ['organisers'], summary: 'The organisation\'s invoices (org admins)', security: bearer, request: orgP, responses: { 200: json(saS.InvoiceList), ...errors(ORG) } });
+  p({ method: 'post', path: '/org/{orgId}/billing/invoices/{id}/pay', tags: ['organisers'], summary: 'Pay an invoice (M06 purpose fee_invoice)', security: bearer,
+    request: { ...orgIdP, headers: idem }, responses: { 201: json(saS.PayResult, 'Created'), ...errors({ ...ORG, ...IDEM, 409: ['INVOICE_STATE', 'IDEMPOTENCY_IN_PROGRESS'] }) } });
+  p({ method: 'get', path: '/org/{orgId}/branding', tags: ['organisers'], summary: 'Logo, colours, taglines and subdomain', security: bearer, request: orgP, responses: { 200: json(saS.Branding), ...errors(ORG) } });
+  p({ method: 'put', path: '/org/{orgId}/branding', tags: ['organisers'], summary: 'Colours (WCAG AA checked) and taglines', security: bearer, request: { ...orgP, ...body(saS.brandingBody) }, responses: { 200: json(saS.Branding), ...errors({ ...ORG, 422: ['BRAND_PRIMARY_CONTRAST', 'BRAND_ACCENT_CONTRAST', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'put', path: '/org/{orgId}/branding/subdomain', tags: ['organisers'], summary: 'Claim {sub}.esports.kriraghor.com (the first claim wins)', security: bearer, request: { ...orgP, ...body(saS.subdomainBody) }, responses: { 200: json(saS.Branding), ...errors({ ...ORG, 409: ['SUBDOMAIN_TAKEN'], 422: ['SUBDOMAIN_INVALID', 'SUBDOMAIN_RESERVED'] }) } });
+  p({ method: 'post', path: '/org/{orgId}/branding/logo', tags: ['organisers'], summary: 'Upload the logo (raw JPEG, PNG or WebP, up to 2 MB, public bucket)', security: bearer,
+    request: { ...orgP, body: saImage('The logo itself') }, responses: { 201: json(saS.Branding, 'Created'), ...errors({ ...ORG, 413: ['FILE_TOO_LARGE'], 415: ['FILE_TYPE_NOT_ALLOWED', 'FILE_TYPE_MISMATCH'], 422: ['FILE_EMPTY'] }) } });
+  p({ method: 'get', path: '/esports/organisers/{subdomain}', tags: ['organisers'], summary: 'A verified organisation\'s branded page: branding and public tournaments', request: { params: saS.subdomainParam }, responses: { 200: json(saS.Organiser), ...errors({ 404: ['NOT_FOUND'] }) } });
+  const STAFF_ORG = { ...ADMIN_AUTH, 404: ['NOT_FOUND'] };
+  p({ method: 'get', path: '/admin/organisers', tags: ['organisers'], summary: 'Organisations (manage_organisers, approve_listings or manage_esports)', security: adminBearer, request: { query: orgS.adminQuery }, responses: { 200: json(orgS.OrganisationList), ...errors(ADMIN_AUTH) } });
+  p({ method: 'get', path: '/admin/organisers/{id}', tags: ['organisers'], summary: 'One organisation with its members', security: adminBearer, request: saId, responses: { 200: json(orgS.StaffOrganisation), ...errors(STAFF_ORG) } });
+  p({ method: 'post', path: '/admin/organisers/{id}/suspend', tags: ['organisers'], summary: 'Suspend an organisation (manage_organisers)', security: adminBearer, request: { ...saId, ...body(orgS.reasonBody) }, responses: { 200: json(orgS.Organisation), ...errors({ ...STAFF_ORG, 409: ['ORG_STATE'] }) } });
+  p({ method: 'post', path: '/admin/organisers/{id}/restore', tags: ['organisers'], summary: 'Restore a suspended organisation (masters)', security: adminBearer, request: { ...saId, ...body(orgS.reasonBody) }, responses: { 200: json(orgS.Organisation), ...errors({ ...STAFF_ORG, 409: ['ORG_STATE'] }) } });
+  p({ method: 'get', path: '/admin/organisers/{id}/contracts', tags: ['organisers'], summary: 'An organisation\'s contracts', security: adminBearer, request: saId, responses: { 200: json(saS.ContractList), ...errors(STAFF_ORG) } });
+  p({ method: 'post', path: '/admin/organisers/{id}/contracts', tags: ['organisers'], summary: 'A contract draft (percentage at fees.esports_saas_pct or its own pct; or flat per month or quarter)', security: adminBearer,
+    request: { ...saId, ...body(saS.contractBody) }, responses: { 201: json(saS.Contract, 'Created'), ...errors({ ...STAFF_ORG, 422: ['CONTRACT_FIELDS_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'patch', path: '/admin/organisers/contracts/{id}', tags: ['organisers'], summary: 'Edit a contract draft', security: adminBearer, request: { ...saId, ...body(saS.contractPatch) }, responses: { 200: json(saS.Contract), ...errors({ ...STAFF_ORG, 409: ['CONTRACT_STATE'], 422: ['CONTRACT_FIELDS_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/admin/organisers/contracts/{id}/document', tags: ['organisers'], summary: 'Attach the signed contract (raw PDF, private bucket)', security: adminBearer,
+    request: { ...saId, body: saPdf('The signed contract') }, responses: { 200: json(saS.Contract), ...errors({ ...STAFF_ORG, 409: ['CONTRACT_STATE'], 413: ['FILE_TOO_LARGE'], 415: ['FILE_TYPE_NOT_ALLOWED', 'FILE_TYPE_MISMATCH'], 422: ['FILE_EMPTY'] }) } });
+  p({ method: 'post', path: '/admin/organisers/contracts/{id}/activate', tags: ['organisers'], summary: 'Activate or reinstate (step-up esports.money); a flat contract is invoiced at once', security: adminBearer,
+    request: { ...saId, headers: stepUpHeader }, responses: { 200: json(saS.Contract), ...errors({ ...STAFF_ORG, ...STEP, 409: ['CONTRACT_STATE', 'ORG_NOT_VERIFIED', 'CONTRACT_DOCUMENT_REQUIRED', 'CONTRACT_ACTIVE_EXISTS'] }) } });
+  p({ method: 'post', path: '/admin/organisers/contracts/{id}/suspend', tags: ['organisers'], summary: 'Suspend (step-up): new submits stop, running tournaments finish (FR-13)', security: adminBearer,
+    request: { ...saId, headers: stepUpHeader, ...body(saS.reasonBody) }, responses: { 200: json(saS.Contract), ...errors({ ...STAFF_ORG, ...STEP, 409: ['CONTRACT_STATE'] }) } });
+  p({ method: 'post', path: '/admin/organisers/contracts/{id}/end', tags: ['organisers'], summary: 'End a contract (step-up)', security: adminBearer,
+    request: { ...saId, headers: stepUpHeader, ...body(saS.reasonBody) }, responses: { 200: json(saS.Contract), ...errors({ ...STAFF_ORG, ...STEP, 409: ['CONTRACT_STATE'] }) } });
+  p({ method: 'get', path: '/admin/organisers/invoices', tags: ['organisers'], summary: 'Organiser invoices by organisation and status', security: adminBearer, request: { query: saS.invoicesQuery }, responses: { 200: json(saS.InvoiceList), ...errors(ADMIN_AUTH) } });
+  p({ method: 'post', path: '/admin/organisers/invoices/{id}/void', tags: ['organisers'], summary: 'Void an unpaid invoice (step-up), with a reason', security: adminBearer,
+    request: { ...saId, headers: stepUpHeader, ...body(saS.reasonBody) }, responses: { 200: json(saS.Invoice), ...errors({ ...STAFF_ORG, ...STEP, 409: ['INVOICE_STATE'] }) } });
 }
 
 function dateTimeOf() {

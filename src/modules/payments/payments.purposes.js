@@ -24,6 +24,13 @@ const defaultOnCaptured = ({ late }) => (late ? 'reject' : 'accept');
 const PURPOSES = {
   // M21 entry fees, held per registration and settled per tournament (pool).
   esports_entry: { vertical: 'esports', escrowAccount: 'escrow:esports_entry', pooled: true, testOnly: false, payoutSchedule: 'withdraw' },
+  // M22 an organiser's prize fund: deposited before its tournament is submitted, held per deposit and
+  // grouped by the fund (organiser_prize_funds.id). Prizes leave it at finalise; what is left goes to
+  // the organisation owner, paid out daily (FR-05, FR-10).
+  esports_prize_fund: { vertical: 'esports_saas', escrowAccount: 'escrow:esports_prize_fund', pooled: true, testOnly: false, payoutSchedule: 'daily' },
+  // M22 SaaS fee invoices (flat contracts, FR-09): grouped by the invoice (no payee), captured, then
+  // collected straight to fee revenue.
+  fee_invoice: { vertical: 'esports_saas', escrowAccount: 'escrow:fee_invoice', pooled: true, testOnly: false, payoutSchedule: null },
   // M10 ground bookings: the advance or the full price, held per booking and released to the owner at
   // check-in (or auto-complete) with the fee on the full value (escrow feeBase, v3).
   ground_booking: { vertical: 'grounds', escrowAccount: 'escrow:ground_booking', pooled: false, testOnly: false, payoutSchedule: 'ground_weekly' },
