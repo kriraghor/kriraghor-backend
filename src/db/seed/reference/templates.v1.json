@@ -1,6 +1,6 @@
 {
-  "seedVersion": 17,
-  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code. v9: the M17 DISPUTE_*, REPORT_* and REVIEW_* codes. v10: the M18 RISK_*, PAYOUTS_*, DOCUMENTS_* and TRUST_LOW codes. v11: the M12 SHOP_*, PRODUCT_*, STOCK_*, SUPPLEMENT_EXPIRING and SAVED_* codes. v12: the M13 ORDER_* and SHOP_*ORDER* codes. v13: the M11 HIRE_* and JOB_* codes. v14 (M20): gyms (live, changes, rejected), passes (ready, cancelled) and trainer subscriptions (started, new subscriber, renewal due, lapsed, cancelled, paid). v15 (M14 lite, M22): organisations (verified, changes) and the organiser SaaS (contract active, suspended, ending; invoices issued, overdue, paid; prize fund received, returned).",
+  "seedVersion": 18,
+  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code. v9: the M17 DISPUTE_*, REPORT_* and REVIEW_* codes. v10: the M18 RISK_*, PAYOUTS_*, DOCUMENTS_* and TRUST_LOW codes. v11: the M12 SHOP_*, PRODUCT_*, STOCK_*, SUPPLEMENT_EXPIRING and SAVED_* codes. v12: the M13 ORDER_* and SHOP_*ORDER* codes. v13: the M11 HIRE_* and JOB_* codes. v14 (M20): gyms (live, changes, rejected), passes (ready, cancelled) and trainer subscriptions (started, new subscriber, renewal due, lapsed, cancelled, paid). v15 (M14 lite, M22): organisations (verified, changes) and the organiser SaaS (contract active, suspended, ending; invoices issued, overdue, paid; prize fund received, returned). v18 adds the M14 tournament notices (approval, registrations, reserve offers, fixtures, reschedules, cancellation, too few teams, lots).",
   "templates": [
     {
       "code": "AUDIT_CRITICAL",
@@ -8533,6 +8533,752 @@
           "name": "team",
           "type": "text",
           "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "TOURNAMENT_APPROVED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Tournament approved",
+      "body": "{{tournament}} is approved: registration is open.",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "TOURNAMENT_APPROVED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "টুর্নামেন্ট অনুমোদিত",
+      "body": "{{tournament}} অনুমোদিত হয়েছে: নিবন্ধন খোলা।",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "TOURNAMENT_APPROVED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{tournament}} is approved. Registration is open.",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "TOURNAMENT_APPROVED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{tournament}} অনুমোদিত। নিবন্ধন খোলা।",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "TOURNAMENT_CHANGES_REQUESTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Changes requested",
+      "body": "Staff asked for changes to {{tournament}}. Open the console to see what.",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "TOURNAMENT_CHANGES_REQUESTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পরিবর্তন চাওয়া হয়েছে",
+      "body": "স্টাফ {{tournament}}-এ পরিবর্তন চেয়েছেন। কনসোলে দেখুন।",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "TOURNAMENT_CHANGES_REQUESTED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: staff asked for changes to {{tournament}}. Check the console.",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "TOURNAMENT_CHANGES_REQUESTED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{tournament}}-এ পরিবর্তন চাওয়া হয়েছে। কনসোল দেখুন।",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "TOURNAMENT_REJECTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Tournament not approved",
+      "body": "{{tournament}} was not approved. Open the console for the reason.",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "TOURNAMENT_REJECTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "টুর্নামেন্ট অনুমোদিত হয়নি",
+      "body": "{{tournament}} অনুমোদন পায়নি। কারণ কনসোলে দেখুন।",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "TOURNAMENT_REJECTED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{tournament}} was not approved. See the console for the reason.",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "TOURNAMENT_REJECTED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{tournament}} অনুমোদন পায়নি। কারণ কনসোলে।",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "REGISTRATION_SUBMITTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "New team registration",
+      "body": "{{team}} registered for {{tournament}} and waits for your decision.",
+      "variables": [
+        {
+          "name": "team",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "REGISTRATION_SUBMITTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "নতুন দলের নিবন্ধন",
+      "body": "{{team}} {{tournament}}-এ নিবন্ধন করেছে, আপনার সিদ্ধান্তের অপেক্ষায়।",
+      "variables": [
+        {
+          "name": "team",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "REGISTRATION_APPROVED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Team approved",
+      "body": "{{team}} is in {{tournament}}.",
+      "variables": [
+        {
+          "name": "team",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "REGISTRATION_APPROVED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "দল অনুমোদিত",
+      "body": "{{team}} {{tournament}}-এ জায়গা পেয়েছে।",
+      "variables": [
+        {
+          "name": "team",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "REGISTRATION_APPROVED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{team}} is approved for {{tournament}}.",
+      "variables": [
+        {
+          "name": "team",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "REGISTRATION_APPROVED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{team}} {{tournament}}-এ অনুমোদিত।",
+      "variables": [
+        {
+          "name": "team",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "REGISTRATION_REJECTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Registration not accepted",
+      "body": "{{team}} was not accepted into {{tournament}}. Refund: {{refund}}.",
+      "variables": [
+        {
+          "name": "team",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "REGISTRATION_REJECTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "নিবন্ধন গৃহীত হয়নি",
+      "body": "{{team}} {{tournament}}-এ জায়গা পায়নি। ফেরত: {{refund}}।",
+      "variables": [
+        {
+          "name": "team",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "REGISTRATION_REJECTED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{team}} was not accepted into {{tournament}}. Refund {{refund}}.",
+      "variables": [
+        {
+          "name": "team",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "REGISTRATION_REJECTED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{team}} {{tournament}}-এ জায়গা পায়নি। ফেরত {{refund}}।",
+      "variables": [
+        {
+          "name": "team",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "RESERVE_OFFERED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "A place is free",
+      "body": "A place opened in {{tournament}} for {{team}}. Take it by {{until}}.",
+      "variables": [
+        {
+          "name": "team",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "until",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "RESERVE_OFFERED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "জায়গা খালি",
+      "body": "{{tournament}}-এ {{team}}-এর জন্য জায়গা খালি হয়েছে। {{until}}-এর মধ্যে নিন।",
+      "variables": [
+        {
+          "name": "team",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "until",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "RESERVE_OFFERED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: a place in {{tournament}} is offered to {{team}} until {{until}}. Open My tournaments.",
+      "variables": [
+        {
+          "name": "team",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "until",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "RESERVE_OFFERED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{tournament}}-এ {{team}}-এর জায়গা {{until}} পর্যন্ত।",
+      "variables": [
+        {
+          "name": "team",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "until",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "TOURNAMENT_CANCELLED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Tournament cancelled",
+      "body": "{{tournament}} is cancelled. Refund: {{refund}}.",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "TOURNAMENT_CANCELLED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "টুর্নামেন্ট বাতিল",
+      "body": "{{tournament}} বাতিল হয়েছে। ফেরত: {{refund}}।",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "TOURNAMENT_CANCELLED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{tournament}} is cancelled. Refund {{refund}}.",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "TOURNAMENT_CANCELLED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{tournament}} বাতিল। ফেরত {{refund}}।",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "refund",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "FIXTURES_PUBLISHED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Fixtures published",
+      "body": "The fixtures of {{tournament}} are out.",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "FIXTURES_PUBLISHED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "ফিক্সচার প্রকাশিত",
+      "body": "{{tournament}}-এর ফিক্সচার প্রকাশিত হয়েছে।",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "FIXTURES_PUBLISHED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: the fixtures of {{tournament}} are out. Check your matches.",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "FIXTURES_PUBLISHED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{tournament}}-এর ফিক্সচার প্রকাশিত। আপনার ম্যাচ দেখুন।",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "MATCH_RESCHEDULED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Match time changed",
+      "body": "Match M{{match}} of {{tournament}} has a new time.",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "match",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "MATCH_RESCHEDULED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "ম্যাচের সময় বদল",
+      "body": "{{tournament}}-এর M{{match}} ম্যাচের সময় বদলেছে।",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "match",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "MATCH_RESCHEDULED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: match M{{match}} of {{tournament}} has a new time. Check the fixtures.",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "match",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "MATCH_RESCHEDULED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{tournament}}-এর M{{match}} ম্যাচের সময় বদলেছে।",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "match",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "REGISTRATION_BELOW_MIN",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Not enough teams",
+      "body": "Registration for {{tournament}} closed with {{approved}} approved teams, below your minimum. Extend or cancel.",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "approved",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "REGISTRATION_BELOW_MIN",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "যথেষ্ট দল নেই",
+      "body": "{{tournament}}-এর নিবন্ধন {{approved}}টি অনুমোদিত দল নিয়ে বন্ধ হয়েছে, যা ন্যূনতমের কম। সময় বাড়ান বা বাতিল করুন।",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "approved",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "REGISTRATION_BELOW_MIN",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{tournament}} closed with {{approved}} teams, below the minimum. Extend or cancel.",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "approved",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "REGISTRATION_BELOW_MIN",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{tournament}}-এ {{approved}}টি দল, ন্যূনতমের কম। সময় বাড়ান বা বাতিল করুন।",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "approved",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "LOTS_NEEDED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Draw lots",
+      "body": "Teams in {{tournament}} are level on every tiebreaker. Record the draw of lots.",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "LOTS_NEEDED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "লটারি প্রয়োজন",
+      "body": "{{tournament}}-এ দলগুলো সব টাইব্রেকারে সমান। লটারির ফল লিখুন।",
+      "variables": [
+        {
+          "name": "tournament",
+          "type": "text",
+          "maxLen": 80
         }
       ]
     }

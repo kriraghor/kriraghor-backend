@@ -47,6 +47,9 @@ const PURPOSES = {
   // M20 trainer monthly subscriptions: one payment per month, released to the trainer after the
   // month (and the dispute window) with fees.gym_pct; paid out daily like other pros.
   trainer_subscription: { vertical: 'gym', escrowAccount: 'escrow:trainer_subscription', pooled: false, testOnly: false, payoutSchedule: 'daily' },
+  // M14 physical-sport entry fees: held per registration (payee: the organisation owner), released in
+  // two tranches (after the first result, at completion) with fees.tournament_pct; weekly payout run.
+  tournament_entry: { vertical: 'tournaments', escrowAccount: 'escrow:tournament_entry', pooled: false, testOnly: false, payoutSchedule: 'ground_weekly' },
   // Master test charge (dev and staging only, PAYMENTS_TEST_CHARGES): the Phase 2 exit check.
   test_charge: { vertical: 'test', escrowAccount: 'escrow:test_charge', pooled: false, testOnly: true, payoutSchedule: 'daily' },
 };

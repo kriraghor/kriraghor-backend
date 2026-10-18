@@ -50,8 +50,11 @@ meOrgs.post('/:id/submit', validate(os.idParam, 'params'), async (req, res) => r
 // ---------------- the organiser console (/org/:orgId)
 const orgRouter = Router({ mergeParams: true });
 orgRouter.use(authenticate);
-const staff = requireOrgRole('staff');
-const admin = requireOrgRole('admin');
+// The esports console and branding are for esports organisations; members and billing for any kind.
+const staff = requireOrgRole('staff', { kind: 'esports' });
+const admin = requireOrgRole('admin', { kind: 'esports' });
+const anyStaff = requireOrgRole('staff');
+const anyAdmin = requireOrgRole('admin');
 const tid = validate(s.orgIdParam, 'params');
 const mid = validate(s.orgMatchParam, 'params');
 
@@ -73,16 +76,16 @@ orgRouter.put('/esports/matches/:matchId/room', staff, mid, validate(es.roomBody
 orgRouter.post('/esports/matches/:matchId/room/rotate', staff, mid, validate(es.rotateBody), async (req, res) => res.json(await consoleSvc.rotateRoom(req.user, req.org, req.params.matchId, req.body, req)));
 orgRouter.put('/esports/matches/:matchId/results', staff, mid, validate(es.resultsBody), async (req, res) => res.json(await consoleSvc.enterResults(req.user, req.org, req.params.matchId, req.body, req)));
 orgRouter.post('/esports/matches/:matchId/results/post', staff, mid, async (req, res) => res.json(await consoleSvc.postResults(req.user, req.org, req.params.matchId, req)));
-orgRouter.get('/billing/contracts', admin, async (req, res) => res.json(await contracts.listFor(req.org.id)));
-orgRouter.get('/billing/invoices', admin, async (req, res) => res.json(await invoices.list({ organisationId: req.org.id })));
-orgRouter.post('/billing/invoices/:id/pay', admin, tid, requireIdempotencyKey('saas.invoice'), async (req, res) => res.status(201).json(await invoices.pay(req.user, req.org, req.params.id, req.idempotencyKey)));
+orgRouter.get('/billing/contracts', anyAdmin, async (req, res) => res.json(await contracts.listFor(req.org.id)));
+orgRouter.get('/billing/invoices', anyAdmin, async (req, res) => res.json(await invoices.list({ organisationId: req.org.id })));
+orgRouter.post('/billing/invoices/:id/pay', anyAdmin, tid, requireIdempotencyKey('saas.invoice'), async (req, res) => res.status(201).json(await invoices.pay(req.user, req.org, req.params.id, req.idempotencyKey)));
 orgRouter.get('/branding', staff, async (req, res) => res.json(await branding.get(req.org)));
 orgRouter.put('/branding', admin, validate(s.brandingBody), async (req, res) => res.json(await branding.update(req.user, req.org, req.body, req)));
 orgRouter.put('/branding/subdomain', admin, validate(s.subdomainBody), async (req, res) => res.json(await branding.claimSubdomain(req.user, req.org, req.body, req)));
 orgRouter.post('/branding/logo', admin, raw, async (req, res) => res.status(201).json(await branding.uploadLogo(req.user, req.org, { contentType: req.get('content-type'), body: req.body }, req)));
-orgRouter.get('/members', staff, async (req, res) => res.json(await organisations.members(req.org.id)));
-orgRouter.post('/members', admin, validate(os.memberBody), async (req, res) => res.status(201).json(await organisations.addMember(req.user, req.org, req.body, req)));
-orgRouter.post('/members/:memberId/remove', admin, validate(os.memberParams, 'params'), async (req, res) => res.json(await organisations.removeMember(req.user, req.org, req.params.memberId, req)));
+orgRouter.get('/members', anyStaff, async (req, res) => res.json(await organisations.members(req.org.id)));
+orgRouter.post('/members', anyAdmin, validate(os.memberBody), async (req, res) => res.status(201).json(await organisations.addMember(req.user, req.org, req.body, req)));
+orgRouter.post('/members/:memberId/remove', anyAdmin, validate(os.memberParams, 'params'), async (req, res) => res.json(await organisations.removeMember(req.user, req.org, req.params.memberId, req)));
 
 // ---------------- public
 const publicRouter = Router();

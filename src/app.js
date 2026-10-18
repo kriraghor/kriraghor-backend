@@ -40,6 +40,7 @@ const gymRoutes = require('./modules/gym/gym.routes');
 const saasRoutes = require('./modules/organiser-saas/saas.routes');
 const eventRoutes = require('./modules/esports-events/events.routes');
 const teamRoutes = require('./modules/teams/teams.routes');
+const tournamentRoutes = require('./modules/tournaments/tournaments.routes');
 
 // ADR-004: customer and admin origins (exact or one-label wildcard). Unknown origins get no CORS headers.
 const allowedOrigin = compile([...config.corsOrigins, ...config.adminOrigins]);
@@ -97,10 +98,13 @@ function createApp() {
   api.use('/me/document-requests', kycRoutes.meDocumentRequests);
   api.use('/me/submissions', moderationRoutes.meSubmissions);
   api.use('/me/esports/events', eventRoutes.meRouter);
+  // M14 tournaments: my teams' registrations.
+  api.use('/me/registrations', tournamentRoutes.meRouter);
   // M16 teams and players.
   api.use('/me', teamRoutes.meRouter);
   api.use('/teams', teamRoutes.teamsRouter);
   api.use('/', teamRoutes.publicRouter);
+  api.use('/tournaments', tournamentRoutes.publicRouter);
   api.use('/me/esports', esportsRoutes.meRouter);
   // M22 branded organiser pages (before /esports: a subdomain is not a tournament path).
   api.use('/esports/organisers', saasRoutes.publicRouter);
@@ -134,6 +138,7 @@ function createApp() {
   api.use('/me/gyms', gymRoutes.ownerRouter);
   // M14 lite and the M22 organiser console (scoped by membership of :orgId).
   api.use('/me/organisations', saasRoutes.meOrgs);
+  api.use('/org/:orgId/sports', tournamentRoutes.consoleRouter);
   api.use('/org/:orgId', saasRoutes.orgRouter);
   api.use('/pro/trainer-plans', gymRoutes.proPlans);
   api.use('/pro/subscriptions', gymRoutes.proSubs);
@@ -176,6 +181,7 @@ function createApp() {
   api.use('/admin/kyc', kycRoutes.adminKyc);
   api.use('/admin/submissions', moderationRoutes.adminRouter);
   api.use('/admin/teams', teamRoutes.adminRouter);
+  api.use('/admin/tournaments', tournamentRoutes.adminRouter);
   api.use('/admin/esports/events', eventRoutes.adminRouter);
   api.use('/admin/esports', esportsRoutes.adminRouter);
   api.use('/admin/grounds', groundsRoutes.adminRouter);

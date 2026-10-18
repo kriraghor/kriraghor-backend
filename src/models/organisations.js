@@ -27,7 +27,7 @@ class Organisation extends Model {}
 Organisation.init(
   {
     id,
-    kind: { type: DataTypes.ENUM('esports'), allowNull: false, defaultValue: 'esports' },
+    kind: { type: DataTypes.ENUM('esports', 'sports'), allowNull: false, defaultValue: 'esports' },
     ownerUserId: req(DataTypes.UUID),
     name: req(DataTypes.STRING(120)),
     slug: req(DataTypes.STRING(140)),

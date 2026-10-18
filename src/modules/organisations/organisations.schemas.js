@@ -17,20 +17,22 @@ const fields = {
   about: z.string().trim().max(1000).nullable().optional(),
   contactEmail: z.email().max(160).nullable().optional(),
 };
-const createBody = z.object(fields);
+// kind: esports (M22 console) or sports (M14 physical tournaments); set once, never edited.
+const KINDS = ['esports', 'sports'];
+const createBody = z.object({ ...fields, kind: z.enum(KINDS).default('esports') });
 const updateBody = z
   .object(fields)
   .partial()
   .refine((b) => Object.keys(b).length > 0, 'Nothing to change');
 const memberBody = z.object({ phone: z.string().trim().min(10).max(20).meta({ description: 'The phone of an existing Kriraghor member' }), role: z.enum(['admin', 'staff']) });
-const adminQuery = z.object({ status: z.enum(STATUSES).optional(), q: z.string().trim().max(60).optional() });
+const adminQuery = z.object({ status: z.enum(STATUSES).optional(), kind: z.enum(KINDS).optional(), q: z.string().trim().max(60).optional() });
 const reasonBody = z.object({ reason: z.string().trim().min(5).max(300) });
 
 const Organisation = z
   .object({
     id,
     slug: z.string(),
-    kind: z.enum(['esports']),
+    kind: z.enum(KINDS),
     name: z.string(),
     areaId: nullable(id),
     about: nullable(z.string()),

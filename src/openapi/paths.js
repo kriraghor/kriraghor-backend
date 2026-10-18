@@ -28,6 +28,7 @@ const orgS = require('../modules/organisations/organisations.schemas');
 const saS = require('../modules/organiser-saas/saas.schemas');
 const evS = require('../modules/esports-events/events.schemas');
 const tmS = require('../modules/teams/teams.schemas');
+const toS = require('../modules/tournaments/tournaments.schemas');
 const usersS = require('../modules/users/users.schemas');
 const adminSS = require('../modules/admin/admin.schemas');
 
@@ -1252,6 +1253,86 @@ function register(registry) {
   p({ method: 'get', path: '/admin/teams/{id}', tags: ['teams'], summary: 'A team with members (NID booleans) and invites (masked)', security: adminBearer, request: tmId, responses: { 200: json(tmS.AdminTeam), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'] }) } });
   p({ method: 'post', path: '/admin/teams/{id}/archive', tags: ['teams'], summary: 'Archive a team with a reason (e.g. an offensive name)', security: adminBearer,
     request: { ...tmId, ...body(tmS.reasonBody) }, responses: { 200: json(tmS.Archived), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'], 409: ['TEAM_ARCHIVED'], ...VALIDATION }) } });
+
+  // ------------------------------------------------------------------ M14 tournaments (step 1) with M15 lite results
+  const tParams = { params: toS.orgTournamentParam };
+  const mParams = { params: toS.orgMatchParam };
+  const rParams = { params: toS.orgRegParam };
+  const TORG = { ...COMMON_AUTH, 404: ['NOT_FOUND'] };
+  const TSTATE = { ...TORG, 409: ['TOURNAMENT_STATE', 'VERSION_CONFLICT'] };
+  const T_INVALID = ['RULE_OUT_OF_RANGE', 'RULE_PRESET_UNKNOWN', 'RULE_UNKNOWN_FIELD', 'TIEBREAKER_INVALID', 'VENUE_INVALID', 'VALIDATION_FAILED'];
+  const RESULT = ['RESULT_INVALID', 'KNOCKOUT_NEEDS_WINNER', 'VALIDATION_FAILED'];
+  p({ method: 'get', path: '/catalog/sport-rules/{sportKey}', tags: ['catalog'], summary: 'A sport\'s rule fields, presets and allowed tiebreakers (M03, for the tournament wizard)', request: { params: toS.sportKeyParam }, responses: { 200: json(toS.SportRules), ...cached, ...errors({ 404: ['NOT_FOUND'] }) } });
+  p({ method: 'get', path: '/org/{orgId}/sports/tournaments', tags: ['tournaments'], summary: 'My sports organisation\'s tournaments (organisation staff)', security: bearer,
+    request: { params: orgS.orgParam, query: toS.listQuery }, responses: { 200: json(toS.TournamentList), ...errors(TORG) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/tournaments', tags: ['tournaments'], summary: 'A draft tournament; rules start from the sport\'s first preset', security: bearer,
+    request: { params: orgS.orgParam, ...body(toS.createBody) }, responses: { 201: json(toS.Tournament, 'Created'), ...errors({ ...TORG, 422: ['SPORT_NOT_SUPPORTED', ...T_INVALID], ...RATE }) } });
+  p({ method: 'get', path: '/org/{orgId}/sports/tournaments/{id}', tags: ['tournaments'], summary: 'A tournament in the console', security: bearer, request: tParams, responses: { 200: json(toS.Tournament), ...errors(TORG) } });
+  p({ method: 'patch', path: '/org/{orgId}/sports/tournaments/{id}', tags: ['tournaments'], summary: 'Edit a draft; a running tournament takes cosmetic edits only; rules while unlocked (FR-07/09)', security: bearer,
+    request: { ...tParams, ...body(toS.updateBody) }, responses: { 200: json(toS.Tournament), ...errors({ ...TORG, 409: ['TOURNAMENT_STATE', 'RULES_LOCKED', 'VERSION_CONFLICT', 'VENUE_IN_USE', 'NAME_TAKEN'], 422: T_INVALID, ...RATE }) } });
+  p({ method: 'get', path: '/org/{orgId}/sports/tournaments/{id}/overview', tags: ['tournaments'], summary: 'KPIs, money from escrow and the setup checklist (§4.1)', security: bearer, request: tParams, responses: { 200: json(toS.Overview), ...errors(TORG) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/tournaments/{id}/submit', tags: ['tournaments'], summary: 'Send for staff review (M05 kind tournament) after the automatic checks (organisation admins)', security: bearer,
+    request: tParams, responses: { 200: json(toS.Tournament), ...errors({ ...TSTATE, 422: ['TOURNAMENT_INCOMPLETE'] }) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/tournaments/{id}/cancel', tags: ['tournaments'], summary: 'Cancel with refunds (before the first result 100%, after it what is still held)', security: bearer,
+    request: { ...tParams, ...body(toS.reasonBody) }, responses: { 200: json(toS.Tournament), ...errors({ ...TSTATE, 403: ['ORG_OWNER_ONLY'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/tournaments/{id}/registration/close', tags: ['tournaments'], summary: 'Close registration now: unpaid places, offers and the reserve list lapse', security: bearer, request: tParams, responses: { 200: json(toS.Tournament), ...errors(TSTATE) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/tournaments/{id}/registration/extend', tags: ['tournaments'], summary: 'Reopen registration once, before fixtures (FR-14)', security: bearer,
+    request: { ...tParams, ...body(toS.extendBody) }, responses: { 200: json(toS.Tournament), ...errors({ ...TORG, 409: ['EXTEND_NOT_ALLOWED'], 422: ['REGISTRATION_WINDOW_INVALID', 'REGISTRATION_CLOSES_TOO_LATE', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/tournaments/{id}/rules/unlock', tags: ['tournaments'], summary: 'Unlock the rules with a reason (audited; they lock again after tournament.rules_relock_hours)', security: bearer,
+    request: { ...tParams, ...body(toS.unlockBody) }, responses: { 200: json(toS.Tournament), ...errors({ ...TSTATE, ...VALIDATION }) } });
+  p({ method: 'get', path: '/org/{orgId}/sports/tournaments/{id}/registrations', tags: ['tournaments'], summary: 'Registrations with squad readiness (names and NID booleans only)', security: bearer,
+    request: { ...tParams, query: toS.regQuery }, responses: { 200: json(toS.OrgRegistrations), ...errors(TORG) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/registrations/{regId}/approve', tags: ['tournaments'], summary: 'Approve a team (a ready squad and a free place, under the tournament lock)', security: bearer,
+    request: rParams, responses: { 200: json(toS.Decision), ...errors({ ...TORG, 409: ['REGISTRATION_STATE', 'CAPACITY_FULL', 'ROSTER_NOT_READY'] }) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/registrations/{regId}/reject', tags: ['tournaments'], summary: 'Reject with a reason: a 100% refund; the place goes to the next reserve team', security: bearer,
+    request: { ...rParams, ...body(toS.reasonBody) }, responses: { 200: json(toS.Decision), ...errors({ ...TORG, 409: ['REGISTRATION_STATE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/registrations/{regId}/remove', tags: ['tournaments'], summary: 'Remove an approved team (refund per §6.9; its matches become walkovers)', security: bearer,
+    request: { ...rParams, ...body(toS.reasonBody) }, responses: { 200: json(toS.Decision), ...errors({ ...TORG, 409: ['REGISTRATION_STATE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/registrations/{regId}/waive', tags: ['tournaments'], summary: 'Waive the entry fee (organisation admins, audited; no escrow)', security: bearer,
+    request: { ...rParams, ...body(toS.reasonBody) }, responses: { 200: json(toS.Decision), ...errors({ ...TORG, 409: ['REGISTRATION_STATE'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/tournaments/{id}/draw', tags: ['tournaments'], summary: 'Preview the draw (a random draw is made at confirm)', security: bearer,
+    request: { ...tParams, ...body(toS.drawBody) },
+    responses: { 200: json(toS.DrawPreview), ...errors({ ...TORG, 409: ['REGISTRATION_STILL_OPEN', 'PENDING_DECISIONS', 'NOT_ENOUGH_TEAMS', 'RESULTS_EXIST', 'TOURNAMENT_STATE'], 422: ['DRAW_INVALID', 'GROUPS_INVALID', 'QUALIFIERS_INVALID', 'KNOCKOUT_TOP_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/tournaments/{id}/draw/confirm', tags: ['tournaments'], summary: 'Confirm the draw: seeds, stages and groups; a random draw publishes its seed', security: bearer,
+    request: { ...tParams, ...body(toS.drawBody) },
+    responses: { 200: json(z.object({ draw: toS.Draw })), ...errors({ ...TORG, 409: ['REGISTRATION_STILL_OPEN', 'PENDING_DECISIONS', 'NOT_ENOUGH_TEAMS', 'RESULTS_EXIST', 'TOURNAMENT_STATE'], 422: ['DRAW_INVALID', 'GROUPS_INVALID', 'QUALIFIERS_INVALID', 'KNOCKOUT_TOP_INVALID', 'VALIDATION_FAILED'], ...RATE }) } });
+  p({ method: 'get', path: '/org/{orgId}/sports/tournaments/{id}/fixtures', tags: ['tournaments'], summary: 'Every match (drafts too), the venues and the draw', security: bearer, request: tParams, responses: { 200: json(toS.Fixtures), ...errors(TORG) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/tournaments/{id}/fixtures/generate', tags: ['tournaments'], summary: 'Generate matches from the draw, optionally scheduled (§6.2–6.6); a dry run writes nothing', security: bearer,
+    request: { ...tParams, ...body(toS.generateBody) }, responses: { 200: json(toS.Generated), ...errors({ ...TORG, 409: ['TOURNAMENT_STATE', 'RESULTS_EXIST', 'DRAW_NOT_CONFIRMED'], ...VALIDATION, ...RATE }) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/tournaments/{id}/fixtures/publish', tags: ['tournaments'], summary: 'Publish the fixtures (captains are told)', security: bearer, request: tParams, responses: { 200: json(z.object({ fixtures: toS.Fixtures })), ...errors({ ...TORG, 409: ['FIXTURES_MISSING'] }) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/tournaments/{id}/lots', tags: ['tournaments'], summary: 'Record a draw of lots for a tie nothing breaks (organisation admins, audited)', security: bearer,
+    request: { ...tParams, ...body(toS.lotsBody) }, responses: { 200: json(z.object({ standings: z.array(toS.Table) })), ...errors({ ...TORG, 409: ['LOTS_NOT_NEEDED'], 422: ['LOTS_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'patch', path: '/org/{orgId}/sports/matches/{matchId}', tags: ['tournaments'], summary: 'Move a match (time, venue, court) with clash checks (FR-18)', security: bearer,
+    request: { ...mParams, ...body(toS.moveBody) }, responses: { 200: json(toS.Match), ...errors({ ...TORG, 409: ['MATCH_STATE', 'SCHEDULE_CLASH', 'VERSION_CONFLICT'], 422: ['VENUE_INVALID', 'VALIDATION_FAILED'], ...RATE }) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/matches/{matchId}/postpone', tags: ['tournaments'], summary: 'Postpone with a reason, optionally to a new time', security: bearer,
+    request: { ...mParams, ...body(toS.postponeBody) }, responses: { 200: json(toS.Match), ...errors({ ...TORG, 409: ['MATCH_STATE', 'SCHEDULE_CLASH'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/matches/{matchId}/walkover', tags: ['tournaments'], summary: 'Give the match to one team (organisation admins)', security: bearer,
+    request: { ...mParams, ...body(toS.walkoverBody) }, responses: { 200: json(toS.Match), ...errors({ ...TORG, 409: ['MATCH_STATE', 'MATCH_TEAMS_UNKNOWN', 'RESULT_EXISTS'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/matches/{matchId}/cancel', tags: ['tournaments'], summary: 'Cancel a match (no result; it no longer counts)', security: bearer,
+    request: { ...mParams, ...body(toS.reasonBody) }, responses: { 200: json(toS.Match), ...errors({ ...TORG, 409: ['MATCH_STATE'], ...VALIDATION }) } });
+  p({ method: 'put', path: '/org/{orgId}/sports/matches/{matchId}/result', tags: ['tournaments'], summary: 'Enter the final result (M15 lite): placeholders resolve, the first result releases tranche 1', security: bearer,
+    request: { ...mParams, ...body(toS.resultBody) }, responses: { 200: json(toS.MatchResultView), ...errors({ ...TORG, 409: ['MATCH_STATE', 'MATCH_TEAMS_UNKNOWN', 'RESULT_EXISTS'], 422: RESULT, ...RATE }) } });
+  p({ method: 'post', path: '/org/{orgId}/sports/matches/{matchId}/result/amend', tags: ['tournaments'], summary: 'Correct a result with a reason (organisation admins), unless a later match already used it', security: bearer,
+    request: { ...mParams, ...body(toS.amendBody) }, responses: { 200: json(toS.MatchResultView), ...errors({ ...TORG, 409: ['NO_RESULT_YET', 'AMEND_BLOCKED'], 422: RESULT }) } });
+  p({ method: 'get', path: '/tournaments', tags: ['tournaments'], summary: 'Discover tournaments (public statuses only)', request: { query: toS.publicQuery }, responses: { 200: json(toS.TournamentList), ...errors(VALIDATION) } });
+  p({ method: 'get', path: '/tournaments/{slug}', tags: ['tournaments'], summary: 'The hub: facts, rules, fixtures, standings, teams (no DOB, gender or phone)', request: { params: toS.slugParam }, responses: { 200: json(toS.Hub), ...errors({ 404: ['NOT_FOUND'] }) } });
+  p({ method: 'post', path: '/tournaments/{id}/registrations', tags: ['tournaments'], summary: 'Register my team with a squad (captain or vice-captain, NID member); pay into escrow or join the reserve list', security: bearer,
+    request: { params: toS.idParam, headers: idem, ...body(toS.registerBody) },
+    responses: {
+      201: json(toS.MyRegistration, 'Created'),
+      ...errors({ ...COMMON_AUTH, ...IDEM, 403: ['ROLE_REQUIRED', 'KYC_REQUIRED', 'PHONE_REQUIRED', 'NOT_TEAM_CAPTAIN'], 404: ['NOT_FOUND'], 409: ['REGISTRATION_NOT_YET_OPEN', 'REGISTRATION_CLOSED', 'TEAM_ALREADY_REGISTERED', 'TEAM_ARCHIVED', 'PLAYER_IN_OTHER_TEAM', 'IDEMPOTENCY_IN_PROGRESS'], 422: IDEM[422].concat('TEAM_SPORT_MISMATCH', 'SQUAD_TOO_SMALL', 'SQUAD_TOO_LARGE', 'PLAYER_NOT_IN_TEAM') }),
+    } });
+  p({ method: 'get', path: '/me/registrations', tags: ['tournaments'], summary: 'Registrations of the teams I captain or vice-captain', security: bearer, responses: { 200: json(toS.MyRegistrations), ...errors(COMMON_AUTH) } });
+  p({ method: 'post', path: '/me/registrations/{id}/accept-offer', tags: ['tournaments'], summary: 'Take an offered reserve place (pay within the hold)', security: bearer,
+    request: { params: toS.idParam, headers: idem }, responses: { 200: json(toS.MyRegistration), ...errors({ ...COMMON_AUTH, ...IDEM, 404: ['NOT_FOUND'], 409: ['REGISTRATION_STATE', 'IDEMPOTENCY_IN_PROGRESS'] }) } });
+  p({ method: 'post', path: '/me/registrations/{id}/withdraw', tags: ['tournaments'], summary: 'Withdraw (refund per §6.9: 100% before close, 50% after, none after the first result)', security: bearer,
+    request: { params: toS.idParam }, responses: { 200: json(toS.MyRegistration), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], 409: ['REGISTRATION_STATE'] }) } });
+  p({ method: 'put', path: '/me/registrations/{id}/roster', tags: ['tournaments'], summary: 'Change the squad before it freezes (the first result)', security: bearer,
+    request: { params: toS.idParam, ...body(toS.rosterBody) }, responses: { 200: json(toS.MyRegistration), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], 409: ['REGISTRATION_STATE', 'ROSTER_FROZEN', 'PLAYER_IN_OTHER_TEAM'], 422: ['SQUAD_TOO_SMALL', 'SQUAD_TOO_LARGE', 'PLAYER_NOT_IN_TEAM', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'get', path: '/admin/tournaments', tags: ['tournaments'], summary: 'All tournaments (approve_listings or manage_organisers)', security: adminBearer, request: { query: toS.adminQuery }, responses: { 200: json(toS.TournamentList), ...errors(ADMIN_AUTH) } });
+  p({ method: 'get', path: '/admin/tournaments/{id}', tags: ['tournaments'], summary: 'A tournament with its registrations and escrow', security: adminBearer, request: { params: toS.idParam }, responses: { 200: json(toS.AdminTournament), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'] }) } });
+  p({ method: 'post', path: '/admin/tournaments/{id}/cancel', tags: ['tournaments'], summary: 'Cancel a tournament with refunds (masters, step-up escrow.manage)', security: adminBearer,
+    request: { params: toS.idParam, ...body(toS.reasonBody) }, responses: { 200: json(toS.AdminTournament), ...errors({ ...ADMIN_AUTH, 403: ADMIN_AUTH[403].concat('STEP_UP_REQUIRED'), 404: ['NOT_FOUND'], 409: ['TOURNAMENT_STATE'], ...VALIDATION }) } });
 }
 
 function dateTimeOf() {

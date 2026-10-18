@@ -57,5 +57,11 @@ module.exports = {
     './src/modules/esports-events/events.rules.js': FULL,
     // M16 names, invites, succession, age and the eligibility evaluator.
     './src/modules/teams/teams.rules.js': FULL,
+    // M14 tournaments and M15 lite results: fixtures, scheduling, money and refunds, rule schemas, standings.
+    './src/modules/tournaments/fixtures.rules.js': FULL,
+    './src/modules/tournaments/schedule.rules.js': FULL,
+    './src/modules/tournaments/tournaments.rules.js': FULL,
+    './src/modules/catalog/sport-rules.rules.js': FULL,
+    './src/modules/scoring/standings.rules.js': FULL,
   },
 };

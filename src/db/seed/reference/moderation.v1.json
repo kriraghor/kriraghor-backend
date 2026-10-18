@@ -1,6 +1,6 @@
 {
-  "seedVersion": 2,
-  "source": "M05 §6.2 rubrics and §6.3 rejection reasons, lite (Oct 2026): the document kind (M02 NID); game_profile and esports_tournament (M21). Kinds are added as their modules arrive (M21 game_profile and esports_tournament). Rows are inserted only when missing. Ground listings (M09): rubric rb_ground_v1 and the ground kind on the shared reasons, plus location_wrong and not_a_venue. M11: the hire_profile rubric and reasons (missing_credential, rate_wrong, profile_details). M20: the gym rubric and the gym kind on the shared reasons (photos, price, duplicate, location, not a venue, incomplete, rules, other). M22: the organisation rubric and reasons.",
+  "seedVersion": 3,
+  "source": "M05 §6.2 rubrics and §6.3 rejection reasons, lite (Oct 2026): the document kind (M02 NID); game_profile and esports_tournament (M21). Kinds are added as their modules arrive (M21 game_profile and esports_tournament). Rows are inserted only when missing. Ground listings (M09): rubric rb_ground_v1 and the ground kind on the shared reasons, plus location_wrong and not_a_venue. M11: the hire_profile rubric and reasons (missing_credential, rate_wrong, profile_details). M20: the gym rubric and the gym kind on the shared reasons (photos, price, duplicate, location, not a venue, incomplete, rules, other). M22: the organisation rubric and reasons. v3 adds the M14 kind tournament (rubric and the shared reasons).",
   "rubrics": [
     {
       "kind": "document",
@@ -245,6 +245,32 @@
           "labelBn": "বিবরণে ফোন নম্বর বা লিংক নেই"
         }
       ]
+    },
+    {
+      "kind": "tournament",
+      "version": 1,
+      "items": [
+        {
+          "key": "details_accurate",
+          "labelEn": "Name, dates, fee and prizes are clear and believable",
+          "labelBn": "নাম, তারিখ, ফি ও পুরস্কার স্পষ্ট ও বিশ্বাসযোগ্য"
+        },
+        {
+          "key": "rules_sensible",
+          "labelEn": "The format and rules suit the sport and the number of teams",
+          "labelBn": "ফরম্যাট ও নিয়ম খেলা ও দলের সংখ্যার সাথে মানানসই"
+        },
+        {
+          "key": "venue_real",
+          "labelEn": "The venue is a real place that can host the matches",
+          "labelBn": "ভেন্যুটি আসল জায়গা যেখানে ম্যাচ হতে পারে"
+        },
+        {
+          "key": "no_contact_details",
+          "labelEn": "No phone numbers or links in the description",
+          "labelBn": "বিবরণে ফোন নম্বর বা লিংক নেই"
+        }
+      ]
     }
   ],
   "reasons": [
@@ -310,7 +336,8 @@
         "product",
         "hire_profile",
         "gym",
-        "organisation"
+        "organisation",
+        "tournament"
       ],
       "sort": 6
     },
@@ -336,7 +363,8 @@
         "product",
         "hire_profile",
         "gym",
-        "organisation"
+        "organisation",
+        "tournament"
       ],
       "sort": 8
     },
@@ -353,7 +381,8 @@
         "product",
         "hire_profile",
         "gym",
-        "organisation"
+        "organisation",
+        "tournament"
       ],
       "sort": 9
     },
@@ -370,7 +399,8 @@
         "product",
         "hire_profile",
         "gym",
-        "organisation"
+        "organisation",
+        "tournament"
       ],
       "requiresText": true,
       "sort": 10

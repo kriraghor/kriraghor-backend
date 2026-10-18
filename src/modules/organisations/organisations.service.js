@@ -123,7 +123,7 @@ async function create(principal, body, req) {
     let slug = base;
     for (let i = 2; await Organisation.findOne({ where: { slug }, attributes: ['id'], transaction }); i += 1) slug = `${base}-${i}`;
     const o = await Organisation.create(
-      { ownerUserId: principal.id, slug, ...Object.fromEntries(FIELDS.filter((k) => body[k] !== undefined).map((k) => [k, body[k]])), status: 'draft', createdBy: principal.id, updatedBy: principal.id },
+      { ownerUserId: principal.id, slug, kind: body.kind ?? 'esports', ...Object.fromEntries(FIELDS.filter((k) => body[k] !== undefined).map((k) => [k, body[k]])), status: 'draft', createdBy: principal.id, updatedBy: principal.id },
       { transaction }
     );
     await OrganisationMember.create({ organisationId: o.id, userId: principal.id, role: 'owner', addedBy: principal.id }, { transaction });
@@ -267,8 +267,8 @@ async function removeMember(principal, org, memberId, req) {
 
 // ---------------------------------------------------------------- staff
 
-async function staffList({ status, q, limit = 100 } = {}) {
-  const where = { ...(status ? { status } : { status: { [Op.ne]: 'draft' } }), ...(q ? { name: { [Op.iLike]: `%${q}%` } } : {}) };
+async function staffList({ status, kind, q, limit = 100 } = {}) {
+  const where = { ...(status ? { status } : { status: { [Op.ne]: 'draft' } }), ...(kind ? { kind } : {}), ...(q ? { name: { [Op.iLike]: `%${q}%` } } : {}) };
   const rows = await Organisation.findAll({ where, order: [['updatedAt', 'DESC']], limit });
   return { items: rows.map((o) => view(o)) };
 }

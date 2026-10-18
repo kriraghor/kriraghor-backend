@@ -7,17 +7,18 @@
  *   requireOrgRole('admin')  owner or admin
  *   requireOrgRole('staff')  owner, admin or staff
  *   { verified: true }       the organisation must be verified (the console)
+ *   { kind: 'esports' }      only that kind of organisation (M22 esports, M14 sports)
  */
 const { E } = require('../../common/errors');
 const organisations = require('./organisations.service');
 
 const ALLOWED = { admin: ['owner', 'admin'], staff: ['owner', 'admin', 'staff'] };
 
-function requireOrgRole(level, { verified = true } = {}) {
+function requireOrgRole(level, { verified = true, kind = null } = {}) {
   return async (req, _res, next) => {
     try {
       const m = await organisations.membership(req.user.id, req.params.orgId);
-      if (!m || !ALLOWED[level].includes(m.role) || (verified && !['verified', 'suspended'].includes(m.org.status))) throw E.notFound('Organisation');
+      if (!m || !ALLOWED[level].includes(m.role) || (verified && !['verified', 'suspended'].includes(m.org.status)) || (kind && m.org.kind !== kind)) throw E.notFound('Organisation');
       req.org = { id: m.org.id, role: m.role, isAdmin: m.isAdmin, ownerId: m.org.ownerUserId, status: m.org.status, name: m.org.name, row: m.org };
       return next();
     } catch (err) {

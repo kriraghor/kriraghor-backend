@@ -1194,6 +1194,9 @@ const organisations = require('./organisations');
 // ---- M16 teams and players, step 1 (./teams.js) ----
 const teams = require('./teams');
 
+// ---- M14 tournaments step 1, with M15 lite results (./tournaments.js) ----
+const tournaments = require('./tournaments');
+
 // ---- M23 esports big events, step 1 (./esports-events.js) ----
 const esportsEvents = require('./esports-events');
 
@@ -1219,6 +1222,7 @@ module.exports = {
   ...organisations,
   ...esportsEvents,
   ...teams,
+  ...tournaments,
   ...grounds,
   ...bookings,
   ...analytics,

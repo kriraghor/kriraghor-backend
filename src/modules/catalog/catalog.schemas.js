@@ -173,7 +173,10 @@ const Surface = z.object({ ...placeBase, indoorTypical: z.boolean() }).meta({ id
 const list = (item, id) => z.object({ items: z.array(item) }).meta({ id });
 const CatalogItem = z.union([EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset, z.looseObject({ ...base })]);
 
+const sportKeyParam = z.object({ sportKey: z.string().min(2).max(40) });
+
 module.exports = {
+  sportKeyParam,
   TABLES,
   CREATE,
   UPDATE,

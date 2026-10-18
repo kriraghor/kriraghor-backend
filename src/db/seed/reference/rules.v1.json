@@ -1,0 +1,176 @@
+{
+  "seedVersion": 1,
+  "source": "M14 §6.10 (design defaults) and §4.3; fields marked [PROPOSED] in the spec are included. Owned by M03; staff can add versions later. Points keys (pW, pD, pT, pL, pLc) drive M15 lite standings; the rest is shown in the public rules summary and used by M15 live scoring.",
+  "sportRules": [
+    {
+      "sport": "cricket",
+      "version": 1,
+      "tiebreakers": ["points", "net_run_rate", "wins", "head_to_head", "fewer_no_results", "lots"],
+      "fields": [
+        { "key": "overs", "type": "int", "min": 2, "max": 50, "default": 20, "group": "match", "en": "Overs per side", "bn": "প্রতি দলে ওভার" },
+        { "key": "players", "type": "int", "min": 6, "max": 11, "default": 11, "group": "squad", "en": "Players per side", "bn": "প্রতি দলে খেলোয়াড়" },
+        { "key": "maxOv", "type": "int", "min": 1, "max": 10, "default": 4, "group": "match", "en": "Most overs per bowler", "bn": "একজন বোলারের সর্বোচ্চ ওভার" },
+        { "key": "pp", "type": "int", "min": 0, "max": 20, "default": 6, "group": "match", "en": "Powerplay overs", "bn": "পাওয়ারপ্লে ওভার" },
+        { "key": "ball", "type": "enum", "options": [{ "key": "leather", "en": "Leather", "bn": "লেদার" }, { "key": "tape", "en": "Tape", "bn": "টেপ" }, { "key": "tennis", "en": "Tennis", "bn": "টেনিস" }], "default": "leather", "group": "match", "en": "Ball", "bn": "বল" },
+        { "key": "wd", "type": "int", "min": 0, "max": 2, "default": 1, "group": "match", "en": "Runs for a wide", "bn": "ওয়াইডে রান" },
+        { "key": "nb", "type": "int", "min": 0, "max": 2, "default": 1, "group": "match", "en": "Runs for a no-ball", "bn": "নো-বলে রান" },
+        { "key": "freeHit", "type": "bool", "default": true, "group": "match", "en": "Free hit after a no-ball", "bn": "নো-বলের পর ফ্রি হিট" },
+        { "key": "lms", "type": "bool", "default": false, "group": "match", "en": "Last man stands", "bn": "শেষ ব্যাটার একা ব্যাট করতে পারবেন" },
+        { "key": "superOver", "type": "bool", "default": true, "group": "match", "en": "Super over on a tie", "bn": "টাই হলে সুপার ওভার" },
+        { "key": "dls", "type": "bool", "default": false, "group": "match", "en": "DLS for rain", "bn": "বৃষ্টিতে ডিএলএস" },
+        { "key": "minOversForResult", "type": "int", "min": 1, "max": 50, "default": 5, "group": "match", "en": "Overs needed for a result", "bn": "ফলাফলের জন্য ন্যূনতম ওভার" },
+        { "key": "retiredHurtReturn", "type": "bool", "default": true, "group": "match", "en": "Retired hurt may return", "bn": "আহত হয়ে মাঠ ছাড়লে ফিরতে পারবেন" },
+        { "key": "pW", "type": "int", "min": 0, "max": 5, "default": 2, "group": "points", "en": "Points for a win", "bn": "জয়ে পয়েন্ট" },
+        { "key": "pT", "type": "int", "min": 0, "max": 5, "default": 1, "group": "points", "en": "Points for a tie or no result", "bn": "টাই বা ফলহীন ম্যাচে পয়েন্ট" }
+      ],
+      "presets": [
+        { "key": "t20", "en": "T20", "bn": "টি-টোয়েন্টি", "values": { "overs": 20, "maxOv": 4, "pp": 6, "ball": "leather" } },
+        { "key": "t10", "en": "T10", "bn": "টি-টেন", "values": { "overs": 10, "maxOv": 2, "pp": 3, "ball": "leather" } },
+        { "key": "tape8", "en": "Tape-ball 8 overs", "bn": "টেপ বল ৮ ওভার", "values": { "overs": 8, "maxOv": 2, "pp": 2, "ball": "tape", "players": 8 } },
+        { "key": "one_day", "en": "One-day 50 overs", "bn": "ওয়ানডে ৫০ ওভার", "values": { "overs": 50, "maxOv": 10, "pp": 10, "ball": "leather", "minOversForResult": 20 } }
+      ]
+    },
+    {
+      "sport": "football",
+      "version": 1,
+      "tiebreakers": ["points", "goal_difference", "goals_scored", "head_to_head", "fair_play", "wins", "lots"],
+      "fields": [
+        { "key": "halfLen", "type": "int", "min": 5, "max": 45, "default": 45, "group": "match", "en": "Minutes per half", "bn": "প্রতি অর্ধে মিনিট" },
+        { "key": "players", "type": "int", "min": 5, "max": 11, "default": 11, "group": "squad", "en": "Players on the pitch", "bn": "মাঠে খেলোয়াড়" },
+        { "key": "subs", "type": "int", "min": 0, "max": 12, "default": 5, "group": "squad", "en": "Substitutions", "bn": "বদলি" },
+        { "key": "rolling", "type": "bool", "default": false, "group": "squad", "en": "Rolling substitutions", "bn": "বারবার বদলি" },
+        { "key": "et", "type": "bool", "default": true, "group": "match", "en": "Extra time in knockouts", "bn": "নকআউটে অতিরিক্ত সময়" },
+        { "key": "etLen", "type": "int", "min": 5, "max": 15, "default": 15, "group": "match", "en": "Minutes per extra-time half", "bn": "অতিরিক্ত সময়ের প্রতি অর্ধে মিনিট" },
+        { "key": "pens", "type": "bool", "default": true, "group": "match", "en": "Penalty shoot-out", "bn": "টাইব্রেকার" },
+        { "key": "yBan", "type": "int", "min": 0, "max": 10, "default": 3, "group": "discipline", "en": "Yellow cards for a one-match ban", "bn": "এক ম্যাচ নিষেধাজ্ঞার জন্য হলুদ কার্ড" },
+        { "key": "rBan", "type": "int", "min": 0, "max": 5, "default": 1, "group": "discipline", "en": "Matches banned for a red card", "bn": "লাল কার্ডে নিষিদ্ধ ম্যাচ" },
+        { "key": "walkoverScore", "type": "int", "min": 1, "max": 5, "default": 3, "group": "match", "en": "Walkover score (goals)", "bn": "ওয়াকওভারে গোল" },
+        { "key": "pW", "type": "int", "min": 0, "max": 5, "default": 3, "group": "points", "en": "Points for a win", "bn": "জয়ে পয়েন্ট" },
+        { "key": "pD", "type": "int", "min": 0, "max": 5, "default": 1, "group": "points", "en": "Points for a draw", "bn": "ড্রয়ে পয়েন্ট" }
+      ],
+      "presets": [
+        { "key": "a11", "en": "11-a-side, 90 minutes", "bn": "১১ জনের দল, ৯০ মিনিট", "values": { "halfLen": 45, "players": 11, "rolling": false } },
+        { "key": "a9", "en": "9-a-side, 60 minutes", "bn": "৯ জনের দল, ৬০ মিনিট", "values": { "halfLen": 30, "players": 9, "etLen": 10 } },
+        { "key": "a7", "en": "7-a-side, 50 minutes", "bn": "৭ জনের দল, ৫০ মিনিট", "values": { "halfLen": 25, "players": 7, "rolling": true, "etLen": 5 } }
+      ]
+    },
+    {
+      "sport": "futsal",
+      "version": 1,
+      "tiebreakers": ["points", "goal_difference", "goals_scored", "head_to_head", "fair_play", "wins", "lots"],
+      "fields": [
+        { "key": "halfLen", "type": "int", "min": 10, "max": 20, "default": 20, "group": "match", "en": "Minutes per half", "bn": "প্রতি অর্ধে মিনিট" },
+        { "key": "players", "type": "int", "min": 4, "max": 5, "default": 5, "group": "squad", "en": "Players on the court", "bn": "কোর্টে খেলোয়াড়" },
+        { "key": "subs", "type": "int", "min": 0, "max": 12, "default": 9, "group": "squad", "en": "Substitutes", "bn": "বদলি খেলোয়াড়" },
+        { "key": "rolling", "type": "bool", "default": true, "group": "squad", "en": "Rolling substitutions", "bn": "বারবার বদলি" },
+        { "key": "fouls", "type": "int", "min": 3, "max": 6, "default": 5, "group": "discipline", "en": "Team fouls before a penalty", "bn": "পেনাল্টির আগে দলীয় ফাউল" },
+        { "key": "to", "type": "int", "min": 0, "max": 2, "default": 1, "group": "match", "en": "Time-outs per half", "bn": "প্রতি অর্ধে টাইম-আউট" },
+        { "key": "et", "type": "bool", "default": true, "group": "match", "en": "Extra time in knockouts", "bn": "নকআউটে অতিরিক্ত সময়" },
+        { "key": "etLen", "type": "int", "min": 3, "max": 10, "default": 5, "group": "match", "en": "Minutes per extra-time half", "bn": "অতিরিক্ত সময়ের প্রতি অর্ধে মিনিট" },
+        { "key": "pens", "type": "bool", "default": true, "group": "match", "en": "Penalty shoot-out", "bn": "টাইব্রেকার" },
+        { "key": "yBan", "type": "int", "min": 0, "max": 10, "default": 2, "group": "discipline", "en": "Yellow cards for a one-match ban", "bn": "এক ম্যাচ নিষেধাজ্ঞার জন্য হলুদ কার্ড" },
+        { "key": "rBan", "type": "int", "min": 0, "max": 5, "default": 1, "group": "discipline", "en": "Matches banned for a red card", "bn": "লাল কার্ডে নিষিদ্ধ ম্যাচ" },
+        { "key": "pW", "type": "int", "min": 0, "max": 5, "default": 3, "group": "points", "en": "Points for a win", "bn": "জয়ে পয়েন্ট" },
+        { "key": "pD", "type": "int", "min": 0, "max": 5, "default": 1, "group": "points", "en": "Points for a draw", "bn": "ড্রয়ে পয়েন্ট" }
+      ],
+      "presets": [
+        { "key": "standard", "en": "Standard, 2 × 20", "bn": "স্ট্যান্ডার্ড, ২ × ২০", "values": { "halfLen": 20 } },
+        { "key": "short", "en": "Short, 2 × 15", "bn": "ছোট, ২ × ১৫", "values": { "halfLen": 15 } }
+      ]
+    },
+    {
+      "sport": "basketball",
+      "version": 1,
+      "tiebreakers": ["points", "point_difference", "head_to_head", "points_scored", "lots"],
+      "fields": [
+        { "key": "quarters", "type": "int", "min": 2, "max": 4, "default": 4, "group": "match", "en": "Periods", "bn": "পিরিয়ড" },
+        { "key": "qLen", "type": "int", "min": 5, "max": 12, "default": 10, "group": "match", "en": "Minutes per period", "bn": "প্রতি পিরিয়ডে মিনিট" },
+        { "key": "players", "type": "int", "min": 3, "max": 5, "default": 5, "group": "squad", "en": "Players on the court", "bn": "কোর্টে খেলোয়াড়" },
+        { "key": "shot", "type": "int", "min": 14, "max": 30, "default": 24, "group": "match", "en": "Shot clock (seconds)", "bn": "শট ক্লক (সেকেন্ড)" },
+        { "key": "foulOut", "type": "int", "min": 5, "max": 6, "default": 5, "group": "discipline", "en": "Personal fouls to foul out", "bn": "বের হয়ে যাওয়ার ফাউল" },
+        { "key": "bonus", "type": "int", "min": 4, "max": 5, "default": 5, "group": "discipline", "en": "Team fouls before free throws", "bn": "ফ্রি থ্রোর আগে দলীয় ফাউল" },
+        { "key": "ot", "type": "int", "min": 3, "max": 5, "default": 5, "group": "match", "en": "Overtime minutes", "bn": "ওভারটাইম মিনিট" },
+        { "key": "pW", "type": "int", "min": 0, "max": 5, "default": 2, "group": "points", "en": "Points for a win", "bn": "জয়ে পয়েন্ট" },
+        { "key": "pL", "type": "int", "min": 0, "max": 5, "default": 1, "group": "points", "en": "Points for a loss", "bn": "হারে পয়েন্ট" }
+      ],
+      "presets": [
+        { "key": "q4x10", "en": "4 × 10", "bn": "৪ × ১০", "values": { "quarters": 4, "qLen": 10 } },
+        { "key": "q4x12", "en": "4 × 12", "bn": "৪ × ১২", "values": { "quarters": 4, "qLen": 12 } },
+        { "key": "h2x10", "en": "2 × 10", "bn": "২ × ১০", "values": { "quarters": 2, "qLen": 10 } }
+      ]
+    },
+    {
+      "sport": "kabaddi",
+      "version": 1,
+      "tiebreakers": ["points", "score_difference", "head_to_head", "lots"],
+      "fields": [
+        { "key": "halfLen", "type": "int", "min": 10, "max": 20, "default": 20, "group": "match", "en": "Minutes per half", "bn": "প্রতি অর্ধে মিনিট" },
+        { "key": "players", "type": "int", "min": 5, "max": 7, "default": 7, "group": "squad", "en": "Players on the court", "bn": "কোর্টে খেলোয়াড়" },
+        { "key": "raid", "type": "int", "min": 20, "max": 30, "default": 30, "group": "match", "en": "Seconds per raid", "bn": "প্রতি রেইডে সেকেন্ড" },
+        { "key": "allOut", "type": "int", "min": 2, "max": 3, "default": 2, "group": "match", "en": "Points for an all out", "bn": "অল আউটে পয়েন্ট" },
+        { "key": "bonusLine", "type": "bool", "default": true, "group": "match", "en": "Bonus line", "bn": "বোনাস লাইন" },
+        { "key": "pW", "type": "int", "min": 0, "max": 5, "default": 5, "group": "points", "en": "Points for a win", "bn": "জয়ে পয়েন্ট" },
+        { "key": "pT", "type": "int", "min": 0, "max": 5, "default": 3, "group": "points", "en": "Points for a tie", "bn": "টাইয়ে পয়েন্ট" },
+        { "key": "pLc", "type": "int", "min": 0, "max": 3, "default": 1, "group": "points", "en": "Points for losing by 7 or fewer", "bn": "৭ বা কম ব্যবধানে হারে পয়েন্ট" }
+      ],
+      "presets": [
+        { "key": "standard", "en": "Standard, 2 × 20", "bn": "স্ট্যান্ডার্ড, ২ × ২০", "values": { "halfLen": 20 } },
+        { "key": "short", "en": "Short, 2 × 15", "bn": "ছোট, ২ × ১৫", "values": { "halfLen": 15 } }
+      ]
+    },
+    {
+      "sport": "badminton",
+      "version": 1,
+      "tiebreakers": ["points", "game_difference", "point_difference", "head_to_head", "lots"],
+      "fields": [
+        { "key": "disc", "type": "enum", "options": [{ "key": "ms", "en": "Men's singles", "bn": "পুরুষ একক" }, { "key": "ws", "en": "Women's singles", "bn": "নারী একক" }, { "key": "md", "en": "Men's doubles", "bn": "পুরুষ দ্বৈত" }, { "key": "wd", "en": "Women's doubles", "bn": "নারী দ্বৈত" }, { "key": "xd", "en": "Mixed doubles", "bn": "মিশ্র দ্বৈত" }], "default": "ms", "group": "squad", "en": "Category", "bn": "বিভাগ" },
+        { "key": "bestOf", "type": "enum", "options": [{ "key": "1", "en": "1 game", "bn": "১ গেম" }, { "key": "3", "en": "Best of 3", "bn": "৩ গেমের সেরা" }, { "key": "5", "en": "Best of 5", "bn": "৫ গেমের সেরা" }], "default": "3", "group": "match", "en": "Games", "bn": "গেম" },
+        { "key": "points", "type": "int", "min": 11, "max": 21, "default": 21, "group": "match", "en": "Points per game", "bn": "প্রতি গেমে পয়েন্ট" },
+        { "key": "cap", "type": "int", "min": 15, "max": 30, "default": 30, "group": "match", "en": "Points cap", "bn": "সর্বোচ্চ পয়েন্ট" },
+        { "key": "winBy2", "type": "bool", "default": true, "group": "match", "en": "Win by two", "bn": "দুই পয়েন্টে জিততে হবে" },
+        { "key": "interval", "type": "int", "min": 0, "max": 15, "default": 11, "group": "match", "en": "Interval at", "bn": "বিরতি" },
+        { "key": "pW", "type": "int", "min": 0, "max": 5, "default": 2, "group": "points", "en": "Points for a win", "bn": "জয়ে পয়েন্ট" }
+      ],
+      "presets": [
+        { "key": "b3x21", "en": "Best of 3 to 21", "bn": "২১ পয়েন্টের ৩ গেম", "values": { "bestOf": "3", "points": 21, "cap": 30 } },
+        { "key": "b1x21", "en": "1 game to 21", "bn": "২১ পয়েন্টের ১ গেম", "values": { "bestOf": "1", "points": 21, "cap": 30 } },
+        { "key": "b3x15", "en": "Best of 3 to 15", "bn": "১৫ পয়েন্টের ৩ গেম", "values": { "bestOf": "3", "points": 15, "cap": 21 } }
+      ]
+    },
+    {
+      "sport": "volleyball",
+      "version": 1,
+      "tiebreakers": ["points", "set_difference", "set_ratio", "point_ratio", "head_to_head", "lots"],
+      "fields": [
+        { "key": "bestOf", "type": "enum", "options": [{ "key": "3", "en": "Best of 3", "bn": "৩ সেটের সেরা" }, { "key": "5", "en": "Best of 5", "bn": "৫ সেটের সেরা" }], "default": "5", "group": "match", "en": "Sets", "bn": "সেট" },
+        { "key": "points", "type": "int", "min": 15, "max": 25, "default": 25, "group": "match", "en": "Points per set", "bn": "প্রতি সেটে পয়েন্ট" },
+        { "key": "finalPts", "type": "int", "min": 11, "max": 25, "default": 15, "group": "match", "en": "Points in the deciding set", "bn": "নির্ণায়ক সেটে পয়েন্ট" },
+        { "key": "winBy2", "type": "bool", "default": true, "group": "match", "en": "Win by two", "bn": "দুই পয়েন্টে জিততে হবে" },
+        { "key": "players", "type": "int", "min": 4, "max": 6, "default": 6, "group": "squad", "en": "Players on the court", "bn": "কোর্টে খেলোয়াড়" },
+        { "key": "subs", "type": "int", "min": 0, "max": 12, "default": 6, "group": "squad", "en": "Substitutions per set", "bn": "প্রতি সেটে বদলি" },
+        { "key": "pW", "type": "int", "min": 0, "max": 5, "default": 3, "group": "points", "en": "Points for a win", "bn": "জয়ে পয়েন্ট" }
+      ],
+      "presets": [
+        { "key": "best5", "en": "Best of 5", "bn": "৫ সেটের সেরা", "values": { "bestOf": "5", "points": 25, "finalPts": 15 } },
+        { "key": "best3", "en": "Best of 3", "bn": "৩ সেটের সেরা", "values": { "bestOf": "3", "points": 25, "finalPts": 15 } }
+      ]
+    },
+    {
+      "sport": "table_tennis",
+      "version": 1,
+      "tiebreakers": ["points", "game_difference", "point_difference", "head_to_head", "lots"],
+      "fields": [
+        { "key": "disc", "type": "enum", "options": [{ "key": "singles", "en": "Singles", "bn": "একক" }, { "key": "doubles", "en": "Doubles", "bn": "দ্বৈত" }], "default": "singles", "group": "squad", "en": "Category", "bn": "বিভাগ" },
+        { "key": "bestOf", "type": "enum", "options": [{ "key": "3", "en": "Best of 3", "bn": "৩ গেমের সেরা" }, { "key": "5", "en": "Best of 5", "bn": "৫ গেমের সেরা" }, { "key": "7", "en": "Best of 7", "bn": "৭ গেমের সেরা" }], "default": "5", "group": "match", "en": "Games", "bn": "গেম" },
+        { "key": "points", "type": "int", "min": 11, "max": 21, "default": 11, "group": "match", "en": "Points per game", "bn": "প্রতি গেমে পয়েন্ট" },
+        { "key": "winBy2", "type": "bool", "default": true, "group": "match", "en": "Win by two", "bn": "দুই পয়েন্টে জিততে হবে" },
+        { "key": "pW", "type": "int", "min": 0, "max": 5, "default": 2, "group": "points", "en": "Points for a win", "bn": "জয়ে পয়েন্ট" }
+      ],
+      "presets": [
+        { "key": "best5", "en": "Best of 5", "bn": "৫ গেমের সেরা", "values": { "bestOf": "5" } },
+        { "key": "best3", "en": "Best of 3", "bn": "৩ গেমের সেরা", "values": { "bestOf": "3" } },
+        { "key": "best7", "en": "Best of 7", "bn": "৭ গেমের সেরা", "values": { "bestOf": "7" } }
+      ]
+    }
+  ]
+}

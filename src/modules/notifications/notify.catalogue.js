@@ -43,8 +43,8 @@ const KYC_REASONS = {
 };
 const reviewersOf = (kind) => directory.withPermission(require('../moderation/moderation.adapters').get(kind).permission);
 const KIND_LABELS = {
-  en: { document: 'identity document', game_profile: 'game UID', esports_tournament: 'esports tournament', ground: 'ground listing', shop: 'shop', product: 'shop product' },
-  bn: { document: 'পরিচয় ডকুমেন্ট', game_profile: 'গেম UID', esports_tournament: 'এস্পোর্টস টুর্নামেন্ট', ground: 'মাঠের তালিকা', shop: 'দোকান', product: 'দোকানের পণ্য' },
+  en: { document: 'identity document', game_profile: 'game UID', esports_tournament: 'esports tournament', ground: 'ground listing', shop: 'shop', product: 'shop product', tournament: 'tournament' },
+  bn: { document: 'পরিচয় ডকুমেন্ট', game_profile: 'গেম UID', esports_tournament: 'এস্পোর্টস টুর্নামেন্ট', ground: 'মাঠের তালিকা', shop: 'দোকান', product: 'দোকানের পণ্য', tournament: 'টুর্নামেন্ট' },
 };
 const kindLabel = (kind, locale) => KIND_LABELS[locale]?.[kind] ?? KIND_LABELS.en[kind] ?? kind;
 const es = () => require('../esports/esports.facts');
@@ -55,6 +55,8 @@ const vendorUrl = (p) => `${config.apps.vendor}${p}`;
 const gymFacts = (id) => require('../gym/gyms.service').facts(id);
 // M14 lite and M22: the organisation (its name) and its admins (owner and admins get organiser news).
 const orgAdmins = (id) => require('../organisations/organisations.service').adminIds(id);
+// M14: tournament names, registrations and captains.
+const tf = () => require('../tournaments/tournaments.facts');
 const eventOf = async (id) => require('../../models').EsportsEvent.findByPk(id, { attributes: ['id', 'slug', 'titleEn'] });
 const eventTitle = async (id) => (await eventOf(id))?.titleEn ?? '';
 // Links take the id: the esports app's /e/[slug] page accepts an id too.
@@ -1571,6 +1573,130 @@ const CATALOGUE = [
     recipients: (e) => [e.payload.toUserId],
     values: async (e) => ({ team: await teamName(e.payload.teamId) }),
     link: (e) => `/me/teams/${e.payload.teamId}`,
+  },
+  // ---------------- M14 tournaments (physical sports): organisers (admins) and captains (who registered)
+  {
+    code: 'TOURNAMENT_APPROVED',
+    events: ['tournament.approved'],
+    category: 'tournaments',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => orgAdmins(e.payload.organisationId),
+    values: async (e) => ({ tournament: (await tf().tournament(e.payload.tournamentId)).name }),
+    link: (e) => `/vendor/tournaments/${e.payload.organisationId}/t/${e.payload.tournamentId}`,
+  },
+  {
+    code: 'TOURNAMENT_CHANGES_REQUESTED',
+    events: ['tournament.changes_requested'],
+    category: 'tournaments',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => orgAdmins(e.payload.organisationId),
+    values: async (e) => ({ tournament: (await tf().tournament(e.payload.tournamentId)).name }),
+    link: (e) => `/vendor/tournaments/${e.payload.organisationId}/t/${e.payload.tournamentId}`,
+  },
+  {
+    code: 'TOURNAMENT_REJECTED',
+    events: ['tournament.rejected'],
+    category: 'tournaments',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => orgAdmins(e.payload.organisationId),
+    values: async (e) => ({ tournament: (await tf().tournament(e.payload.tournamentId)).name }),
+    link: (e) => `/vendor/tournaments/${e.payload.organisationId}/t/${e.payload.tournamentId}`,
+  },
+  {
+    code: 'REGISTRATION_SUBMITTED',
+    events: ['registration.submitted', 'registration.paid'],
+    category: 'tournaments',
+    channels: ['in_app'],
+    recipients: async (e) => (e.name === 'registration.submitted' && e.payload.status === 'pending_payment' ? [] : orgAdmins((await tf().tournament(e.payload.tournamentId)).organisationId)),
+    values: async (e) => {
+      const r = await tf().registration(e.payload.registrationId);
+      return { team: r.team, tournament: r.tournament };
+    },
+    link: () => '/vendor/tournaments',
+  },
+  {
+    code: 'REGISTRATION_APPROVED',
+    events: ['registration.approved'],
+    category: 'tournaments',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.captainId],
+    values: async (e) => {
+      const r = await tf().registration(e.payload.registrationId);
+      return { team: r.team, tournament: r.tournament };
+    },
+    link: () => '/me/tournaments',
+  },
+  {
+    code: 'REGISTRATION_REJECTED',
+    events: ['registration.rejected'],
+    category: 'tournaments',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.captainId],
+    values: async (e) => {
+      const r = await tf().registration(e.payload.registrationId);
+      return { team: r.team, tournament: r.tournament, refund: r.refund };
+    },
+    link: () => '/me/tournaments',
+  },
+  {
+    code: 'RESERVE_OFFERED',
+    events: ['registration.promoted'],
+    category: 'tournaments',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.captainId],
+    values: async (e) => {
+      const r = await tf().registration(e.payload.registrationId);
+      return { team: r.team, tournament: r.tournament, until: e.payload.offerExpiresAt };
+    },
+    link: () => '/me/tournaments',
+  },
+  {
+    code: 'TOURNAMENT_CANCELLED',
+    events: ['registration.cancelled'],
+    category: 'tournaments',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.captainId],
+    values: async (e) => {
+      const r = await tf().registration(e.payload.registrationId);
+      return { tournament: r.tournament, refund: r.refund };
+    },
+    link: () => '/me/tournaments',
+  },
+  {
+    code: 'FIXTURES_PUBLISHED',
+    events: ['tournament.fixtures_published'],
+    category: 'tournaments',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => tf().captains(e.payload.tournamentId),
+    values: async (e) => ({ tournament: (await tf().tournament(e.payload.tournamentId)).name }),
+    link: () => '/me/tournaments',
+  },
+  {
+    code: 'MATCH_RESCHEDULED',
+    events: ['match.rescheduled', 'match.postponed'],
+    category: 'tournaments',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => tf().matchCaptains(e.payload.matchId),
+    values: async (e) => ({ tournament: (await tf().tournament(e.payload.tournamentId)).name, match: e.payload.matchNo }),
+    link: () => '/me/tournaments',
+  },
+  {
+    code: 'REGISTRATION_BELOW_MIN',
+    events: ['tournament.registration_closed'],
+    category: 'tournaments',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => (e.payload.belowMin ? orgAdmins(e.payload.organisationId) : []),
+    values: async (e) => ({ tournament: (await tf().tournament(e.payload.tournamentId)).name, approved: e.payload.approved }),
+    link: (e) => `/vendor/tournaments/${e.payload.organisationId}/t/${e.payload.tournamentId}`,
+  },
+  {
+    code: 'LOTS_NEEDED',
+    events: ['tournament.lots_needed'],
+    category: 'tournaments',
+    channels: ['in_app'],
+    recipients: async (e) => orgAdmins((await tf().tournament(e.payload.tournamentId)).organisationId),
+    values: async (e) => ({ tournament: (await tf().tournament(e.payload.tournamentId)).name }),
+    link: () => '/vendor/tournaments',
   },
   // ---------------- M23 big events: follow alerts (paged; in-app only) and final places
   {

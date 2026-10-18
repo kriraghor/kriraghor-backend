@@ -87,4 +87,51 @@ PlayerProfile.init(
   { sequelize, modelName: 'PlayerProfile', tableName: 'player_profiles', ...ts }
 );
 
-module.exports = { Team, TeamMember, TeamInvite, PlayerProfile };
+// ---- rosters and stored eligibility, built with M14 step 1 (migration 20261105000004)
+class Roster extends Model {}
+Roster.init(
+  {
+    id,
+    registrationId: req(DataTypes.UUID),
+    tournamentId: req(DataTypes.UUID),
+    teamId: req(DataTypes.UUID),
+    status: { type: DataTypes.ENUM('active', 'released'), allowNull: false, defaultValue: 'active' },
+    frozenAt: DataTypes.DATE(3),
+    createdAt: DataTypes.DATE(3),
+    updatedAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'Roster', tableName: 'rosters', ...ts }
+);
+
+class RosterPlayer extends Model {}
+RosterPlayer.init(
+  {
+    id,
+    rosterId: req(DataTypes.UUID),
+    tournamentId: req(DataTypes.UUID),
+    teamId: req(DataTypes.UUID),
+    userId: req(DataTypes.UUID),
+    status: { type: DataTypes.ENUM('active', 'removed'), allowNull: false, defaultValue: 'active' },
+    addedBy: DataTypes.UUID,
+    removedAt: DataTypes.DATE(3),
+    createdAt: DataTypes.DATE(3),
+    updatedAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'RosterPlayer', tableName: 'roster_players', ...ts }
+);
+
+class EligibilityCheck extends Model {}
+EligibilityCheck.init(
+  {
+    id,
+    tournamentId: req(DataTypes.UUID),
+    userId: req(DataTypes.UUID),
+    checkKey: req(DataTypes.ENUM('nid_verified', 'age', 'gender')),
+    status: req(DataTypes.ENUM('pass', 'fail', 'pending', 'missing', 'n_a')),
+    fix: DataTypes.STRING(20),
+    evaluatedAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'EligibilityCheck', tableName: 'eligibility_checks', timestamps: false }
+);
+
+module.exports = { Team, TeamMember, TeamInvite, PlayerProfile, Roster, RosterPlayer, EligibilityCheck };
