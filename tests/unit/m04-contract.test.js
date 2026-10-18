@@ -25,7 +25,7 @@ describe('event registry ↔ producers', () => {
   it('every published event literal is registered', () => {
     const published = [...code.matchAll(/name: '([a-z_]+\.[a-z_]+)'/g)].map((m) => m[1]).filter((n) => !/^(outbox|audit)\.[a-z]+-/.test(n));
     // Job names (not events) that look like event names.
-    const known = new Set([...Object.keys(EVENTS), 'outbox.relay', 'identity.sanction-expire', 'settings.apply-scheduled', 'ledger.invariants', 'reconciliation.daily', 'idempotency.purge', 'payouts.schedule', 'esports.tick', 'bookings.tick', 'analytics.reconcile', 'trust.tick', 'risk.nightly', 'orders.tick', 'hire.tick', 'gym.tick']);
+    const known = new Set([...Object.keys(EVENTS), 'outbox.relay', 'identity.sanction-expire', 'settings.apply-scheduled', 'ledger.invariants', 'reconciliation.daily', 'idempotency.purge', 'payouts.schedule', 'esports.tick', 'bookings.tick', 'analytics.reconcile', 'trust.tick', 'risk.nightly', 'orders.tick', 'hire.tick', 'gym.tick', 'saas.tick']);
     expect([...new Set(published)].filter((n) => !known.has(n) && !n.includes('-'))).toEqual([]);
   });
 });
