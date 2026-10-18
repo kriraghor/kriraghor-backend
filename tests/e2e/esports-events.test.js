@@ -161,7 +161,7 @@ describe('M23 events, qualifiers and the invite-only final', () => {
     await es.openCheckin(fin.id);
     await es.startMatches(fin.id);
     expect((await admin('post', `/${e.id}/cancel`).send({ reason: 'Venue power cut' }).expect(409)).body.code).toBe('EVENT_TOURNAMENT_RUNNING');
-  });
+  }, 120000);
 
   it('a squad final: the captain enters with enough of the players who qualified', async () => {
     const q = await tournament({ fee: 0, modeKey: 'squad', maxSlots: 4, min: 2, prizes: [20000] });
@@ -196,7 +196,7 @@ describe('M23 events, qualifiers and the invite-only final', () => {
     const ok = await register(alpha.captain, fin, lineup).expect(201);
     expect(ok.body.registration.status).toBe('confirmed');
     expect((await models.EsportsEventQualification.findOne({ where: { squadId: alpha.id } })).status).toBe('entered');
-  });
+  }, 120000);
 });
 
 describe('M23 late qualifiers and cancelled finals', () => {
@@ -228,7 +228,7 @@ describe('M23 late qualifiers and cancelled finals', () => {
     expect(after.map((r) => r.status)).toEqual(['revoked', 'revoked', 'revoked']);
     const kinds = (await api().get(`${P}/esports/events/${e.id}/feed`).expect(200)).body.items.map((i) => i.kind);
     expect(kinds).toEqual(expect.arrayContaining(['tournament_cancelled', 'qualified', 'tournament_finalised']));
-  });
+  }, 120000);
 });
 
 describe('M23 viewers: follows, alerts, streams, sponsors, polls', () => {

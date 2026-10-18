@@ -55,5 +55,7 @@ module.exports = {
     './src/modules/organiser-saas/saas.rules.js': FULL,
     // M23 event phase, stage links, the qualifying cut, core players, alerts and polls.
     './src/modules/esports-events/events.rules.js': FULL,
+    // M16 names, invites, succession, age and the eligibility evaluator.
+    './src/modules/teams/teams.rules.js': FULL,
   },
 };

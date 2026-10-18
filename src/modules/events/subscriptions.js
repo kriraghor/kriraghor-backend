@@ -40,6 +40,8 @@ function registerAll() {
   require('../organiser-saas/saas.hooks');
   require('../organiser-saas/invoices.service');
   require('../organiser-saas/prize-funds.service');
+  // M16: banned accounts leave their teams; newly verified phones pick up their team invites.
+  require('../teams/teams.consumers').registerTeamsConsumers();
   // M23: big events react to M21 (qualifiers finalised, entries closed, cancels, streams live); the
   // M21 entry-policy hooks for invite-only finals load with them.
   require('../esports-events/events.consumers').registerEsportsEventConsumers();

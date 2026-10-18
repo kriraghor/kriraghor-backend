@@ -94,4 +94,9 @@ async function streamsOf(tournamentIds, { transaction } = {}) {
   return rows.map((r) => ({ id: r.id, tournamentId: r.tournamentId, platform: r.platform, url: r.url, title: r.title, isLive: r.isLive, videoRef: r.videoRef ?? null }));
 }
 
-module.exports = { streamsOf, tournamentSummary, entryIdentity, standingsWithEntries, entryLabels, squadFacts, hasVerifiedProfile };
+/** M16: whether a user has any verified game profile (their player page links the esports page). */
+async function hasAnyVerifiedProfile(userId, { transaction } = {}) {
+  return (await EsportsGameProfile.count({ where: { userId, status: 'verified' }, transaction })) > 0;
+}
+
+module.exports = { hasAnyVerifiedProfile, streamsOf, tournamentSummary, entryIdentity, standingsWithEntries, entryLabels, squadFacts, hasVerifiedProfile };

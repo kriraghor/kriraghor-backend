@@ -25,6 +25,9 @@ r.get('/users', requirePermission(PERMISSIONS.MANAGE_USERS), validate(s.userSear
 
 r.get('/users/:id', requirePermission(PERMISSIONS.MANAGE_USERS), idParam, async (req, res) => res.json(await users.getOne(req.params.id)));
 
+// M16 (Q27): correct a member's self-declared gender.
+r.put('/users/:id/gender', requirePermission(PERMISSIONS.MANAGE_USERS), idParam, validate(s.gender), async (req, res) => res.json(await users.correctGender(req.user, req.params.id, req.body, req)));
+
 r.post('/users/:id/suspend', requirePermission(PERMISSIONS.MANAGE_USERS), idParam, validate(s.suspend), async (req, res) =>
   res.json(await users.suspend(req.user, req.params.id, req.body, req))
 );

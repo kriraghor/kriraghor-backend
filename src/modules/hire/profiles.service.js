@@ -381,4 +381,10 @@ async function facts(profileId) {
   return { headline: p.headline, slug: p.slug, roleEn: role?.nameEn ?? '', roleBn: role?.nameBn ?? '', reasonCode: p.reviewReasonCode ?? null };
 }
 
-module.exports = { listMine, getMine, create, update, saveRateCard, submit, setPaused, applyDecision, checksFor, pauseAllOf, staffAction, staffList, staffGet, facts, currentCard, cardView, cardForQuote, snapshotOf };
+/** M16: a member's live hire profiles (slug and specialisation), for links from their player page. */
+async function liveFor(userId) {
+  const rows = await HireProfile.findAll({ where: { userId, status: 'live' }, attributes: ['slug', 'specialisation'], order: [['createdAt', 'ASC']] });
+  return rows.map((r) => ({ slug: r.slug, specialisation: r.specialisation ?? null }));
+}
+
+module.exports = { liveFor, listMine, getMine, create, update, saveRateCard, submit, setPaused, applyDecision, checksFor, pauseAllOf, staffAction, staffList, staffGet, facts, currentCard, cardView, cardForQuote, snapshotOf };

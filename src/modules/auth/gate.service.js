@@ -38,6 +38,10 @@ const ACTIONS = Object.freeze({
   join_esports: PHONE_VERIFIED,
   // M23 (18 Oct 2026): free polls on big events need a verified phone (one vote per member, no stakes).
   vote_poll: PHONE_VERIFIED,
+  // M16 (18 Oct 2026): creating and joining a sports team needs a verified phone; entering a
+  // tournament (register_team, M14) still needs NID.
+  create_team: PHONE_VERIFIED,
+  join_team: PHONE_VERIFIED,
   // M17 (17 Oct 2026): the member who paid can dispute with a verified phone, like booking.
   file_dispute: PHONE_VERIFIED,
 });

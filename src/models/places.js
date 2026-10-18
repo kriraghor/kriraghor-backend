@@ -39,6 +39,8 @@ Sport.init(
     verticalFlags: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
     icon: DataTypes.STRING(40),
     tint: DataTypes.STRING(16),
+    // M16: positions a player can list, [{ key, en, bn }].
+    positions: { type: DataTypes.JSONB, allowNull: false, defaultValue: [] },
   },
   { sequelize, modelName: 'Sport', tableName: 'sports' }
 );

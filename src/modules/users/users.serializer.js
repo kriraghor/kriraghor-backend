@@ -37,6 +37,8 @@ function serializeUserForAdmin(user, { roles = [], sanctions = [], staff = null 
     status: user.status,
     kycStatus: user.kycStatus,
     nidLast4: user.nidLast4 ?? null,
+    gender: user.gender ?? null,
+    genderSource: user.genderSource ?? null,
     locale: user.locale,
     lastLoginAt: user.lastLoginAt,
     createdAt: user.createdAt,

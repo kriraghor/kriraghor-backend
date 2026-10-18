@@ -18,8 +18,10 @@ class User extends Model {
       id: this.id,
       displayName: this.displayName,
       phone: this.phone,
+      phoneVerified: Boolean(this.phone && this.phoneVerifiedAt),
       email: this.email,
       emailVerified: Boolean(this.emailVerifiedAt),
+      gender: this.gender ?? null,
       username: this.username,
       locale: this.locale,
       status: this.status,
@@ -44,6 +46,9 @@ User.init(
     displayName: { type: DataTypes.STRING(80), allowNull: false },
     legalName: DataTypes.STRING(120),
     dob: DataTypes.DATEONLY,
+    // M16 (Q27): self-declared, private; only men's and women's events read it (never public).
+    gender: DataTypes.ENUM('male', 'female', 'third'),
+    genderSource: DataTypes.ENUM('self_declared', 'staff_corrected'),
     nidHash: { type: DataTypes.CHAR(64), unique: true },
     nidLast4: DataTypes.CHAR(4),
     locale: { type: DataTypes.ENUM('en', 'bn'), allowNull: false, defaultValue: 'en' },
@@ -1186,6 +1191,9 @@ const gym = require('./gym');
 // ---- M14 lite organisations and M22 organiser SaaS (./organisations.js) ----
 const organisations = require('./organisations');
 
+// ---- M16 teams and players, step 1 (./teams.js) ----
+const teams = require('./teams');
+
 // ---- M23 esports big events, step 1 (./esports-events.js) ----
 const esportsEvents = require('./esports-events');
 
@@ -1210,6 +1218,7 @@ module.exports = {
   ...gym,
   ...organisations,
   ...esportsEvents,
+  ...teams,
   ...grounds,
   ...bookings,
   ...analytics,

@@ -57,6 +57,8 @@ const EVENTS = {
   'user.suspended': { module: 'M01', version: 1, schema: z.object({ userId: uuid, sanctionId: uuid, until: iso.nullable() }) },
   'user.banned': { module: 'M01', version: 1, schema: z.object({ userId: uuid, sanctionId: uuid }) },
   'user.restored': { module: 'M01', version: 1, schema: z.object({ userId: uuid }) },
+  'user.phone_verified': { module: 'M01', version: 1, schema: z.object({ userId: uuid }) },
+  'user.identity_changed': { module: 'M01', version: 1, schema: z.object({ userId: uuid, fields: z.array(z.enum(['gender', 'dob', 'legal_name'])) }) },
   'user.email_changed': { module: 'M01', version: 1, schema: z.object({ userId: uuid }) },
   'user_role.applied': { module: 'M01', version: 1, schema: z.object({ userId: uuid, role }) },
   'user_role.activated': { module: 'M01', version: 1, schema: z.object({ userId: uuid, role }) },
@@ -205,6 +207,20 @@ const EVENTS = {
   'esports_prize.reversed': { module: 'M21', version: 1, schema: esShare },
   'esports_prize.forfeited': { module: 'M21', version: 1, schema: z.object({ awardId: uuid, tournamentId: uuid, registrationId: uuid, amount: poisha }) },
   'esports_stream.live_started': { module: 'M21', version: 1, schema: z.object({ tournamentId: uuid, streamId: uuid, platform: z.string().max(20) }) },
+
+  // ---------------- M16 Teams and players (ids only; never phones)
+  'team.created': { module: 'M16', version: 1, schema: z.object({ teamId: uuid, sportId: uuid, captainId: uuid }) },
+  'team.archived': { module: 'M16', version: 1, schema: z.object({ teamId: uuid }) },
+  'team.captain_changed': { module: 'M16', version: 1, schema: z.object({ teamId: uuid, fromUserId: uuid.nullable(), toUserId: uuid }) },
+  'team_member.added': { module: 'M16', version: 1, schema: z.object({ teamId: uuid, userId: uuid, role: z.enum(['captain', 'vice_captain', 'player']) }) },
+  'team_member.removed': { module: 'M16', version: 1, schema: z.object({ teamId: uuid, userId: uuid, reasonCode: z.string().max(40) }) },
+  'team_member.role_changed': { module: 'M16', version: 1, schema: z.object({ teamId: uuid, userId: uuid, role: z.enum(['vice_captain', 'player']) }) },
+  'team_invite.sent': { module: 'M16', version: 1, schema: z.object({ inviteId: uuid, teamId: uuid, linked: z.boolean(), resent: z.boolean() }) },
+  'team_invite.linked': { module: 'M16', version: 1, schema: z.object({ inviteId: uuid, teamId: uuid, userId: uuid }) },
+  'team_invite.accepted': { module: 'M16', version: 1, schema: z.object({ inviteId: uuid, teamId: uuid, userId: uuid }) },
+  'team_invite.declined': { module: 'M16', version: 1, schema: z.object({ inviteId: uuid, teamId: uuid }) },
+  'team_invite.cancelled': { module: 'M16', version: 1, schema: z.object({ inviteId: uuid, teamId: uuid }) },
+  'team_invite.expired': { module: 'M16', version: 1, schema: z.object({ inviteId: uuid, teamId: uuid }) },
 
   // ---------------- M23 Esports big events (ids only; follower pages are user-id ranges, never lists) ----------------
   'esports_event.published': { module: 'M23', version: 1, schema: z.object({ eventId: uuid, startsAt: iso }) },

@@ -27,6 +27,9 @@ const gyS = require('../modules/gym/gym.schemas');
 const orgS = require('../modules/organisations/organisations.schemas');
 const saS = require('../modules/organiser-saas/saas.schemas');
 const evS = require('../modules/esports-events/events.schemas');
+const tmS = require('../modules/teams/teams.schemas');
+const usersS = require('../modules/users/users.schemas');
+const adminSS = require('../modules/admin/admin.schemas');
 
 /**
  * Every route (M01 to M14 lite, M17 to M23), registered with its request and response schemas and the stable error
@@ -1195,6 +1198,60 @@ function register(registry) {
     request: { params: evS.pollParam }, responses: { 200: json(evS.Poll), ...errors({ ...EV_STAFF, 409: ['POLL_STATE'] }) } });
   p({ method: 'post', path: '/admin/esports/events/{id}/feed', tags: ['esports-events'], summary: 'Post an announcement to the feed', security: adminBearer,
     request: { ...evId, ...body(evS.announceBody) }, responses: { 201: json(evS.Announcement, 'Created'), ...errors({ ...EV_STAFF, 409: ['EVENT_STATE'], ...VALIDATION }) } });
+
+  // ------------------------------------------------------------------ M16 teams and players (step 1), and the M01 additions
+  const tmId = { params: tmS.idParam };
+  const TM = { ...COMMON_AUTH, 404: ['NOT_FOUND'] };
+  const CAPT = { ...TM, 403: ['CAPTAIN_ONLY'], 409: ['TEAM_ARCHIVED'] };
+  const tmImage = (description) => ({ description, content: { 'image/jpeg': { schema: z.string() }, 'image/png': { schema: z.string() }, 'image/webp': { schema: z.string() } } });
+  p({ method: 'post', path: '/me/phone', tags: ['me'], summary: 'Add a phone to an account without a verified one (sends a code)', security: bearer,
+    request: body(usersS.startPhone), responses: { 202: json(C.OtpSent, 'Accepted'), ...errors({ ...COMMON_AUTH, 409: ['PHONE_ALREADY_VERIFIED', 'PHONE_IN_USE'], 422: ['PHONE_INVALID', 'VALIDATION_FAILED'], 429: ['OTP_RATE_LIMITED', 'OTP_COOLDOWN', 'RATE_LIMITED'] }) } });
+  p({ method: 'post', path: '/me/phone/verify', tags: ['me'], summary: 'Confirm the code: the phone becomes verified (user.phone_verified)', security: bearer,
+    request: body(usersS.verifyPhone), responses: { 200: json(z.object({ phoneVerified: z.boolean() })), ...errors({ ...COMMON_AUTH, 400: ['OTP_INVALID', 'OTP_EXPIRED'], 409: ['PHONE_ALREADY_VERIFIED', 'PHONE_IN_USE'], 422: ['PHONE_INVALID', 'VALIDATION_FAILED'], ...RATE }) } });
+  p({ method: 'put', path: '/me/gender', tags: ['me'], summary: 'Record my gender once (private; only men\'s and women\'s events read it)', security: bearer,
+    request: body(usersS.setGender), responses: { 200: json(z.object({ gender: z.string() })), ...errors({ ...COMMON_AUTH, 409: ['GENDER_ALREADY_SET'], ...VALIDATION }) } });
+  p({ method: 'put', path: '/admin/users/{id}/gender', tags: ['admin'], summary: 'Correct a member\'s gender (manage_users, with a reason)', security: adminBearer,
+    request: { params: adminSS.idParam, ...body(adminSS.gender) }, responses: { 200: json(C.AdminUser), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/teams', tags: ['teams'], summary: 'Create a team (verified phone); I become its captain', security: bearer,
+    request: body(tmS.createBody), responses: { 201: json(tmS.Team, 'Created'), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'ACCOUNT_SUSPENDED', 'ACCOUNT_BANNED'], 404: ['NOT_FOUND'], 409: ['TOO_MANY_TEAMS'], 422: ['TEAM_NAME_INVALID', 'TEAM_SHORT_CODE_INVALID', 'TEAM_SPORT_UNKNOWN', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'get', path: '/me/teams', tags: ['teams'], summary: 'My teams with my role', security: bearer, responses: { 200: json(tmS.TeamList), ...errors(COMMON_AUTH) } });
+  p({ method: 'get', path: '/teams/{id}', tags: ['teams'], summary: 'A team I am in (members with the NID-verified boolean; invites for captains)', security: bearer, request: tmId, responses: { 200: json(tmS.Team), ...errors(TM) } });
+  p({ method: 'patch', path: '/teams/{id}', tags: ['teams'], summary: 'Change the name, short code or home area (captain)', security: bearer,
+    request: { ...tmId, ...body(tmS.updateBody) }, responses: { 200: json(tmS.Team), ...errors({ ...CAPT, 422: ['TEAM_NAME_INVALID', 'TEAM_SHORT_CODE_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/teams/{id}/logo', tags: ['teams'], summary: 'Upload the team logo (captain; public bucket)', security: bearer,
+    request: { ...tmId, body: tmImage('The logo') }, responses: { 200: json(tmS.Team), ...errors({ ...CAPT, 413: ['FILE_TOO_LARGE'], 415: ['FILE_TYPE_NOT_ALLOWED', 'FILE_TYPE_MISMATCH'], 422: ['FILE_EMPTY'] }) } });
+  p({ method: 'post', path: '/teams/{id}/archive', tags: ['teams'], summary: 'Archive the team (captain)', security: bearer, request: tmId, responses: { 200: json(tmS.Team), ...errors(CAPT) } });
+  p({ method: 'post', path: '/teams/{id}/leave', tags: ['teams'], summary: 'Leave (a captain hands over first; the last member archives the team)', security: bearer,
+    request: tmId, responses: { 200: json(tmS.Left), ...errors({ ...TM, 409: ['CAPTAIN_MUST_HAND_OVER'] }) } });
+  p({ method: 'post', path: '/teams/{id}/captain', tags: ['teams'], summary: 'Hand the captaincy to a member (captain)', security: bearer,
+    request: { ...tmId, ...body(tmS.captainBody) }, responses: { 200: json(tmS.Team), ...errors({ ...CAPT, 404: ['NOT_FOUND', 'NOT_A_MEMBER'] }) } });
+  p({ method: 'post', path: '/teams/{id}/members/{userId}/remove', tags: ['teams'], summary: 'Remove a member (captain or vice-captain; never the captain)', security: bearer,
+    request: { params: tmS.memberParam }, responses: { 200: json(tmS.Team), ...errors({ ...TM, 403: ['CAPTAIN_ONLY'], 404: ['NOT_FOUND', 'NOT_A_MEMBER'], 409: ['CANNOT_REMOVE_CAPTAIN'] }) } });
+  p({ method: 'put', path: '/teams/{id}/members/{userId}', tags: ['teams'], summary: 'Set a member\'s role (one vice-captain) or jersey number (captain)', security: bearer,
+    request: { params: tmS.memberParam, ...body(tmS.memberBody) }, responses: { 200: json(tmS.Team), ...errors({ ...CAPT, 404: ['NOT_FOUND', 'NOT_A_MEMBER'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/teams/{id}/invites', tags: ['teams'], summary: 'Invite a phone: a share link always; members with an account also get it in-app and by SMS', security: bearer,
+    request: { ...tmId, ...body(tmS.inviteBody) },
+    responses: { 201: json(tmS.Invited, 'Created'), ...errors({ ...TM, 403: ['CAPTAIN_ONLY'], 409: ['TEAM_ARCHIVED', 'ALREADY_MEMBER', 'TEAM_FULL'], 422: ['PHONE_INVALID', 'INVITE_SELF', 'VALIDATION_FAILED'], ...RATE }) } });
+  p({ method: 'post', path: '/teams/{id}/invites/{inviteId}/cancel', tags: ['teams'], summary: 'Cancel a pending invite', security: bearer,
+    request: { params: tmS.inviteParam }, responses: { 200: json(tmS.Invite), ...errors({ ...TM, 403: ['CAPTAIN_ONLY'], 409: ['INVITE_STATE'] }) } });
+  p({ method: 'post', path: '/teams/{id}/invites/{inviteId}/resend', tags: ['teams'], summary: 'Send again (new link, renewed expiry) after the cooldown', security: bearer,
+    request: { params: tmS.inviteParam }, responses: { 200: json(tmS.Invited), ...errors({ ...TM, 403: ['CAPTAIN_ONLY'], 409: ['INVITE_STATE'], 429: ['INVITE_RESEND_TOO_SOON'] }) } });
+  p({ method: 'get', path: '/me/team-invites', tags: ['teams'], summary: 'Invites sent to my verified phone', security: bearer, responses: { 200: json(tmS.MyInvites), ...errors(COMMON_AUTH) } });
+  p({ method: 'post', path: '/me/team-invites/{id}/accept', tags: ['teams'], summary: 'Accept (verified phone; expiry, team size and my team count re-checked)', security: bearer,
+    request: tmId, responses: { 200: json(tmS.Accepted), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'ACCOUNT_INACTIVE'], 404: ['INVITE_NOT_YOURS'], 409: ['INVITE_STATE', 'INVITE_EXPIRED', 'TEAM_ARCHIVED', 'ALREADY_MEMBER', 'TEAM_FULL', 'TOO_MANY_TEAMS'] }) } });
+  p({ method: 'post', path: '/me/team-invites/{id}/decline', tags: ['teams'], summary: 'Decline', security: bearer,
+    request: tmId, responses: { 200: json(tmS.Archived), ...errors({ ...COMMON_AUTH, 404: ['INVITE_NOT_YOURS'], 409: ['INVITE_STATE'] }) } });
+  p({ method: 'get', path: '/team-invites/{token}', tags: ['teams'], summary: 'What a share link opens: the team, sport, inviter\'s first name, the masked number', request: { params: tmS.tokenParam }, responses: { 200: json(tmS.InviteLink), ...errors({ 404: ['NOT_FOUND'] }) } });
+  p({ method: 'get', path: '/me/player-profile', tags: ['players'], summary: 'My player profile', security: bearer, responses: { 200: json(tmS.Profile), ...errors(COMMON_AUTH) } });
+  p({ method: 'put', path: '/me/player-profile', tags: ['players'], summary: 'Set my sports, positions, bio and visibility', security: bearer,
+    request: body(tmS.profileBody), responses: { 200: json(tmS.Profile), ...errors({ ...COMMON_AUTH, 422: ['PROFILE_SPORTS_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'get', path: '/players/{handle}', tags: ['players'], summary: 'A public player page (never DOB, age, gender or phone)', request: { params: tmS.handleParam }, responses: { 200: json(tmS.PublicPlayer), ...errors({ 404: ['NOT_FOUND'] }) } });
+  p({ method: 'get', path: '/me/eligibility', tags: ['players'], summary: 'My readiness, and a preview against an event\'s age and gender rules (me only)', security: bearer,
+    request: { query: tmS.eligibilityQuery }, responses: { 200: json(tmS.Eligibility), ...errors({ ...COMMON_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/teams', tags: ['teams'], summary: 'Search teams (manage_users)', security: adminBearer, request: { query: tmS.adminQuery }, responses: { 200: json(tmS.TeamList), ...errors(ADMIN_AUTH) } });
+  p({ method: 'get', path: '/admin/teams/{id}', tags: ['teams'], summary: 'A team with members (NID booleans) and invites (masked)', security: adminBearer, request: tmId, responses: { 200: json(tmS.AdminTeam), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'] }) } });
+  p({ method: 'post', path: '/admin/teams/{id}/archive', tags: ['teams'], summary: 'Archive a team with a reason (e.g. an offensive name)', security: adminBearer,
+    request: { ...tmId, ...body(tmS.reasonBody) }, responses: { 200: json(tmS.Archived), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'], 409: ['TEAM_ARCHIVED'], ...VALIDATION }) } });
 }
 
 function dateTimeOf() {

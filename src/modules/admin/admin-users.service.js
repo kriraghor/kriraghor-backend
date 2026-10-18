@@ -77,6 +77,28 @@ async function getOne(userId) {
   return serializeUserForAdmin(user, { roles, sanctions, staff });
 }
 
+/** M16 (Q27): staff correct a member's gender (with a reason; audited; the value is never public). */
+async function correctGender(principal, userId, { gender, reason }, req) {
+  return sequelize.transaction(async (transaction) => {
+    const target = await loadTarget(userId, { transaction, lock: transaction.LOCK.UPDATE });
+    await guardTarget(principal, target, { transaction });
+    const before = { gender: target.gender ?? null };
+    await target.update({ gender, genderSource: 'staff_corrected' }, { transaction });
+    await audit.record({ action: 'user.gender_corrected', actor: principal, entityType: 'user', entityId: target.id, before, after: { gender }, reason, req }, { transaction });
+    await events.publish(transaction, { name: 'user.identity_changed', aggregateType: 'user', aggregateId: target.id, payload: { userId: target.id, fields: ['gender'] }, actor: principal, req });
+    return getOneInTx(target, transaction);
+  });
+}
+
+async function getOneInTx(user, transaction) {
+  const [roles, sanctions, staff] = await Promise.all([
+    UserRole.findAll({ where: { userId: user.id }, transaction }),
+    UserSanction.findAll({ where: { userId: user.id }, order: [['createdAt', 'DESC']], limit: 20, transaction }),
+    StaffMember.findOne({ where: { userId: user.id }, transaction }),
+  ]);
+  return serializeUserForAdmin(user, { roles, sanctions, staff });
+}
+
 /** Staff may not act on themselves, and only a master may act on staff accounts. */
 async function guardTarget(principal, target, { transaction } = {}) {
   if (target.id === principal.id) throw E.forbidden('SELF_ACTION_FORBIDDEN', 'You cannot do this to your own account');
@@ -248,4 +270,4 @@ async function liftExpiredSuspensions() {
   return lifted;
 }
 
-module.exports = { search, getOne, suspend, suspendInTx, ban, banInTx, restore, restoreInTx, signOutEverywhere, setRoleStatus, liftExpiredSuspensions };
+module.exports = { search, getOne, correctGender, suspend, suspendInTx, ban, banInTx, restore, restoreInTx, signOutEverywhere, setRoleStatus, liftExpiredSuspensions };

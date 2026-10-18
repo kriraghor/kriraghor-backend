@@ -1,5 +1,5 @@
 {
-  "seedVersion": 16,
+  "seedVersion": 17,
   "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code. v9: the M17 DISPUTE_*, REPORT_* and REVIEW_* codes. v10: the M18 RISK_*, PAYOUTS_*, DOCUMENTS_* and TRUST_LOW codes. v11: the M12 SHOP_*, PRODUCT_*, STOCK_*, SUPPLEMENT_EXPIRING and SAVED_* codes. v12: the M13 ORDER_* and SHOP_*ORDER* codes. v13: the M11 HIRE_* and JOB_* codes. v14 (M20): gyms (live, changes, rejected), passes (ready, cancelled) and trainer subscriptions (started, new subscriber, renewal due, lapsed, cancelled, paid). v15 (M14 lite, M22): organisations (verified, changes) and the organiser SaaS (contract active, suspended, ending; invoices issued, overdue, paid; prize fund received, returned).",
   "templates": [
     {
@@ -8365,6 +8365,174 @@
           "name": "title",
           "type": "text",
           "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "TEAM_INVITE",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Team invite",
+      "body": "{{inviter}} invited you to join {{team}}.",
+      "variables": [
+        {
+          "name": "inviter",
+          "type": "text",
+          "maxLen": 30
+        },
+        {
+          "name": "team",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "TEAM_INVITE",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "টিমে আমন্ত্রণ",
+      "body": "{{inviter}} আপনাকে {{team}} টিমে যোগ দিতে আমন্ত্রণ জানিয়েছেন।",
+      "variables": [
+        {
+          "name": "inviter",
+          "type": "text",
+          "maxLen": 30
+        },
+        {
+          "name": "team",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "TEAM_INVITE",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{inviter}} invited you to join {{team}}. Open My teams to accept.",
+      "variables": [
+        {
+          "name": "inviter",
+          "type": "text",
+          "maxLen": 30
+        },
+        {
+          "name": "team",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "TEAM_INVITE",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{inviter}} আপনাকে {{team}} টিমে আমন্ত্রণ জানিয়েছেন। গ্রহণ করতে আমার টিম খুলুন।",
+      "variables": [
+        {
+          "name": "inviter",
+          "type": "text",
+          "maxLen": 30
+        },
+        {
+          "name": "team",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "TEAM_INVITE_ACCEPTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Invite accepted",
+      "body": "{{name}} joined {{team}}.",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "team",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "TEAM_INVITE_ACCEPTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আমন্ত্রণ গৃহীত",
+      "body": "{{name}} {{team}} টিমে যোগ দিয়েছেন।",
+      "variables": [
+        {
+          "name": "name",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "team",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "TEAM_MEMBER_REMOVED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Removed from a team",
+      "body": "You were removed from {{team}}.",
+      "variables": [
+        {
+          "name": "team",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "TEAM_MEMBER_REMOVED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "টিম থেকে সরানো হয়েছে",
+      "body": "আপনাকে {{team}} টিম থেকে সরানো হয়েছে।",
+      "variables": [
+        {
+          "name": "team",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "TEAM_CAPTAIN_GIVEN",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "You are the captain",
+      "body": "You are now the captain of {{team}}.",
+      "variables": [
+        {
+          "name": "team",
+          "type": "text",
+          "maxLen": 40
+        }
+      ]
+    },
+    {
+      "code": "TEAM_CAPTAIN_GIVEN",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আপনি এখন অধিনায়ক",
+      "body": "আপনি এখন {{team}} টিমের অধিনায়ক।",
+      "variables": [
+        {
+          "name": "team",
+          "type": "text",
+          "maxLen": 40
         }
       ]
     }

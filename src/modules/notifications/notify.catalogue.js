@@ -60,6 +60,7 @@ const eventTitle = async (id) => (await eventOf(id))?.titleEn ?? '';
 // Links take the id: the esports app's /e/[slug] page accepts an id too.
 const eventLink = (id) => `/e/${id}`;
 const followerPage = (kind) => (e) => (e.payload.kind === kind ? require('../esports-events/alerts.service').pageRecipients(e.payload) : []);
+const teamName = async (id) => (await require('../teams/teams.service').getTeam(id))?.name ?? '';
 const orgName = async (id) => (await require('../organisations/organisations.service').publicRefs([id])).get(id)?.name ?? '';
 const passFacts = (id) => require('../gym/gym.reads').passFacts(id);
 const isNid = (e) => !e.payload.role || e.payload.role === 'member';
@@ -1530,6 +1531,46 @@ const CATALOGUE = [
     recipients: (e) => orgAdmins(e.payload.organisationId),
     values: (e) => ({ amount: e.payload.amount }),
     link: (e) => `/vendor/esports/${e.payload.organisationId}/tournaments/${e.payload.tournamentId}`,
+  },
+  // ---------------- M16 teams: invites (members with an account only; unknown numbers get the captain's link)
+  {
+    code: 'TEAM_INVITE',
+    events: ['team_invite.sent', 'team_invite.linked'],
+    category: 'teams',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => (e.name === 'team_invite.linked' || e.payload.linked ? require('../teams/invites.service').recipientOf(e.payload.inviteId) : []),
+    values: (e) => require('../teams/invites.service').noticeValues(e.payload.inviteId),
+    link: () => '/me/teams',
+  },
+  {
+    code: 'TEAM_INVITE_ACCEPTED',
+    events: ['team_invite.accepted'],
+    category: 'teams',
+    channels: ['in_app'],
+    recipients: async (e) => {
+      const members = await require('../teams/teams.service').activeMembers(e.payload.teamId);
+      return members.filter((m) => ['captain', 'vice_captain'].includes(m.role) && m.userId !== e.payload.userId).map((m) => m.userId);
+    },
+    values: async (e) => ({ team: await teamName(e.payload.teamId), name: (await require('../users/directory.service').publicNames([e.payload.userId])).get(e.payload.userId)?.displayName ?? '' }),
+    link: (e) => `/me/teams/${e.payload.teamId}`,
+  },
+  {
+    code: 'TEAM_MEMBER_REMOVED',
+    events: ['team_member.removed'],
+    category: 'teams',
+    channels: ['in_app'],
+    recipients: (e) => (e.payload.reasonCode === 'removed' ? [e.payload.userId] : []),
+    values: async (e) => ({ team: await teamName(e.payload.teamId) }),
+    link: () => '/me/teams',
+  },
+  {
+    code: 'TEAM_CAPTAIN_GIVEN',
+    events: ['team.captain_changed'],
+    category: 'teams',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.toUserId],
+    values: async (e) => ({ team: await teamName(e.payload.teamId) }),
+    link: (e) => `/me/teams/${e.payload.teamId}`,
   },
   // ---------------- M23 big events: follow alerts (paged; in-app only) and final places
   {

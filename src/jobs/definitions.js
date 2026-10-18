@@ -33,6 +33,7 @@ const hire = require('../modules/hire/hire.jobs');
 const gym = require('../modules/gym/gym.jobs');
 const saas = require('../modules/organiser-saas/saas.jobs');
 const esportsEvents = require('../modules/esports-events/events.jobs');
+const teamsJobs = require('../modules/teams/teams.jobs');
 const { purgeExpired: purgeIdempotencyKeys } = require('../common/idempotency');
 const logger = require('../common/logger');
 
@@ -341,6 +342,13 @@ const JOBS = [
     queue: QUEUES.ESPORTS_EVENTS,
     every: 60 * 1000,
     run: async () => esportsEvents.tick(),
+  },
+  {
+    // M16: team invites past their expiry (accept re-checks the time anyway).
+    name: 'teams.tick',
+    queue: QUEUES.TEAMS,
+    every: 5 * 60 * 1000,
+    run: async () => teamsJobs.tick(),
   },
   // ---------------- M19 analytics (§10). Idempotent: upserts and REFRESH … CONCURRENTLY under an advisory lock.
   {
