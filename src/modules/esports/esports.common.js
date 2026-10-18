@@ -32,6 +32,8 @@ const ERRORS = {
   // M22 organiser tournaments
   ESPORTS_KILL_CAP_REQUIRED: [422, 'Set the most kills that are paid, so the prize fund can cover the per-kill reward'],
   ESPORTS_CONFLICT_OF_INTEREST: [403, 'Members of the organising team cannot play in its tournament'],
+  // M23 invite-only tournaments (a big event's final)
+  ESPORTS_INVITE_ONLY: [403, 'This tournament is invite only: qualify through its event or get an invite'],
   PRIZE_TABLE_REQUIRED: [422, 'Add the prize table'],
   PRIZE_PLACES_INVALID: [422, 'Prize places must run 1, 2, 3… and fit the slots'],
   PRIZE_AMOUNT_INVALID: [422, 'Each prize must be more than zero'],
@@ -137,4 +139,16 @@ const organiser = {};
 const registerOrganiser = (hooks) => Object.assign(organiser, hooks);
 const isOrganised = (t) => t.organiserType === 'organisation';
 
-module.exports = { organiser, registerOrganiser, isOrganised, ERRORS, fail, game, mode, maps, preset, maxSquadSize, SNAPSHOT_KEYS, snapshot, setting, rooms, money };
+/**
+ * M23 entry-policy hooks for invite-only tournaments (a big event's final). Separate from the
+ * organiser hooks so neither module overwrites the other. Both run inside register()'s transaction,
+ * after the tournament row is locked:
+ *   entryBlock(t, { registrantUserId, squadId, playerUserIds, transaction })  throws when the entry
+ *                                                       holds no qualification or invite for t
+ *   onEntered(t, registration, { transaction })         marks the qualification used
+ * An invite-only tournament with no hook registered admits nobody (ESPORTS_INVITE_ONLY).
+ */
+const entryPolicy = {};
+const registerEntryPolicy = (hooks) => Object.assign(entryPolicy, hooks);
+
+module.exports = { organiser, registerOrganiser, isOrganised, entryPolicy, registerEntryPolicy, ERRORS, fail, game, mode, maps, preset, maxSquadSize, SNAPSHOT_KEYS, snapshot, setting, rooms, money };

@@ -48,4 +48,5 @@ module.exports = {
   report: guard('rpt', { windowMs: 24 * 60 * 60 * 1000, settingKey: 'reports.per_day', code: 'REPORT_RATE_LIMITED' }), // M17-FR-15
   groundPhoto: guard('grph', { windowMs: 60 * 60 * 1000, settingKey: 'ground.photo_uploads_per_hour', code: 'UPLOAD_RATE_LIMITED' }), // M09 ground photos
   productPhoto: guard('mkph', { windowMs: 60 * 60 * 1000, settingKey: 'market.photo_uploads_per_hour', code: 'UPLOAD_RATE_LIMITED' }), // M12 product photos
+  eventAction: guard('esev', { windowMs: 60 * 1000, settingKey: 'esports_events.actions_per_minute', code: 'RATE_LIMITED' }), // M23 follows and poll votes
 };

@@ -38,6 +38,7 @@ const orderRoutes = require('./modules/orders/orders.routes');
 const hireRoutes = require('./modules/hire/hire.routes');
 const gymRoutes = require('./modules/gym/gym.routes');
 const saasRoutes = require('./modules/organiser-saas/saas.routes');
+const eventRoutes = require('./modules/esports-events/events.routes');
 
 // ADR-004: customer and admin origins (exact or one-label wildcard). Unknown origins get no CORS headers.
 const allowedOrigin = compile([...config.corsOrigins, ...config.adminOrigins]);
@@ -94,9 +95,12 @@ function createApp() {
   api.use('/me/documents', kycRoutes.meDocuments);
   api.use('/me/document-requests', kycRoutes.meDocumentRequests);
   api.use('/me/submissions', moderationRoutes.meSubmissions);
+  api.use('/me/esports/events', eventRoutes.meRouter);
   api.use('/me/esports', esportsRoutes.meRouter);
   // M22 branded organiser pages (before /esports: a subdomain is not a tournament path).
   api.use('/esports/organisers', saasRoutes.publicRouter);
+  // M23 big events (before /esports, like the organiser pages).
+  api.use('/esports/events', eventRoutes.publicRouter);
   api.use('/esports', esportsRoutes.publicRouter);
   api.use('/me/grounds', groundsRoutes.meGrounds);
   api.use('/me/grounds', bookingsRoutes.meWalkIns);
@@ -166,6 +170,7 @@ function createApp() {
   api.use('/admin/payout-accounts', payoutRoutes.adminAccounts);
   api.use('/admin/kyc', kycRoutes.adminKyc);
   api.use('/admin/submissions', moderationRoutes.adminRouter);
+  api.use('/admin/esports/events', eventRoutes.adminRouter);
   api.use('/admin/esports', esportsRoutes.adminRouter);
   api.use('/admin/grounds', groundsRoutes.adminRouter);
   api.use('/admin/bookings', bookingsRoutes.adminRouter);

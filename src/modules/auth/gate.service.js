@@ -36,6 +36,8 @@ const ACTIONS = Object.freeze({
   // M02 v3: withdrawing esports winnings needs NID KYC (M07, M21).
   withdraw_winnings: ROLES.MEMBER,
   join_esports: PHONE_VERIFIED,
+  // M23 (18 Oct 2026): free polls on big events need a verified phone (one vote per member, no stakes).
+  vote_poll: PHONE_VERIFIED,
   // M17 (17 Oct 2026): the member who paid can dispute with a verified phone, like booking.
   file_dispute: PHONE_VERIFIED,
 });

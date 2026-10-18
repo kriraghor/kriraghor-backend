@@ -32,6 +32,7 @@ const orders = require('../modules/orders/orders.jobs');
 const hire = require('../modules/hire/hire.jobs');
 const gym = require('../modules/gym/gym.jobs');
 const saas = require('../modules/organiser-saas/saas.jobs');
+const esportsEvents = require('../modules/esports-events/events.jobs');
 const { purgeExpired: purgeIdempotencyKeys } = require('../common/idempotency');
 const logger = require('../common/logger');
 
@@ -332,6 +333,14 @@ const JOBS = [
     queue: QUEUES.SAAS,
     every: 60 * 1000,
     run: async () => saas.tick(),
+  },
+  {
+    // M23: big events. Follow alerts when an event starts and before its final, the final's live feed
+    // item, polls past closes_at, and qualified places nobody took once the final's registration closed.
+    name: 'esports_events.tick',
+    queue: QUEUES.ESPORTS_EVENTS,
+    every: 60 * 1000,
+    run: async () => esportsEvents.tick(),
   },
   // ---------------- M19 analytics (§10). Idempotent: upserts and REFRESH … CONCURRENTLY under an advisory lock.
   {

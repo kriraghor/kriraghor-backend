@@ -1186,6 +1186,9 @@ const gym = require('./gym');
 // ---- M14 lite organisations and M22 organiser SaaS (./organisations.js) ----
 const organisations = require('./organisations');
 
+// ---- M23 esports big events, step 1 (./esports-events.js) ----
+const esportsEvents = require('./esports-events');
+
 // ---- M13 orders, step 1 (./orders.js) ----
 const orders = require('./orders');
 
@@ -1206,6 +1209,7 @@ module.exports = {
   ...hire,
   ...gym,
   ...organisations,
+  ...esportsEvents,
   ...grounds,
   ...bookings,
   ...analytics,

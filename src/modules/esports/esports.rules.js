@@ -79,7 +79,7 @@ function draftBlock(d, mode, now) {
 }
 
 /** Fields that never change after publish (FR-07, edge case 18). */
-const LOCKED_AFTER_PUBLISH = ['gameId', 'modeId', 'format', 'entryUnit', 'entryFee', 'maxSlots', 'minParticipants', 'prizes', 'killReward', 'placementPoints', 'killPoints', 'matches', 'registrationOpensAt', 'registrationClosesAt', 'startsAt'];
+const LOCKED_AFTER_PUBLISH = ['gameId', 'modeId', 'format', 'entryUnit', 'entryPolicy', 'entryFee', 'maxSlots', 'minParticipants', 'prizes', 'killReward', 'placementPoints', 'killPoints', 'matches', 'registrationOpensAt', 'registrationClosesAt', 'startsAt'];
 const lockedChange = (patch) => LOCKED_AFTER_PUBLISH.filter((k) => patch[k] !== undefined);
 
 /** Check-in window of a stage (FR-13), from its first match. */
@@ -326,19 +326,8 @@ function slugify(title, suffix) {
   return base ? `${base}-${suffix}` : suffix;
 }
 
-/** Stream URLs: https on a known host only (FR-29). */
-const STREAM_HOSTS = { youtube: ['youtube.com', 'www.youtube.com', 'youtu.be', 'm.youtube.com'], facebook: ['facebook.com', 'www.facebook.com', 'fb.watch', 'm.facebook.com'], tiktok: ['tiktok.com', 'www.tiktok.com'] };
-function streamBlock(platform, url) {
-  let u;
-  try {
-    u = new URL(url);
-  } catch {
-    return 'STREAM_URL_INVALID';
-  }
-  if (u.protocol !== 'https:') return 'STREAM_URL_INVALID';
-  if (platform !== 'other' && !STREAM_HOSTS[platform].includes(u.hostname)) return 'STREAM_URL_INVALID';
-  return null;
-}
+/** Stream URLs: https on a known host only (FR-29); the parsing lives in streams.rules (shared with M23). */
+const streamBlock = (platform, url) => require('./streams.rules').parseStream(platform, url).error ?? null;
 
 module.exports = {
   TOURNAMENT,

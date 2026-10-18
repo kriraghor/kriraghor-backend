@@ -55,6 +55,11 @@ const vendorUrl = (p) => `${config.apps.vendor}${p}`;
 const gymFacts = (id) => require('../gym/gyms.service').facts(id);
 // M14 lite and M22: the organisation (its name) and its admins (owner and admins get organiser news).
 const orgAdmins = (id) => require('../organisations/organisations.service').adminIds(id);
+const eventOf = async (id) => require('../../models').EsportsEvent.findByPk(id, { attributes: ['id', 'slug', 'titleEn'] });
+const eventTitle = async (id) => (await eventOf(id))?.titleEn ?? '';
+// Links take the id: the esports app's /e/[slug] page accepts an id too.
+const eventLink = (id) => `/e/${id}`;
+const followerPage = (kind) => (e) => (e.payload.kind === kind ? require('../esports-events/alerts.service').pageRecipients(e.payload) : []);
 const orgName = async (id) => (await require('../organisations/organisations.service').publicRefs([id])).get(id)?.name ?? '';
 const passFacts = (id) => require('../gym/gym.reads').passFacts(id);
 const isNid = (e) => !e.payload.role || e.payload.role === 'member';
@@ -1525,6 +1530,61 @@ const CATALOGUE = [
     recipients: (e) => orgAdmins(e.payload.organisationId),
     values: (e) => ({ amount: e.payload.amount }),
     link: (e) => `/vendor/esports/${e.payload.organisationId}/tournaments/${e.payload.tournamentId}`,
+  },
+  // ---------------- M23 big events: follow alerts (paged; in-app only) and final places
+  {
+    code: 'ESPORTS_EVENT_STARTED',
+    events: ['esports_event.followers_alerted'],
+    category: 'event_alerts',
+    channels: ['in_app'],
+    recipients: followerPage('event_started'),
+    values: async (e) => ({ title: await eventTitle(e.payload.eventId) }),
+    link: (e) => eventLink(e.payload.eventId),
+  },
+  {
+    code: 'ESPORTS_EVENT_STREAM_LIVE',
+    events: ['esports_event.followers_alerted'],
+    category: 'event_alerts',
+    channels: ['in_app'],
+    recipients: followerPage('stream_live'),
+    values: async (e) => ({ title: await eventTitle(e.payload.eventId) }),
+    link: (e) => eventLink(e.payload.eventId),
+  },
+  {
+    code: 'ESPORTS_EVENT_FINAL_SOON',
+    events: ['esports_event.followers_alerted'],
+    category: 'event_alerts',
+    channels: ['in_app'],
+    recipients: followerPage('final_soon'),
+    values: async (e) => ({ title: await eventTitle(e.payload.eventId) }),
+    link: (e) => eventLink(e.payload.eventId),
+  },
+  {
+    code: 'ESPORTS_EVENT_QUALIFIED',
+    events: ['esports_event_qualification.granted'],
+    category: 'tournaments',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => require('../esports-events/qualifications.service').recipientsOf(e.payload.qualificationId),
+    values: async (e) => ({ title: await eventTitle(e.payload.eventId) }),
+    link: (e) => eventLink(e.payload.eventId),
+  },
+  {
+    code: 'ESPORTS_EVENT_QUALIFICATION_REVOKED',
+    events: ['esports_event_qualification.revoked'],
+    category: 'tournaments',
+    channels: ['in_app'],
+    recipients: (e) => require('../esports-events/qualifications.service').recipientsOf(e.payload.qualificationId),
+    values: async (e) => ({ title: await eventTitle(e.payload.eventId) }),
+    link: (e) => eventLink(e.payload.eventId),
+  },
+  {
+    code: 'ESPORTS_EVENT_QUALIFICATION_MISSED',
+    events: ['esports_event_qualification.missed'],
+    category: 'staff_ops',
+    channels: ['in_app'],
+    recipients: () => require('../users/directory.service').withPermission('manage_esports'),
+    values: async (e) => ({ title: await eventTitle(e.payload.eventId) }),
+    link: (e) => `/admin/esports/events?id=${e.payload.eventId}`,
   },
 ];
 

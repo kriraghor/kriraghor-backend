@@ -6,7 +6,7 @@
  * invalid payloads before commit. Payloads carry IDs, codes, amounts, statuses and timestamps only:
  * no phone, NID, DOB, email or names (consumers read details through the producer's service).
  *
- * Built so far: M01, M02, M03, M04, M05, M06, M07, M09, M10, M11, M12, M13, M17, M18, M19, M21. Each later module adds its events here when it is built.
+ * Built so far: M01, M02, M03, M04, M05, M06, M07, M09, M10, M11, M12, M13, M14 lite, M17, M18, M19, M20, M21, M22, M23. Each later module adds its events here when it is built.
  */
 const { z } = require('zod');
 
@@ -31,6 +31,7 @@ const gymEvent = z.object({ gymId: uuid, ownerId: uuid });
 const gymPassEvent = z.object({ passId: uuid, code: z.string().max(20), gymId: uuid, holderId: uuid, ownerId: uuid, kind: z.enum(['day', 'month', 'quarter']), price: poisha });
 const trainerSubEvent = z.object({ subscriptionId: uuid, code: z.string().max(20), memberId: uuid, trainerId: uuid, price: poisha });
 const orgEvent = z.object({ organisationId: uuid, ownerId: uuid });
+const qualEvent = z.object({ qualificationId: uuid, eventId: uuid, finalTournamentId: uuid });
 const contractEvent = z.object({ contractId: uuid, organisationId: uuid });
 const invoiceEvent = z.object({ invoiceId: uuid, number: z.string().max(24), organisationId: uuid, total: poisha });
 const fundEvent = z.object({ fundId: uuid, tournamentId: uuid, organisationId: uuid, amount: poisha });
@@ -203,6 +204,15 @@ const EVENTS = {
   'esports_prize.credited': { module: 'M21', version: 1, schema: esShare },
   'esports_prize.reversed': { module: 'M21', version: 1, schema: esShare },
   'esports_prize.forfeited': { module: 'M21', version: 1, schema: z.object({ awardId: uuid, tournamentId: uuid, registrationId: uuid, amount: poisha }) },
+  'esports_stream.live_started': { module: 'M21', version: 1, schema: z.object({ tournamentId: uuid, streamId: uuid, platform: z.string().max(20) }) },
+
+  // ---------------- M23 Esports big events (ids only; follower pages are user-id ranges, never lists) ----------------
+  'esports_event.published': { module: 'M23', version: 1, schema: z.object({ eventId: uuid, startsAt: iso }) },
+  'esports_event.cancelled': { module: 'M23', version: 1, schema: z.object({ eventId: uuid }) },
+  'esports_event.followers_alerted': { module: 'M23', version: 1, schema: z.object({ eventId: uuid, alertId: uuid, kind: z.enum(['event_started', 'stream_live', 'final_soon']), fromUserId: uuid, toUserId: uuid }) },
+  'esports_event_qualification.granted': { module: 'M23', version: 1, schema: qualEvent.extend({ status: z.enum(['qualified', 'invited']) }) },
+  'esports_event_qualification.revoked': { module: 'M23', version: 1, schema: qualEvent.extend({ reasonCode: z.string().max(40) }) },
+  'esports_event_qualification.missed': { module: 'M23', version: 1, schema: qualEvent },
 // ---------------- M09 Grounds (ids and keys only) ----------------
   'ground.submitted': { module: 'M09', version: 1, schema: groundEvent.extend({ version: z.number().int(), isEdit: z.boolean() }) },
   'ground.published': { module: 'M09', version: 1, schema: groundEvent.extend({ version: z.number().int(), first: z.boolean() }) },

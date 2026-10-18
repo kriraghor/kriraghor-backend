@@ -22,6 +22,7 @@ const settings = require('../settings/settings.service');
 const moderation = require('../moderation/moderation.service');
 const { organiser, isOrganised, fail, game: gameRow, mode: modeRow, maps: mapRows, preset: presetRow, snapshot, setting, rooms, money } = require('./esports.common');
 const rules = require('./esports.rules');
+const streamRules = require('./streams.rules');
 
 const { sequelize, EsportsTournament, EsportsPrizePlace, EsportsStage, EsportsMatch, EsportsStream, EsportsRegistration, EsportsGame, EsportsMode, EsportsMap } = models;
 
@@ -89,6 +90,7 @@ function card(t, names, counts) {
     startsAt: t.startsAt,
     status: t.status,
     featured: t.featured,
+    entryPolicy: t.entryPolicy,
   };
 }
 
@@ -110,7 +112,7 @@ async function detailOf(t, { staff = false, transaction } = {}) {
     prizes: prizes.map((p) => ({ place: p.place, amount: money(p.amountPoisha) })),
     stages: stages.map((s) => ({ id: s.id, seq: s.seq, nameEn: s.nameEn, nameBn: s.nameBn, kind: s.kind, checkinOpensAt: s.checkinOpensAt, checkinClosesAt: s.checkinClosesAt })),
     matches: matches.map((m) => ({ id: m.id, stageId: m.stageId, seq: m.seq, map: named(names.maps.get(m.mapId)), startsAt: m.startsAt, status: m.status, resultsPostedAt: m.resultsPostedAt ?? null, disputeClosesAt: m.disputeClosesAt ?? null })),
-    streams: streams.map((s) => ({ id: s.id, matchId: s.matchId ?? null, platform: s.platform, url: s.url, title: s.title, isLive: s.isLive, startsAt: s.startsAt ?? null })),
+    streams: streams.map((s) => ({ id: s.id, matchId: s.matchId ?? null, platform: s.platform, url: s.url, title: s.title, isLive: s.isLive, startsAt: s.startsAt ?? null, embedUrl: streamRules.embedFor(s.videoRef) })),
     publishedAt: t.publishedAt ?? null,
     finalisedAt: t.finalisedAt ?? null,
     cancelReason: t.cancelReason ?? null,
@@ -216,6 +218,7 @@ async function resolveDraft(body, { transaction } = {}) {
       startsAt,
       rulesMd: body.rulesMd ?? '',
       featured: Boolean(body.featured),
+      entryPolicy: body.entryPolicy ?? 'open',
     },
     prizes,
     matches,
@@ -246,6 +249,8 @@ async function createDraft(actor, body, req, { org = null } = {}) {
   return sequelize.transaction(async (transaction) => {
     const d = await resolveDraft(body, { transaction });
     if (killCapBlock(d.fields, Boolean(org))) throw fail('ESPORTS_KILL_CAP_REQUIRED');
+    // Invite-only entry belongs to Kriraghor's big events (M23); organisers' tournaments stay open (Q150).
+    if (org) d.fields.entryPolicy = 'open';
     const id = uuid7();
     const owner = org ? { organiserType: 'organisation', organisationId: org.id } : {};
     const t = await EsportsTournament.create({ id, slug: rules.slugify(d.fields.titleEn, id.slice(-6)), ...d.fields, ...owner, status: 'draft', createdBy: actor.id }, { transaction });
@@ -271,6 +276,7 @@ async function update(actor, id, body, req) {
     if (t.status === 'draft' && body.gameId) {
       const d = await resolveDraft({ ...body }, { transaction });
       if (killCapBlock(d.fields, isOrganised(t))) throw fail('ESPORTS_KILL_CAP_REQUIRED');
+      if (isOrganised(t)) d.fields.entryPolicy = 'open';
       await t.update({ ...d.fields, updatedBy: actor.id, lockVersion: t.lockVersion + 1 }, { transaction });
       await EsportsPrizePlace.destroy({ where: { tournamentId: t.id }, transaction });
       await EsportsMatch.destroy({ where: { tournamentId: t.id }, transaction });
@@ -338,6 +344,7 @@ async function submit(actor, id, req) {
           maxPaidKills: t.maxPaidKills ?? null,
           organisationId: t.organisationId ?? null,
           organiserName: org?.name ?? null,
+          entryPolicy: t.entryPolicy,
           matches: matches.length,
           registrationOpensAt: t.registrationOpensAt.toISOString(),
           startsAt: t.startsAt.toISOString(),
@@ -459,15 +466,16 @@ async function setStreams(actor, id, { streams }, req) {
   return sequelize.transaction(async (transaction) => {
     const t = await EsportsTournament.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
     if (!t) throw E.notFound('Tournament');
-    for (const s of streams) {
-      const block = rules.streamBlock(s.platform, s.url);
-      if (block) throw fail(block);
-    }
+    const parsed = streams.map((s) => streamRules.parseStream(s.platform, s.url));
+    if (parsed.some((p) => p.error)) throw fail('STREAM_URL_INVALID');
+    const wasLive = new Set((await EsportsStream.findAll({ where: { tournamentId: t.id, status: 'active', isLive: true }, attributes: ['url'], transaction })).map((s) => s.url));
     const matchIds = new Set((await EsportsMatch.findAll({ where: { tournamentId: t.id }, attributes: ['id'], transaction })).map((m) => m.id));
     if (streams.some((s) => s.matchId && !matchIds.has(s.matchId))) throw E.notFound('Match');
     await EsportsStream.update({ status: 'removed' }, { where: { tournamentId: t.id, status: 'active' }, transaction });
     for (const [i, s] of streams.entries()) {
-      await EsportsStream.create({ tournamentId: t.id, matchId: s.matchId ?? null, platform: s.platform, url: s.url, title: s.title, isLive: Boolean(s.isLive), startsAt: s.startsAt ?? null, sort: i }, { transaction });
+      const row = await EsportsStream.create({ tournamentId: t.id, matchId: s.matchId ?? null, platform: s.platform, url: s.url, videoRef: parsed[i].ref, title: s.title, isLive: Boolean(s.isLive), startsAt: s.startsAt ?? null, sort: i }, { transaction });
+      // M23 follow alerts: a stream that was not live before has gone live.
+      if (row.isLive && !wasLive.has(row.url)) await events.publish(transaction, { name: 'esports_stream.live_started', aggregateType: 'esports_tournament', aggregateId: t.id, payload: { tournamentId: t.id, streamId: row.id, platform: row.platform } });
     }
     await audit.record({ action: 'esports_tournament.streams_set', actor, entityType: 'esports_tournament', entityId: t.id, after: { streams: streams.length, live: streams.filter((s) => s.isLive).length }, req }, { transaction });
     if (streams.some((s) => s.isLive)) realtime.toRoom(rooms.tournament(t.id), 'esports.stream_live', { tournamentId: t.id });

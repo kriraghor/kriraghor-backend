@@ -8305,6 +8305,13 @@
                 },
                 "featured": {
                   "type": "boolean"
+                },
+                "entryPolicy": {
+                  "type": "string",
+                  "enum": [
+                    "open",
+                    "invite"
+                  ]
                 }
               },
               "required": [
@@ -8331,7 +8338,8 @@
                 "registrationClosesAt",
                 "startsAt",
                 "status",
-                "featured"
+                "featured",
+                "entryPolicy"
               ],
               "additionalProperties": {}
             }
@@ -8555,6 +8563,13 @@
           "featured": {
             "type": "boolean"
           },
+          "entryPolicy": {
+            "type": "string",
+            "enum": [
+              "open",
+              "invite"
+            ]
+          },
           "rulesMd": {
             "type": "string"
           },
@@ -8708,6 +8723,13 @@
                 },
                 "isLive": {
                   "type": "boolean"
+                },
+                "embedUrl": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "The player URL built from the parsed video reference; null = show the link"
                 }
               },
               "required": [
@@ -8715,7 +8737,8 @@
                 "platform",
                 "url",
                 "title",
-                "isLive"
+                "isLive",
+                "embedUrl"
               ],
               "additionalProperties": {}
             }
@@ -8746,6 +8769,7 @@
           "startsAt",
           "status",
           "featured",
+          "entryPolicy",
           "rulesMd",
           "placementPoints",
           "killPoints",
@@ -25025,6 +25049,1317 @@
           "role",
           "createdAt",
           "members"
+        ]
+      },
+      "EsportsEventList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EsportsEventCard"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "EsportsEventCard": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "titleEn": {
+            "type": "string"
+          },
+          "titleBn": {
+            "type": "string"
+          },
+          "taglineEn": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "taglineBn": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bannerUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "accentHex": {
+            "type": "string"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "cancelled"
+            ]
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "upcoming",
+              "live",
+              "ended",
+              "cancelled"
+            ]
+          },
+          "featured": {
+            "type": "boolean"
+          },
+          "prizeTotal": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "integer"
+              },
+              "currency": {
+                "type": "string",
+                "enum": [
+                  "BDT"
+                ]
+              }
+            },
+            "required": [
+              "amount",
+              "currency"
+            ],
+            "description": "The linked tournaments' prize pools (cancelled ones excluded)"
+          },
+          "followers": {
+            "type": "integer"
+          },
+          "cancelReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "titleEn",
+          "titleBn",
+          "taglineEn",
+          "taglineBn",
+          "bannerUrl",
+          "accentHex",
+          "startsAt",
+          "endsAt",
+          "status",
+          "phase",
+          "featured",
+          "prizeTotal",
+          "followers",
+          "cancelReason"
+        ]
+      },
+      "EsportsEventBundle": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "slug": {
+                "type": "string"
+              },
+              "titleEn": {
+                "type": "string"
+              },
+              "titleBn": {
+                "type": "string"
+              },
+              "taglineEn": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "taglineBn": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "bannerUrl": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "accentHex": {
+                "type": "string"
+              },
+              "startsAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "endsAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "draft",
+                  "published",
+                  "cancelled"
+                ]
+              },
+              "phase": {
+                "type": "string",
+                "enum": [
+                  "draft",
+                  "upcoming",
+                  "live",
+                  "ended",
+                  "cancelled"
+                ]
+              },
+              "featured": {
+                "type": "boolean"
+              },
+              "prizeTotal": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "integer"
+                  },
+                  "currency": {
+                    "type": "string",
+                    "enum": [
+                      "BDT"
+                    ]
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "description": "The linked tournaments' prize pools (cancelled ones excluded)"
+              },
+              "followers": {
+                "type": "integer"
+              },
+              "cancelReason": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "aboutMdEn": {
+                "type": "string"
+              },
+              "aboutMdBn": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "slug",
+              "titleEn",
+              "titleBn",
+              "taglineEn",
+              "taglineBn",
+              "bannerUrl",
+              "accentHex",
+              "startsAt",
+              "endsAt",
+              "status",
+              "phase",
+              "featured",
+              "prizeTotal",
+              "followers",
+              "cancelReason",
+              "aboutMdEn",
+              "aboutMdBn"
+            ]
+          },
+          "stages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EsportsEventStage"
+            }
+          },
+          "qualifications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EsportsEventQualification"
+            }
+          },
+          "streams": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EsportsEventStream"
+            }
+          },
+          "sponsors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EsportsEventSponsor"
+            }
+          },
+          "polls": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EsportsEventPoll"
+            }
+          },
+          "feed": {
+            "$ref": "#/components/schemas/EsportsEventFeed"
+          }
+        },
+        "required": [
+          "event",
+          "stages",
+          "qualifications",
+          "streams",
+          "sponsors",
+          "polls",
+          "feed"
+        ]
+      },
+      "EsportsEventStage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "qualifier",
+              "final"
+            ]
+          },
+          "labelEn": {
+            "type": "string"
+          },
+          "labelBn": {
+            "type": "string"
+          },
+          "sort": {
+            "type": "integer"
+          },
+          "qualifyCount": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "finalTournamentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "tournament": {
+            "$ref": "#/components/schemas/EsportsEventTournament"
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "labelEn",
+          "labelBn",
+          "sort",
+          "qualifyCount",
+          "finalTournamentId",
+          "tournament"
+        ]
+      },
+      "EsportsEventTournament": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "titleEn": {
+            "type": "string"
+          },
+          "titleBn": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "entryUnit": {
+            "type": "string"
+          },
+          "entryPolicy": {
+            "type": "string"
+          },
+          "maxSlots": {
+            "type": "integer"
+          },
+          "prizePool": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "integer"
+              },
+              "currency": {
+                "type": "string",
+                "enum": [
+                  "BDT"
+                ]
+              }
+            },
+            "required": [
+              "amount",
+              "currency"
+            ]
+          },
+          "entryFee": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "integer"
+              },
+              "currency": {
+                "type": "string",
+                "enum": [
+                  "BDT"
+                ]
+              }
+            },
+            "required": [
+              "amount",
+              "currency"
+            ]
+          },
+          "registrationOpensAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "registrationClosesAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "titleEn",
+          "titleBn",
+          "status",
+          "entryUnit",
+          "entryPolicy",
+          "maxSlots",
+          "prizePool",
+          "entryFee",
+          "registrationOpensAt",
+          "registrationClosesAt",
+          "startsAt"
+        ]
+      },
+      "EsportsEventQualification": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "finalTournamentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sourceTournamentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "rank": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "qualified",
+              "invited",
+              "entered",
+              "missed",
+              "revoked"
+            ]
+          },
+          "entry": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "squad",
+                  "player"
+                ]
+              },
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              },
+              "tag": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "kind",
+              "id",
+              "name",
+              "tag"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "finalTournamentId",
+          "sourceTournamentId",
+          "rank",
+          "status",
+          "entry",
+          "createdAt"
+        ],
+        "additionalProperties": {}
+      },
+      "EsportsEventStream": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "event",
+              "tournament"
+            ]
+          },
+          "tournamentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "platform": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "isLive": {
+            "type": "boolean"
+          },
+          "embedUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Built from the parsed video reference; null = link only (TikTok live, unknown link forms)"
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "tournamentId",
+          "platform",
+          "url",
+          "title",
+          "isLive",
+          "embedUrl"
+        ]
+      },
+      "EsportsEventSponsor": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "title",
+              "gold",
+              "partner"
+            ]
+          },
+          "logoUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sort": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "tier",
+          "logoUrl",
+          "url",
+          "sort"
+        ]
+      },
+      "EsportsEventPoll": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "questionEn": {
+            "type": "string"
+          },
+          "questionBn": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "open",
+              "closed"
+            ]
+          },
+          "closesAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "labelEn": {
+                  "type": "string"
+                },
+                "labelBn": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "labelEn",
+                "labelBn"
+              ]
+            }
+          },
+          "results": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer"
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "optionId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "votes": {
+                      "type": "integer"
+                    },
+                    "pct": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "optionId",
+                    "votes",
+                    "pct"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "total",
+              "items"
+            ]
+          },
+          "myVote": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "id",
+          "questionEn",
+          "questionBn",
+          "status",
+          "closesAt",
+          "options",
+          "results"
+        ]
+      },
+      "EsportsEventFeed": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EsportsEventFeedItem"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "EsportsEventFeedItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "announcement",
+              "tournament_finalised",
+              "tournament_cancelled",
+              "qualified",
+              "final_live",
+              "stream_live",
+              "event_cancelled"
+            ]
+          },
+          "tournament": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "slug": {
+                "type": "string"
+              },
+              "titleEn": {
+                "type": "string"
+              },
+              "titleBn": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "slug",
+              "titleEn",
+              "titleBn"
+            ]
+          },
+          "textEn": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "textBn": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "tournament",
+          "textEn",
+          "textBn",
+          "data",
+          "createdAt"
+        ]
+      },
+      "EsportsEventMe": {
+        "type": "object",
+        "properties": {
+          "following": {
+            "type": "boolean"
+          },
+          "votes": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "following",
+          "votes"
+        ]
+      },
+      "EsportsEventFollow": {
+        "type": "object",
+        "properties": {
+          "following": {
+            "type": "boolean"
+          },
+          "followers": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "following",
+          "followers"
+        ]
+      },
+      "EsportsEventDraft": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "titleEn": {
+            "type": "string"
+          },
+          "titleBn": {
+            "type": "string"
+          },
+          "taglineEn": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "taglineBn": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bannerUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "accentHex": {
+            "type": "string"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "cancelled"
+            ]
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "upcoming",
+              "live",
+              "ended",
+              "cancelled"
+            ]
+          },
+          "featured": {
+            "type": "boolean"
+          },
+          "prizeTotal": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "integer"
+              },
+              "currency": {
+                "type": "string",
+                "enum": [
+                  "BDT"
+                ]
+              }
+            },
+            "required": [
+              "amount",
+              "currency"
+            ],
+            "description": "The linked tournaments' prize pools (cancelled ones excluded)"
+          },
+          "followers": {
+            "type": "integer"
+          },
+          "cancelReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "aboutMdEn": {
+            "type": "string"
+          },
+          "aboutMdBn": {
+            "type": "string"
+          },
+          "lockVersion": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "titleEn",
+          "titleBn",
+          "taglineEn",
+          "taglineBn",
+          "bannerUrl",
+          "accentHex",
+          "startsAt",
+          "endsAt",
+          "status",
+          "phase",
+          "featured",
+          "prizeTotal",
+          "followers",
+          "cancelReason",
+          "aboutMdEn",
+          "aboutMdBn",
+          "lockVersion"
+        ]
+      },
+      "EsportsEventAdmin": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "slug": {
+                "type": "string"
+              },
+              "titleEn": {
+                "type": "string"
+              },
+              "titleBn": {
+                "type": "string"
+              },
+              "taglineEn": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "taglineBn": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "bannerUrl": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "accentHex": {
+                "type": "string"
+              },
+              "startsAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "endsAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "draft",
+                  "published",
+                  "cancelled"
+                ]
+              },
+              "phase": {
+                "type": "string",
+                "enum": [
+                  "draft",
+                  "upcoming",
+                  "live",
+                  "ended",
+                  "cancelled"
+                ]
+              },
+              "featured": {
+                "type": "boolean"
+              },
+              "prizeTotal": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "integer"
+                  },
+                  "currency": {
+                    "type": "string",
+                    "enum": [
+                      "BDT"
+                    ]
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "description": "The linked tournaments' prize pools (cancelled ones excluded)"
+              },
+              "followers": {
+                "type": "integer"
+              },
+              "cancelReason": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "aboutMdEn": {
+                "type": "string"
+              },
+              "aboutMdBn": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "slug",
+              "titleEn",
+              "titleBn",
+              "taglineEn",
+              "taglineBn",
+              "bannerUrl",
+              "accentHex",
+              "startsAt",
+              "endsAt",
+              "status",
+              "phase",
+              "featured",
+              "prizeTotal",
+              "followers",
+              "cancelReason",
+              "aboutMdEn",
+              "aboutMdBn"
+            ]
+          },
+          "stages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EsportsEventStage"
+            }
+          },
+          "qualifications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EsportsEventQualification"
+            }
+          },
+          "streams": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EsportsEventStream"
+            }
+          },
+          "sponsors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EsportsEventSponsor"
+            }
+          },
+          "polls": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EsportsEventPoll"
+            }
+          },
+          "feed": {
+            "$ref": "#/components/schemas/EsportsEventFeed"
+          },
+          "linkCheck": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "finalTournamentId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "block": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "qualifying": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "finalTournamentId",
+                "block",
+                "qualifying"
+              ]
+            }
+          },
+          "lockVersion": {
+            "type": "integer"
+          },
+          "createdBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "publishedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "event",
+          "stages",
+          "qualifications",
+          "streams",
+          "sponsors",
+          "polls",
+          "feed",
+          "linkCheck",
+          "lockVersion",
+          "createdBy",
+          "publishedAt"
+        ]
+      },
+      "EsportsEventStageList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "tournamentId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "role": {
+                  "type": "string"
+                },
+                "labelEn": {
+                  "type": "string"
+                },
+                "labelBn": {
+                  "type": "string"
+                },
+                "sort": {
+                  "type": "integer"
+                },
+                "qualifyCount": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "finalTournamentId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "uuid"
+                }
+              },
+              "required": [
+                "id",
+                "tournamentId",
+                "role",
+                "labelEn",
+                "labelBn",
+                "sort",
+                "qualifyCount",
+                "finalTournamentId"
+              ]
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "EsportsEventQualificationList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EsportsEventQualification"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "EsportsEventStreamList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EsportsEventStream"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "EsportsEventAnnouncement": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "announcement"
+            ]
+          },
+          "textEn": {
+            "type": "string"
+          },
+          "textBn": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "textEn",
+          "textBn",
+          "createdAt"
         ]
       }
     },
@@ -44114,6 +45449,15 @@
                   "featured": {
                     "type": "boolean",
                     "default": false
+                  },
+                  "entryPolicy": {
+                    "type": "string",
+                    "enum": [
+                      "open",
+                      "invite"
+                    ],
+                    "default": "open",
+                    "description": "M23: invite = only qualified or invited entries (a big event final); locked after publish"
                   }
                 },
                 "required": [
@@ -44424,6 +45768,14 @@
                   },
                   "featured": {
                     "type": "boolean"
+                  },
+                  "entryPolicy": {
+                    "type": "string",
+                    "enum": [
+                      "open",
+                      "invite"
+                    ],
+                    "description": "M23: invite = only qualified or invited entries (a big event final); locked after publish"
                   }
                 }
               }
@@ -72420,6 +73772,15 @@
                   "featured": {
                     "type": "boolean",
                     "default": false
+                  },
+                  "entryPolicy": {
+                    "type": "string",
+                    "enum": [
+                      "open",
+                      "invite"
+                    ],
+                    "default": "open",
+                    "description": "M23: invite = only qualified or invited entries (a big event final); locked after publish"
                   }
                 },
                 "required": [
@@ -72727,6 +74088,13 @@
                     "featured": {
                       "type": "boolean"
                     },
+                    "entryPolicy": {
+                      "type": "string",
+                      "enum": [
+                        "open",
+                        "invite"
+                      ]
+                    },
                     "rulesMd": {
                       "type": "string"
                     },
@@ -72880,6 +74248,13 @@
                           },
                           "isLive": {
                             "type": "boolean"
+                          },
+                          "embedUrl": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "The player URL built from the parsed video reference; null = show the link"
                           }
                         },
                         "required": [
@@ -72887,7 +74262,8 @@
                           "platform",
                           "url",
                           "title",
-                          "isLive"
+                          "isLive",
+                          "embedUrl"
                         ],
                         "additionalProperties": {}
                       }
@@ -72928,6 +74304,7 @@
                     "startsAt",
                     "status",
                     "featured",
+                    "entryPolicy",
                     "rulesMd",
                     "placementPoints",
                     "killPoints",
@@ -73145,6 +74522,14 @@
                   },
                   "featured": {
                     "type": "boolean"
+                  },
+                  "entryPolicy": {
+                    "type": "string",
+                    "enum": [
+                      "open",
+                      "invite"
+                    ],
+                    "description": "M23: invite = only qualified or invited entries (a big event final); locked after publish"
                   }
                 }
               }
@@ -76242,6 +77627,2645 @@
           },
           "409": {
             "description": "Error. Codes: INVOICE_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/esports/events": {
+      "get": {
+        "tags": [
+          "esports-events"
+        ],
+        "summary": "Big events: live first, then upcoming, then ended (cacheable)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "required": false,
+            "name": "featured",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The published event a tournament belongs to (the tournament page links it)"
+            },
+            "required": false,
+            "description": "The published event a tournament belongs to (the tournament page links it)",
+            "name": "tournamentId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsportsEventList"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "No content"
+          }
+        }
+      }
+    },
+    "/esports/events/{slug}": {
+      "get": {
+        "tags": [
+          "esports-events"
+        ],
+        "summary": "An event page: stages, qualifications, streams with embeds, sponsors, polls with totals, the feed (no viewer data; cacheable)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 90
+            },
+            "required": true,
+            "name": "slug",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsportsEventBundle"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "No content"
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/esports/events/{id}/feed": {
+      "get": {
+        "tags": [
+          "esports-events"
+        ],
+        "summary": "The event feed, newest first",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 80
+            },
+            "required": false,
+            "name": "before",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsportsEventFeed"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/esports/events/{id}/me": {
+      "get": {
+        "tags": [
+          "esports-events"
+        ],
+        "summary": "Whether I follow the event and my poll votes",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsportsEventMe"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/esports/events/{id}/follow": {
+      "post": {
+        "tags": [
+          "esports-events"
+        ],
+        "summary": "Follow the event (in-app alerts when it starts, a stream goes live and before the final)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsportsEventFollow"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error. Codes: RATE_LIMITED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/esports/events/{id}/unfollow": {
+      "post": {
+        "tags": [
+          "esports-events"
+        ],
+        "summary": "Stop following",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsportsEventFollow"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error. Codes: RATE_LIMITED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/esports/events/{id}/polls/{pollId}/vote": {
+      "post": {
+        "tags": [
+          "esports-events"
+        ],
+        "summary": "Vote in a free poll (verified phone; one vote, final; no stakes)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "pollId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "optionId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "optionId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsportsEventPoll"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PHONE_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: POLL_CLOSED, POLL_ALREADY_VOTED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: POLL_OPTION_UNKNOWN, VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error. Codes: RATE_LIMITED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/esports/events": {
+      "get": {
+        "tags": [
+          "esports-events"
+        ],
+        "summary": "Events I follow",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsportsEventList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/esports/events": {
+      "get": {
+        "tags": [
+          "esports-events"
+        ],
+        "summary": "Every event (manage_esports)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "published",
+                "cancelled"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsportsEventList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "esports-events"
+        ],
+        "summary": "A draft event",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "titleEn": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 120
+                  },
+                  "titleBn": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 160
+                  },
+                  "taglineEn": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 0,
+                    "maxLength": 160
+                  },
+                  "taglineBn": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 0,
+                    "maxLength": 200
+                  },
+                  "aboutMdEn": {
+                    "type": "string",
+                    "maxLength": 10000,
+                    "default": ""
+                  },
+                  "aboutMdBn": {
+                    "type": "string",
+                    "maxLength": 10000,
+                    "default": ""
+                  },
+                  "accentHex": {
+                    "type": "string",
+                    "pattern": "^#[0-9a-f]{6}$",
+                    "default": "#f2a33a"
+                  },
+                  "startsAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "endsAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "featured": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                },
+                "required": [
+                  "titleEn",
+                  "titleBn",
+                  "startsAt",
+                  "endsAt"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsportsEventDraft"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: EVENT_DATES_INVALID, EVENT_ACCENT_INVALID, VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/esports/events/{id}": {
+      "get": {
+        "tags": [
+          "esports-events"
+        ],
+        "summary": "An event with drafts, polls in draft and the link check",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsportsEventAdmin"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "esports-events"
+        ],
+        "summary": "Change a draft or published event (the slug stays)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "titleEn": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 120
+                  },
+                  "titleBn": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 160
+                  },
+                  "taglineEn": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 0,
+                    "maxLength": 160
+                  },
+                  "taglineBn": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 0,
+                    "maxLength": 200
+                  },
+                  "aboutMdEn": {
+                    "type": "string",
+                    "maxLength": 10000
+                  },
+                  "aboutMdBn": {
+                    "type": "string",
+                    "maxLength": 10000
+                  },
+                  "accentHex": {
+                    "type": "string",
+                    "pattern": "^#[0-9a-f]{6}$"
+                  },
+                  "startsAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "endsAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "featured": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsportsEventDraft"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: EVENT_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: EVENT_DATES_INVALID, EVENT_ACCENT_INVALID, VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/esports/events/{id}/banner": {
+      "post": {
+        "tags": [
+          "esports-events"
+        ],
+        "summary": "Upload the banner (public bucket)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "description": "The banner",
+          "content": {
+            "image/jpeg": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "image/png": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "image/webp": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsportsEventDraft"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error. Codes: FILE_TOO_LARGE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error. Codes: FILE_TYPE_NOT_ALLOWED, FILE_TYPE_MISMATCH",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: FILE_EMPTY",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/esports/events/{id}/stages": {
+      "put": {
+        "tags": [
+          "esports-events"
+        ],
+        "summary": "Link tournaments: qualifiers feeding invite-only finals (each link checked)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "stages": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "tournamentId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "qualifier",
+                            "final"
+                          ]
+                        },
+                        "labelEn": {
+                          "type": "string",
+                          "minLength": 2,
+                          "maxLength": 80
+                        },
+                        "labelBn": {
+                          "type": "string",
+                          "minLength": 2,
+                          "maxLength": 120
+                        },
+                        "qualifyCount": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 200,
+                          "description": "Qualifiers: how many go through to the final (top N by M21 rank)"
+                        },
+                        "finalTournamentId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "description": "Qualifiers: the final they feed (a final in this list)"
+                        }
+                      },
+                      "required": [
+                        "tournamentId",
+                        "role",
+                        "labelEn",
+                        "labelBn"
+                      ]
+                    },
+                    "maxItems": 32
+                  }
+                },
+                "required": [
+                  "stages"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsportsEventStageList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: EVENT_STATE, EVENT_TOURNAMENT_IN_OTHER_EVENT, EVENT_TOURNAMENT_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: EVENT_STAGES_INVALID, EVENT_TOURNAMENT_NOT_OURS, EVENT_FINAL_NOT_INVITE, EVENT_LINK_MISMATCH, EVENT_FINAL_SLOTS, EVENT_FINAL_MIN, EVENT_QUALIFY_GAP, VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/esports/events/{id}/publish": {
+      "post": {
+        "tags": [
+          "esports-events"
+        ],
+        "summary": "Publish (a published tournament must be linked)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsportsEventDraft"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: EVENT_STATE, EVENT_NOT_PUBLISHABLE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/esports/events/{id}/cancel": {
+      "post": {
+        "tags": [
+          "esports-events"
+        ],
+        "summary": "Cancel the event (never its tournaments; refused while one runs)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 255
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsportsEventDraft"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: EVENT_STATE, EVENT_TOURNAMENT_RUNNING",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/esports/events/{id}/qualifications": {
+      "get": {
+        "tags": [
+          "esports-events"
+        ],
+        "summary": "Every qualification with its reason",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsportsEventQualificationList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "esports-events"
+        ],
+        "summary": "Invite a squad or a player into a final",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "finalTournamentId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "squadId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "userId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 255
+                  }
+                },
+                "required": [
+                  "finalTournamentId",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsportsEventQualification"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: EVENT_STATE, EVENT_QUALIFICATION_STATE, EVENT_ALREADY_QUALIFIED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: EVENT_INVITE_INVALID, VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/esports/events/{id}/qualifications/{qualificationId}/revoke": {
+      "post": {
+        "tags": [
+          "esports-events"
+        ],
+        "summary": "Withdraw a place not yet used",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "qualificationId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 255
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsportsEventQualification"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: EVENT_QUALIFICATION_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/esports/events/{id}/streams": {
+      "put": {
+        "tags": [
+          "esports-events"
+        ],
+        "summary": "The event broadcast links; a stream turning live alerts followers (cooldown)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "streams": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "platform": {
+                          "type": "string",
+                          "enum": [
+                            "youtube",
+                            "facebook",
+                            "tiktok"
+                          ]
+                        },
+                        "url": {
+                          "type": "string",
+                          "maxLength": 500
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 2,
+                          "maxLength": 120
+                        },
+                        "isLive": {
+                          "type": "boolean",
+                          "default": false
+                        }
+                      },
+                      "required": [
+                        "platform",
+                        "url",
+                        "title"
+                      ]
+                    },
+                    "maxItems": 10
+                  }
+                },
+                "required": [
+                  "streams"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsportsEventStreamList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: EVENT_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: STREAM_URL_INVALID, VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/esports/events/{id}/sponsors": {
+      "post": {
+        "tags": [
+          "esports-events"
+        ],
+        "summary": "Add a sponsor placement (no money in the app)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 80
+                  },
+                  "tier": {
+                    "type": "string",
+                    "enum": [
+                      "title",
+                      "gold",
+                      "partner"
+                    ]
+                  },
+                  "url": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 500
+                  },
+                  "sort": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  }
+                },
+                "required": [
+                  "name",
+                  "tier"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsportsEventSponsor"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: EVENT_STATE, SPONSOR_LIMIT",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: SPONSOR_URL_INVALID, VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/esports/events/{id}/sponsors/{sponsorId}": {
+      "patch": {
+        "tags": [
+          "esports-events"
+        ],
+        "summary": "Change a sponsor",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "sponsorId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 80
+                  },
+                  "tier": {
+                    "type": "string",
+                    "enum": [
+                      "title",
+                      "gold",
+                      "partner"
+                    ]
+                  },
+                  "url": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 500
+                  },
+                  "sort": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsportsEventSponsor"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: SPONSOR_URL_INVALID, VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/esports/events/{id}/sponsors/{sponsorId}/remove": {
+      "post": {
+        "tags": [
+          "esports-events"
+        ],
+        "summary": "Remove a sponsor (kept, status removed)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "sponsorId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "status": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/esports/events/{id}/sponsors/{sponsorId}/logo": {
+      "post": {
+        "tags": [
+          "esports-events"
+        ],
+        "summary": "Upload a sponsor logo (public bucket)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "sponsorId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "description": "The logo",
+          "content": {
+            "image/jpeg": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "image/png": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "image/webp": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsportsEventSponsor"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error. Codes: FILE_TOO_LARGE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error. Codes: FILE_TYPE_NOT_ALLOWED, FILE_TYPE_MISMATCH",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: FILE_EMPTY",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/esports/events/{id}/polls": {
+      "post": {
+        "tags": [
+          "esports-events"
+        ],
+        "summary": "A draft poll",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "questionEn": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 160
+                  },
+                  "questionBn": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 220
+                  },
+                  "options": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "labelEn": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 80
+                        },
+                        "labelBn": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        }
+                      },
+                      "required": [
+                        "labelEn",
+                        "labelBn"
+                      ]
+                    },
+                    "minItems": 2,
+                    "maxItems": 10
+                  },
+                  "closesAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                },
+                "required": [
+                  "questionEn",
+                  "questionBn",
+                  "options"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsportsEventPoll"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: EVENT_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: POLL_OPTIONS_INVALID, VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/esports/events/{id}/polls/{pollId}/open": {
+      "post": {
+        "tags": [
+          "esports-events"
+        ],
+        "summary": "Open a poll (the event must be published)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "pollId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsportsEventPoll"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: POLL_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/esports/events/{id}/polls/{pollId}/close": {
+      "post": {
+        "tags": [
+          "esports-events"
+        ],
+        "summary": "Close a poll",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "pollId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsportsEventPoll"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: POLL_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/esports/events/{id}/feed": {
+      "post": {
+        "tags": [
+          "esports-events"
+        ],
+        "summary": "Post an announcement to the feed",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "textEn": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 280
+                  },
+                  "textBn": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 400
+                  }
+                },
+                "required": [
+                  "textEn",
+                  "textBn"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsportsEventAnnouncement"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: EVENT_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
             "content": {
               "application/problem+json": {
                 "schema": {

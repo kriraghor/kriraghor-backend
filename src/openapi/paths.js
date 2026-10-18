@@ -26,9 +26,10 @@ const hiS = require('../modules/hire/hire.schemas');
 const gyS = require('../modules/gym/gym.schemas');
 const orgS = require('../modules/organisations/organisations.schemas');
 const saS = require('../modules/organiser-saas/saas.schemas');
+const evS = require('../modules/esports-events/events.schemas');
 
 /**
- * Every route (M01 to M10, M12, M17, M18, M19, M21), registered with its request and response schemas and the stable error
+ * Every route (M01 to M14 lite, M17 to M23), registered with its request and response schemas and the stable error
  * codes it can return (ADR-002). When a route is added in a module, add it here: the
  * coverage test fails if an Express route has no OpenAPI entry.
  */
@@ -1137,6 +1138,63 @@ function register(registry) {
   p({ method: 'get', path: '/admin/organisers/invoices', tags: ['organisers'], summary: 'Organiser invoices by organisation and status', security: adminBearer, request: { query: saS.invoicesQuery }, responses: { 200: json(saS.InvoiceList), ...errors(ADMIN_AUTH) } });
   p({ method: 'post', path: '/admin/organisers/invoices/{id}/void', tags: ['organisers'], summary: 'Void an unpaid invoice (step-up), with a reason', security: adminBearer,
     request: { ...saId, headers: stepUpHeader, ...body(saS.reasonBody) }, responses: { 200: json(saS.Invoice), ...errors({ ...STAFF_ORG, ...STEP, 409: ['INVOICE_STATE'] }) } });
+
+  // ------------------------------------------------------------------ M23 esports big events (step 1)
+  const evId = { params: evS.idParam };
+  const EV = { 404: ['NOT_FOUND'] };
+  const EV_STAFF = { ...ADMIN_AUTH, 404: ['NOT_FOUND'] };
+  const evImage = (description) => ({ description, content: { 'image/jpeg': { schema: z.string() }, 'image/png': { schema: z.string() }, 'image/webp': { schema: z.string() } } });
+  const IMG = { 413: ['FILE_TOO_LARGE'], 415: ['FILE_TYPE_NOT_ALLOWED', 'FILE_TYPE_MISMATCH'], 422: ['FILE_EMPTY'] };
+  p({ method: 'get', path: '/esports/events', tags: ['esports-events'], summary: 'Big events: live first, then upcoming, then ended (cacheable)', request: { query: evS.listQuery }, responses: { 200: json(evS.EventList), 304: noContent } });
+  p({ method: 'get', path: '/esports/events/{slug}', tags: ['esports-events'], summary: 'An event page: stages, qualifications, streams with embeds, sponsors, polls with totals, the feed (no viewer data; cacheable)',
+    request: { params: evS.slugParam }, responses: { 200: json(evS.Bundle), 304: noContent, ...errors(EV) } });
+  p({ method: 'get', path: '/esports/events/{id}/feed', tags: ['esports-events'], summary: 'The event feed, newest first', request: { ...evId, query: evS.feedQuery }, responses: { 200: json(evS.Feed) } });
+  p({ method: 'get', path: '/esports/events/{id}/me', tags: ['esports-events'], summary: 'Whether I follow the event and my poll votes', security: bearer, request: evId, responses: { 200: json(evS.Me), ...errors(COMMON_AUTH) } });
+  p({ method: 'post', path: '/esports/events/{id}/follow', tags: ['esports-events'], summary: 'Follow the event (in-app alerts when it starts, a stream goes live and before the final)', security: bearer,
+    request: evId, responses: { 200: json(evS.Follow), ...errors({ ...COMMON_AUTH, ...EV, ...RATE }) } });
+  p({ method: 'post', path: '/esports/events/{id}/unfollow', tags: ['esports-events'], summary: 'Stop following', security: bearer, request: evId, responses: { 200: json(evS.Follow), ...errors({ ...COMMON_AUTH, ...EV, ...RATE }) } });
+  p({ method: 'post', path: '/esports/events/{id}/polls/{pollId}/vote', tags: ['esports-events'], summary: 'Vote in a free poll (verified phone; one vote, final; no stakes)', security: bearer,
+    request: { params: evS.pollParam, ...body(evS.voteBody) },
+    responses: { 200: json(evS.Poll), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'ACCOUNT_SUSPENDED', 'ACCOUNT_BANNED'], ...EV, 409: ['POLL_CLOSED', 'POLL_ALREADY_VOTED'], 422: ['POLL_OPTION_UNKNOWN', 'VALIDATION_FAILED'], ...RATE }) } });
+  p({ method: 'get', path: '/me/esports/events', tags: ['esports-events'], summary: 'Events I follow', security: bearer, responses: { 200: json(evS.EventList), ...errors(COMMON_AUTH) } });
+  p({ method: 'get', path: '/admin/esports/events', tags: ['esports-events'], summary: 'Every event (manage_esports)', security: adminBearer, request: { query: evS.adminListQuery }, responses: { 200: json(evS.EventList), ...errors(ADMIN_AUTH) } });
+  p({ method: 'post', path: '/admin/esports/events', tags: ['esports-events'], summary: 'A draft event', security: adminBearer,
+    request: body(evS.eventBody), responses: { 201: json(evS.EventDraft, 'Created'), ...errors({ ...ADMIN_AUTH, 422: ['EVENT_DATES_INVALID', 'EVENT_ACCENT_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'get', path: '/admin/esports/events/{id}', tags: ['esports-events'], summary: 'An event with drafts, polls in draft and the link check', security: adminBearer, request: evId, responses: { 200: json(evS.AdminEvent), ...errors(EV_STAFF) } });
+  p({ method: 'patch', path: '/admin/esports/events/{id}', tags: ['esports-events'], summary: 'Change a draft or published event (the slug stays)', security: adminBearer,
+    request: { ...evId, ...body(evS.eventPatch) }, responses: { 200: json(evS.EventDraft), ...errors({ ...EV_STAFF, 409: ['EVENT_STATE'], 422: ['EVENT_DATES_INVALID', 'EVENT_ACCENT_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/admin/esports/events/{id}/banner', tags: ['esports-events'], summary: 'Upload the banner (public bucket)', security: adminBearer,
+    request: { ...evId, body: evImage('The banner') }, responses: { 200: json(evS.EventDraft), ...errors({ ...EV_STAFF, ...IMG }) } });
+  p({ method: 'put', path: '/admin/esports/events/{id}/stages', tags: ['esports-events'], summary: 'Link tournaments: qualifiers feeding invite-only finals (each link checked)', security: adminBearer,
+    request: { ...evId, ...body(evS.stagesBody) },
+    responses: { 200: json(evS.StageList), ...errors({ ...EV_STAFF, 409: ['EVENT_STATE', 'EVENT_TOURNAMENT_IN_OTHER_EVENT', 'EVENT_TOURNAMENT_STATE'], 422: ['EVENT_STAGES_INVALID', 'EVENT_TOURNAMENT_NOT_OURS', 'EVENT_FINAL_NOT_INVITE', 'EVENT_LINK_MISMATCH', 'EVENT_FINAL_SLOTS', 'EVENT_FINAL_MIN', 'EVENT_QUALIFY_GAP', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/admin/esports/events/{id}/publish', tags: ['esports-events'], summary: 'Publish (a published tournament must be linked)', security: adminBearer,
+    request: evId, responses: { 200: json(evS.EventDraft), ...errors({ ...EV_STAFF, 409: ['EVENT_STATE', 'EVENT_NOT_PUBLISHABLE'] }) } });
+  p({ method: 'post', path: '/admin/esports/events/{id}/cancel', tags: ['esports-events'], summary: 'Cancel the event (never its tournaments; refused while one runs)', security: adminBearer,
+    request: { ...evId, ...body(evS.reasonBody) }, responses: { 200: json(evS.EventDraft), ...errors({ ...EV_STAFF, 409: ['EVENT_STATE', 'EVENT_TOURNAMENT_RUNNING'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/esports/events/{id}/qualifications', tags: ['esports-events'], summary: 'Every qualification with its reason', security: adminBearer, request: evId, responses: { 200: json(evS.QualificationList), ...errors(EV_STAFF) } });
+  p({ method: 'post', path: '/admin/esports/events/{id}/qualifications', tags: ['esports-events'], summary: 'Invite a squad or a player into a final', security: adminBearer,
+    request: { ...evId, ...body(evS.inviteBody) }, responses: { 201: json(evS.Qualification, 'Created'), ...errors({ ...EV_STAFF, 409: ['EVENT_STATE', 'EVENT_QUALIFICATION_STATE', 'EVENT_ALREADY_QUALIFIED'], 422: ['EVENT_INVITE_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/admin/esports/events/{id}/qualifications/{qualificationId}/revoke', tags: ['esports-events'], summary: 'Withdraw a place not yet used', security: adminBearer,
+    request: { params: evS.qualParam, ...body(evS.reasonBody) }, responses: { 200: json(evS.Qualification), ...errors({ ...EV_STAFF, 409: ['EVENT_QUALIFICATION_STATE'], ...VALIDATION }) } });
+  p({ method: 'put', path: '/admin/esports/events/{id}/streams', tags: ['esports-events'], summary: 'The event broadcast links; a stream turning live alerts followers (cooldown)', security: adminBearer,
+    request: { ...evId, ...body(evS.streamsBody) }, responses: { 200: json(evS.StreamList), ...errors({ ...EV_STAFF, 409: ['EVENT_STATE'], 422: ['STREAM_URL_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/admin/esports/events/{id}/sponsors', tags: ['esports-events'], summary: 'Add a sponsor placement (no money in the app)', security: adminBearer,
+    request: { ...evId, ...body(evS.sponsorBody) }, responses: { 201: json(evS.Sponsor, 'Created'), ...errors({ ...EV_STAFF, 409: ['EVENT_STATE', 'SPONSOR_LIMIT'], 422: ['SPONSOR_URL_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'patch', path: '/admin/esports/events/{id}/sponsors/{sponsorId}', tags: ['esports-events'], summary: 'Change a sponsor', security: adminBearer,
+    request: { params: evS.sponsorParam, ...body(evS.sponsorPatch) }, responses: { 200: json(evS.Sponsor), ...errors({ ...EV_STAFF, 422: ['SPONSOR_URL_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/admin/esports/events/{id}/sponsors/{sponsorId}/remove', tags: ['esports-events'], summary: 'Remove a sponsor (kept, status removed)', security: adminBearer,
+    request: { params: evS.sponsorParam }, responses: { 200: json(evS.Removed), ...errors(EV_STAFF) } });
+  p({ method: 'post', path: '/admin/esports/events/{id}/sponsors/{sponsorId}/logo', tags: ['esports-events'], summary: 'Upload a sponsor logo (public bucket)', security: adminBearer,
+    request: { params: evS.sponsorParam, body: evImage('The logo') }, responses: { 200: json(evS.Sponsor), ...errors({ ...EV_STAFF, ...IMG }) } });
+  p({ method: 'post', path: '/admin/esports/events/{id}/polls', tags: ['esports-events'], summary: 'A draft poll', security: adminBearer,
+    request: { ...evId, ...body(evS.pollBody) }, responses: { 201: json(evS.Poll, 'Created'), ...errors({ ...EV_STAFF, 409: ['EVENT_STATE'], 422: ['POLL_OPTIONS_INVALID', 'VALIDATION_FAILED'] }) } });
+  p({ method: 'post', path: '/admin/esports/events/{id}/polls/{pollId}/open', tags: ['esports-events'], summary: 'Open a poll (the event must be published)', security: adminBearer,
+    request: { params: evS.pollParam }, responses: { 200: json(evS.Poll), ...errors({ ...EV_STAFF, 409: ['POLL_STATE'] }) } });
+  p({ method: 'post', path: '/admin/esports/events/{id}/polls/{pollId}/close', tags: ['esports-events'], summary: 'Close a poll', security: adminBearer,
+    request: { params: evS.pollParam }, responses: { 200: json(evS.Poll), ...errors({ ...EV_STAFF, 409: ['POLL_STATE'] }) } });
+  p({ method: 'post', path: '/admin/esports/events/{id}/feed', tags: ['esports-events'], summary: 'Post an announcement to the feed', security: adminBearer,
+    request: { ...evId, ...body(evS.announceBody) }, responses: { 201: json(evS.Announcement, 'Created'), ...errors({ ...EV_STAFF, 409: ['EVENT_STATE'], ...VALIDATION }) } });
 }
 
 function dateTimeOf() {

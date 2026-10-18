@@ -40,6 +40,9 @@ function registerAll() {
   require('../organiser-saas/saas.hooks');
   require('../organiser-saas/invoices.service');
   require('../organiser-saas/prize-funds.service');
+  // M23: big events react to M21 (qualifiers finalised, entries closed, cancels, streams live); the
+  // M21 entry-policy hooks for invite-only finals load with them.
+  require('../esports-events/events.consumers').registerEsportsEventConsumers();
   // M10: payment failures end holds; suspended or removed grounds cancel their bookings.
   require('../bookings/bookings.consumers').registerBookingsConsumers();
   // M19: read models from bookings, closures, series, payments, the ledger and esports.

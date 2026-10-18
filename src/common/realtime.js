@@ -40,6 +40,7 @@ function toRoom(room, name, data) {
 const toUser = (userId, name, data) => toRoom(`user:${userId}`, name, data);
 
 /** Public rooms a client may subscribe to (the socket server checks this list). */
-const PUBLIC_ROOM = /^(esports_(tournament|match)|ground):[0-9a-f-]{36}$/;
+// M23: esports_event:{id} carries the big event's pings (stream, feed, polls, phase).
+const PUBLIC_ROOM = /^(esports_(tournament|match|event)|ground):[0-9a-f-]{36}$/;
 
 module.exports = { toRoom, toUser, PUBLIC_ROOM, emitted: () => emitted.slice(), clearEmitted: () => emitted.splice(0, emitted.length) };
