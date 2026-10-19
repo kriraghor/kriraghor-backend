@@ -19,7 +19,7 @@ const { E } = require('../../common/errors');
 const models = require('../../models');
 const audit = require('../audit/audit.service');
 const events = require('../events/events.service');
-const escrow = require('../payments/escrow.service');
+const escrow = require('../payments').escrow;
 const { organiser, isOrganised, fail, money } = require('./esports.common');
 const rules = require('./esports.rules');
 
@@ -193,7 +193,7 @@ async function forfeitForRegistrationInTx(actor, r, t, { transaction }) {
 }
 
 async function reverseShare(actor, s, t, transaction) {
-  const balance = await require('../payments/ledger.service').balance(`payable:user:${s.userId}`, transaction);
+  const balance = await require('../payments').ledger.balance(`payable:user:${s.userId}`, transaction);
   if (balance < s.amountPoisha) {
     // Already withdrawn: record it for M18 (a recoverable debt against future winnings).
     await audit.record({ action: 'esports_prize.reversal_blocked', actor, entityType: 'esports_prize_share', entityId: s.id, after: { userId: s.userId, amount: s.amountPoisha, balance } }, { transaction });

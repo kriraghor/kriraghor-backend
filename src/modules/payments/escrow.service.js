@@ -44,6 +44,11 @@ async function lockHoldForPayment(paymentId, transaction, { splitRef = null } = 
   return EscrowHold.findOne({ where: { paymentId, ...(splitRef ? { splitRef } : {}) }, order: [['createdAt', 'ASC']], transaction, lock: transaction.LOCK.UPDATE });
 }
 
+/** Every hold of a purpose that still holds money, locked for update (oldest first). */
+async function lockOpenHoldsForPurpose(purpose, transaction) {
+  return EscrowHold.findAll({ where: { purpose, status: ['holding', 'partially_released'] }, order: [['createdAt', 'ASC']], transaction, lock: transaction.LOCK.UPDATE });
+}
+
 /**
  * FR-06: on capture, open the payment's holds from its escrow instructions (snapshotted at obligation
  * time, FR-07) and post Dr provider_clearing / Cr escrow:{purpose} tagged with each hold. A split
@@ -419,4 +424,5 @@ async function getOne(id) {
 }
 
 module.exports = { openHold,
-  openHolds, holdIdForPayment, lockHoldForPayment, releaseInTx, releaseManually, takeForRefund, freeze, unfreeze, freezeInTx, unfreezeInTx, releaseDue, settlePool, settleOrganiserPool, collectToRevenueInTx, reverseToOrganiser, reversePoolCredit, list, getOne, serialize, lockHold };
+  openHolds, holdIdForPayment, lockHoldForPayment,
+  lockOpenHoldsForPurpose, releaseInTx, releaseManually, takeForRefund, freeze, unfreeze, freezeInTx, unfreezeInTx, releaseDue, settlePool, settleOrganiserPool, collectToRevenueInTx, reverseToOrganiser, reversePoolCredit, list, getOne, serialize, lockHold };

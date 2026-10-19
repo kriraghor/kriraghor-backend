@@ -18,7 +18,7 @@ const PAYEE_FAULT_REFUNDS = ['booking_cancelled_by_owner'];
 const since = (now) => new Date(now.getTime() - settings.get('risk.window_days') * DAY);
 const kyc = () => require('../kyc/kyc.service');
 const payoutAccounts = () => require('../payouts/payout-accounts.service');
-const payments = () => require('../payments/payments.service');
+const payments = () => require('../payments').intents;
 const disputes = () => require('../trust/disputes.service');
 const reports = () => require('../trust/reports.service');
 const esports = () => require('../esports/esports.facts');

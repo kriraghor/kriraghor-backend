@@ -33,8 +33,8 @@ async function nameOf(userId) {
 // Lazy requires: these services sit above M08 in the dependency order.
 const settingsRequest = (id) => require('../settings/change-request.service').getOne(id);
 const auditEntry = (id) => require('../audit/audit.admin.service').getOne(id);
-const paymentFacts = (id) => require('../payments/payments.service').facts(id);
-const refundFacts = (id) => require('../payments/refunds.service').facts(id);
+const paymentFacts = (id) => require('../payments').intents.facts(id);
+const refundFacts = (id) => require('../payments').refunds.facts(id);
 const documentFacts = (id) => require('../kyc/kyc.service').facts(id);
 // M05 reason codes for the document kind (moderation.v1.json), worded for the member.
 const KYC_REASONS = {
@@ -129,7 +129,7 @@ function holdNote(until, locale) {
   return locale === 'bn' ? `নিরাপত্তার জন্য ${when} পর্যন্ত পেআউট বন্ধ থাকবে।` : `For your safety, payouts to it start after ${when}.`;
 }
 async function holdFacts(holdId) {
-  const hold = await require('../payments/escrow.service').getOne(holdId);
+  const hold = await require('../payments').escrow.getOne(holdId);
   return { ...hold, title: (await paymentFacts(hold.paymentId)).title };
 }
 

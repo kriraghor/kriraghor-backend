@@ -18,8 +18,8 @@ const events = require('../events/events.service');
 const rules = require('./analytics.rules');
 
 const bookingsReads = () => require('../bookings/bookings.reads');
-const payments = () => require('../payments/payments.service');
-const ledger = () => require('../payments/ledger.service');
+const payments = () => require('../payments').intents;
+const ledger = () => require('../payments').ledger;
 const esports = () => require('../esports/esports.facts');
 
 const DAY = 24 * 60 * 60 * 1000;

@@ -11,7 +11,7 @@
  */
 const { HireJob, HireProfile } = require('../../models');
 const { fail } = require('../trust/trust.errors');
-const escrow = require('../payments/escrow.service');
+const escrow = require('../payments').escrow;
 const taxonomy = require('../catalog/hire.reads');
 const rules = require('./hire.rules');
 const c = require('./hire.common');

@@ -15,7 +15,7 @@
  */
 const { Booking } = require('../../models');
 const settings = require('../settings/settings.service');
-const escrow = require('../payments/escrow.service');
+const escrow = require('../payments').escrow;
 const reads = require('../grounds/grounds.reads');
 const { fail } = require('../trust/trust.errors');
 const settlement = require('./settlement.service');

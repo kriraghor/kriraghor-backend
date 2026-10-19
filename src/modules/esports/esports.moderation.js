@@ -10,7 +10,7 @@
  */
 const adapters = require('../moderation/moderation.adapters');
 const { onEvent } = require('../events/events.consumers');
-const purposes = require('../payments/payments.purposes');
+const purposes = require('../payments').purposes;
 
 adapters.register({
   kind: 'game_profile',

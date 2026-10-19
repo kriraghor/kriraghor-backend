@@ -12,7 +12,7 @@
  */
 const { SubOrder } = require('../../models');
 const { fail } = require('../trust/trust.errors');
-const escrow = require('../payments/escrow.service');
+const escrow = require('../payments').escrow;
 const settle = require('./orders.settle');
 const rules = require('./orders.rules');
 const c = require('./orders.common');

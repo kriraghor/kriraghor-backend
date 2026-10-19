@@ -10,8 +10,8 @@ const { AppError } = require('../../common/errors');
 const { sequelize, HireRequest, HireJob, HireProfile } = require('../../models');
 const settings = require('../settings/settings.service');
 const events = require('../events/events.service');
-const escrow = require('../payments/escrow.service');
-const refunds = require('../payments/refunds.service');
+const escrow = require('../payments').escrow;
+const refunds = require('../payments').refunds;
 const rules = require('./hire.rules');
 
 const ERRORS = {

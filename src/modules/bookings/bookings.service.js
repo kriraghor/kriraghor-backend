@@ -14,7 +14,7 @@ const { feeOf } = require('../../common/money');
 const { sequelize, Booking, CheckIn } = require('../../models');
 const settings = require('../settings/settings.service');
 const audit = require('../audit/audit.service');
-const fees = require('../payments/fee.service');
+const fees = require('../payments').fees;
 const reads = require('../grounds/grounds.reads');
 const pricing = require('../grounds/pricing.service');
 const pr = require('../grounds/pricing.rules');
@@ -409,8 +409,8 @@ async function staffList({ status, groundId, code, cursor, limit = 50 }) {
 async function staffGet(id) {
   const b = await Booking.findByPk(id);
   if (!b) throw E.notFound('Booking');
-  const ledger = require('../payments/ledger.service');
-  const holdId = b.paymentId ? await require('../payments/escrow.service').holdIdForPayment(b.paymentId) : null;
+  const ledger = require('../payments').ledger;
+  const holdId = b.paymentId ? await require('../payments').escrow.holdIdForPayment(b.paymentId) : null;
   const trail = await ledger.transactionsFor([['booking', b.id], ...(holdId ? [['escrow_hold', holdId]] : [])]);
   return { booking: c.ownerView(b, await courtNames(b)), checkIn: (await CheckIn.findOne({ where: { bookingId: b.id } }))?.toJSON() ?? null, ledger: trail };
 }
@@ -420,7 +420,7 @@ async function staffGet(id) {
 /** A frozen hold (an open M17 dispute) waits for the decision. */
 async function frozen(b, transaction) {
   if (!b.paymentId) return false;
-  const hold = await require('../payments/escrow.service').lockHoldForPayment(b.paymentId, transaction);
+  const hold = await require('../payments').escrow.lockHoldForPayment(b.paymentId, transaction);
   return hold?.status === 'frozen';
 }
 

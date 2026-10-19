@@ -19,7 +19,7 @@ const occupancyPort = require('../grounds/occupancy.port');
 const reads = require('../grounds/grounds.reads');
 const pr = require('../grounds/pricing.rules');
 const grules = require('../grounds/grounds.rules');
-const fees = require('../payments/fee.service');
+const fees = require('../payments').fees;
 const c = require('./bookings.common');
 const rules = require('./bookings.rules');
 

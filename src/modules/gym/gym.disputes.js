@@ -10,7 +10,7 @@
  */
 const { TrainerSubscription, TrainerSubscriptionPeriod } = require('../../models');
 const { fail } = require('../trust/trust.errors');
-const escrow = require('../payments/escrow.service');
+const escrow = require('../payments').escrow;
 const rules = require('./gym.rules');
 const c = require('./gym.common');
 
