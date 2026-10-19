@@ -457,6 +457,20 @@ describe('results, disputes and prizes (FR-18 to FR-25, §6.5)', () => {
     // Rankings and the public player page.
     const lb = await api().get(`${P}/esports/leaderboards?game=free_fire`).expect(200);
     expect(lb.body.items[0]).toMatchObject({ rank: 1, userId: p1.user.id });
+
+    // Q161: a suspended player leaves the leaderboard and top players, and the ranks renumber; a
+    // restore brings them back. Their tournament history stays.
+    const board = async () => (await api().get(`${P}/esports/leaderboards?game=free_fire`).expect(200)).body.items;
+    const top = async () => (await api().get(`${P}/esports/top-players`).expect(200)).body.items ?? [];
+    await api().post(`${P}/admin/users/${p1.user.id}/suspend`).set(h.bearer(master)).send({ reasonCode: 'policy_breach', note: 'Q161 ranking check' }).expect(200);
+    await h.drainEvents();
+    expect((await board()).map((r) => r.userId)).not.toContain(p1.user.id);
+    expect((await board())[0]).toMatchObject({ rank: 1, userId: p2.user.id });
+    expect((await top()).map((r) => r.userId)).not.toContain(p1.user.id);
+    expect(await models.EsportsRankingEntry.count({ where: { userId: p1.user.id } })).toBe(1);
+    await api().post(`${P}/admin/users/${p1.user.id}/restore`).set(h.bearer(master)).send({ note: 'Q161 ranking check done' }).expect(200);
+    await h.drainEvents();
+    expect((await board())[0]).toMatchObject({ rank: 1, userId: p1.user.id });
     const winnings = await api().get(`${P}/me/esports/winnings`).set(h.bearer(p1)).expect(200);
     expect(winnings.body).toMatchObject({ available: { amount: 11000 }, totalWon: { amount: 11000 } });
 

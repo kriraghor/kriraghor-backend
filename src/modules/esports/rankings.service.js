@@ -6,7 +6,9 @@
  *   esports_ranking_entries  one row per player per finalised tournament they played (DQs excluded)
  *   esports_rankings         rolling (last 365 days, 90-day half-life, at least
  *                            esports.ranking_min_tournaments) and per season (Dhaka quarter, no decay)
- * Rebuilt on esports_tournament.finalised and nightly (job esports.rankings-recompute).
+ * Rebuilt on esports_tournament.finalised, nightly (job esports.rankings-recompute), and when a
+ * player is suspended, banned or restored (Q161): only active accounts are ranked, so ranks renumber
+ * around a sanctioned player. Their entries (tournament history) are kept.
  */
 const { Op } = require('sequelize');
 const { E } = require('../../common/errors');
@@ -59,14 +61,18 @@ async function entriesFor(t, transaction) {
   return out;
 }
 
-/** Rebuild one game's entries and rankings (all scopes). */
-async function recompute(gameId, now = new Date()) {
-  return sequelize.transaction(async (transaction) => {
+/** Rebuild one game's entries and rankings (all scopes). Pass a transaction to run inside it. */
+async function recompute(gameId, now = new Date(), { transaction: outer } = {}) {
+  const run = (fn) => (outer ? fn(outer) : sequelize.transaction(fn));
+  return run(async (transaction) => {
     const ts = await EsportsTournament.findAll({ where: { gameId, status: DONE }, transaction });
     await EsportsRankingEntry.destroy({ where: { gameId }, transaction });
-    const all = [];
-    for (const t of ts) all.push(...(await entriesFor(t, transaction)));
-    if (all.length) await EsportsRankingEntry.bulkCreate(all, { transaction });
+    const entries = [];
+    for (const t of ts) entries.push(...(await entriesFor(t, transaction)));
+    if (entries.length) await EsportsRankingEntry.bulkCreate(entries, { transaction });
+    // Q161: suspended, banned or closed accounts keep their history but are not ranked.
+    const accounts = await directory.accounts(entries.map((e) => e.userId));
+    const all = entries.filter((e) => (accounts.get(e.userId)?.status ?? 'active') === 'active');
     const halfLifeDays = settings.get('esports.ranking_half_life_days');
     const minTournaments = settings.get('esports.ranking_min_tournaments');
     const rows = [];
@@ -77,8 +83,15 @@ async function recompute(gameId, now = new Date()) {
     }
     await EsportsRanking.destroy({ where: { gameId }, transaction });
     if (rows.length) await EsportsRanking.bulkCreate(rows.map((r) => ({ userId: r.userId, gameId, scope: r.scope, seasonKey: r.seasonKey, points: r.points, rank: r.rank, tournaments: r.tournaments, updatedAt: now })), { transaction });
-    return { entries: all.length, rankings: rows.length };
+    return { entries: entries.length, rankings: rows.length };
   });
+}
+
+/** Q161: rebuild every game a player has ranking entries in (their account was suspended, banned or restored). */
+async function recomputeForPlayer(userId, { transaction } = {}) {
+  const rows = await EsportsRankingEntry.findAll({ where: { userId }, attributes: [[sequelize.fn('DISTINCT', sequelize.col('game_id')), 'gameId']], raw: true, transaction });
+  for (const r of rows) await recompute(r.gameId, new Date(), { transaction });
+  return { games: rows.length };
 }
 
 /** Job esports.rankings-recompute: every game. */
@@ -159,4 +172,4 @@ async function topPlayers({ limit = 6 } = {}) {
   };
 }
 
-module.exports = { recompute, recomputeAll, leaderboard, player, topPlayers, entriesFor };
+module.exports = { recompute, recomputeAll, recomputeForPlayer, leaderboard, player, topPlayers, entriesFor };
