@@ -16,7 +16,7 @@ afterEach(async () => {
   const { sequelize } = require('../src/models');
   const [rows] = await sequelize.query(
     `SELECT t.id AS txn, t.kind, t.ref_type, t.total_poisha, a.code, e.debit_poisha, e.credit_poisha
-       FROM ledger_transactions t JOIN ledger_entries e ON e.transaction_id = t.id JOIN ledger_accounts a ON a.id = e.account_id
+       FROM ledger_transactions t JOIN ledger_entries e ON e.txn_id = t.id JOIN ledger_accounts a ON a.id = e.account_id
       ORDER BY t.created_at, t.id, a.code, e.debit_poisha, e.credit_poisha`
   );
   const ids = new Map();
