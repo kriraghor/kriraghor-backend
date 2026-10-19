@@ -1,0 +1,85 @@
+#!/usr/bin/env node
+'use strict';
+/* eslint-disable no-console -- a command-line tool: its output is the report */
+
+/**
+ * Demo data for every public section (see scripts/demo/README.md).
+ *
+ *   node scripts/demo-seed.js --profile=listings [--confirm-live]   venues, shops, gyms, hire, events (no payments)
+ *   node scripts/demo-seed.js --profile=full                         everything, payments through the simulator (never production)
+ *
+ * Every record is created through the real API and approved on the Moderation desk, and is listed in
+ * demo_records so `npm run demo:hide` can hide it all later. Re-running skips what already exists.
+ */
+const args = Object.fromEntries(process.argv.slice(2).map((a) => a.replace(/^--/, '').split('=')).map(([k, v]) => [k, v ?? true]));
+const profile = args.profile ?? 'listings';
+if (!['listings', 'full'].includes(profile)) {
+  console.error('Use --profile=listings or --profile=full');
+  process.exit(2);
+}
+
+const config = require('../src/config');
+
+if (config.isProd && profile === 'full') {
+  console.error('Refusing: --profile=full needs the payment simulator, which production never runs. Use --profile=listings.');
+  process.exit(2);
+}
+if (config.isProd && !args['confirm-live']) {
+  console.error('This is a production database. Re-run with --confirm-live to add the demo listings.');
+  process.exit(2);
+}
+if (profile === 'full' && !config.payments.simulator) {
+  console.error('--profile=full needs PAYMENTS_SIMULATOR=true (local only).');
+  process.exit(2);
+}
+
+const rt = require('./demo/runtime');
+const L = require('./demo/steps/listings');
+const people = require('./demo/steps/people');
+
+async function step(name, fn) {
+  const t = Date.now();
+  process.stdout.write(`• ${name} … `);
+  const r = await fn();
+  console.log(`done (${((Date.now() - t) / 1000).toFixed(1)} s)`);
+  return r;
+}
+
+async function main() {
+  const started = Date.now();
+  const { runId } = await rt.boot({ profile });
+  console.log(`Demo seed ${runId} (${profile}) into ${config.db?.name ?? process.env.DB_NAME ?? 'the database'}`);
+
+  const { master, reviewer } = await step('staff (no sign-in possible)', () => people.staff());
+  const owner = await step('owners: sign-up, NID and business documents', () => L.owners(reviewer));
+  await step('venues', () => L.venues(owner, reviewer));
+  await step('shops and products', () => L.shops(owner, reviewer));
+  const gymRows = await step('gyms', () => L.gyms(owner, reviewer));
+  await step('hire profiles and trainers', () => L.pros(reviewer, gymRows));
+  await step('esports players and game IDs', () => L.players(reviewer));
+  await step('esports events', () => L.esports(master, reviewer, { free: profile === 'listings' }));
+  await step('showcase', () => L.showcase(master, reviewer));
+  await step('sports events', () => L.sports(reviewer));
+  await step('open esports registration (waits for the opening minute)', () => L.openRegistrations());
+
+  if (profile === 'full') {
+    const full = require('./demo/steps/full');
+    await full.run({ master, reviewer, owner, step });
+  }
+
+  await rt.drain();
+  const counts = await rt.models.DemoRecord.findAll({ attributes: ['entity', [rt.models.sequelize.fn('COUNT', '*'), 'n']], group: ['entity'], raw: true });
+  console.log(`\nDemo records: ${counts.map((c) => `${c.entity} ${c.n}`).join(', ')}`);
+  console.log(`Finished in ${((Date.now() - started) / 60000).toFixed(1)} min.`);
+}
+
+main()
+  .then(() => rt.shutdown())
+  .then(() => process.exit(0))
+  .catch(async (err) => {
+    console.error(`\nFailed: ${err.message}`);
+    if (err.body) console.error(JSON.stringify(err.body, null, 2).slice(0, 2000));
+    if (!err.body && err.stack) console.error(err.stack.split('\n').slice(1, 6).join('\n'));
+    await rt.shutdown().catch(() => {});
+    process.exit(1);
+  });

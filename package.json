@@ -19,6 +19,8 @@
     "db:migrate:undo": "sequelize-cli db:migrate:undo",
     "db:seed": "sequelize-cli db:seed:all",
     "create:master": "node scripts/create-master.js",
+    "demo:seed": "node scripts/demo-seed.js",
+    "demo:hide": "node scripts/demo-hide.js",
     "openapi": "node scripts/openapi.js",
     "test": "jest --runInBand --coverage",
     "lint": "eslint src tests scripts",

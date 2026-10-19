@@ -1203,6 +1203,9 @@ const esportsEvents = require('./esports-events');
 // ---- M13 orders, step 1 (./orders.js) ----
 const orders = require('./orders');
 
+// ---- Demo data (./demo.js): which records the demo seeder created ----
+const demo = require('./demo');
+
 // ---- M21 esports (models in ./esports.js) ----
 const esports = require('./esports');
 esports.EsportsTournament.belongsTo(EsportsGame, { as: 'game', foreignKey: 'gameId' });
@@ -1213,6 +1216,7 @@ esports.EsportsGameProfile.belongsTo(User, { as: 'user', foreignKey: 'userId' })
 
 module.exports = {
   ...esports,
+  ...demo,
   ...places,
   ...items,
   ...market,
