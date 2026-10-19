@@ -1,4 +1,5 @@
 'use strict';
+/* eslint-disable no-console -- a command-line report when run directly */
 
 /**
  * Module boundary scanner (ADR-007 §3). Lists every place a module reaches into another:
