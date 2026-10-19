@@ -1,6 +1,6 @@
 {
-  "seedVersion": 18,
-  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code. v9: the M17 DISPUTE_*, REPORT_* and REVIEW_* codes. v10: the M18 RISK_*, PAYOUTS_*, DOCUMENTS_* and TRUST_LOW codes. v11: the M12 SHOP_*, PRODUCT_*, STOCK_*, SUPPLEMENT_EXPIRING and SAVED_* codes. v12: the M13 ORDER_* and SHOP_*ORDER* codes. v13: the M11 HIRE_* and JOB_* codes. v14 (M20): gyms (live, changes, rejected), passes (ready, cancelled) and trainer subscriptions (started, new subscriber, renewal due, lapsed, cancelled, paid). v15 (M14 lite, M22): organisations (verified, changes) and the organiser SaaS (contract active, suspended, ending; invoices issued, overdue, paid; prize fund received, returned). v18 adds the M14 tournament notices (approval, registrations, reserve offers, fixtures, reschedules, cancellation, too few teams, lots).",
+  "seedVersion": 19,
+  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code. v9: the M17 DISPUTE_*, REPORT_* and REVIEW_* codes. v10: the M18 RISK_*, PAYOUTS_*, DOCUMENTS_* and TRUST_LOW codes. v11: the M12 SHOP_*, PRODUCT_*, STOCK_*, SUPPLEMENT_EXPIRING and SAVED_* codes. v12: the M13 ORDER_* and SHOP_*ORDER* codes. v13: the M11 HIRE_* and JOB_* codes. v14 (M20): gyms (live, changes, rejected), passes (ready, cancelled) and trainer subscriptions (started, new subscriber, renewal due, lapsed, cancelled, paid). v15 (M14 lite, M22): organisations (verified, changes) and the organiser SaaS (contract active, suspended, ending; invoices issued, overdue, paid; prize fund received, returned). v18 adds the M14 tournament notices (approval, registrations, reserve offers, fixtures, reschedules, cancellation, too few teams, lots). v19 adds the M01 password-changed security alert.",
   "templates": [
     {
       "code": "AUDIT_CRITICAL",
@@ -681,6 +681,82 @@
       "subject": "আপনার ক্রীড়াঘর অ্যাকাউন্ট আবার সক্রিয়",
       "body": "আপনার ক্রীড়াঘর অ্যাকাউন্ট আবার সক্রিয়। আগের মতো সাইন ইন করতে পারবেন।",
       "variables": []
+    },
+    {
+      "code": "PASSWORD_CHANGED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Password changed",
+      "body": "Your password was changed on {{when}}. If this wasn't you, reset it now and contact support.",
+      "variables": [
+        {
+          "name": "when",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "PASSWORD_CHANGED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পাসওয়ার্ড বদলানো হয়েছে",
+      "body": "আপনার পাসওয়ার্ড {{when}} তারিখে বদলানো হয়েছে। আপনি না করলে এখনই রিসেট করুন এবং সাপোর্টে জানান।",
+      "variables": [
+        {
+          "name": "when",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "PASSWORD_CHANGED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: your password was changed on {{when}}. Not you? Reset it at kriraghor.com and contact support.",
+      "variables": [
+        {
+          "name": "when",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "PASSWORD_CHANGED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: আপনার পাসওয়ার্ড {{when}} তারিখে বদলানো হয়েছে। আপনি না করলে রিসেট করুন।",
+      "variables": [
+        {
+          "name": "when",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "PASSWORD_CHANGED",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Your Kriraghor password was changed",
+      "body": "Your Kriraghor password was changed on {{when}}, and your other devices were signed out.\n\nIf you didn't do this, reset your password now at kriraghor.com/sign-in/reset and contact support.",
+      "variables": [
+        {
+          "name": "when",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "PASSWORD_CHANGED",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "আপনার ক্রীড়াঘর পাসওয়ার্ড বদলানো হয়েছে",
+      "body": "আপনার ক্রীড়াঘর পাসওয়ার্ড {{when}} তারিখে বদলানো হয়েছে, এবং অন্য ডিভাইসগুলো থেকে সাইন আউট করা হয়েছে।\n\nআপনি না করে থাকলে এখনই kriraghor.com/sign-in/reset এ পাসওয়ার্ড রিসেট করুন এবং সাপোর্টে জানান।",
+      "variables": [
+        {
+          "name": "when",
+          "type": "datetime"
+        }
+      ]
     },
     {
       "code": "STAFF_INVITED",

@@ -289,6 +289,16 @@ const CATALOGUE = [
     link: () => '/account',
   },
   {
+    code: 'PASSWORD_CHANGED',
+    events: ['user.password_changed'],
+    category: 'security',
+    channels: ['in_app', 'sms', 'email'],
+    urgent: true,
+    recipients: (e) => [e.payload.userId],
+    values: async (e) => ({ when: e.payload.at }),
+    link: () => '/account',
+  },
+  {
     code: 'STAFF_INVITED',
     events: ['staff.invited'],
     category: 'security',
