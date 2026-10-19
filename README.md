@@ -31,7 +31,7 @@ npm run release                   # migrations, then the M03 reference seed (set
 npm run create:master -- --phone 01XXXXXXXXX --name "Your Name" --employee-id KG-0001
 npm run dev                       # API       http://localhost:4000/api/v1  (docs: /api/docs)
 npm run dev:realtime              # Socket.IO http://localhost:4001/socket.io
-npm run dev:worker                # BullMQ jobs (suspension expiry, …)
+npm run dev:worker                #  BullMQ jobs (suspension expiry, …)
 ```
 
 In development:
