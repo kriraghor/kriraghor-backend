@@ -6,7 +6,7 @@
  *    are a locked check (no override);
  *  - consumers: M05 decisions on ground submissions; an owner whose ground_owner role is suspended or
  *    withdrawn, or whose account is suspended or banned, has every live ground paused (§2.2).
- * Registered once per process (subscriptions.registerAll).
+ * Registered once per process (registry.registerAll).
  */
 const adapters = require('../moderation/moderation.adapters');
 const { onEvent } = require('../events/events.consumers');

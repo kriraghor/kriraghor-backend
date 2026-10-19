@@ -2,7 +2,7 @@
 
 /**
  * M22 → M21: the organiser hooks M21 calls for organiser tournaments (esports.common.registerOrganiser).
- * Loaded once per process (subscriptions.registerAll) and by the M22 routes.
+ * Loaded once per process (registry.registerAll) and by the M22 routes.
  */
 const { registerOrganiser } = require('../esports/esports.common');
 const organisations = require('../organisations/organisations.service');
