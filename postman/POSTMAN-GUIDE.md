@@ -9,7 +9,7 @@ A complete walkthrough. You don't need any earlier Postman experience.
 Open a terminal (PowerShell or VS Code terminal) and run:
 
 ```bash
-cd D:\kriraghor\backend
+cd E:\kriraghor\kriraghor-backend
 docker compose up -d
 npm run db:migrate
 npm run dev
@@ -30,7 +30,7 @@ npm run dev
 2. **Delete any old copies** of "Kriraghor API: M01 Auth & RBAC" in the left sidebar under **Collections**: right-click → **Delete**.
 3. Click **Import**. It's the icon next to the **+** at the top of the left sidebar. You can also use **Ctrl + O**, or **File → Import**.
 4. Drag in this file, or click *files* and choose it:
-   `D:\kriraghor\kriraghor-backend\postman\kriraghor-auth.postman_collection.json`
+   `E:\kriraghor\kriraghor-backend\postman\kriraghor-auth.postman_collection.json`
 5. If Postman asks to "connect a local project / folder", choose **Skip / Cancel**. Only import the file.
 6. You now see the collection with these folders:
    - `0. Smoke (no codes needed)`: run it first; every request has a pass/fail test
