@@ -14,7 +14,9 @@
  */
 const { Op } = require('sequelize');
 const { E, AppError } = require('../../common/errors');
-const { sequelize, Organisation, OrganisationMember, Area, User } = require('../../models');
+const { sequelize, Organisation, OrganisationMember } = require('../../models');
+const { Area } = require('../catalog').reference;
+const users = require('../users').directory;
 const audit = require('../audit').audit;
 const events = require('../events').events;
 const moderation = require('../moderation').moderation;
@@ -170,8 +172,8 @@ async function update(principal, id, body, req) {
 async function checksFor(organisationId, { transaction } = {}) {
   const o = await Organisation.findByPk(organisationId, { transaction });
   if (!o) return [];
-  const owner = await User.findByPk(o.ownerUserId, { include: ['roles'], transaction });
-  const role = (r) => owner?.roles?.find((x) => x.role === r)?.status ?? null;
+  const organiserRole = await users.roleStatus(o.ownerUserId, 'organiser', { transaction });
+  const role = (r) => (r === 'organiser' ? organiserRole : null);
   const [similar] = await sequelize.query("SELECT COUNT(*)::int AS n FROM organisations WHERE id <> :id AND status IN ('verified', 'pending_review', 'suspended') AND similarity(lower(name), lower(:name)) > 0.8", {
     replacements: { id: o.id, name: o.name },
     transaction,
@@ -243,8 +245,9 @@ async function members(organisationId) {
 async function addMember(principal, org, { phone, role }, req) {
   return sequelize.transaction(async (transaction) => {
     const normal = normalizePhone(phone);
-    const user = normal ? await User.findOne({ where: { phone: normal, status: 'active' }, attributes: ['id'], transaction }) : null;
-    if (!user) throw fail('ORG_MEMBER_UNKNOWN');
+    const userId = normal ? await users.activeByPhone(normal, { transaction }) : null;
+    if (!userId) throw fail('ORG_MEMBER_UNKNOWN');
+    const user = { id: userId };
     if (await OrganisationMember.findOne({ where: { organisationId: org.id, userId: user.id, status: 'active' }, transaction })) throw fail('ORG_MEMBER_EXISTS');
     const m = await OrganisationMember.create({ organisationId: org.id, userId: user.id, role, addedBy: principal.id }, { transaction });
     await audit.record({ action: 'organisation.member_added', actor: principal, entityType: 'organisation', entityId: org.id, after: { userId: user.id, role }, req }, { transaction });

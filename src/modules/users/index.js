@@ -13,6 +13,6 @@ const lazy = (file, names, values = []) => {
 };
 
 module.exports = {
-  directory: lazy('./directory.service', ['accounts', 'byUsername', 'byVerifiedPhone', 'contactFor', 'counts', 'eligibilityIdentity', 'identities', 'masters', 'nidHashHolders', 'publicNames', 'verifiedPhoneOf', 'withPermission']),
+  directory: lazy('./directory.service', ['accounts', 'activeByPhone', 'displayNames', 'roleStatus', 'byUsername', 'byVerifiedPhone', 'contactFor', 'counts', 'eligibilityIdentity', 'identities', 'masters', 'nidHashHolders', 'publicNames', 'verifiedPhoneOf', 'withPermission']),
   serializer: lazy('./users.serializer', ['serializePrincipal', 'serializeUserForAdmin']),
 };

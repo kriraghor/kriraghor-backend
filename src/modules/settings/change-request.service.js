@@ -20,7 +20,8 @@ const { Op } = require('sequelize');
 const config = require('../../config');
 const logger = require('../../common/logger');
 const { AppError, E } = require('../../common/errors');
-const { sequelize, PlatformSetting, SettingsHistory, SettingsChangeRequest, User } = require('../../models');
+const { sequelize, PlatformSetting, SettingsHistory, SettingsChangeRequest } = require('../../models');
+const directory = () => require('../users').directory;
 const audit = require('../audit').audit;
 const events = require('../events').events;
 const settings = require('./settings.service');
@@ -152,8 +153,7 @@ async function afterApply(request) {
 
 async function withNames(request) {
   const ids = [request.proposedBy, request.approvedBy, request.decidedBy].filter(Boolean);
-  const users = ids.length ? await User.findAll({ where: { id: ids }, attributes: ['id', 'displayName'] }) : [];
-  return serializeRequest(request, new Map(users.map((u) => [u.id, u.displayName])));
+  return serializeRequest(request, await directory().displayNames(ids));
 }
 
 /** POST /admin/settings/change-requests */
@@ -302,8 +302,7 @@ async function applyDue({ requestId } = {}) {
 async function list({ status, limit = 50 } = {}) {
   const rows = await SettingsChangeRequest.findAll({ where: status ? { status } : {}, order: [['createdAt', 'DESC']], limit });
   const ids = [...new Set(rows.flatMap((r) => [r.proposedBy, r.approvedBy, r.decidedBy]).filter(Boolean))];
-  const users = ids.length ? await User.findAll({ where: { id: ids }, attributes: ['id', 'displayName'] }) : [];
-  const names = new Map(users.map((u) => [u.id, u.displayName]));
+  const names = await directory().displayNames(ids);
   return { items: rows.map((r) => serializeRequest(r, names)) };
 }
 

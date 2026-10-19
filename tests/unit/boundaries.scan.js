@@ -5,7 +5,8 @@
  * Module boundary scanner (ADR-007 §3). Lists every place a module reaches into another:
  *  - deep:  require('../<other module>/<file>') instead of the module's public index;
  *  - model: a Sequelize model owned by another module group, used directly;
- *  - sql:   raw SQL naming a table owned by another module group.
+ *  - sql:   raw SQL naming a table owned by another module group;
+ *  - write: create/update/destroy… on a model owned by another module group (reference data is read-only).
  * Imports from the same group are allowed for models and SQL, but not deep imports across modules.
  *
  *   node tests/unit/boundaries.scan.js           print the current violations
@@ -60,6 +61,12 @@ function scan() {
     for (const n of used) {
       const owner = ownerOf[n];
       if (owner && groupOf[owner] !== groupOf[mod]) found.add(`model ${rel} -> ${n} (${owner})`);
+    }
+
+    // Writes are only ever the owner's, however the model was reached (catalog's read-only reference models included).
+    for (const x of src.matchAll(/\b([A-Z]\w+)\.(create|update|destroy|upsert|bulkCreate|increment|decrement|findOrCreate|restore)\(/g)) {
+      const owner = ownerOf[x[1]];
+      if (owner && groupOf[owner] !== groupOf[mod]) found.add(`write ${rel} -> ${x[1]}.${x[2]} (${owner})`);
     }
 
     for (const x of src.matchAll(/\b(?:FROM|JOIN|UPDATE|INTO)\s+"?([a-z_]+)"?/g)) {

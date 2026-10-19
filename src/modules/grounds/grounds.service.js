@@ -17,7 +17,8 @@
  */
 const { Op, QueryTypes } = require('sequelize');
 const { E } = require('../../common/errors');
-const { sequelize, Ground, Court, CourtHours, GroundPhoto, PricingRule, Sport, Surface, Facility, Area } = require('../../models');
+const { sequelize, Ground, Court, CourtHours, GroundPhoto, PricingRule } = require('../../models');
+const { Sport, Surface, Facility, Area } = require('../catalog').reference;
 const audit = require('../audit').audit;
 const events = require('../events').events;
 const settings = require('../settings').settings;

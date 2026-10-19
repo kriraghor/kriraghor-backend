@@ -111,4 +111,24 @@ async function eligibilityIdentity(userIds, { transaction } = {}) {
   return new Map(users.map((u) => [u.id, { kycStatus: u.kycStatus, memberActive: members.has(u.id), dob: u.dob ?? null, gender: u.gender ?? null, active: u.status === 'active', phoneVerified: Boolean(u.phoneVerifiedAt) }]));
 }
 
-module.exports = { counts, contactFor, masters, withPermission, accounts, identities, nidHashHolders, byUsername, publicNames, byVerifiedPhone, verifiedPhoneOf, eligibilityIdentity };
+/** Map userId → display name (staff desks show who requested or decided). Missing users are absent. */
+async function displayNames(userIds, { transaction } = {}) {
+  const ids = [...new Set(userIds.filter(Boolean))];
+  if (!ids.length) return new Map();
+  const users = await User.findAll({ where: { id: ids }, attributes: ['id', 'displayName'], transaction });
+  return new Map(users.map((u) => [u.id, u.displayName]));
+}
+
+/** The status of one of a user's roles ('active', 'pending', …), or null when they never applied. */
+async function roleStatus(userId, role, { transaction } = {}) {
+  const r = await UserRole.findOne({ where: { userId, role }, attributes: ['status'], transaction });
+  return r ? r.status : null;
+}
+
+/** The active account with this phone (E.164), verified or not, or null. Phones never leave the backend. */
+async function activeByPhone(e164, { transaction } = {}) {
+  const u = await User.findOne({ where: { phone: e164, status: 'active' }, attributes: ['id'], transaction });
+  return u ? u.id : null;
+}
+
+module.exports = { displayNames, roleStatus, activeByPhone, counts, contactFor, masters, withPermission, accounts, identities, nidHashHolders, byUsername, publicNames, byVerifiedPhone, verifiedPhoneOf, eligibilityIdentity };

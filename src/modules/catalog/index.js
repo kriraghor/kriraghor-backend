@@ -12,7 +12,20 @@ const lazy = (file, names, values = []) => {
   return Object.freeze(out);
 };
 
+/**
+ * Reference data (places, item catalogue, hire taxonomy, esports catalogue), READ-ONLY outside catalog:
+ * other modules may read and join these models; only catalog writes them (the boundary test fails on
+ * any write from another group). When a service is split, these become a replicated read model.
+ */
+const reference = Object.freeze(
+  Object.defineProperties(
+    {},
+    Object.fromEntries(['Sport', 'Division', 'District', 'Area', 'Facility', 'Surface', 'SportRuleSchema', 'ItemCategory', 'ItemType', 'ItemTypeField', 'HireCategory', 'HireRole', 'EsportsGame', 'EsportsMode', 'EsportsMap', 'EsportsPointsPreset'].map((n) => [n, { enumerable: true, get: () => require('../../models')[n] }]))
+  )
+);
+
 module.exports = {
+  reference,
   catalog: lazy('./catalog.service', ['publicAreas', 'publicGames', 'publicItems']),
   hireReads: lazy('./hire.reads', ['role', 'taxonomy']),
   sportRulesRules: lazy('./sport-rules.rules', ['playersOf', 'summary', 'validate']),

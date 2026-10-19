@@ -9,7 +9,8 @@
 const { Op } = require('sequelize');
 const { E } = require('../../common/errors');
 const storage = require('../../common/storage');
-const { Gym, Area, Facility, TrainerPlan } = require('../../models');
+const { Gym, TrainerPlan } = require('../../models');
+const { Area, Facility } = require('../catalog').reference;
 const hireDirectory = require('../hire').directory;
 const rules = require('./gym.rules');
 const c = require('./gym.common');

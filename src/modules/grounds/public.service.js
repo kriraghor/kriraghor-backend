@@ -13,7 +13,8 @@
  */
 const { E } = require('../../common/errors');
 const storage = require('../../common/storage');
-const { Ground, CourtHours, PricingRule, Sport, Surface, Facility } = require('../../models');
+const { Ground, CourtHours, PricingRule } = require('../../models');
+const { Sport, Surface, Facility } = require('../catalog').reference;
 const directory = require('../users').directory;
 const pr = require('./pricing.rules');
 const rules = require('./grounds.rules');

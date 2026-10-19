@@ -14,7 +14,8 @@
  */
 const { Op } = require('sequelize');
 const { E } = require('../../common/errors');
-const { sequelize, HireProfile, RateCard, RateCardItem, Area } = require('../../models');
+const { sequelize, HireProfile, RateCard, RateCardItem } = require('../../models');
+const { Area } = require('../catalog').reference;
 const audit = require('../audit').audit;
 const events = require('../events').events;
 const moderation = require('../moderation').moderation;

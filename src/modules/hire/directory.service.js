@@ -9,7 +9,8 @@
  */
 const { Op } = require('sequelize');
 const { E } = require('../../common/errors');
-const { HireProfile, HireJob, HireShortlist, Area } = require('../../models');
+const { HireProfile, HireJob, HireShortlist } = require('../../models');
+const { Area } = require('../catalog').reference;
 const directory = require('../users').directory;
 const authz = require('../auth').authz;
 const kyc = require('../kyc').kyc;
