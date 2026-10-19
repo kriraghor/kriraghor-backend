@@ -1,6 +1,6 @@
 {
-  "seedVersion": 18,
-  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code. v9: the M17 DISPUTE_*, REPORT_* and REVIEW_* codes. v10: the M18 RISK_*, PAYOUTS_*, DOCUMENTS_* and TRUST_LOW codes. v11: the M12 SHOP_*, PRODUCT_*, STOCK_*, SUPPLEMENT_EXPIRING and SAVED_* codes. v12: the M13 ORDER_* and SHOP_*ORDER* codes. v13: the M11 HIRE_* and JOB_* codes. v14 (M20): gyms (live, changes, rejected), passes (ready, cancelled) and trainer subscriptions (started, new subscriber, renewal due, lapsed, cancelled, paid). v15 (M14 lite, M22): organisations (verified, changes) and the organiser SaaS (contract active, suspended, ending; invoices issued, overdue, paid; prize fund received, returned). v18 adds the M14 tournament notices (approval, registrations, reserve offers, fixtures, reschedules, cancellation, too few teams, lots).",
+  "seedVersion": 20,
+  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code. v9: the M17 DISPUTE_*, REPORT_* and REVIEW_* codes. v10: the M18 RISK_*, PAYOUTS_*, DOCUMENTS_* and TRUST_LOW codes. v11: the M12 SHOP_*, PRODUCT_*, STOCK_*, SUPPLEMENT_EXPIRING and SAVED_* codes. v12: the M13 ORDER_* and SHOP_*ORDER* codes. v13: the M11 HIRE_* and JOB_* codes. v14 (M20): gyms (live, changes, rejected), passes (ready, cancelled) and trainer subscriptions (started, new subscriber, renewal due, lapsed, cancelled, paid). v15 (M14 lite, M22): organisations (verified, changes) and the organiser SaaS (contract active, suspended, ending; invoices issued, overdue, paid; prize fund received, returned). v18 adds the M14 tournament notices (approval, registrations, reserve offers, fixtures, reschedules, cancellation, too few teams, lots). v19 adds the M01 password-changed security alert. v20: user-facing words Grounds → Venues, Tournaments → Events, big events → Showcases (19 Oct 2026).",
   "templates": [
     {
       "code": "AUDIT_CRITICAL",
@@ -681,6 +681,82 @@
       "subject": "আপনার ক্রীড়াঘর অ্যাকাউন্ট আবার সক্রিয়",
       "body": "আপনার ক্রীড়াঘর অ্যাকাউন্ট আবার সক্রিয়। আগের মতো সাইন ইন করতে পারবেন।",
       "variables": []
+    },
+    {
+      "code": "PASSWORD_CHANGED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Password changed",
+      "body": "Your password was changed on {{when}}. If this wasn't you, reset it now and contact support.",
+      "variables": [
+        {
+          "name": "when",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "PASSWORD_CHANGED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "পাসওয়ার্ড বদলানো হয়েছে",
+      "body": "আপনার পাসওয়ার্ড {{when}} তারিখে বদলানো হয়েছে। আপনি না করলে এখনই রিসেট করুন এবং সাপোর্টে জানান।",
+      "variables": [
+        {
+          "name": "when",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "PASSWORD_CHANGED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: your password was changed on {{when}}. Not you? Reset it at kriraghor.com and contact support.",
+      "variables": [
+        {
+          "name": "when",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "PASSWORD_CHANGED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: আপনার পাসওয়ার্ড {{when}} তারিখে বদলানো হয়েছে। আপনি না করলে রিসেট করুন।",
+      "variables": [
+        {
+          "name": "when",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "PASSWORD_CHANGED",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Your Kriraghor password was changed",
+      "body": "Your Kriraghor password was changed on {{when}}, and your other devices were signed out.\n\nIf you didn't do this, reset your password now at kriraghor.com/sign-in/reset and contact support.",
+      "variables": [
+        {
+          "name": "when",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "PASSWORD_CHANGED",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "আপনার ক্রীড়াঘর পাসওয়ার্ড বদলানো হয়েছে",
+      "body": "আপনার ক্রীড়াঘর পাসওয়ার্ড {{when}} তারিখে বদলানো হয়েছে, এবং অন্য ডিভাইসগুলো থেকে সাইন আউট করা হয়েছে।\n\nআপনি না করে থাকলে এখনই kriraghor.com/sign-in/reset এ পাসওয়ার্ড রিসেট করুন এবং সাপোর্টে জানান।",
+      "variables": [
+        {
+          "name": "when",
+          "type": "datetime"
+        }
+      ]
     },
     {
       "code": "STAFF_INVITED",
@@ -2561,7 +2637,7 @@
       "channel": "in_app",
       "locale": "en",
       "subject": "UID verified",
-      "body": "Your game UID is verified. You can join tournaments now.",
+      "body": "Your game UID is verified. You can join events now.",
       "variables": []
     },
     {
@@ -2569,7 +2645,7 @@
       "channel": "in_app",
       "locale": "bn",
       "subject": "UID যাচাই হয়েছে",
-      "body": "আপনার গেম UID যাচাই হয়েছে। এখন টুর্নামেন্টে যোগ দিতে পারবেন।",
+      "body": "আপনার গেম UID যাচাই হয়েছে। এখন ইভেন্টে যোগ দিতে পারবেন।",
       "variables": []
     },
     {
@@ -2918,7 +2994,7 @@
       "code": "ESPORTS_CANCELLED",
       "channel": "in_app",
       "locale": "en",
-      "subject": "Tournament cancelled",
+      "subject": "Event cancelled",
       "body": "{{title}} is cancelled. Paid entries are refunded in full.",
       "variables": [
         {
@@ -2932,7 +3008,7 @@
       "code": "ESPORTS_CANCELLED",
       "channel": "in_app",
       "locale": "bn",
-      "subject": "টুর্নামেন্ট বাতিল",
+      "subject": "ইভেন্ট বাতিল",
       "body": "{{title}} বাতিল হয়েছে। পরিশোধিত এন্ট্রির পুরো টাকা ফেরত দেওয়া হবে।",
       "variables": [
         {
@@ -3163,7 +3239,7 @@
       "channel": "in_app",
       "locale": "en",
       "subject": "Owner documents to review",
-      "body": "A ground owner's {{doc}} is waiting on the Moderation desk.",
+      "body": "A venue owner's {{doc}} is waiting on the Moderation desk.",
       "variables": [
         {
           "name": "doc",
@@ -3177,7 +3253,7 @@
       "channel": "in_app",
       "locale": "bn",
       "subject": "মালিকের কাগজ যাচাই",
-      "body": "মডারেশন ডেস্কে একজন মাঠ মালিকের {{doc}} অপেক্ষায়।",
+      "body": "মডারেশন ডেস্কে একজন ভেন্যু মালিকের {{doc}} অপেক্ষায়।",
       "variables": [
         {
           "name": "doc",
@@ -3190,7 +3266,7 @@
       "code": "GROUND_LIVE",
       "channel": "in_app",
       "locale": "en",
-      "subject": "Ground approved",
+      "subject": "Venue approved",
       "body": "{{name}} is approved and live on Kriraghor.",
       "variables": [
         {
@@ -3209,7 +3285,7 @@
       "code": "GROUND_LIVE",
       "channel": "in_app",
       "locale": "bn",
-      "subject": "মাঠ অনুমোদিত",
+      "subject": "ভেন্যু অনুমোদিত",
       "body": "{{name}} অনুমোদিত হয়েছে এবং ক্রীড়াঘরে লাইভ।",
       "variables": [
         {
@@ -3328,7 +3404,7 @@
       "code": "GROUND_REJECTED",
       "channel": "in_app",
       "locale": "en",
-      "subject": "Ground not approved",
+      "subject": "Venue not approved",
       "body": "{{name}} was not approved: {{reason}}.",
       "variables": [
         {
@@ -3347,7 +3423,7 @@
       "code": "GROUND_REJECTED",
       "channel": "in_app",
       "locale": "bn",
-      "subject": "মাঠ অনুমোদিত হয়নি",
+      "subject": "ভেন্যু অনুমোদিত হয়নি",
       "body": "{{name}} অনুমোদিত হয়নি: {{reason}}।",
       "variables": [
         {
@@ -3420,8 +3496,8 @@
       "code": "GROUND_REVIEW_NEEDED",
       "channel": "in_app",
       "locale": "en",
-      "subject": "Ground to review",
-      "body": "A ground ({{name}}) is waiting on the Moderation desk.",
+      "subject": "Venue to review",
+      "body": "A venue ({{name}}) is waiting on the Moderation desk.",
       "variables": [
         {
           "name": "name",
@@ -3434,8 +3510,8 @@
       "code": "GROUND_REVIEW_NEEDED",
       "channel": "in_app",
       "locale": "bn",
-      "subject": "যাচাইয়ের জন্য মাঠ",
-      "body": "মডারেশন ডেস্কে একটি মাঠ ({{name}}) অপেক্ষায়।",
+      "subject": "যাচাইয়ের জন্য ভেন্যু",
+      "body": "মডারেশন ডেস্কে একটি ভেন্যু ({{name}}) অপেক্ষায়।",
       "variables": [
         {
           "name": "name",
@@ -7737,7 +7813,7 @@
       "channel": "in_app",
       "locale": "en",
       "subject": "Your esports contract is active",
-      "body": "{{name}} can now run tournaments on Kriraghor. Create one in the organiser console.",
+      "body": "{{name}} can now run events on Kriraghor. Create one in the organiser console.",
       "variables": [
         {
           "name": "name",
@@ -7751,7 +7827,7 @@
       "channel": "in_app",
       "locale": "bn",
       "subject": "আপনার ইস্পোর্টস চুক্তি চালু",
-      "body": "{{name}} এখন ক্রীড়াঘরে টুর্নামেন্ট চালাতে পারবে। আয়োজক কনসোলে একটি তৈরি করুন।",
+      "body": "{{name}} এখন ক্রীড়াঘরে ইভেন্ট চালাতে পারবে। আয়োজক কনসোলে একটি তৈরি করুন।",
       "variables": [
         {
           "name": "name",
@@ -7765,7 +7841,7 @@
       "channel": "email",
       "locale": "en",
       "subject": "Your esports contract is active",
-      "body": "{{name}} can now run tournaments on Kriraghor. Create one in the organiser console.",
+      "body": "{{name}} can now run events on Kriraghor. Create one in the organiser console.",
       "variables": [
         {
           "name": "name",
@@ -7779,7 +7855,7 @@
       "channel": "email",
       "locale": "bn",
       "subject": "আপনার ইস্পোর্টস চুক্তি চালু",
-      "body": "{{name}} এখন ক্রীড়াঘরে টুর্নামেন্ট চালাতে পারবে। আয়োজক কনসোলে একটি তৈরি করুন।",
+      "body": "{{name}} এখন ক্রীড়াঘরে ইভেন্ট চালাতে পারবে। আয়োজক কনসোলে একটি তৈরি করুন।",
       "variables": [
         {
           "name": "name",
@@ -7793,7 +7869,7 @@
       "channel": "in_app",
       "locale": "en",
       "subject": "Your esports contract is suspended",
-      "body": "New tournaments of {{name}} are on hold. Tournaments already open will finish.",
+      "body": "New events of {{name}} are on hold. Events already open will finish.",
       "variables": [
         {
           "name": "name",
@@ -7807,7 +7883,7 @@
       "channel": "in_app",
       "locale": "bn",
       "subject": "আপনার ইস্পোর্টস চুক্তি স্থগিত",
-      "body": "{{name}}-এর নতুন টুর্নামেন্ট বন্ধ। যেগুলো চলছে সেগুলো শেষ হবে।",
+      "body": "{{name}}-এর নতুন ইভেন্ট বন্ধ। যেগুলো চলছে সেগুলো শেষ হবে।",
       "variables": [
         {
           "name": "name",
@@ -7821,7 +7897,7 @@
       "channel": "email",
       "locale": "en",
       "subject": "Your esports contract is suspended",
-      "body": "New tournaments of {{name}} are on hold. Tournaments already open will finish.",
+      "body": "New events of {{name}} are on hold. Events already open will finish.",
       "variables": [
         {
           "name": "name",
@@ -7835,7 +7911,7 @@
       "channel": "email",
       "locale": "bn",
       "subject": "আপনার ইস্পোর্টস চুক্তি স্থগিত",
-      "body": "{{name}}-এর নতুন টুর্নামেন্ট বন্ধ। যেগুলো চলছে সেগুলো শেষ হবে।",
+      "body": "{{name}}-এর নতুন ইভেন্ট বন্ধ। যেগুলো চলছে সেগুলো শেষ হবে।",
       "variables": [
         {
           "name": "name",
@@ -7977,7 +8053,7 @@
       "channel": "in_app",
       "locale": "en",
       "subject": "Invoice {{number}} is overdue",
-      "body": "Invoice {{number}} ({{total}}) is overdue. Pay it soon: new tournaments are blocked after the grace days.",
+      "body": "Invoice {{number}} ({{total}}) is overdue. Pay it soon: new events are blocked after the grace days.",
       "variables": [
         {
           "name": "number",
@@ -7995,7 +8071,7 @@
       "channel": "in_app",
       "locale": "bn",
       "subject": "ইনভয়েস {{number}} বকেয়া",
-      "body": "ইনভয়েস {{number}} ({{total}}) বকেয়া। দ্রুত পরিশোধ করুন: সময় পার হলে নতুন টুর্নামেন্ট বন্ধ হবে।",
+      "body": "ইনভয়েস {{number}} ({{total}}) বকেয়া। দ্রুত পরিশোধ করুন: সময় পার হলে নতুন ইভেন্ট বন্ধ হবে।",
       "variables": [
         {
           "name": "number",
@@ -8013,7 +8089,7 @@
       "channel": "email",
       "locale": "en",
       "subject": "Invoice {{number}} is overdue",
-      "body": "Invoice {{number}} ({{total}}) is overdue. Pay it soon: new tournaments are blocked after the grace days.",
+      "body": "Invoice {{number}} ({{total}}) is overdue. Pay it soon: new events are blocked after the grace days.",
       "variables": [
         {
           "name": "number",
@@ -8031,7 +8107,7 @@
       "channel": "email",
       "locale": "bn",
       "subject": "ইনভয়েস {{number}} বকেয়া",
-      "body": "ইনভয়েস {{number}} ({{total}}) বকেয়া। দ্রুত পরিশোধ করুন: সময় পার হলে নতুন টুর্নামেন্ট বন্ধ হবে।",
+      "body": "ইনভয়েস {{number}} ({{total}}) বকেয়া। দ্রুত পরিশোধ করুন: সময় পার হলে নতুন ইভেন্ট বন্ধ হবে।",
       "variables": [
         {
           "name": "number",
@@ -8048,7 +8124,7 @@
       "code": "ORG_INVOICE_OVERDUE",
       "channel": "sms",
       "locale": "en",
-      "body": "Kriraghor: invoice {{number}} ({{total}}) is overdue. Pay it to keep sending new tournaments.",
+      "body": "Kriraghor: invoice {{number}} ({{total}}) is overdue. Pay it to keep sending new events.",
       "variables": [
         {
           "name": "number",
@@ -8065,7 +8141,7 @@
       "code": "ORG_INVOICE_OVERDUE",
       "channel": "sms",
       "locale": "bn",
-      "body": "ক্রীড়াঘর: ইনভয়েস {{number}} ({{total}}) বকেয়া। নতুন টুর্নামেন্ট চালাতে পরিশোধ করুন।",
+      "body": "ক্রীড়াঘর: ইনভয়েস {{number}} ({{total}}) বকেয়া। নতুন ইভেন্ট চালাতে পরিশোধ করুন।",
       "variables": [
         {
           "name": "number",
@@ -8540,7 +8616,7 @@
       "code": "TOURNAMENT_APPROVED",
       "channel": "in_app",
       "locale": "en",
-      "subject": "Tournament approved",
+      "subject": "Event approved",
       "body": "{{tournament}} is approved: registration is open.",
       "variables": [
         {
@@ -8554,7 +8630,7 @@
       "code": "TOURNAMENT_APPROVED",
       "channel": "in_app",
       "locale": "bn",
-      "subject": "টুর্নামেন্ট অনুমোদিত",
+      "subject": "ইভেন্ট অনুমোদিত",
       "body": "{{tournament}} অনুমোদিত হয়েছে: নিবন্ধন খোলা।",
       "variables": [
         {
@@ -8648,7 +8724,7 @@
       "code": "TOURNAMENT_REJECTED",
       "channel": "in_app",
       "locale": "en",
-      "subject": "Tournament not approved",
+      "subject": "Event not approved",
       "body": "{{tournament}} was not approved. Open the console for the reason.",
       "variables": [
         {
@@ -8662,7 +8738,7 @@
       "code": "TOURNAMENT_REJECTED",
       "channel": "in_app",
       "locale": "bn",
-      "subject": "টুর্নামেন্ট অনুমোদিত হয়নি",
+      "subject": "ইভেন্ট অনুমোদিত হয়নি",
       "body": "{{tournament}} অনুমোদন পায়নি। কারণ কনসোলে দেখুন।",
       "variables": [
         {
@@ -8950,7 +9026,7 @@
       "code": "RESERVE_OFFERED",
       "channel": "sms",
       "locale": "en",
-      "body": "Kriraghor: a place in {{tournament}} is offered to {{team}} until {{until}}. Open My tournaments.",
+      "body": "Kriraghor: a place in {{tournament}} is offered to {{team}} until {{until}}. Open My events.",
       "variables": [
         {
           "name": "team",
@@ -8994,7 +9070,7 @@
       "code": "TOURNAMENT_CANCELLED",
       "channel": "in_app",
       "locale": "en",
-      "subject": "Tournament cancelled",
+      "subject": "Event cancelled",
       "body": "{{tournament}} is cancelled. Refund: {{refund}}.",
       "variables": [
         {
@@ -9012,7 +9088,7 @@
       "code": "TOURNAMENT_CANCELLED",
       "channel": "in_app",
       "locale": "bn",
-      "subject": "টুর্নামেন্ট বাতিল",
+      "subject": "ইভেন্ট বাতিল",
       "body": "{{tournament}} বাতিল হয়েছে। ফেরত: {{refund}}।",
       "variables": [
         {

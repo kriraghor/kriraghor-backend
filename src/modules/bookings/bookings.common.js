@@ -18,11 +18,11 @@ const events = require('../events/events.service');
 const rules = require('./bookings.rules');
 
 const ERRORS = {
-  NOT_OWNER: [403, 'This booking is at another owner’s ground'],
+  NOT_OWNER: [403, 'This booking is at another owner’s venue'],
   BOOKING_STATE: [409, 'The booking cannot do that in its current state'],
-  GROUND_NOT_BOOKABLE: [409, 'This ground is not taking bookings right now'],
-  OWN_GROUND: [422, 'You cannot book your own ground'],
-  COURT_UNKNOWN: [422, 'Choose courts of this ground'],
+  GROUND_NOT_BOOKABLE: [409, 'This venue is not taking bookings right now'],
+  OWN_GROUND: [422, 'You cannot book your own venue'],
+  COURT_UNKNOWN: [422, 'Choose courts of this venue'],
   NOT_HALF_HOUR: [422, 'Bookings start on the hour or half-hour'],
   TOO_LATE: [422, 'It is too late to book this time'],
   OUT_OF_RANGE: [422, 'This time is outside the booking window'],
@@ -30,18 +30,18 @@ const ERRORS = {
   HOLD_RATE_LIMITED: [429, 'Too many attempts. Try again in a few minutes'],
   SLOT_UNAVAILABLE: [409, 'Someone else just took this slot'],
   PAYMENT_CHOICE_UNAVAILABLE: [422, 'Paying in full online is not available'],
-  PRICING_MISSING: [409, 'This ground has no published prices yet'],
+  PRICING_MISSING: [409, 'This venue has no published prices yet'],
   NOT_CHECKIN_WINDOW: [409, 'Check-in opens 30 minutes before the start and closes at the end'],
   NOT_LATE_YET: [409, 'The player is not late yet'],
   NO_SHOW_WINDOW_CLOSED: [409, 'It is too late to mark a no-show'],
   ALREADY_STARTED: [409, 'This booking has already started'],
   BOOKING_ENDED: [409, 'This booking has ended'],
   NEXT_SLOT_TAKEN: [409, 'The next half-hour is already taken'],
-  OUTSIDE_HOURS: [422, 'The ground is closed for part of that time'],
+  OUTSIDE_HOURS: [422, 'The venue is closed for part of that time'],
   NO_BALANCE_DUE: [409, 'Nothing is due at the venue'],
   BALANCE_MISMATCH: [422, 'Record the full amount due'],
   REFUND_CHANGED: [409, 'The refund changed. Check the new amount and try again'],
-  MOVE_TARGET_INVALID: [422, 'Choose a free court of the same length at one of your grounds'],
+  MOVE_TARGET_INVALID: [422, 'Choose a free court of the same length at one of your venues'],
 };
 const fail = (code, meta) => new AppError(ERRORS[code][0], code, ERRORS[code][1], meta ? { meta } : undefined);
 

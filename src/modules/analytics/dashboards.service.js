@@ -46,7 +46,7 @@ const meta = async (f, keys, locale) => ({ period: f.period, buckets: f.list.map
 // ---------------------------------------------------------------- ground owner (§6.2)
 
 async function ownerDashboard(principal, { period = '7w', groundId = null, locale = 'en' }, now = new Date()) {
-  if (principal.roles?.ground_owner !== 'active') throw E.forbidden('ROLE_REQUIRED', 'This dashboard is for active ground owners', undefined, { role: 'ground_owner' });
+  if (principal.roles?.ground_owner !== 'active') throw E.forbidden('ROLE_REQUIRED', 'This dashboard is for active venue owners', undefined, { role: 'ground_owner' });
   const f = frame(period, now);
   const ground = groundId ? 'AND ground_id = :groundId' : '';
   const q = { owner: principal.id, from: f.from, to: f.to, groundId };

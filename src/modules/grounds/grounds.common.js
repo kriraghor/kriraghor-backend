@@ -11,27 +11,27 @@ const { Ground, Court, CourtHours, GroundPhoto, PricingRule, Area, District, Spo
 const settings = require('../settings/settings.service');
 
 const ERRORS = {
-  NOT_OWNER: [403, 'This ground belongs to another owner'],
-  GROUND_STATE: [409, 'The ground cannot do that in its current state'],
-  GROUND_IN_REVIEW: [409, 'Staff are reviewing this ground. Wait for the decision, or withdraw it'],
+  NOT_OWNER: [403, 'This venue belongs to another owner'],
+  GROUND_STATE: [409, 'The venue cannot do that in its current state'],
+  GROUND_IN_REVIEW: [409, 'Staff are reviewing this venue. Wait for the decision, or withdraw it'],
   GROUND_INCOMPLETE: [422, 'Finish the listing before sending it for review'],
   NOTHING_TO_REVIEW: [409, 'There are no changes that need review'],
-  AREA_NOT_SERVED: [422, 'Choose a Dhaka area where grounds are listed'],
+  AREA_NOT_SERVED: [422, 'Choose a Dhaka area where venues are listed'],
   CATALOG_ITEM_UNKNOWN: [422, 'Choose items from the list'],
   COURT_HAS_BOOKINGS: [409, 'This court has upcoming bookings. Move or cancel them first'],
-  LAST_COURT: [409, 'A live ground needs at least one court'],
+  LAST_COURT: [409, 'A live venue needs at least one court'],
   HOURS_CONFLICT: [409, 'Upcoming bookings fall outside these hours'],
-  PHOTO_LIMIT: [409, 'This ground has the most photos allowed'],
-  PHOTOS_MISMATCH: [422, 'Send every photo of the ground, in the new order'],
+  PHOTO_LIMIT: [409, 'This venue has the most photos allowed'],
+  PHOTOS_MISMATCH: [422, 'Send every photo of the venue, in the new order'],
   FILE_EMPTY: [422, 'The file is empty'],
   FILE_TOO_LARGE: [413, 'The photo is too large'],
   FILE_TYPE_NOT_ALLOWED: [415, 'Upload a JPEG, PNG or WebP photo'],
   FILE_TYPE_MISMATCH: [415, 'The file is not the type it says it is'],
   PRICING_DRAFT_MISSING: [409, 'There is no draft to publish'],
-  PRICING_MISSING: [409, 'This ground has no published prices yet'],
-  LENGTH_INVALID: [422, 'Choose a length the ground allows'],
-  OUTSIDE_HOURS: [422, 'The ground is closed for part of that time'],
-  COURT_UNKNOWN: [422, 'Choose courts of this ground'],
+  PRICING_MISSING: [409, 'This venue has no published prices yet'],
+  LENGTH_INVALID: [422, 'Choose a length the venue allows'],
+  OUTSIDE_HOURS: [422, 'The venue is closed for part of that time'],
+  COURT_UNKNOWN: [422, 'Choose courts of this venue'],
   NOT_COMBINABLE: [422, 'These courts cannot be booked together'],
   // step 2: closures and series (§9)
   NOT_HALF_HOUR: [422, 'Times start on the hour or half-hour'],
@@ -45,7 +45,7 @@ const ERRORS = {
   SERIES_DAY_MISMATCH: [422, 'The first date must fall on the chosen weekday'],
   SERIES_CLASHES: [409, 'Some weeks are already taken. Skip them or choose another time'],
   SERIES_STATE: [409, 'The series cannot do that now'],
-  GROUND_NOT_BOOKABLE: [409, 'The ground must be live to take series bookings'],
+  GROUND_NOT_BOOKABLE: [409, 'The venue must be live to take series bookings'],
 };
 const fail = (code, meta) => new AppError(ERRORS[code][0], code, ERRORS[code][1], meta);
 
@@ -232,7 +232,7 @@ function ownerView(w, { published = null, draft = null } = {}) {
   };
 }
 
-/** The principal's own ground (removed grounds are gone; another owner's is NOT_OWNER). */
+/** The principal's own venue (removed venues are gone; another owner's is NOT_OWNER). */
 async function owned(principal, groundId, { transaction, lock = false } = {}) {
   const g = await Ground.findByPk(groundId, { transaction, ...(lock ? { lock: transaction.LOCK.UPDATE } : {}) });
   if (!g || g.status === 'removed') throw E.notFound('Ground');

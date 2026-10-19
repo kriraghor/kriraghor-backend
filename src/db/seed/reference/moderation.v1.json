@@ -1,6 +1,6 @@
 {
-  "seedVersion": 3,
-  "source": "M05 §6.2 rubrics and §6.3 rejection reasons, lite (Oct 2026): the document kind (M02 NID); game_profile and esports_tournament (M21). Kinds are added as their modules arrive (M21 game_profile and esports_tournament). Rows are inserted only when missing. Ground listings (M09): rubric rb_ground_v1 and the ground kind on the shared reasons, plus location_wrong and not_a_venue. M11: the hire_profile rubric and reasons (missing_credential, rate_wrong, profile_details). M20: the gym rubric and the gym kind on the shared reasons (photos, price, duplicate, location, not a venue, incomplete, rules, other). M22: the organisation rubric and reasons. v3 adds the M14 kind tournament (rubric and the shared reasons).",
+  "seedVersion": 4,
+  "source": "M05 §6.2 rubrics and §6.3 rejection reasons, lite (Oct 2026): the document kind (M02 NID); game_profile and esports_tournament (M21). Kinds are added as their modules arrive (M21 game_profile and esports_tournament). Rows are inserted only when missing. Ground listings (M09): rubric rb_ground_v1 and the ground kind on the shared reasons, plus location_wrong and not_a_venue. M11: the hire_profile rubric and reasons (missing_credential, rate_wrong, profile_details). M20: the gym rubric and the gym kind on the shared reasons (photos, price, duplicate, location, not a venue, incomplete, rules, other). M22: the organisation rubric and reasons. v3 adds the M14 kind tournament (rubric and the shared reasons). v4: user-facing words Grounds → Venues, Tournaments → Events, big events → Showcases (19 Oct 2026).",
   "rubrics": [
     {
       "kind": "document",
@@ -76,8 +76,8 @@
       "items": [
         {
           "key": "photos_real",
-          "labelEn": "Photos show this ground and match the courts",
-          "labelBn": "ছবিগুলো এই মাঠের এবং কোর্টের সাথে মেলে"
+          "labelEn": "Photos show this venue and match the courts",
+          "labelBn": "ছবিগুলো এই ভেন্যুর এবং কোর্টের সাথে মেলে"
         },
         {
           "key": "location_ok",
@@ -445,7 +445,7 @@
     {
       "code": "not_a_venue",
       "labelEn": "Not a bookable sports venue",
-      "labelBn": "বুকিংযোগ্য খেলার মাঠ নয়",
+      "labelBn": "বুকিংযোগ্য খেলার ভেন্যু নয়",
       "kinds": [
         "ground",
         "gym"

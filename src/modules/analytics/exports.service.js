@@ -82,7 +82,7 @@ async function limit(userId) {
 async function exportCsv(principal, { dataset, period = '7w' }, scope, req) {
   const def = DATASETS[dataset];
   if (!def || def.role !== scope) throw new AppError(404, 'DATASET_UNKNOWN', 'This export is not available here');
-  if (scope === 'ground_owner' && principal.roles?.ground_owner !== 'active') throw new AppError(403, 'ROLE_REQUIRED', 'This export is for active ground owners', { meta: { role: 'ground_owner' } });
+  if (scope === 'ground_owner' && principal.roles?.ground_owner !== 'active') throw new AppError(403, 'ROLE_REQUIRED', 'This export is for active venue owners', { meta: { role: 'ground_owner' } });
   const f = dashboards.frame(period);
   const rows = await def.rows(principal, f);
   const max = settings.get('analytics.export_sync_max_rows');

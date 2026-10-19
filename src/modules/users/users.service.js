@@ -83,6 +83,7 @@ async function changePassword(principal, { currentPassword, newPassword }, req) 
     await user.update({ passwordHash }, { transaction });
     await sessions.revokeAllForUser(user.id, 'password_change', { exceptFamilyId: req.auth.familyId, transaction });
     await audit.record({ action: 'user.password_changed', actor: principal, entityType: 'user', entityId: user.id, req }, { transaction });
+    await events.publish(transaction, { name: 'user.password_changed', aggregateType: 'user', aggregateId: user.id, payload: { userId: user.id, via: 'change', at: new Date().toISOString() }, actor: principal, req });
   });
 }
 

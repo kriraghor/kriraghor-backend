@@ -33,13 +33,13 @@ const ERRORS = {
   REPORT_SUBJECT_UNKNOWN: [404, 'We could not find what you are reporting'],
   RESOLUTION_NOT_ALLOWED: [422, 'That action does not apply to this kind of report'],
   NOTHING_OPEN: [409, 'There are no open reports about this'],
-  NOT_PLAYED: [409, 'You can rate a ground after you have played there'],
+  NOT_PLAYED: [409, 'You can rate a venue after you have played there'],
   REVIEW_WINDOW_CLOSED: [409, 'The time to rate this booking has passed'],
   REVIEW_EXISTS: [409, 'You have already rated this booking'],
   REVIEW_EDIT_CLOSED: [409, 'This review can no longer be changed'],
   REVIEW_HIDDEN: [409, 'This review was hidden by our team'],
   REVIEW_STATE: [409, 'The review cannot do that in its current state'],
-  NOT_OWNER: [403, 'Only the ground owner can reply'],
+  NOT_OWNER: [403, 'Only the venue owner can reply'],
 };
 
 const fail = (code, meta) => new AppError(ERRORS[code][0], code, ERRORS[code][1], meta ? { meta } : undefined);

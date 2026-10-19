@@ -95,8 +95,8 @@ describe('routing and channels (M08-FR-01 to FR-03, FR-06)', () => {
     expect(results).toEqual([{ status: 'delivered' }]);
 
     const [n] = await notificationsOf(member.user.id);
-    expect(n).toMatchObject({ code: 'ROLE_ACTIVATED', category: 'moderation', roleContext: 'ground_owner', title: 'Ground owner is active', locale: 'en', templateVersion: 1 });
-    expect(h.sms.lastTo(h.e164(member.phone)).text).toBe('Kriraghor: your Ground owner account is approved. You can start now.');
+    expect(n).toMatchObject({ code: 'ROLE_ACTIVATED', category: 'moderation', roleContext: 'ground_owner', title: 'Venue owner is active', locale: 'en', templateVersion: 1 });
+    expect(h.sms.lastTo(h.e164(member.phone)).text).toBe('Kriraghor: your Venue owner account is approved. You can start now.');
     const log = await models.SmsLog.findOne({ where: { route: 'trans' } });
     expect(log).toMatchObject({ toPhoneMasked: expect.stringMatching(/^\+8801•+\d{4}$/), encoding: 'gsm7', segments: 1, status: 'sent', gateway: 'memory' });
     expect(log.toPhoneHash).toMatch(/^[0-9a-f]{64}$/);
@@ -109,7 +109,7 @@ describe('routing and channels (M08-FR-01 to FR-03, FR-06)', () => {
     await decideRole(master, member.user.id, 'rejected', { reasonCode: 'blurry_photos' }).expect(200);
     await h.drainEvents();
     const [n] = await notificationsOf(member.user.id);
-    expect(n).toMatchObject({ code: 'ROLE_REJECTED', locale: 'bn', title: 'মাঠ মালিক আবেদন অনুমোদিত হয়নি' });
+    expect(n).toMatchObject({ code: 'ROLE_REJECTED', locale: 'bn', title: 'ভেন্যু মালিক আবেদন অনুমোদিত হয়নি' });
     expect(n.body).toContain('blurry photos');
     expect(await models.SmsLog.findOne({ where: { route: 'trans' } })).toMatchObject({ encoding: 'ucs2' });
   });

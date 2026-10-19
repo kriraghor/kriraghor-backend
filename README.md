@@ -144,7 +144,7 @@ The image is built from the [`Dockerfile`](Dockerfile): production dependencies 
 docker build -t kriraghor-backend:dev .
 ```
 
-Charts, values per environment and the local k3d cluster live in [`../kriraghor-infra`](../kriraghor-infra/README.md). In short:
+Charts, values per environment and the local k3d cluster live in [`kriraghor-infrastructure`](https://github.com/kriraghor/kriraghor-infrastructure) (cloned next to this repo as `../kriraghor-infra`). In short:
 
 | Setting | Local (docker compose) | k3d (`*.kriraghor.localhost`) | Production |
 |---|---|---|---|
