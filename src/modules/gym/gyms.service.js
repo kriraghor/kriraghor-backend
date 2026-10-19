@@ -18,7 +18,7 @@ const { sequelize, Gym, GymHours, GymPhoto, GymPackage, Area, Facility } = requi
 const audit = require('../audit/audit.service');
 const moderation = require('../moderation/moderation.service');
 const authz = require('../auth/authz.service');
-const { slugify } = require('../market/market.rules');
+const { slugify } = require('../../common/identifiers');
 const rules = require('./gym.rules');
 const c = require('./gym.common');
 

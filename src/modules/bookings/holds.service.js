@@ -13,7 +13,6 @@
  */
 const { Op, UniqueConstraintError } = require('sequelize');
 const { E } = require('../../common/errors');
-const config = require('../../config');
 const { feeOf } = require('../../common/money');
 const { nextCode } = require('../../common/sequences');
 const { sequelize, Booking } = require('../../models');
@@ -26,7 +25,7 @@ const pricing = require('../grounds/pricing.service');
 const c = require('./bookings.common');
 const rules = require('./bookings.rules');
 
-const payUrl = (paymentId) => `${config.apps.web}/pay/${paymentId}`;
+const { payUrl } = require('../payments').intents;
 
 async function response(b) {
   const g = await reads.ground(b.groundId);
@@ -216,4 +215,4 @@ async function expireHolds(now = new Date()) {
 
 purposes.register('ground_booking', { onCaptured });
 
-module.exports = { create, payLink, releaseHold, onCaptured, onPaymentClosed, expireHolds, expireInTx, releaseIntent, payUrl };
+module.exports = { create, payLink, releaseHold, onCaptured, onPaymentClosed, expireHolds, expireInTx, releaseIntent };

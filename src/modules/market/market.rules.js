@@ -252,18 +252,8 @@ const daysUntil = (today, date) => Math.round((Date.parse(`${date}T00:00:00Z`) -
  */
 const shelfBlocked = ({ expiryDate, today, minShelfDays }) => Boolean(expiryDate) && daysUntil(today, expiryDate) < minShelfDays;
 
-// ---------------------------------------------------------------- slugs
-
-/** URL slug: "Adidas Predator Turf Boots" → "adidas-predator-turf-boots". */
-function slugify(text, fallback) {
-  const base = String(text)
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 80);
-  return base || fallback;
-}
+// ---------------------------------------------------------------- slugs (common/identifiers; re-exported here)
+const { slugify } = require('../../common/identifiers');
 
 module.exports = {
   TRANSITIONS,

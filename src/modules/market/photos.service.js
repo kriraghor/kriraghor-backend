@@ -14,7 +14,7 @@ const { uuid7 } = require('../../common/uuid7');
 const { sequelize, ProductPhoto } = require('../../models');
 const audit = require('../audit/audit.service');
 const settings = require('../settings/settings.service');
-const { fileBlock } = require('../grounds/photos.service');
+const { fileBlock } = require('../../common/filetype');
 const rules = require('./market.rules');
 const c = require('./market.common');
 

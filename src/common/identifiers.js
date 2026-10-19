@@ -112,7 +112,19 @@ const identifierSchema = z
     return id;
   });
 
+/** URL slug: "Adidas Predator Turf Boots" → "adidas-predator-turf-boots". */
+function slugify(text, fallback) {
+  const base = String(text)
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
+  return base || fallback;
+}
+
 module.exports = {
+  slugify,
   normalizePhone,
   normalizeEmail,
   normalizeUsername,

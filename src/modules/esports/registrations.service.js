@@ -16,7 +16,6 @@
  */
 const { Op, UniqueConstraintError } = require('sequelize');
 const { E } = require('../../common/errors');
-const config = require('../../config');
 const realtime = require('../../common/realtime');
 const models = require('../../models');
 const audit = require('../audit/audit.service');
@@ -69,7 +68,7 @@ function serialize(r, players = []) {
   };
 }
 
-const payUrl = (paymentId) => `${config.apps.web}/pay/${paymentId}`;
+const { payUrl } = require('../payments').intents;
 const announceSlots = (t, transaction) =>
   transaction.afterCommit(async () => {
     const c = (await require('./tournaments.service').slotCounts([t.id])).get(t.id);

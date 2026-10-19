@@ -16,7 +16,7 @@ const audit = require('../audit/audit.service');
 const payments = require('../payments/payments.service');
 const purposes = require('../payments/payments.purposes');
 const escrow = require('../payments/escrow.service');
-const { payUrl } = require('../bookings/holds.service');
+const { payUrl } = require('../payments').intents;
 const rules = require('./saas.rules');
 const c = require('./saas.common');
 

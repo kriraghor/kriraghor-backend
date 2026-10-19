@@ -9,4 +9,19 @@ function sniffMime(buf) {
   return null;
 }
 
-module.exports = { sniffMime };
+/** Public photo types and the file extension each is stored with. */
+const PHOTO_TYPES = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+
+/**
+ * Why a photo upload is refused, or null: empty, too large, not a photo type, or a body whose real
+ * type differs from the declared one (shared by venues, shop products and order evidence).
+ */
+function fileBlock({ declared, sniffed, size, max }) {
+  if (!size) return 'FILE_EMPTY';
+  if (size > max) return 'FILE_TOO_LARGE';
+  if (!PHOTO_TYPES[declared]) return 'FILE_TYPE_NOT_ALLOWED';
+  if (sniffed !== declared) return 'FILE_TYPE_MISMATCH';
+  return null;
+}
+
+module.exports = { sniffMime, PHOTO_TYPES, fileBlock };

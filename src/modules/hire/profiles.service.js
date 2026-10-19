@@ -22,7 +22,7 @@ const authz = require('../auth/authz.service');
 const directory = require('../users/directory.service');
 const kyc = require('../kyc/kyc.service');
 const taxonomy = require('../catalog/hire.reads');
-const { slugify } = require('../market/market.rules');
+const { slugify } = require('../../common/identifiers');
 const rules = require('./hire.rules');
 const c = require('./hire.common');
 

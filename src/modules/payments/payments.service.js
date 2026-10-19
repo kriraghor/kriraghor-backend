@@ -109,7 +109,7 @@ async function createTestCharge(actor, { payerId, payeeId, amount, title }, idem
       { action: 'payment.test_charge_created', actor, entityType: 'payment', entityId: payment.id, entityCode: payment.code, after: { amount, payerId, payeeId }, req },
       { transaction }
     );
-    return { payment: serialize(payment), payUrl: `${config.apps.web}/pay/${payment.id}` };
+    return { payment: serialize(payment), payUrl: payUrl(payment.id) };
   });
 }
 
@@ -531,7 +531,13 @@ async function payeeRefundStats(payeeId, since, { reasonCodes = [] } = {}) {
   return { payments: row.payments, refunded: row.refunded };
 }
 
+/** Where the payer completes a payment: the kriraghor.com pay page (every product links here). */
+function payUrl(paymentId) {
+  return `${config.apps.web}/pay/${paymentId}`;
+}
+
 module.exports = {
+  payUrl,
   payeeRefundStats,
   paymentFact,
   exportPaymentFacts,

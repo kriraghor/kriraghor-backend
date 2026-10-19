@@ -28,7 +28,7 @@ const purposes = require('../payments/payments.purposes');
 const settings = require('../settings/settings.service');
 const directory = require('../users/directory.service');
 const hireReads = require('../hire/hire.reads');
-const { payUrl } = require('../bookings/holds.service');
+const { payUrl } = require('../payments').intents;
 const rules = require('./gym.rules');
 const c = require('./gym.common');
 
