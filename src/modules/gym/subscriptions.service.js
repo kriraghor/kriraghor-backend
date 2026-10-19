@@ -22,12 +22,12 @@ const { E } = require('../../common/errors');
 const { nextCode } = require('../../common/sequences');
 const { randomToken } = require('../../common/crypto');
 const { sequelize, Gym, Area, TrainerPlan, TrainerSubscription, TrainerSubscriptionPeriod } = require('../../models');
-const audit = require('../audit/audit.service');
+const audit = require('../audit').audit;
 const payments = require('../payments').intents;
 const purposes = require('../payments').purposes;
-const settings = require('../settings/settings.service');
-const directory = require('../users/directory.service');
-const hireReads = require('../hire/hire.reads');
+const settings = require('../settings').settings;
+const directory = require('../users').directory;
+const hireReads = require('../hire').reads;
 const { payUrl } = require('../payments').intents;
 const rules = require('./gym.rules');
 const c = require('./gym.common');
@@ -346,7 +346,7 @@ async function problem(principal, id, { statement }, idempotencyKey, req) {
   if (s.memberId !== principal.id) throw E.notFound('Subscription');
   const current = (await periodsOf(s.id)).filter((p) => p.status === 'paid').at(-1);
   if (!current) throw fail('SUBSCRIPTION_STATE');
-  return require('../trust/disputes.service').open(principal, { sourceType: 'trainer_subscription', sourceId: current.id, category: 'service_problem', statement }, idempotencyKey, req);
+  return require('../trust').disputes.open(principal, { sourceType: 'trainer_subscription', sourceId: current.id, category: 'service_problem', statement }, idempotencyKey, req);
 }
 
 /** GET /me/subscriptions (member) and GET /pro/subscriptions (trainer). */

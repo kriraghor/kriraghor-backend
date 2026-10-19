@@ -18,12 +18,12 @@
 const { Op, QueryTypes } = require('sequelize');
 const { E } = require('../../common/errors');
 const { sequelize, Shop, Area } = require('../../models');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
-const settings = require('../settings/settings.service');
-const moderation = require('../moderation/moderation.service');
-const authz = require('../auth/authz.service');
-const directory = require('../users/directory.service');
+const audit = require('../audit').audit;
+const events = require('../events').events;
+const settings = require('../settings').settings;
+const moderation = require('../moderation').moderation;
+const authz = require('../auth').authz;
+const directory = require('../users').directory;
 const rules = require('./market.rules');
 const c = require('./market.common');
 

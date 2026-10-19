@@ -6,7 +6,7 @@
  */
 const { AppError } = require('../../common/errors');
 const { EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset } = require('../../models');
-const settings = require('../settings/settings.service');
+const settings = require('../settings').settings;
 
 const ERRORS = {
   // profiles and squads

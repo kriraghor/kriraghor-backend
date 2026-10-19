@@ -7,7 +7,7 @@
  * risk_metrics for the desk. Windows and minimum samples are settings.
  */
 const { RiskMetric } = require('../../models');
-const settings = require('../settings/settings.service');
+const settings = require('../settings').settings;
 const velocity = require('../../common/velocity');
 const rules = require('./risk.rules');
 
@@ -16,12 +16,12 @@ const DAY = 24 * 3600 * 1000;
 const PAYEE_FAULT_REFUNDS = ['booking_cancelled_by_owner'];
 
 const since = (now) => new Date(now.getTime() - settings.get('risk.window_days') * DAY);
-const kyc = () => require('../kyc/kyc.service');
-const payoutAccounts = () => require('../payouts/payout-accounts.service');
+const kyc = () => require('../kyc').kyc;
+const payoutAccounts = () => require('../payouts').payoutAccounts;
 const payments = () => require('../payments').intents;
-const disputes = () => require('../trust/disputes.service');
-const reports = () => require('../trust/reports.service');
-const esports = () => require('../esports/esports.facts');
+const disputes = () => require('../trust').disputes;
+const reports = () => require('../trust').reports;
+const esports = () => require('../esports').facts;
 
 /** metric → (userId, ctx) → { value, sample, detail } */
 const METRICS = {

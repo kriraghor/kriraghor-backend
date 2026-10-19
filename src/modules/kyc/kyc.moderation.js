@@ -9,8 +9,8 @@
  * Owners do not withdraw through /me/submissions: a resubmission on /account/verification supersedes.
  */
 const crypto = require('crypto');
-const { onEvent } = require('../events/events.consumers');
-const adapters = require('../moderation/moderation.adapters');
+const { onEvent } = require('../events').consumers;
+const adapters = require('../moderation').adapters;
 const { LOCKED_CHECKS } = require('./kyc.rules');
 
 /** One stable subject per user, document type and subject key, so versions line up in M05. */

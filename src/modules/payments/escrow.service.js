@@ -13,8 +13,8 @@
 const { Op } = require('sequelize');
 const { AppError, E } = require('../../common/errors');
 const { sequelize, EscrowHold } = require('../../models');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
+const audit = require('../audit').audit;
+const events = require('../events').events;
 const logger = require('../../common/logger');
 const ledger = require('./ledger.service');
 const lrules = require('./ledger.rules');

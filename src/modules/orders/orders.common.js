@@ -9,8 +9,8 @@ const { AppError } = require('../../common/errors');
 const { encrypt, decrypt } = require('../../common/crypto');
 const storage = require('../../common/storage');
 const { Order, SubOrder, OrderItem } = require('../../models');
-const settings = require('../settings/settings.service');
-const events = require('../events/events.service');
+const settings = require('../settings').settings;
+const events = require('../events').events;
 const rules = require('./orders.rules');
 
 const ERRORS = {
@@ -189,7 +189,7 @@ function shopSubView(s, items, order, area) {
 
 /** Shop names for the buyer's views (M12 read; ids, names and slugs only). */
 async function shopsOf(subs) {
-  const reads = require('../market/market.reads');
+  const reads = require('../market').reads;
   const out = new Map();
   for (const id of new Set(subs.map((s) => s.shopId))) {
     const s = await reads.shop(id);

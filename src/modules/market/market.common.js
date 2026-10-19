@@ -8,7 +8,7 @@
 const { AppError, E } = require('../../common/errors');
 const storage = require('../../common/storage');
 const { Shop, Product, ProductVariant, ProductPhoto, ItemType, ItemTypeField, ItemCategory, Area } = require('../../models');
-const settings = require('../settings/settings.service');
+const settings = require('../settings').settings;
 const rules = require('./market.rules');
 
 const ERRORS = {

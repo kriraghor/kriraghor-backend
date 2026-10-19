@@ -8,8 +8,8 @@
 const { ExclusionConstraintError } = require('sequelize');
 const { AppError } = require('../../common/errors');
 const { sequelize, HireRequest, HireJob, HireProfile } = require('../../models');
-const settings = require('../settings/settings.service');
-const events = require('../events/events.service');
+const settings = require('../settings').settings;
+const events = require('../events').events;
 const escrow = require('../payments').escrow;
 const refunds = require('../payments').refunds;
 const rules = require('./hire.rules');

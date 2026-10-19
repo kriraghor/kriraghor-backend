@@ -6,7 +6,7 @@
  * kpi_processed_events is the second guard. Payloads carry ids only (M04 PII rule), so names and
  * amounts always come from the services.
  */
-const { onEvent } = require('../events/events.consumers');
+const { onEvent } = require('../events').consumers;
 const { KpiProcessedEvent } = require('../../models');
 const facts = require('./facts.service');
 const rules = require('./analytics.rules');
@@ -35,10 +35,10 @@ function on(names, consumer, fn) {
 function registerAnalyticsConsumers() {
   on(BOOKING, 'booking', (e, { transaction }) => facts.refreshBooking(e.payload.bookingId, { transaction, alsoGroundId: e.payload.fromGroundId ?? null }));
   on(SERIES, 'series', async (e, { transaction }) => {
-    for (const id of await require('../bookings/bookings.reads').seriesBookingIds(e.payload.seriesId)) await facts.refreshBooking(id, { transaction });
+    for (const id of await require('../bookings').reads.seriesBookingIds(e.payload.seriesId)) await facts.refreshBooking(id, { transaction });
   });
   on(CLOSURE, 'closure', async (e, { transaction }) => {
-    const g = await require('../grounds/grounds.reads').ground(e.payload.groundId);
+    const g = await require('../grounds').reads.ground(e.payload.groundId);
     const courtIds = (g?.courts ?? []).map((k) => k.id);
     const start = new Date(e.payload.start).getTime();
     const end = new Date(e.payload.end).getTime();

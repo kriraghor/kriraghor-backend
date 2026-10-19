@@ -8,7 +8,7 @@
  */
 const { E } = require('../../common/errors');
 const { RiskRule, RiskFlag, RiskMetric, DocumentRequest } = require('../../models');
-const directory = require('../users/directory.service');
+const directory = require('../users').directory;
 const flags = require('./flags.service');
 const actions = require('./actions.service');
 const trust = require('./trust.service');
@@ -33,7 +33,7 @@ async function account(userId) {
   const kycStatus = (await directory.identities([userId])).get(userId)?.kycStatus ?? null;
   const flagRows = await RiskFlag.findAll({ where: { userId }, order: [['createdAt', 'DESC']], limit: 100 });
   const metricRows = await RiskMetric.findAll({ where: { userId } });
-  const holds = await require('../payouts/holds.service').activeFor(userId);
+  const holds = await require('../payouts').holds.activeFor(userId);
   const docRequests = await DocumentRequest.findAll({ where: { userId }, order: [['createdAt', 'DESC']], limit: 20 });
   return {
     user: { id: userId, displayName: acc.displayName ?? null, status: acc.status, isStaff: acc.isStaff, kycStatus },
@@ -43,7 +43,7 @@ async function account(userId) {
     actions: await actions.forUser(userId),
     trust: await trust.forUser(userId),
     holds: holds.map((h) => ({ id: h.id, type: h.type, scope: h.scope, placedAt: iso(h.placedAt), until: iso(h.until) })),
-    documentRequests: docRequests.map((r) => require('../kyc/requests.service').view(r)),
+    documentRequests: docRequests.map((r) => require('../kyc').requests.view(r)),
   };
 }
 
@@ -57,7 +57,7 @@ async function proposeThresholds(actor, { changes, reason }, req) {
   const allowed = new Set((await RiskRule.findAll({ attributes: ['settingKey'] })).map((r) => r.settingKey).filter(Boolean));
   const bad = changes.filter((c) => !allowed.has(c.key) && !c.key.startsWith('risk.') && !c.key.startsWith('trust.'));
   if (bad.length) throw E.validation(bad.map((c) => ({ field: 'changes', message: `${c.key} is not a risk or trust setting` })));
-  return require('../settings/change-request.service').create(actor, { changes, reason, source: 'risk_desk' }, req);
+  return require('../settings').changeRequest.create(actor, { changes, reason, source: 'risk_desk' }, req);
 }
 
 module.exports = { overview, account, levelOf, proposeThresholds };

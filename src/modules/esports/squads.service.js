@@ -11,9 +11,9 @@
 const { UniqueConstraintError } = require('sequelize');
 const { E } = require('../../common/errors');
 const { sequelize, EsportsSquad, EsportsSquadMember, EsportsGameProfile } = require('../../models');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
-const directory = require('../users/directory.service');
+const audit = require('../audit').audit;
+const events = require('../events').events;
+const directory = require('../users').directory;
 const { fail, game: gameRow, maxSquadSize } = require('./esports.common');
 const { shortCode } = require('./profiles.service');
 

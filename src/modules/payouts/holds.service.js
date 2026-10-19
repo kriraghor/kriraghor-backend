@@ -10,7 +10,7 @@
  */
 const { Op, UniqueConstraintError } = require('sequelize');
 const { sequelize, Payout, PayoutHold, PayoutItem } = require('../../models');
-const events = require('../events/events.service');
+const events = require('../events').events;
 const rules = require('./payouts.rules');
 
 const serialize = (h) => ({

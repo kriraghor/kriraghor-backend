@@ -8,9 +8,9 @@
  *    re-checks the player's squads in running tournaments; a member who leaves a team leaves its
  *    squads that have not frozen yet.
  */
-const { onEvent } = require('../events/events.consumers');
+const { onEvent } = require('../events').consumers;
 
-const recheck = (userId, transaction) => require('./rosters.service').reevaluate(userId, { transaction, tournamentsOf: require('../tournaments/registrations.service').tournamentsOf });
+const recheck = (userId, transaction) => require('./rosters.service').reevaluate(userId, { transaction, tournamentsOf: require('../tournaments').registrations.tournamentsOf });
 
 function registerTeamsConsumers() {
   onEvent('user.banned', 'teams.ban-leaves-teams', (e, { transaction }) => require('./teams.service').onUserBanned(e.payload.userId, { transaction }));

@@ -11,7 +11,7 @@
  */
 const { Op } = require('sequelize');
 const { sequelize, SubOrder } = require('../../models');
-const settings = require('../settings/settings.service');
+const settings = require('../settings').settings;
 const checkout = require('./checkout.service');
 const settle = require('./orders.settle');
 const rules = require('./orders.rules');

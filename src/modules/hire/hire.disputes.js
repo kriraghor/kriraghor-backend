@@ -10,9 +10,9 @@
  * and releases the rest to the pro, the fee capped at the job's quote (feeBaseMax).
  */
 const { HireJob, HireProfile } = require('../../models');
-const { fail } = require('../trust/trust.errors');
+const { fail } = require('../trust').errors;
 const escrow = require('../payments').escrow;
-const taxonomy = require('../catalog/hire.reads');
+const taxonomy = require('../catalog').hireReads;
 const rules = require('./hire.rules');
 const c = require('./hire.common');
 
@@ -123,7 +123,7 @@ async function describe(sourceId) {
 }
 
 function register() {
-  require('../trust/targets.port').register('hire_job', { permission: 'resolve_reports', snapshot, options, freeze, unfreeze, applyOutcome, describe });
+  require('../trust').targetsPort.register('hire_job', { permission: 'resolve_reports', snapshot, options, freeze, unfreeze, applyOutcome, describe });
 }
 
 module.exports = { register, evaluate, snapshot, options, freeze, unfreeze, applyOutcome, describe };

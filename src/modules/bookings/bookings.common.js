@@ -13,8 +13,8 @@ const realtime = require('../../common/realtime');
 const logger = require('../../common/logger');
 const config = require('../../config');
 const { sequelize, Booking, BookingSlot } = require('../../models');
-const settings = require('../settings/settings.service');
-const events = require('../events/events.service');
+const settings = require('../settings').settings;
+const events = require('../events').events;
 const rules = require('./bookings.rules');
 
 const ERRORS = {

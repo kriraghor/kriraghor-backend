@@ -11,10 +11,10 @@ const { E } = require('../../common/errors');
 const { getRedis } = require('../../common/redis');
 const logger = require('../../common/logger');
 const config = require('../../config');
-const settings = require('../settings/settings.service');
-const reads = require('../grounds/grounds.reads');
-const pr = require('../grounds/pricing.rules');
-const grules = require('../grounds/grounds.rules');
+const settings = require('../settings').settings;
+const reads = require('../grounds').reads;
+const pr = require('../grounds').pricingRules;
+const grules = require('../grounds').rules;
 const c = require('./bookings.common');
 const rules = require('./bookings.rules');
 

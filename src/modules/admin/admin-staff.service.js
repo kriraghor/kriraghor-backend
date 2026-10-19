@@ -3,10 +3,10 @@
 const { User, UserRole, StaffMember, StaffPermission, sequelize } = require('../../models');
 const { E, AppError } = require('../../common/errors');
 const { ROLES, PERMISSION_LIST, MASTER_ONLY_PERMISSIONS } = require('../../common/enums');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
-const sessions = require('../auth/session.service');
-const authz = require('../auth/authz.service');
+const audit = require('../audit').audit;
+const events = require('../events').events;
+const sessions = require('../auth').session;
+const authz = require('../auth').authz;
 const { maskPhone, maskEmail } = require('../../common/identifiers');
 
 const GRANTABLE = PERMISSION_LIST.filter((p) => !MASTER_ONLY_PERMISSIONS.includes(p));

@@ -12,8 +12,8 @@ const storage = require('../../common/storage');
 const { sniffMime, PHOTO_TYPES: ALLOWED, fileBlock } = require('../../common/filetype');
 const { uuid7 } = require('../../common/uuid7');
 const { sequelize, GroundPhoto } = require('../../models');
-const audit = require('../audit/audit.service');
-const settings = require('../settings/settings.service');
+const audit = require('../audit').audit;
+const settings = require('../settings').settings;
 const rules = require('./grounds.rules');
 const c = require('./grounds.common');
 

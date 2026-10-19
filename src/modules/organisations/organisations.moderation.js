@@ -5,8 +5,8 @@
  * organiser role (documents approved) is a locked check: no override. Consumers apply the decisions.
  * Registered once per process (registry.registerAll).
  */
-const adapters = require('../moderation/moderation.adapters');
-const { onEvent } = require('../events/events.consumers');
+const adapters = require('../moderation').adapters;
+const { onEvent } = require('../events').consumers;
 
 adapters.register({
   kind: 'organisation',

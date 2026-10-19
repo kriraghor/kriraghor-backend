@@ -9,7 +9,7 @@
  */
 const { E, AppError } = require('../../common/errors');
 const { sequelize } = require('../../models');
-const settings = require('../settings/settings.service');
+const settings = require('../settings').settings;
 const facts = require('./facts.service');
 const rules = require('./analytics.rules');
 const { definitionsFor } = require('./kpis');
@@ -90,7 +90,7 @@ async function ownerDashboard(principal, { period = '7w', groundId = null, local
 }
 
 async function groundNames(ids) {
-  const svc = require('../grounds/grounds.service');
+  const svc = require('../grounds').grounds;
   const out = new Map();
   for (const id of ids) out.set(id, (await svc.facts(id).catch(() => null))?.name ?? '');
   return out;
@@ -131,14 +131,14 @@ async function platformOverview(principal, { period = 'yr', locale = 'en' }, now
   const cur = f.list[f.list.length - 1];
   const inCur = (r) => r.day >= cur.from && r.day < cur.to;
   const sumCur = (field) => rows.filter(inCur).reduce((n, r) => n + r[field], 0);
-  const [people, queue] = await Promise.all([require('../users/directory.service').counts(), require('../moderation/moderation.service').stats(principal)]);
+  const [people, queue] = await Promise.all([require('../users').directory.counts(), require('../moderation').moderation.stats(principal)]);
   const byVertical = new Map();
   for (const r of rows.filter(inCur)) byVertical.set(r.vertical, (byVertical.get(r.vertical) ?? 0) + r.gtv);
   const areas = await select(
     "SELECT area_id, COUNT(*)::int AS bookings FROM kpi_fact_booking WHERE status IN ('confirmed', 'checked_in', 'completed', 'no_show') AND start_at >= :fromTs AND start_at < :toTs AND area_id IS NOT NULL GROUP BY area_id ORDER BY 2 DESC",
     { fromTs: new Date(`${cur.from}T00:00:00+06:00`), toTs: new Date(`${cur.to}T00:00:00+06:00`) }
   );
-  const areaNames = new Map((await require('../catalog/catalog.service').publicAreas()).items.map((a) => [a.id, locale === 'bn' ? a.nameBn : a.nameEn]));
+  const areaNames = new Map((await require('../catalog').catalog.publicAreas()).items.map((a) => [a.id, locale === 'bn' ? a.nameBn : a.nameEn]));
   const big = areas.filter((a) => a.bookings >= 5);
   const other = areas.filter((a) => a.bookings < 5).reduce((n, a) => n + a.bookings, 0);
   return {

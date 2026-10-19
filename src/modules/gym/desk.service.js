@@ -11,8 +11,8 @@
 const { Op, UniqueConstraintError } = require('sequelize');
 const { E } = require('../../common/errors');
 const { sequelize, Gym, GymPass, PassRedemption } = require('../../models');
-const audit = require('../audit/audit.service');
-const directory = require('../users/directory.service');
+const audit = require('../audit').audit;
+const directory = require('../users').directory;
 const rules = require('./gym.rules');
 const c = require('./gym.common');
 

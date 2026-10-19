@@ -15,10 +15,10 @@
 const { AppError, E } = require('../../common/errors');
 const { uuid7 } = require('../../common/uuid7');
 const { sequelize, RiskAction, RiskFlag } = require('../../models');
-const settings = require('../settings/settings.service');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
-const authz = require('../auth/authz.service');
+const settings = require('../settings').settings;
+const audit = require('../audit').audit;
+const events = require('../events').events;
+const authz = require('../auth').authz;
 const flags = require('./flags.service');
 const rules = require('./risk.rules');
 
@@ -35,9 +35,9 @@ const ERRORS = {
 };
 const fail = (code, meta) => new AppError(ERRORS[code][0], code, ERRORS[code][1], meta ? { meta } : undefined);
 
-const holds = () => require('../payouts/holds.service');
-const requests = () => require('../kyc/requests.service');
-const users = () => require('../admin/admin-users.service');
+const holds = () => require('../payouts').holds;
+const requests = () => require('../kyc').requests;
+const users = () => require('../admin').adminUsers;
 
 const roleOf = (actor) => (actor.isMaster ? 'master' : 'staff');
 const iso = (d) => (d ? new Date(d).toISOString() : null);

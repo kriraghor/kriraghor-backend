@@ -8,7 +8,7 @@ const { Op } = require('sequelize');
 const { AppError, E } = require('../../common/errors');
 const storage = require('../../common/storage');
 const { Ground, Court, CourtHours, GroundPhoto, PricingRule, Area, District, Sport, Surface, Facility, AREA_FLAGS } = require('../../models');
-const settings = require('../settings/settings.service');
+const settings = require('../settings').settings;
 
 const ERRORS = {
   NOT_OWNER: [403, 'This venue belongs to another owner'],

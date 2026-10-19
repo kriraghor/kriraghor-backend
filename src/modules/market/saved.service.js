@@ -9,8 +9,8 @@
 const { Op } = require('sequelize');
 const { E } = require('../../common/errors');
 const { sequelize, Shop, Product, SavedItem } = require('../../models');
-const events = require('../events/events.service');
-const settings = require('../settings/settings.service');
+const events = require('../events').events;
+const settings = require('../settings').settings;
 const c = require('./market.common');
 const pub = require('./public.service');
 

@@ -2,8 +2,8 @@
 
 /** Shared bits of M22: the error catalogue (spec §9 codes), settings read per call, events and dates. */
 const { AppError } = require('../../common/errors');
-const events = require('../events/events.service');
-const settings = require('../settings/settings.service');
+const events = require('../events').events;
+const settings = require('../settings').settings;
 
 const ERRORS = {
   ORG_NOT_VERIFIED: [409, 'The organisation must be verified first'],

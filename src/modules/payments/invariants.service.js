@@ -12,8 +12,8 @@
  * Any failure publishes ledger.invariant_failed (M08 alerts masters and finance).
  */
 const { sequelize } = require('../../models');
-const settings = require('../settings/settings.service');
-const events = require('../events/events.service');
+const settings = require('../settings').settings;
+const events = require('../events').events;
 const { toPoisha } = require('../../common/money');
 const ledger = require('./ledger.service');
 const purposes = require('./payments.purposes');

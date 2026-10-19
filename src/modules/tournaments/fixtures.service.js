@@ -15,10 +15,10 @@
 const crypto = require('crypto');
 const { Op } = require('sequelize');
 const { E } = require('../../common/errors');
-const audit = require('../audit/audit.service');
-const sportRules = require('../catalog/sport-rules.service');
-const teamsSvc = require('../teams/teams.service');
-const rosters = require('../teams/rosters.service');
+const audit = require('../audit').audit;
+const sportRules = require('../catalog').sportRules;
+const teamsSvc = require('../teams').teams;
+const rosters = require('../teams').rosters;
 const { sequelize, Tournament, TournamentVenue, Stage, Group, GroupTeam, Registration, Match } = require('../../models');
 const F = require('./fixtures.rules');
 const S = require('./schedule.rules');
@@ -28,7 +28,7 @@ const c = require('./tournaments.common');
 /** Match length by sport (§6.6) when the organiser does not set one. */
 const DURATION = { cricket: 210, football: 120, futsal: 60, basketball: 90, kabaddi: 60, volleyball: 90, badminton: 60, table_tennis: 45 };
 
-const scoring = () => require('../scoring/results.service');
+const scoring = () => require('../scoring').results;
 const registrations = () => require('./registrations.service');
 
 /** The draw must happen after registration closes with every decision made and enough teams (FR-14). */

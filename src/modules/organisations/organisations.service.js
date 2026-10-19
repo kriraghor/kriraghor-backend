@@ -15,10 +15,10 @@
 const { Op } = require('sequelize');
 const { E, AppError } = require('../../common/errors');
 const { sequelize, Organisation, OrganisationMember, Area, User } = require('../../models');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
-const moderation = require('../moderation/moderation.service');
-const directory = require('../users/directory.service');
+const audit = require('../audit').audit;
+const events = require('../events').events;
+const moderation = require('../moderation').moderation;
+const directory = require('../users').directory;
 const { normalizePhone } = require('../../common/identifiers');
 
 const ERRORS = {

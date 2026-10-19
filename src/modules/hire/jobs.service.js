@@ -17,7 +17,7 @@
 const { Op } = require('sequelize');
 const { E } = require('../../common/errors');
 const { sequelize, HireJob, HireRequest } = require('../../models');
-const audit = require('../audit/audit.service');
+const audit = require('../audit').audit;
 const requests = require('./requests.service');
 const rules = require('./hire.rules');
 const c = require('./hire.common');
@@ -156,7 +156,7 @@ async function cancel(principal, id, req) {
 /** POST /me/hire-jobs/:id/no-show | /problem { statement } (Idempotency-Key): an M17 dispute. */
 async function dispute(principal, id, category, { statement }, idempotencyKey, req) {
   const j = await mine(principal, id, 'hirer');
-  return require('../trust/disputes.service').open(principal, { sourceType: 'hire_job', sourceId: j.id, category, statement }, idempotencyKey, req);
+  return require('../trust').disputes.open(principal, { sourceType: 'hire_job', sourceId: j.id, category, statement }, idempotencyKey, req);
 }
 
 // ---------------------------------------------------------------- staff

@@ -3,8 +3,8 @@
 /** Shared bits of M23: the error catalogue, settings read per call, events, realtime pings. */
 const { AppError } = require('../../common/errors');
 const realtime = require('../../common/realtime');
-const events = require('../events/events.service');
-const settings = require('../settings/settings.service');
+const events = require('../events').events;
+const settings = require('../settings').settings;
 
 const ERRORS = {
   EVENT_DATES_INVALID: [422, 'The showcase must end after it starts'],

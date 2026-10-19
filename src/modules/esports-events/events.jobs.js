@@ -11,7 +11,7 @@
  */
 const { Op } = require('sequelize');
 const models = require('../../models');
-const reads = require('../esports/esports.reads');
+const reads = require('../esports').reads;
 const rules = require('./events.rules');
 const c = require('./events.common');
 const alerts = require('./alerts.service');

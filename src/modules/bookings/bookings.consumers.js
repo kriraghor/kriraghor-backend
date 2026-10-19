@@ -8,7 +8,7 @@
  * ground.paused keeps its bookings (M09 FR-05); only new holds stop (the ground is not bookable).
  * Registering the consumers also registers the occupancy port, so the worker has it too.
  */
-const { onEvent } = require('../events/events.consumers');
+const { onEvent } = require('../events').consumers;
 
 function registerBookingsConsumers() {
   require('./occupancy.impl').register();

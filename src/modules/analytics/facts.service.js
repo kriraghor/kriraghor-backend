@@ -13,14 +13,14 @@ const logger = require('../../common/logger');
 const config = require('../../config');
 const { getRedis } = require('../../common/redis');
 const { sequelize, KpiFactBooking, KpiFactCourtDay, KpiFactPayment, KpiFactLedgerTxn, KpiFactEsportsEntry, KpiFactEsportsTournament, KpiDrift } = require('../../models');
-const settings = require('../settings/settings.service');
-const events = require('../events/events.service');
+const settings = require('../settings').settings;
+const events = require('../events').events;
 const rules = require('./analytics.rules');
 
-const bookingsReads = () => require('../bookings/bookings.reads');
+const bookingsReads = () => require('../bookings').reads;
 const payments = () => require('../payments').intents;
 const ledger = () => require('../payments').ledger;
-const esports = () => require('../esports/esports.facts');
+const esports = () => require('../esports').facts;
 
 const DAY = 24 * 60 * 60 * 1000;
 const VIEWS = ['kpi_mv_owner_day', 'kpi_mv_owner_occupancy_day', 'kpi_mv_owner_hour_day', 'kpi_mv_platform_day'];
@@ -68,7 +68,7 @@ async function upsertBooking(f, { transaction } = {}) {
   return n > 0;
 }
 
-const groundCourts = async (groundId) => ((await require('../grounds/grounds.reads').ground(groundId))?.courts ?? []).map((k) => k.id);
+const groundCourts = async (groundId) => ((await require('../grounds').reads.ground(groundId))?.courts ?? []).map((k) => k.id);
 
 /** Refresh a booking fact and the occupancy of its ground (and the ground it left, on a move) on its days. */
 async function refreshBooking(bookingId, { transaction, alsoGroundId = null } = {}) {

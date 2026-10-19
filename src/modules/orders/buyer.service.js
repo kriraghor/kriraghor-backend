@@ -10,7 +10,7 @@
 const { Op } = require('sequelize');
 const { E } = require('../../common/errors');
 const { sequelize, Order, SubOrder } = require('../../models');
-const audit = require('../audit/audit.service');
+const audit = require('../audit').audit;
 const checkout = require('./checkout.service');
 const settle = require('./orders.settle');
 const rules = require('./orders.rules');
@@ -77,7 +77,7 @@ async function received(principal, id, req) {
 async function notReceived(principal, id, { statement }, idempotencyKey, req) {
   const s = await SubOrder.findByPk(id);
   if (!s || s.buyerId !== principal.id) throw E.notFound('Order');
-  return require('../trust/disputes.service').open(principal, { sourceType: 'sub_order', sourceId: s.id, category: 'not_received', statement }, idempotencyKey, req);
+  return require('../trust').disputes.open(principal, { sourceType: 'sub_order', sourceId: s.id, category: 'not_received', statement }, idempotencyKey, req);
 }
 
 module.exports = { list, get, cancel, received, notReceived };

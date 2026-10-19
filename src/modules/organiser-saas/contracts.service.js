@@ -16,7 +16,7 @@ const { E } = require('../../common/errors');
 const storage = require('../../common/storage');
 const { sniffMime } = require('../../common/filetype');
 const { sequelize, Organisation, OrganiserContract } = require('../../models');
-const audit = require('../audit/audit.service');
+const audit = require('../audit').audit;
 const rules = require('./saas.rules');
 const c = require('./saas.common');
 

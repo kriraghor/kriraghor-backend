@@ -10,8 +10,8 @@ const crypto = require('crypto');
 const { uuid7 } = require('../../common/uuid7');
 const { sniffMime } = require('../../common/filetype');
 const storage = require('../../common/storage');
-const settings = require('../settings/settings.service');
-const audit = require('../audit/audit.service');
+const settings = require('../settings').settings;
+const audit = require('../audit').audit;
 const { DisputeEvidence } = require('../../models');
 const { fail } = require('./trust.errors');
 

@@ -7,7 +7,7 @@
  * retry is harmless. Failures of one account are logged and the run goes on.
  */
 const logger = require('../../common/logger');
-const settings = require('../settings/settings.service');
+const settings = require('../settings').settings;
 const flags = require('./flags.service');
 const trust = require('./trust.service');
 
@@ -38,7 +38,7 @@ async function everyone(now = new Date()) {
 }
 
 async function nightly(now = new Date()) {
-  const overdue = await require('../kyc/requests.service').markOverdue(now);
+  const overdue = await require('../kyc').requests.markOverdue(now);
   const { evaluated } = await everyone(now);
   return { overdue, evaluated };
 }

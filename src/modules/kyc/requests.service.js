@@ -10,8 +10,8 @@
 const { Op, UniqueConstraintError } = require('sequelize');
 const { AppError, E } = require('../../common/errors');
 const { DocumentRequest } = require('../../models');
-const events = require('../events/events.service');
-const audit = require('../audit/audit.service');
+const events = require('../events').events;
+const audit = require('../audit').audit;
 
 const DAY = 24 * 3600 * 1000;
 const iso = (d) => (d ? new Date(d).toISOString() : null);

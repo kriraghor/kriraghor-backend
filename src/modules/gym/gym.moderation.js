@@ -10,8 +10,8 @@
  *    loads the services that register the M06 purpose hooks.
  * Registered once per process (registry.registerAll).
  */
-const adapters = require('../moderation/moderation.adapters');
-const { onEvent } = require('../events/events.consumers');
+const adapters = require('../moderation').adapters;
+const { onEvent } = require('../events').consumers;
 
 adapters.register({
   kind: 'gym',

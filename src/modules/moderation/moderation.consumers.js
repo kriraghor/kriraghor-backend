@@ -3,7 +3,7 @@
 /**
  * M05 consumers: the subject module's acknowledgement (FR-13) and account sanctions (edge case 6).
  */
-const { onEvent } = require('../events/events.consumers');
+const { onEvent } = require('../events').consumers;
 const moderation = require('./moderation.service');
 
 function registerModerationConsumers() {

@@ -5,7 +5,7 @@
  * calendar dates (YYYY-MM-DD); times ISO.
  */
 const { z } = require('zod');
-const hireSchemas = require('../hire/hire.schemas');
+const hireSchemas = require('../hire').schemas;
 
 const id = z.uuid();
 const poisha = z.number().int().nonnegative();

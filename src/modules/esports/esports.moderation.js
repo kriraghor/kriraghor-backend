@@ -8,8 +8,8 @@
  *  - M06 hook: esports_entry captures confirm the entry in the capture transaction.
  * Registered once per process (registry.registerAll).
  */
-const adapters = require('../moderation/moderation.adapters');
-const { onEvent } = require('../events/events.consumers');
+const adapters = require('../moderation').adapters;
+const { onEvent } = require('../events').consumers;
 const purposes = require('../payments').purposes;
 
 adapters.register({

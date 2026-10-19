@@ -12,13 +12,13 @@
  */
 const { Op, UniqueConstraintError } = require('sequelize');
 const { E } = require('../../common/errors');
-const audit = require('../audit/audit.service');
-const moderation = require('../moderation/moderation.service');
-const settings = require('../settings/settings.service');
+const audit = require('../audit').audit;
+const moderation = require('../moderation').moderation;
+const settings = require('../settings').settings;
 const fee = require('../payments').fees;
-const sportRules = require('../catalog/sport-rules.service');
-const ruleSchema = require('../catalog/sport-rules.rules');
-const organisations = require('../organisations/organisations.service');
+const sportRules = require('../catalog').sportRules;
+const ruleSchema = require('../catalog').sportRulesRules;
+const organisations = require('../organisations').organisations;
 const { sequelize, Tournament, TournamentRules, TournamentVenue, Registration, Match, Stage } = require('../../models');
 const rules = require('./tournaments.rules');
 const F = require('./fixtures.rules');
@@ -85,7 +85,7 @@ async function problemsOf(t, r, venues, { transaction } = {}) {
   const prizeError = rules.prizeBlock(t);
   const org = await organisations.statusOf(t.organisationId, { transaction });
   const ownerId = await organisations.ownerOf(t.organisationId, { transaction });
-  const payoutReady = t.entryFeePoisha === 0 || Boolean(await require('../payouts/payout-accounts.service').activeFor(ownerId));
+  const payoutReady = t.entryFeePoisha === 0 || Boolean(await require('../payouts').payoutAccounts.activeFor(ownerId));
   return {
     checks: rules.submissionChecks({ orgVerified: org === 'verified', payoutReady, feePoisha: t.entryFeePoisha, rulesError, datesError, formatError, squadError, prizeError, venues: venues.length, feeMax: cfg.feeMax }),
     errors: [rulesError, formatError, squadError, datesError, prizeError, t.entryFeePoisha > cfg.feeMax ? 'ENTRY_FEE_TOO_HIGH' : null].filter(Boolean),
@@ -259,7 +259,7 @@ async function update(principal, org, id, body, req) {
         await c.publish(transaction, 'tournament.rules_changed', 'tournament', t.id, { tournamentId: t.id });
         // Points or tiebreakers changed: every table is rebuilt (FR-09); placeholders already used by a
         // match with a result stay as they are.
-        const scoring = require('../scoring/results.service');
+        const scoring = require('../scoring').results;
         const stages = await Stage.findAll({ where: { tournamentId: t.id, status: { [Op.ne]: 'cancelled' }, kind: { [Op.ne]: 'knockout' } }, transaction });
         for (const st of stages) {
           const groups = st.kind === 'group' ? await require('../../models').Group.findAll({ where: { stageId: st.id }, transaction }) : [null];
@@ -456,7 +456,7 @@ async function overview(org, id) {
       { key: 'fixtures', done: matches.length > 0 },
       { key: 'scheduled', done: matches.length > 0 && unscheduled === 0 },
       { key: 'published', done: matches.length > 0 && matches.every((m) => m.published) },
-      { key: 'payout_account', done: t.entryFeePoisha === 0 || Boolean(await require('../payouts/payout-accounts.service').activeFor(await organisations.ownerOf(t.organisationId))) },
+      { key: 'payout_account', done: t.entryFeePoisha === 0 || Boolean(await require('../payouts').payoutAccounts.activeFor(await organisations.ownerOf(t.organisationId))) },
     ],
   };
 }
@@ -499,7 +499,7 @@ async function publicDetail(slug) {
   const view = await consoleView(t);
   const fixtures = await require('./fixtures.service').publicFixtures(t);
   const teams = await require('./registrations.service').publicTeams(t);
-  const standings = await require('../scoring/results.service').publicStandings(t);
+  const standings = await require('../scoring').results.publicStandings(t);
   // The console-only fields never reach the public page.
   const PRIVATE = ['feeBps', 'releasePct', 'reviewReason', 'contactUserId', 'registrations', 'version', 'rulesUnlockedUntil'];
   const strip = Object.fromEntries(Object.entries(view).filter(([k]) => !PRIVATE.includes(k)));

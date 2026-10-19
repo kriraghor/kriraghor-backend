@@ -8,8 +8,8 @@
  */
 const { Op } = require('sequelize');
 const { sequelize, HireMessage } = require('../../models');
-const events = require('../events/events.service');
-const directory = require('../users/directory.service');
+const events = require('../events').events;
+const directory = require('../users').directory;
 const requests = require('./requests.service');
 const rules = require('./hire.rules');
 const c = require('./hire.common');

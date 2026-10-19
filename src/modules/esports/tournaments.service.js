@@ -16,10 +16,10 @@ const { E } = require('../../common/errors');
 const realtime = require('../../common/realtime');
 const { uuid7 } = require('../../common/uuid7');
 const models = require('../../models');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
-const settings = require('../settings/settings.service');
-const moderation = require('../moderation/moderation.service');
+const audit = require('../audit').audit;
+const events = require('../events').events;
+const settings = require('../settings').settings;
+const moderation = require('../moderation').moderation;
 const { organiser, isOrganised, fail, game: gameRow, mode: modeRow, maps: mapRows, preset: presetRow, snapshot, setting, rooms, money } = require('./esports.common');
 const rules = require('./esports.rules');
 const streamRules = require('./streams.rules');
@@ -41,7 +41,7 @@ async function catalogueNames(gameIds, modeIds, mapIds) {
 /** M22: the organisers of these tournaments (M14 lite), for "by {organisation}" on cards. */
 async function organisersOf(rows) {
   const ids = rows.map((t) => t.organisationId).filter(Boolean);
-  return ids.length ? require('../organisations/organisations.service').publicRefs(ids) : new Map();
+  return ids.length ? require('../organisations').organisations.publicRefs(ids) : new Map();
 }
 const named = (r) => (r ? { id: r.id, key: r.key, nameEn: r.nameEn, nameBn: r.nameBn } : null);
 

@@ -12,17 +12,17 @@
 const { Op, UniqueConstraintError } = require('sequelize');
 const { E } = require('../../common/errors');
 const { sequelize, Review, ReviewAggregate } = require('../../models');
-const settings = require('../settings/settings.service');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
-const directory = require('../users/directory.service');
+const settings = require('../settings').settings;
+const audit = require('../audit').audit;
+const events = require('../events').events;
+const directory = require('../users').directory;
 const { fail } = require('./trust.errors');
 const rules = require('./trust.rules');
 
 const DAY = 24 * 3600 * 1000;
 const iso = (d) => (d ? new Date(d).toISOString() : null);
-const bookingReads = () => require('../bookings/bookings.reads');
-const groundReads = () => require('../grounds/grounds.reads');
+const bookingReads = () => require('../bookings').reads;
+const groundReads = () => require('../grounds').reads;
 const disputes = () => require('./disputes.service');
 
 const payload = (r, extra = {}) => ({ reviewId: r.id, subjectType: r.subjectType, subjectId: r.subjectId, authorId: r.authorId, ...extra });
@@ -103,7 +103,7 @@ async function reviewable(principal) {
   const done = new Set((await Review.findAll({ where: { authorId: principal.id, sourceType: 'booking', sourceId: played.map((b) => b.bookingId) }, attributes: ['sourceId'] })).map((r) => r.sourceId));
   const items = [];
   for (const b of played.filter((x) => !done.has(x.bookingId))) {
-    const f = await require('../grounds/grounds.service').facts(b.groundId).catch(() => null);
+    const f = await require('../grounds').grounds.facts(b.groundId).catch(() => null);
     items.push({ bookingId: b.bookingId, code: b.code, groundId: b.groundId, groundName: f?.name ?? null, groundSlug: f?.slug ?? null, end: iso(b.end) });
   }
   return { items };
@@ -258,7 +258,7 @@ const get = (id, { transaction } = {}) => Review.findByPk(id, { transaction });
 async function facts(id) {
   const r = await Review.findByPk(id);
   if (!r) throw E.notFound('Review');
-  const g = await require('../grounds/grounds.service').facts(r.subjectId).catch(() => null);
+  const g = await require('../grounds').grounds.facts(r.subjectId).catch(() => null);
   return { stars: r.stars, groundName: g?.name ?? '', groundSlug: g?.slug ?? null, hiddenReason: r.hiddenReason ?? null };
 }
 

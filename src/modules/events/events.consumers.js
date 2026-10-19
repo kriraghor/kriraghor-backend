@@ -15,8 +15,8 @@ const config = require('../../config');
 const logger = require('../../common/logger');
 const { AppError, E } = require('../../common/errors');
 const { sequelize, OutboxEvent, ConsumedEvent } = require('../../models');
-const settings = require('../settings/settings.service');
-const audit = require('../audit/audit.service');
+const settings = require('../settings').settings;
+const audit = require('../audit').audit;
 const events = require('./events.service');
 const { definition } = require('./catalog');
 

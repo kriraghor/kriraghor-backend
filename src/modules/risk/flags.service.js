@@ -10,8 +10,8 @@
  */
 const { Op } = require('sequelize');
 const { sequelize, RiskRule, RiskFlag, RiskAction } = require('../../models');
-const settings = require('../settings/settings.service');
-const events = require('../events/events.service');
+const settings = require('../settings').settings;
+const events = require('../events').events;
 const metrics = require('./metrics.service');
 const rules = require('./risk.rules');
 
@@ -119,7 +119,7 @@ async function list({ status = 'active', severity, rule, cursor, limit = 50 } = 
     limit: limit + 1,
   });
   const page = rows.slice(0, limit);
-  const names = await require('../users/directory.service').publicNames(page.map((f) => f.userId));
+  const names = await require('../users').directory.publicNames(page.map((f) => f.userId));
   return { items: page.map((f) => ({ ...view(f), user: { id: f.userId, displayName: names.get(f.userId)?.displayName ?? null } })), nextCursor: rows.length > limit ? iso(page[page.length - 1].lastSeenAt) : null };
 }
 

@@ -3,7 +3,7 @@
 const service = require('./auth.service');
 const cookies = require('./cookies');
 const { User } = require('../../models');
-const { serializePrincipal } = require('../users/users.serializer');
+const { serializePrincipal } = require('../users').serializer;
 
 const isMobileClient = (req) => req.get('x-client-type') === 'mobile';
 

@@ -11,8 +11,8 @@ const { E } = require('../../common/errors');
 const storage = require('../../common/storage');
 const { sniffMime } = require('../../common/filetype');
 const { sequelize, Organisation, OrganisationBranding } = require('../../models');
-const audit = require('../audit/audit.service');
-const tournaments = require('../esports/tournaments.service');
+const audit = require('../audit').audit;
+const tournaments = require('../esports').tournaments;
 const rules = require('./saas.rules');
 const c = require('./saas.common');
 

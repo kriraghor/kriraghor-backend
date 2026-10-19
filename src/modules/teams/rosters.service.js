@@ -14,7 +14,7 @@
  */
 const { Op, UniqueConstraintError } = require('sequelize');
 const { AppError } = require('../../common/errors');
-const directory = require('../users/directory.service');
+const directory = require('../users').directory;
 const { Roster, RosterPlayer, EligibilityCheck } = require('../../models');
 const teams = require('./teams.service');
 const players = require('./players.service');

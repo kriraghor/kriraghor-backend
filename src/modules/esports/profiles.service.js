@@ -18,10 +18,10 @@ const storage = require('../../common/storage');
 const { sniffMime } = require('../../common/filetype');
 const { uuid7 } = require('../../common/uuid7');
 const { sequelize, EsportsGameProfile, EsportsUidBan, EsportsGame } = require('../../models');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
-const settings = require('../settings/settings.service');
-const moderation = require('../moderation/moderation.service');
+const audit = require('../audit').audit;
+const events = require('../events').events;
+const settings = require('../settings').settings;
+const moderation = require('../moderation').moderation;
 const { fail, game: gameRow } = require('./esports.common');
 const rules = require('./esports.rules');
 

@@ -14,10 +14,10 @@
  * money left escrow.
  */
 const { Booking } = require('../../models');
-const settings = require('../settings/settings.service');
+const settings = require('../settings').settings;
 const escrow = require('../payments').escrow;
-const reads = require('../grounds/grounds.reads');
-const { fail } = require('../trust/trust.errors');
+const reads = require('../grounds').reads;
+const { fail } = require('../trust').errors;
 const settlement = require('./settlement.service');
 const c = require('./bookings.common');
 const rules = require('./bookings.rules');
@@ -135,7 +135,7 @@ async function describe(sourceId) {
   const b = await Booking.findByPk(sourceId);
   if (!b) return null;
   const g = await reads.ground(b.groundId);
-  const groundName = await require('../grounds/grounds.service').facts(b.groundId).then((f) => f?.name ?? '');
+  const groundName = await require('../grounds').grounds.facts(b.groundId).then((f) => f?.name ?? '');
   return {
     kind: 'booking',
     id: b.id,
@@ -155,7 +155,7 @@ async function describe(sourceId) {
 }
 
 function register() {
-  require('../trust/targets.port').register('booking', { permission: 'resolve_reports', snapshot, options, freeze, unfreeze, applyOutcome, describe });
+  require('../trust').targetsPort.register('booking', { permission: 'resolve_reports', snapshot, options, freeze, unfreeze, applyOutcome, describe });
 }
 
 module.exports = { register, evaluate, snapshot, options, applyOutcome, describe };

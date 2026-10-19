@@ -9,7 +9,7 @@
 const { Op } = require('sequelize');
 const { E } = require('../../common/errors');
 const { sequelize, Order, SubOrder, Area } = require('../../models');
-const audit = require('../audit/audit.service');
+const audit = require('../audit').audit;
 const escrow = require('../payments').escrow;
 const checkout = require('./checkout.service');
 const settle = require('./orders.settle');

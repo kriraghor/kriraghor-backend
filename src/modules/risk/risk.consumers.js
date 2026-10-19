@@ -13,7 +13,7 @@
  *   document_request.overdue_marked (M02)    the flag it was made for goes up one level (FR-07)
  *   setting.changed for risk.* / trust.*     re-evaluate everyone with flags or metrics (FR-03)
  */
-const { onEvent } = require('../events/events.consumers');
+const { onEvent } = require('../events').consumers;
 
 const later = (...ids) => {
   const jobs = require('./risk.jobs');

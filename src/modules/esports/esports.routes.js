@@ -16,7 +16,7 @@ const { requireIdempotencyKey } = require('../../common/idempotency');
 const { PERMISSIONS } = require('../../common/enums');
 const { authenticate, authenticateAdmin, requireStaff, requireStepUp, requireAnyPermission } = require('../../middlewares/auth');
 const limits = require('../../middlewares/rateLimit');
-const catalog = require('../catalog/catalog.service');
+const catalog = require('../catalog').catalog;
 require('./esports.moderation'); // adapters and the M06 purpose hook load with the routes
 const profiles = require('./profiles.service');
 const squads = require('./squads.service');

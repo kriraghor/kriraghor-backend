@@ -3,7 +3,7 @@
 const { Router } = require('express');
 const { validate } = require('../../common/validate');
 const { authenticateAdmin, requireStaff, requirePermission, requireMaster, requireStepUp } = require('../../middlewares/auth');
-const { serializePrincipal } = require('../users/users.serializer');
+const { serializePrincipal } = require('../users').serializer;
 const { PERMISSIONS } = require('../../common/enums');
 const users = require('./admin-users.service');
 const staff = require('./admin-staff.service');

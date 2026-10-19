@@ -13,15 +13,15 @@
  */
 const { Op } = require('sequelize');
 const { E } = require('../../common/errors');
-const audit = require('../audit/audit.service');
-const gates = require('../auth/gate.service');
+const audit = require('../audit').audit;
+const gates = require('../auth').gate;
 const payments = require('../payments').intents;
 const purposes = require('../payments').purposes;
 const refunds = require('../payments').refunds;
 const escrow = require('../payments').escrow;
-const organisations = require('../organisations/organisations.service');
-const teamsSvc = require('../teams/teams.service');
-const rosters = require('../teams/rosters.service');
+const organisations = require('../organisations').organisations;
+const teamsSvc = require('../teams').teams;
+const rosters = require('../teams').rosters;
 const { payUrl } = require('../payments').intents;
 const { sequelize, Tournament, Registration, Match } = require('../../models');
 const rules = require('./tournaments.rules');

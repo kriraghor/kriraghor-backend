@@ -15,11 +15,11 @@ const { Op } = require('sequelize');
 const { AppError, E } = require('../../common/errors');
 const { encrypt, decrypt, hmac } = require('../../common/crypto');
 const { sequelize, PayoutAccount } = require('../../models');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
-const settings = require('../settings/settings.service');
-const otp = require('../auth/otp.service');
-const directory = require('../users/directory.service');
+const audit = require('../audit').audit;
+const events = require('../events').events;
+const settings = require('../settings').settings;
+const otp = require('../auth').otp;
+const directory = require('../users').directory;
 const holds = require('./holds.service');
 const rules = require('./payouts.rules');
 

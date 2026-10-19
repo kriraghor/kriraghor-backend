@@ -14,8 +14,8 @@ const config = require('../../config');
 const logger = require('../../common/logger');
 const { getRedis } = require('../../common/redis');
 const models = require('../../models');
-const audit = require('../audit/audit.service');
-const gates = require('../auth/gate.service');
+const audit = require('../audit').audit;
+const gates = require('../auth').gate;
 const rules = require('./events.rules');
 const c = require('./events.common');
 

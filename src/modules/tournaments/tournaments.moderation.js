@@ -9,8 +9,8 @@
  *    purpose hook.
  * Registered once per process (registry.registerAll).
  */
-const adapters = require('../moderation/moderation.adapters');
-const { onEvent } = require('../events/events.consumers');
+const adapters = require('../moderation').adapters;
+const { onEvent } = require('../events').consumers;
 
 adapters.register({
   kind: 'tournament',

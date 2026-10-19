@@ -11,7 +11,7 @@
  * decision transaction.
  */
 const { SubOrder } = require('../../models');
-const { fail } = require('../trust/trust.errors');
+const { fail } = require('../trust').errors;
 const escrow = require('../payments').escrow;
 const settle = require('./orders.settle');
 const rules = require('./orders.rules');
@@ -128,7 +128,7 @@ async function describe(sourceId) {
 }
 
 function register() {
-  require('../trust/targets.port').register('sub_order', { permission: 'resolve_reports', snapshot, options, freeze, unfreeze, applyOutcome, describe });
+  require('../trust').targetsPort.register('sub_order', { permission: 'resolve_reports', snapshot, options, freeze, unfreeze, applyOutcome, describe });
 }
 
 module.exports = { register, evaluate, snapshot, options, freeze, unfreeze, applyOutcome, describe };

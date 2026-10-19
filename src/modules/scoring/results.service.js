@@ -12,13 +12,13 @@
  */
 const { Op } = require('sequelize');
 const { AppError } = require('../../common/errors');
-const audit = require('../audit/audit.service');
+const audit = require('../audit').audit;
 const realtime = require('../../common/realtime');
-const sportRules = require('../catalog/sport-rules.service');
-const teamsSvc = require('../teams/teams.service');
+const sportRules = require('../catalog').sportRules;
+const teamsSvc = require('../teams').teams;
 const { sequelize, Match, MatchResult, Standing, Stage, Group, GroupTeam } = require('../../models');
 const S = require('./standings.rules');
-const tc = require('../tournaments/tournaments.common');
+const tc = require('../tournaments').common;
 
 const ERR = {
   RESULT_INVALID: [422, 'Check the score: it does not fit the rules'],
@@ -28,7 +28,7 @@ const ERR = {
   AMEND_BLOCKED: [409, 'A later match already used this result, so it can no longer change'],
 };
 const fail = (code, meta) => new AppError(ERR[code][0], code, ERR[code][1], meta ? { meta } : undefined);
-const fixtures = () => require('../tournaments/fixtures.service');
+const fixtures = () => require('../tournaments').fixtures;
 
 const resultView = (r) => ({ outcome: r.outcome, winnerTeamId: r.winnerTeamId, margin: r.margin, score: r.score, version: r.version, reason: r.reason, at: r.createdAt?.toISOString?.() ?? null });
 
