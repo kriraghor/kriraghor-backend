@@ -273,6 +273,8 @@ async function resetPassword({ target, code, newPassword }, req) {
     await user.update({ passwordHash, failedLoginCount: 0, lockedUntil: null }, { transaction });
     await sessions.revokeAllForUser(user.id, 'password_change', { transaction });
     await audit.record({ action: 'user.password_reset', actor: { id: user.id }, entityType: 'user', entityId: user.id, req }, { transaction });
+    // Tell the owner on every channel, so a reset they didn't ask for is noticed (M01 §password).
+    await events.publish(transaction, { name: 'user.password_changed', aggregateType: 'user', aggregateId: user.id, payload: { userId: user.id, via: 'reset', at: new Date().toISOString() }, actor: { id: user.id }, req });
   });
   return { reset: true };
 }

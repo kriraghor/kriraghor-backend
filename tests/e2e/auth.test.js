@@ -2,9 +2,13 @@
 
 const h = require('../helpers');
 const { api, P, models } = h;
+const { closeAllRedis } = require('../../src/common/redis');
 
 beforeEach(h.resetDb);
-afterAll(() => models.sequelize.close());
+afterAll(async () => {
+  await closeAllRedis();
+  await models.sequelize.close();
+});
 
 describe('OTP signup and sign-in', () => {
   it('signs up a new member through OTP and returns the profile', async () => {
@@ -95,6 +99,19 @@ describe('password sign-in', () => {
     const r = await api().get(`${P}/me`).set(h.bearer(s)).expect(401);
     expect(r.body.code).toBe('SESSION_REVOKED');
     await api().post(`${P}/auth/login`).send({ identifier: s.phone, password: 'New-Password-77' }).expect(200);
+
+    // The owner is told on every channel (M01 password alert, M08 PASSWORD_CHANGED).
+    await h.drainEvents();
+    const alerts = await models.Notification.findAll({ where: { userId: s.user.id, code: 'PASSWORD_CHANGED' } });
+    expect(alerts).toHaveLength(1);
+    expect(await models.NotificationDelivery.count({ where: { notificationId: alerts[0].id, channel: 'sms' } })).toBe(1);
+  });
+
+  it('alerts the owner when a signed-in member changes the password', async () => {
+    const s = await h.signupUser({ password: 'Old-Password-99' });
+    await api().post(`${P}/me/password`).set(h.bearer(s)).send({ currentPassword: 'Old-Password-99', newPassword: 'New-Password-77' }).expect(204);
+    await h.drainEvents();
+    expect(await models.Notification.count({ where: { userId: s.user.id, code: 'PASSWORD_CHANGED' } })).toBe(1);
   });
 });
 

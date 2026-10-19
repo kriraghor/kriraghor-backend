@@ -61,6 +61,7 @@ const EVENTS = {
   'user.banned': { module: 'M01', version: 1, schema: z.object({ userId: uuid, sanctionId: uuid }) },
   'user.restored': { module: 'M01', version: 1, schema: z.object({ userId: uuid }) },
   'user.phone_verified': { module: 'M01', version: 1, schema: z.object({ userId: uuid }) },
+  'user.password_changed': { module: 'M01', version: 1, schema: z.object({ userId: uuid, via: z.enum(['reset', 'change']), at: iso }) },
   'user.identity_changed': { module: 'M01', version: 1, schema: z.object({ userId: uuid, fields: z.array(z.enum(['gender', 'dob', 'legal_name'])) }) },
   'user.email_changed': { module: 'M01', version: 1, schema: z.object({ userId: uuid }) },
   'user_role.applied': { module: 'M01', version: 1, schema: z.object({ userId: uuid, role }) },

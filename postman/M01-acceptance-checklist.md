@@ -7,8 +7,9 @@ Request names refer to the **"Kriraghor API: M01 Auth & RBAC"** Postman collecti
 - [ ] `docker compose up -d`. PostgreSQL, Redis, Mailpit and SeaweedFS are healthy (`docker compose ps`).
 - [ ] `npm run db:migrate`. This reports *no pending migrations* or applies `add-session-audience`.
 - [ ] `npm run dev`. `GET http://localhost:4000/health` → `{"status":"ok","db":"up"}`.
-- [ ] Re-import the latest collection file (53 requests). Rebuild it with `node postman/build-collection.js`.
+- [ ] Re-import the latest collection file (58 requests). Rebuild it with `node postman/build-collection.js`.
 - [ ] `postman collection run postman/kriraghor-auth.postman_collection.json -i "0. Smoke (no codes needed)"` → **8 assertions, 0 failed**.
+- [ ] `node postman/run-m01.js` (forgot password and the PASSWORD_CHANGED alert, unattended on the test database) → **6 assertions, 0 failed**.
 - [ ] Mailpit opens at http://localhost:8025.
 - [ ] `npm test` → **110 passed**. This covers the cases that are awkward to test by hand (marked 🤖 below).
 
@@ -62,6 +63,7 @@ Request names refer to the **"Kriraghor API: M01 Auth & RBAC"** Postman collecti
 | 3.4 | **Logout (this device)**, then **Me** | `204`, then `401` |
 | 3.5 | `POST /me/password` (current and new password), then use the *other* session's token | Other sessions return `401`; the current one still works |
 | 3.6 | Password reset: **Send OTP** with purpose `reset`, then `POST /auth/password/reset` | `200 reset: true`. Every old token returns `401`; the new password works |
+| 3.6b | After the reset, sign in with the new password and open **My notifications** (folder 2b) | A `PASSWORD_CHANGED` alert (in-app, plus SMS and email in the logs). Changing the password while signed in (`POST /me/password`) alerts again |
 
 ## 4. RBAC and the gate
 | # | Do | Expect |

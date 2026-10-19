@@ -46,6 +46,26 @@ function url(p, base = '{{baseUrl}}') {
  * auth: 'user' (customer token), 'admin' (staff token) or false.
  * origin: 'web' | 'admin' sends Origin, which ADR-004 requires on admin auth and refresh endpoints.
  */
+/** Unattended runs only: ask the runner's control server (run-m01.js) for a step before the request. */
+const control = (item, step, setVar) => {
+  const exec = [
+    "const c = pm.variables.get('controlUrl');",
+    'if (c) {',
+    `  pm.sendRequest({ url: pm.variables.replaceIn(c + '/${step}'), method: 'POST' }, (err, res) => {`,
+    ...(setVar ? [`    if (!err) pm.variables.set('${setVar}', res.json().code);`] : []),
+    '  });',
+    '}',
+  ];
+  item.event.unshift({ listen: 'prerequest', script: { type: 'text/javascript', exec } });
+  return item;
+};
+
+/** An extra assertion on the response body (j is the parsed JSON). */
+const check = (item, title, expr) => {
+  item.event.push({ listen: 'test', script: { type: 'text/javascript', exec: ['let j = null; try { j = pm.response.json(); } catch (e) {}', `pm.test(${JSON.stringify(title)}, () => pm.expect(${expr}).to.eql(true));`] } });
+  return item;
+};
+
 const req = (name, method, p, { body, auth = 'user', origin, csrf, stepUp = false, desc, save, cookies, expect, base, headers = [] } = {}) => ({
   name,
   event: [tests({ save, expect, cookies })],
@@ -189,6 +209,17 @@ const collection = {
         }),
         req('Update profile', 'PATCH', '/me', { body: { displayName: 'Fahim R.', locale: 'bn' } }),
         req('Logout (this device)', 'POST', '/auth/logout', { expect: { status: 204 } }),
+      ],
+    },
+    {
+      name: '2b. Forgot password and the security alert',
+      description: 'kriraghor.com /sign-in/reset. Send a reset code, set a new password (every session is signed out), sign in again, and see the PASSWORD_CHANGED alert (in-app, SMS and email). The alert arrives through the worker, so wait a few seconds before the last request.',
+      item: [
+        req('Send a reset code', 'POST', '/auth/otp/send', { auth: false, body: { target: '{{phone}}', purpose: 'reset' }, expect: { status: 202 }, desc: 'Always 202, so the reply never tells whether an account exists.' }),
+        control(req('Reset the password', 'POST', '/auth/password/reset', { auth: false, body: { target: '{{phone}}', code: '{{otp}}', newPassword: 'Turf-Booking-2027' }, expect: { status: 200 } }), 'otp?phone={{phone}}', 'otp'),
+        req('Login with the new password', 'POST', '/auth/login', { auth: false, body: { identifier: '{{phone}}', password: 'Turf-Booking-2027' }, save: signedIn, cookies: csrfCookie, expect: { status: 200 } }),
+        check(control(req('My notifications show PASSWORD_CHANGED', 'GET', '/me/notifications', { expect: { status: 200 }, desc: 'The newest item has code PASSWORD_CHANGED and links to /account.' }), 'settle'), 'the newest notice is PASSWORD_CHANGED', "Boolean(j && j.items && j.items[0] && j.items[0].code === 'PASSWORD_CHANGED')"),
+        req('Change it back (signed in, alerts again)', 'POST', '/me/password', { body: { currentPassword: 'Turf-Booking-2027', newPassword: 'Turf-Booking-2026' }, expect: { status: 204 } }),
       ],
     },
     {

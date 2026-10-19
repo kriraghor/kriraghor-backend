@@ -1,6 +1,6 @@
 {
-  "seedVersion": 5,
-  "source": "M02 §6.1, lite (Oct 2026): the member (NID) requirements, and the ground owner business documents (with M09). v2 (M12): the shop owner business documents (trade licence, TIN, and BIN when the shop is VAT registered); documents are kept per role. v3 (M11): the player and pro credentials (one per hire role, kept under hire:<role>) and the police clearance for under-16 work. Rows are inserted only when (role, type) is missing, so a master's edits survive. v4 (M20): the gym owner documents, the ground owner set (trade licence, deed or lease of the premises, an optional TIN), kept per role. v5 (M22): the organiser's organisation registration (trade licence, company or society registration, or an institution letter), kept under the organiser role.",
+  "seedVersion": 6,
+  "source": "M02 §6.1, lite (Oct 2026): the member (NID) requirements, and the ground owner business documents (with M09). v2 (M12): the shop owner business documents (trade licence, TIN, and BIN when the shop is VAT registered); documents are kept per role. v3 (M11): the player and pro credentials (one per hire role, kept under hire:<role>) and the police clearance for under-16 work. Rows are inserted only when (role, type) is missing, so a master's edits survive. v4 (M20): the gym owner documents, the ground owner set (trade licence, deed or lease of the premises, an optional TIN), kept per role. v5 (M22): the organiser's organisation registration (trade licence, company or society registration, or an institution letter), kept under the organiser role. v6: user-facing words Grounds → Venues, Tournaments → Events, big events → Showcases (19 Oct 2026).",
   "requirements": [
     {
       "role": "member",
@@ -86,8 +86,8 @@
       ],
       "labelEn": "Trade licence",
       "labelBn": "ট্রেড লাইসেন্স",
-      "whyEn": "Shows the business that runs the ground. It must still be valid.",
-      "whyBn": "মাঠ যে প্রতিষ্ঠান চালায় তা দেখায়। মেয়াদ থাকতে হবে।",
+      "whyEn": "Shows the business that runs the venue. It must still be valid.",
+      "whyBn": "ভেন্যু যে প্রতিষ্ঠান চালায় তা দেখায়। মেয়াদ থাকতে হবে।",
       "sort": 1
     },
     {
@@ -121,8 +121,8 @@
       ],
       "labelEn": "Land deed or lease",
       "labelBn": "জমির দলিল বা লিজ",
-      "whyEn": "Shows you may run the ground on this land.",
-      "whyBn": "এই জমিতে মাঠ চালানোর অধিকার দেখায়।",
+      "whyEn": "Shows you may run the venue on this land.",
+      "whyBn": "এই জমিতে ভেন্যু চালানোর অধিকার দেখায়।",
       "sort": 2
     },
     {

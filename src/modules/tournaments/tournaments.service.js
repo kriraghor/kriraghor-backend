@@ -403,7 +403,7 @@ async function cancelInTx(t, { reason, actor, transaction }) {
 async function cancel(principal, org, id, { reason }, req) {
   await sequelize.transaction(async (transaction) => {
     const t = await c.ownTournament(org, id, { transaction, lock: true });
-    if (org.role !== 'owner' && !['draft', 'changes_requested', 'pending_review', 'rejected'].includes(t.status)) throw E.forbidden('ORG_OWNER_ONLY', 'Only the organisation owner can cancel a tournament that teams have entered');
+    if (org.role !== 'owner' && !['draft', 'changes_requested', 'pending_review', 'rejected'].includes(t.status)) throw E.forbidden('ORG_OWNER_ONLY', 'Only the organisation owner can cancel an event that teams have entered');
     await cancelInTx(t, { reason, actor: principal, transaction });
     await audit.record({ action: 'tournament.cancelled', actor: principal, entityType: 'tournament', entityId: t.id, meta: { reason }, req }, { transaction });
   });
