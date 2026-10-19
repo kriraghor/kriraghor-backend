@@ -13,10 +13,10 @@ const ERRORS = {
   ESPORTS_GAME_UNKNOWN: [422, 'Choose an active game'],
   ESPORTS_UID_FORMAT: [422, 'The UID does not look right for this game'],
   ESPORTS_IGN_INVALID: [422, 'Enter your in-game name as it appears in the game'],
-  ESPORTS_UID_BANNED: [403, 'This UID is banned from Kriraghor tournaments'],
+  ESPORTS_UID_BANNED: [403, 'This UID is banned from Kriraghor events'],
   ESPORTS_UID_TAKEN: [409, 'This UID is already linked to another account'],
   ESPORTS_PROFILE_EXISTS: [409, 'You already have a UID for this game'],
-  ESPORTS_PROFILE_IN_USE: [409, 'This UID is in an active tournament entry'],
+  ESPORTS_PROFILE_IN_USE: [409, 'This UID is in an active event entry'],
   ESPORTS_UPLOAD_INVALID: [422, 'Upload the screenshot first'],
   ESPORTS_GAME_PROFILE_REQUIRED: [403, 'Every player needs a verified UID for this game'],
   ESPORTS_ALREADY_IN_SQUAD: [409, 'You are already in a squad for this game'],
@@ -27,13 +27,13 @@ const ERRORS = {
   ESPORTS_NOT_IN_SQUAD: [403, 'You are not in this squad'],
   // tournaments
   ESPORTS_PRIZE_TABLE_LOCKED: [409, 'The prize table, fee, slots and schedule are locked after publishing'],
-  ESPORTS_TOURNAMENT_STATE: [409, 'The tournament cannot do that in its current state'],
+  ESPORTS_TOURNAMENT_STATE: [409, 'The event cannot do that in its current state'],
   ESPORTS_NOT_FINALISABLE: [409, 'Every match must be final and no dispute open before finalising'],
   // M22 organiser tournaments
   ESPORTS_KILL_CAP_REQUIRED: [422, 'Set the most kills that are paid, so the prize fund can cover the per-kill reward'],
-  ESPORTS_CONFLICT_OF_INTEREST: [403, 'Members of the organising team cannot play in its tournament'],
+  ESPORTS_CONFLICT_OF_INTEREST: [403, 'Members of the organising team cannot play in its event'],
   // M23 invite-only tournaments (a big event's final)
-  ESPORTS_INVITE_ONLY: [403, 'This tournament is invite only: qualify through its event or get an invite'],
+  ESPORTS_INVITE_ONLY: [403, 'This event is invite only: qualify through its showcase or get an invite'],
   PRIZE_TABLE_REQUIRED: [422, 'Add the prize table'],
   PRIZE_PLACES_INVALID: [422, 'Prize places must run 1, 2, 3… and fit the slots'],
   PRIZE_AMOUNT_INVALID: [422, 'Each prize must be more than zero'],
@@ -45,7 +45,7 @@ const ERRORS = {
   STREAM_URL_INVALID: [422, 'Use an https link on YouTube, Facebook or TikTok'],
   // registration
   ESPORTS_REGISTRATION_CLOSED: [409, 'Registration is not open'],
-  ESPORTS_ALREADY_REGISTERED: [409, 'A player in this entry is already registered in this tournament'],
+  ESPORTS_ALREADY_REGISTERED: [409, 'A player in this entry is already registered in this event'],
   ESPORTS_SQUAD_SIZE_INVALID: [422, 'The number of players and substitutes does not match the mode'],
   SLOTS_FULL: [409, 'All slots are taken'],
   ESPORTS_REGISTRATION_STATE: [409, 'This entry cannot do that in its current state'],

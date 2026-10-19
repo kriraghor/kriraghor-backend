@@ -13,8 +13,8 @@ const directory = require('../users/directory.service');
 const { formatValue } = require('./notify.rules');
 
 const ROLE_LABELS = {
-  en: { member: 'Member', player: 'Player', pro: 'Pro', ground_owner: 'Ground owner', shop_owner: 'Shop', organiser: 'Organiser', gym_owner: 'Gym owner' },
-  bn: { member: 'সদস্য', player: 'খেলোয়াড়', pro: 'প্রো', ground_owner: 'মাঠ মালিক', shop_owner: 'দোকান', organiser: 'আয়োজক', gym_owner: 'জিম মালিক' },
+  en: { member: 'Member', player: 'Player', pro: 'Pro', ground_owner: 'Venue owner', shop_owner: 'Shop', organiser: 'Organiser', gym_owner: 'Gym owner' },
+  bn: { member: 'সদস্য', player: 'খেলোয়াড়', pro: 'প্রো', ground_owner: 'ভেন্যু মালিক', shop_owner: 'দোকান', organiser: 'আয়োজক', gym_owner: 'জিম মালিক' },
 };
 const roleLabel = (role, locale) => ROLE_LABELS[locale]?.[role] ?? ROLE_LABELS.en[role] ?? role;
 const reasonText = (code, locale) => (code ? code.replace(/_/g, ' ') : locale === 'bn' ? 'কারণ জানানো হয়নি' : 'no reason given');
@@ -43,13 +43,14 @@ const KYC_REASONS = {
 };
 const reviewersOf = (kind) => directory.withPermission(require('../moderation/moderation.adapters').get(kind).permission);
 const KIND_LABELS = {
-  en: { document: 'identity document', game_profile: 'game UID', esports_tournament: 'esports tournament', ground: 'ground listing', shop: 'shop', product: 'shop product', tournament: 'tournament' },
-  bn: { document: 'পরিচয় ডকুমেন্ট', game_profile: 'গেম UID', esports_tournament: 'এস্পোর্টস টুর্নামেন্ট', ground: 'মাঠের তালিকা', shop: 'দোকান', product: 'দোকানের পণ্য', tournament: 'টুর্নামেন্ট' },
+  en: { document: 'identity document', game_profile: 'game UID', esports_tournament: 'esports event', ground: 'venue listing', shop: 'shop', product: 'shop product', tournament: 'tournament' },
+  bn: { document: 'পরিচয় ডকুমেন্ট', game_profile: 'গেম UID', esports_tournament: 'এস্পোর্টস ইভেন্ট', ground: 'ভেন্যুর তালিকা', shop: 'দোকান', product: 'দোকানের পণ্য', tournament: 'টুর্নামেন্ট' },
 };
 const kindLabel = (kind, locale) => KIND_LABELS[locale]?.[kind] ?? KIND_LABELS.en[kind] ?? kind;
 const es = () => require('../esports/esports.facts');
 // M09: grounds and the ground owner's business documents.
 const groundFacts = (id) => require('../grounds/grounds.service').facts(id);
+// VENDOR_APP_URL already ends in /vendor (values/backend/*.yaml): pass the path inside the vendor area.
 const vendorUrl = (p) => `${config.apps.vendor}${p}`;
 // M20: gyms (the owner), passes (the holder), trainer subscriptions (the member and the trainer).
 const gymFacts = (id) => require('../gym/gyms.service').facts(id);
@@ -59,8 +60,8 @@ const orgAdmins = (id) => require('../organisations/organisations.service').admi
 const tf = () => require('../tournaments/tournaments.facts');
 const eventOf = async (id) => require('../../models').EsportsEvent.findByPk(id, { attributes: ['id', 'slug', 'titleEn'] });
 const eventTitle = async (id) => (await eventOf(id))?.titleEn ?? '';
-// Links take the id: the esports app's /e/[slug] page accepts an id too.
-const eventLink = (id) => `/e/${id}`;
+// Links take the id: the esports app's /showcases/[slug] page accepts an id too (M23 showcases).
+const eventLink = (id) => `/showcases/${id}`;
 const followerPage = (kind) => (e) => (e.payload.kind === kind ? require('../esports-events/alerts.service').pageRecipients(e.payload) : []);
 const teamName = async (id) => (await require('../teams/teams.service').getTeam(id))?.name ?? '';
 const orgName = async (id) => (await require('../organisations/organisations.service').publicRefs([id])).get(id)?.name ?? '';
@@ -72,8 +73,8 @@ const DOC_LABELS = {
 };
 const docLabel = (type, locale) => DOC_LABELS[locale]?.[type] ?? DOC_LABELS.en[type] ?? type;
 const GROUND_REASONS = {
-  en: { photos_unclear: 'the photos are unclear or not of this ground', price_wrong: 'the price looks wrong', duplicate: 'this ground is already listed', info_incomplete: 'some information is missing', breaks_rules: 'it breaks our rules', location_wrong: 'the address or map pin is wrong', not_a_venue: 'it is not a bookable sports venue', other: 'see the note from our team' },
-  bn: { photos_unclear: 'ছবি অস্পষ্ট বা এই মাঠের নয়', price_wrong: 'দাম ঠিক মনে হচ্ছে না', duplicate: 'এই মাঠ আগেই তালিকায় আছে', info_incomplete: 'কিছু তথ্য নেই', breaks_rules: 'এটি আমাদের নিয়ম ভঙ্গ করে', location_wrong: 'ঠিকানা বা ম্যাপ পিন ভুল', not_a_venue: 'এটি বুকিংযোগ্য খেলার মাঠ নয়', other: 'আমাদের টিমের নোট দেখুন' },
+  en: { photos_unclear: 'the photos are unclear or not of this venue', price_wrong: 'the price looks wrong', duplicate: 'this venue is already listed', info_incomplete: 'some information is missing', breaks_rules: 'it breaks our rules', location_wrong: 'the address or map pin is wrong', not_a_venue: 'it is not a bookable sports venue', other: 'see the note from our team' },
+  bn: { photos_unclear: 'ছবি অস্পষ্ট বা এই ভেন্যুর নয়', price_wrong: 'দাম ঠিক মনে হচ্ছে না', duplicate: 'এই ভেন্যু আগেই তালিকায় আছে', info_incomplete: 'কিছু তথ্য নেই', breaks_rules: 'এটি আমাদের নিয়ম ভঙ্গ করে', location_wrong: 'ঠিকানা বা ম্যাপ পিন ভুল', not_a_venue: 'এটি বুকিংযোগ্য খেলার ভেন্যু নয়', other: 'আমাদের টিমের নোট দেখুন' },
 };
 const groundReason = (code, locale) => GROUND_REASONS[locale]?.[code] ?? GROUND_REASONS.en[code] ?? reasonText(code, locale);
 const esportsUrl = (p) => `${config.apps.esports}${p}`;
@@ -154,7 +155,7 @@ const disputeValues = async (e, { locale }) => {
   return { code: f.code, ref: f.ref, dueAt: f.respondentDueAt, outcome: outcomeText(f.outcome, locale), refund: f.refund };
 };
 const myDispute = (e) => `/me/disputes/${e.payload.code}`;
-const vendorDispute = (e) => vendorUrl(`/vendor/disputes/${e.payload.code}`);
+const vendorDispute = (e) => vendorUrl(`/disputes/${e.payload.code}`);
 const adminDispute = (e) => `/admin/disputes?code=${e.payload.code}`;
 
 // M18 risk and trust.
@@ -164,7 +165,7 @@ const RULE_LABELS = {
 };
 const SEVERITY_LABELS = { en: { info: 'info', medium: 'medium', high: 'high', critical: 'critical' }, bn: { info: 'তথ্য', medium: 'মাঝারি', high: 'উচ্চ', critical: 'গুরুতর' } };
 const DOC_REQUEST_LABELS = { en: { nid: 'NID', trade_license: 'trade licence', deed_or_lease: 'land deed or lease', tin: 'TIN certificate' }, bn: { nid: 'NID', trade_license: 'ট্রেড লাইসেন্স', deed_or_lease: 'জমির দলিল বা লিজ', tin: 'টিআইএন সনদ' } };
-const TRUST_KINDS = { en: { owner: 'ground owner', booker: 'booking' }, bn: { owner: 'মাঠ মালিক', booker: 'বুকিং' } };
+const TRUST_KINDS = { en: { owner: 'venue owner', booker: 'booking' }, bn: { owner: 'ভেন্যু মালিক', booker: 'বুকিং' } };
 const pick = (table, locale, key) => table[locale]?.[key] ?? table.en[key] ?? key;
 const riskDesk = (e) => `/admin/risk/accounts/${e.payload.userId}`;
 const riskDeskStaff = async () => [...new Set([...(await directory.withPermission('manage_users'))])];
@@ -507,8 +508,8 @@ const CATALOGUE = [
     category: 'moderation',
     channels: ['in_app', 'sms'],
     recipients: (e) => [e.payload.ownerId],
-    values: async (e) => ({ name: (await groundFacts(e.payload.groundId)).name, url: vendorUrl(`/grounds/${e.payload.groundId}`) }),
-    link: (e) => `/vendor/grounds/${e.payload.groundId}`,
+    values: async (e) => ({ name: (await groundFacts(e.payload.groundId)).name, url: vendorUrl(`/venues/${e.payload.groundId}`) }),
+    link: (e) => `/vendor/venues/${e.payload.groundId}`,
   },
   {
     code: 'GROUND_CHANGES_REQUESTED',
@@ -517,7 +518,7 @@ const CATALOGUE = [
     channels: ['in_app', 'sms'],
     recipients: (e) => [e.payload.ownerId],
     values: async (e, { locale }) => ({ name: (await groundFacts(e.payload.groundId)).name, reason: groundReason(e.payload.reasonCode, locale) }),
-    link: (e) => `/vendor/grounds/${e.payload.groundId}`,
+    link: (e) => `/vendor/venues/${e.payload.groundId}`,
   },
   {
     code: 'GROUND_REJECTED',
@@ -526,7 +527,7 @@ const CATALOGUE = [
     channels: ['in_app', 'sms'],
     recipients: (e) => [e.payload.ownerId],
     values: async (e, { locale }) => ({ name: (await groundFacts(e.payload.groundId)).name, reason: groundReason(e.payload.reasonCode, locale) }),
-    link: (e) => `/vendor/grounds/${e.payload.groundId}`,
+    link: (e) => `/vendor/venues/${e.payload.groundId}`,
   },
   {
     code: 'GROUND_PRICING_PUBLISHED',
@@ -535,7 +536,7 @@ const CATALOGUE = [
     channels: ['in_app'],
     recipients: (e) => [e.payload.ownerId],
     values: async (e) => ({ name: (await groundFacts(e.payload.groundId)).name }),
-    link: (e) => `/vendor/grounds/${e.payload.groundId}/pricing`,
+    link: (e) => `/vendor/venues/${e.payload.groundId}/pricing`,
   },
   {
     code: 'GROUND_REVIEW_NEEDED',
@@ -810,7 +811,7 @@ const CATALOGUE = [
     channels: ['in_app'],
     recipients: (e) => [e.payload.ownerId],
     values: bookingValues,
-    link: () => vendorUrl('/vendor/bookings'),
+    link: () => vendorUrl('/bookings'),
   },
   {
     code: 'BOOKING_CANCELLED',
@@ -828,7 +829,7 @@ const CATALOGUE = [
     channels: ['in_app'],
     recipients: (e) => [e.payload.ownerId],
     values: bookingValues,
-    link: () => vendorUrl('/vendor/bookings'),
+    link: () => vendorUrl('/bookings'),
   },
   {
     code: 'BOOKING_OWNER_CANCELLED',
@@ -961,7 +962,7 @@ const CATALOGUE = [
       const f = await reviewFacts(e.payload.reviewId);
       return { stars: f.stars, ground: f.groundName };
     },
-    link: () => vendorUrl('/vendor/reviews'),
+    link: () => vendorUrl('/reviews'),
   },
   {
     code: 'REVIEW_HIDDEN',
@@ -979,7 +980,7 @@ const CATALOGUE = [
     category: 'moderation',
     channels: ['in_app', 'sms'],
     recipients: (e) => [e.payload.ownerId],
-    values: async (e) => ({ name: (await shopFacts(e.payload.shopId)).name, url: vendorUrl('/vendor/shop') }),
+    values: async (e) => ({ name: (await shopFacts(e.payload.shopId)).name, url: vendorUrl('/shop') }),
     link: () => '/vendor/shop',
   },
   {
@@ -1345,7 +1346,7 @@ const CATALOGUE = [
     channels: ['in_app'],
     recipients: (e) => (e.payload.kind === 'owner' ? [e.payload.userId] : []),
     values: (e, { locale }) => ({ kind: pick(TRUST_KINDS, locale, e.payload.kind), score: e.payload.score }),
-    link: () => vendorUrl('/vendor'),
+    link: () => vendorUrl(''),
   },
   // ---------------- M20 gym: owners, pass holders, trainers and their members
   {
@@ -1533,7 +1534,7 @@ const CATALOGUE = [
     channels: ['in_app'],
     recipients: (e) => orgAdmins(e.payload.organisationId),
     values: (e) => ({ amount: e.payload.amount, deposited: e.payload.deposited }),
-    link: (e) => `/vendor/esports/${e.payload.organisationId}/tournaments/${e.payload.tournamentId}`,
+    link: (e) => `/vendor/esports/${e.payload.organisationId}/events/${e.payload.tournamentId}`,
   },
   {
     code: 'ORG_FUND_RETURNED',
@@ -1542,7 +1543,7 @@ const CATALOGUE = [
     channels: ['in_app'],
     recipients: (e) => orgAdmins(e.payload.organisationId),
     values: (e) => ({ amount: e.payload.amount }),
-    link: (e) => `/vendor/esports/${e.payload.organisationId}/tournaments/${e.payload.tournamentId}`,
+    link: (e) => `/vendor/esports/${e.payload.organisationId}/events/${e.payload.tournamentId}`,
   },
   // ---------------- M16 teams: invites (members with an account only; unknown numbers get the captain's link)
   {
@@ -1592,7 +1593,7 @@ const CATALOGUE = [
     channels: ['in_app', 'sms'],
     recipients: (e) => orgAdmins(e.payload.organisationId),
     values: async (e) => ({ tournament: (await tf().tournament(e.payload.tournamentId)).name }),
-    link: (e) => `/vendor/tournaments/${e.payload.organisationId}/t/${e.payload.tournamentId}`,
+    link: (e) => `/vendor/events/${e.payload.organisationId}/e/${e.payload.tournamentId}`,
   },
   {
     code: 'TOURNAMENT_CHANGES_REQUESTED',
@@ -1601,7 +1602,7 @@ const CATALOGUE = [
     channels: ['in_app', 'sms'],
     recipients: (e) => orgAdmins(e.payload.organisationId),
     values: async (e) => ({ tournament: (await tf().tournament(e.payload.tournamentId)).name }),
-    link: (e) => `/vendor/tournaments/${e.payload.organisationId}/t/${e.payload.tournamentId}`,
+    link: (e) => `/vendor/events/${e.payload.organisationId}/e/${e.payload.tournamentId}`,
   },
   {
     code: 'TOURNAMENT_REJECTED',
@@ -1610,7 +1611,7 @@ const CATALOGUE = [
     channels: ['in_app', 'sms'],
     recipients: (e) => orgAdmins(e.payload.organisationId),
     values: async (e) => ({ tournament: (await tf().tournament(e.payload.tournamentId)).name }),
-    link: (e) => `/vendor/tournaments/${e.payload.organisationId}/t/${e.payload.tournamentId}`,
+    link: (e) => `/vendor/events/${e.payload.organisationId}/e/${e.payload.tournamentId}`,
   },
   {
     code: 'REGISTRATION_SUBMITTED',
@@ -1622,7 +1623,7 @@ const CATALOGUE = [
       const r = await tf().registration(e.payload.registrationId);
       return { team: r.team, tournament: r.tournament };
     },
-    link: () => '/vendor/tournaments',
+    link: () => '/vendor/events',
   },
   {
     code: 'REGISTRATION_APPROVED',
@@ -1634,7 +1635,7 @@ const CATALOGUE = [
       const r = await tf().registration(e.payload.registrationId);
       return { team: r.team, tournament: r.tournament };
     },
-    link: () => '/me/tournaments',
+    link: () => '/me/events',
   },
   {
     code: 'REGISTRATION_REJECTED',
@@ -1646,7 +1647,7 @@ const CATALOGUE = [
       const r = await tf().registration(e.payload.registrationId);
       return { team: r.team, tournament: r.tournament, refund: r.refund };
     },
-    link: () => '/me/tournaments',
+    link: () => '/me/events',
   },
   {
     code: 'RESERVE_OFFERED',
@@ -1658,7 +1659,7 @@ const CATALOGUE = [
       const r = await tf().registration(e.payload.registrationId);
       return { team: r.team, tournament: r.tournament, until: e.payload.offerExpiresAt };
     },
-    link: () => '/me/tournaments',
+    link: () => '/me/events',
   },
   {
     code: 'TOURNAMENT_CANCELLED',
@@ -1670,7 +1671,7 @@ const CATALOGUE = [
       const r = await tf().registration(e.payload.registrationId);
       return { tournament: r.tournament, refund: r.refund };
     },
-    link: () => '/me/tournaments',
+    link: () => '/me/events',
   },
   {
     code: 'FIXTURES_PUBLISHED',
@@ -1679,7 +1680,7 @@ const CATALOGUE = [
     channels: ['in_app', 'sms'],
     recipients: (e) => tf().captains(e.payload.tournamentId),
     values: async (e) => ({ tournament: (await tf().tournament(e.payload.tournamentId)).name }),
-    link: () => '/me/tournaments',
+    link: () => '/me/events',
   },
   {
     code: 'MATCH_RESCHEDULED',
@@ -1688,7 +1689,7 @@ const CATALOGUE = [
     channels: ['in_app', 'sms'],
     recipients: (e) => tf().matchCaptains(e.payload.matchId),
     values: async (e) => ({ tournament: (await tf().tournament(e.payload.tournamentId)).name, match: e.payload.matchNo }),
-    link: () => '/me/tournaments',
+    link: () => '/me/events',
   },
   {
     code: 'REGISTRATION_BELOW_MIN',
@@ -1697,7 +1698,7 @@ const CATALOGUE = [
     channels: ['in_app', 'sms'],
     recipients: (e) => (e.payload.belowMin ? orgAdmins(e.payload.organisationId) : []),
     values: async (e) => ({ tournament: (await tf().tournament(e.payload.tournamentId)).name, approved: e.payload.approved }),
-    link: (e) => `/vendor/tournaments/${e.payload.organisationId}/t/${e.payload.tournamentId}`,
+    link: (e) => `/vendor/events/${e.payload.organisationId}/e/${e.payload.tournamentId}`,
   },
   {
     code: 'LOTS_NEEDED',
@@ -1706,7 +1707,7 @@ const CATALOGUE = [
     channels: ['in_app'],
     recipients: async (e) => orgAdmins((await tf().tournament(e.payload.tournamentId)).organisationId),
     values: async (e) => ({ tournament: (await tf().tournament(e.payload.tournamentId)).name }),
-    link: () => '/vendor/tournaments',
+    link: () => '/vendor/events',
   },
   // ---------------- M23 big events: follow alerts (paged; in-app only) and final places
   {
@@ -1761,7 +1762,7 @@ const CATALOGUE = [
     channels: ['in_app'],
     recipients: () => require('../users/directory.service').withPermission('manage_esports'),
     values: async (e) => ({ title: await eventTitle(e.payload.eventId) }),
-    link: (e) => `/admin/esports/events?id=${e.payload.eventId}`,
+    link: (e) => `/admin/esports/showcases?id=${e.payload.eventId}`,
   },
 ];
 

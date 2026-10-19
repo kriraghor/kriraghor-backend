@@ -24,7 +24,7 @@ const ERR = {
   SQUAD_TOO_SMALL: [422, 'Pick more players for the squad'],
   SQUAD_TOO_LARGE: [422, 'Pick fewer players for the squad'],
   PLAYER_NOT_IN_TEAM: [422, 'Pick players from the team'],
-  PLAYER_IN_OTHER_TEAM: [409, 'A player is already in another team in this tournament'],
+  PLAYER_IN_OTHER_TEAM: [409, 'A player is already in another team in this event'],
   ROSTER_FROZEN: [409, 'The squad is fixed now that matches have started'],
 };
 const fail = (code, meta) => new AppError(ERR[code][0], code, ERR[code][1], meta ? { meta } : undefined);

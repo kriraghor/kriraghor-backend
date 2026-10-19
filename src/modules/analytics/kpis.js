@@ -39,7 +39,7 @@ const KPIS = {
   },
   take_rate: { en: 'Fee revenue divided by GTV.', bn: 'ফি আয় ÷ মোট লেনদেন।' },
   esports_entries: { en: 'Esports entries confirmed in the period.', bn: 'এই সময়ে নিশ্চিত এস্পোর্টস এন্ট্রি।' },
-  prizes_paid: { en: 'Prize money credited to winners when tournaments were finalised.', bn: 'টুর্নামেন্ট চূড়ান্ত হলে বিজয়ীদের দেওয়া পুরস্কারের টাকা।' },
+  prizes_paid: { en: 'Prize money credited to winners when events were finalised.', bn: 'ইভেন্ট চূড়ান্ত হলে বিজয়ীদের দেওয়া পুরস্কারের টাকা।' },
 };
 
 const definitionsFor = (keys, locale = 'en') => Object.fromEntries(keys.map((k) => [k, KPIS[k][locale === 'bn' ? 'bn' : 'en']]));

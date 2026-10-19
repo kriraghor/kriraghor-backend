@@ -218,7 +218,7 @@ async function addCourt(principal, groundId, body, req) {
         { transaction }
       );
     } catch (err) {
-      if (err.name === 'SequelizeUniqueConstraintError') throw E.conflict('COURT_NAME_TAKEN', 'This ground already has a court with that name');
+      if (err.name === 'SequelizeUniqueConstraintError') throw E.conflict('COURT_NAME_TAKEN', 'This venue already has a court with that name');
       throw err;
     }
     await writeHours(court.id, hours, transaction);
@@ -240,7 +240,7 @@ async function updateCourt(principal, courtId, patch, req) {
     try {
       await court.update({ ...patch, ...(patch.sportIds ? { sportIds: [...new Set(patch.sportIds)] } : {}), updatedBy: principal.id }, { transaction });
     } catch (err) {
-      if (err.name === 'SequelizeUniqueConstraintError') throw E.conflict('COURT_NAME_TAKEN', 'This ground already has a court with that name');
+      if (err.name === 'SequelizeUniqueConstraintError') throw E.conflict('COURT_NAME_TAKEN', 'This venue already has a court with that name');
       throw err;
     }
     if (court.status === 'active' && changed.length) {

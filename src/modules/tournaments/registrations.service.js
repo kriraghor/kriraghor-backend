@@ -31,7 +31,7 @@ const MANAGERS = ['captain', 'vice_captain'];
 
 function gate(principal) {
   const g = gates.evaluateAction(principal, 'register_team');
-  if (!g.allowed) throw E.forbidden(g.code, 'You cannot enter tournaments yet', undefined, { next: g.next });
+  if (!g.allowed) throw E.forbidden(g.code, 'You cannot enter events yet', undefined, { next: g.next });
 }
 
 const payload = (r, extra = {}) => ({ registrationId: r.id, tournamentId: r.tournamentId, teamId: r.teamId, captainId: r.captainId, ...extra });

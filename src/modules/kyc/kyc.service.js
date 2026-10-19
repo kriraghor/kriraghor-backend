@@ -115,8 +115,8 @@ function serialize(d, { files = [] } = {}) {
 
 const UNLOCKS = {
   ground_owner: {
-    en: ['List your grounds and set prices', 'Take bookings with an advance', 'Get paid at check-in'],
-    bn: ['আপনার মাঠ তালিকাভুক্ত করুন ও দাম ঠিক করুন', 'অগ্রিমসহ বুকিং নিন', 'চেক-ইনে টাকা পান'],
+    en: ['List your venues and set prices', 'Take bookings with an advance', 'Get paid at check-in'],
+    bn: ['আপনার ভেন্যু তালিকাভুক্ত করুন ও দাম ঠিক করুন', 'অগ্রিমসহ বুকিং নিন', 'চেক-ইনে টাকা পান'],
   },
   player: {
     en: ['Get listed in Hire as a player', 'Take paid matches and sessions', 'Get paid when the manager confirms'],
@@ -127,8 +127,8 @@ const UNLOCKS = {
     bn: ['হায়ারে তালিকাভুক্ত হন (কোচ, অফিসিয়াল, চিকিৎসা, মিডিয়া, দলের কর্মী)', 'নিজের রেট ঠিক করুন', 'ম্যানেজার নিশ্চিত করলে টাকা পান'],
   },
   organiser: {
-    en: ['Register your esports organisation', 'Run PUBG Mobile and Free Fire tournaments on Kriraghor under a contract', 'Paid entries, room reveal, results and prize payouts handled for you'],
-    bn: ['আপনার ইস্পোর্টস প্রতিষ্ঠান নিবন্ধন করুন', 'চুক্তির অধীনে ক্রীড়াঘরে পাবজি মোবাইল ও ফ্রি ফায়ার টুর্নামেন্ট চালান', 'পেইড এন্ট্রি, রুম রিভিল, ফলাফল ও পুরস্কার প্রদান আমরা সামলাই'],
+    en: ['Register your esports organisation', 'Run PUBG Mobile and Free Fire events on Kriraghor under a contract', 'Paid entries, room reveal, results and prize payouts handled for you'],
+    bn: ['আপনার ইস্পোর্টস প্রতিষ্ঠান নিবন্ধন করুন', 'চুক্তির অধীনে ক্রীড়াঘরে পাবজি মোবাইল ও ফ্রি ফায়ার ইভেন্ট চালান', 'পেইড এন্ট্রি, রুম রিভিল, ফলাফল ও পুরস্কার প্রদান আমরা সামলাই'],
   },
   gym_owner: {
     en: ['List your gym with hours and photos', 'Sell day, month and quarter passes online', 'Admit members by QR at the front desk and get paid'],
@@ -201,7 +201,7 @@ async function verification(principal, locale = 'en', role = 'member') {
     badge: rules.badge(items),
     progress: { approved: items.filter((i) => i.status === 'approved').length, total: items.length },
     items,
-    unlocks: bn ? ['মাঠ বুকিং ও অগ্রিম', 'খেলোয়াড় ও স্টাফ হায়ার', 'পুরনো পণ্য বিক্রি', 'এস্পোর্টস পুরস্কার তোলা'] : ['Book grounds and pay advances', 'Hire players and staff', 'Sell used gear', 'Withdraw esports winnings'],
+    unlocks: bn ? ['ভেন্যু বুকিং ও অগ্রিম', 'খেলোয়াড় ও স্টাফ হায়ার', 'পুরনো পণ্য বিক্রি', 'এস্পোর্টস পুরস্কার তোলা'] : ['Book venues and pay advances', 'Hire players and staff', 'Sell used gear', 'Withdraw esports winnings'],
     limits: bn ? ['একসাথে সর্বোচ্চ ৫টি পুরনো পণ্যের বিজ্ঞাপন'] : ['Up to 5 active used-gear listings'],
   };
 }

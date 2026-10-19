@@ -14,11 +14,11 @@ const ERRORS = {
   CONTRACT_ACTIVE_EXISTS: [409, 'The organisation already has an active contract'],
   CONTRACT_DOCUMENT_REQUIRED: [409, 'Upload the signed contract first'],
   CONTRACT_FIELDS_INVALID: [422, 'A percentage contract takes a percent; a flat contract takes a fee and a monthly or quarterly cycle'],
-  PRIZE_FUND_REQUIRED: [409, 'Fund the prize pool before sending the tournament for review'],
+  PRIZE_FUND_REQUIRED: [409, 'Fund the prize pool before sending the event for review'],
   PRIZE_FUND_AMOUNT_MISMATCH: [409, 'The deposit is more than the prize pool. Raise the prizes, or cancel the draft to get the fund back'],
-  PRIZE_FUND_LOCKED: [409, 'The prize fund is already paid for this tournament'],
+  PRIZE_FUND_LOCKED: [409, 'The prize fund is already paid for this event'],
   PRIZE_FUND_SHRINK: [409, 'The prize pool cannot be smaller than what is already deposited. Cancel the draft to get the fund back'],
-  INVOICE_OVERDUE: [409, 'An invoice is overdue. Pay it before sending new tournaments'],
+  INVOICE_OVERDUE: [409, 'An invoice is overdue. Pay it before sending new events'],
   INVOICE_STATE: [409, 'The invoice cannot do that in its current state'],
   SUBDOMAIN_INVALID: [422, 'Use 3 to 30 letters, digits or dashes (not at the start or end)'],
   SUBDOMAIN_RESERVED: [422, 'This subdomain is reserved'],
@@ -29,7 +29,7 @@ const ERRORS = {
   FILE_TOO_LARGE: [413, 'The file is too large'],
   FILE_TYPE_NOT_ALLOWED: [415, 'Upload a JPEG, PNG or WebP image (or a PDF for the contract)'],
   FILE_TYPE_MISMATCH: [415, 'The file is not the type it says it is'],
-  ORG_TOURNAMENT_STATE: [409, 'Organisers can cancel only drafts and tournaments in review; ask Kriraghor to cancel a published one'],
+  ORG_TOURNAMENT_STATE: [409, 'Organisers can cancel only drafts and events in review; ask Kriraghor to cancel a published one'],
 };
 const fail = (code, meta) => new AppError(ERRORS[code][0], code, ERRORS[code][1], meta ? { meta } : undefined);
 

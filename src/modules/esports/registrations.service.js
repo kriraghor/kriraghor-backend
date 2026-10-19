@@ -91,7 +91,7 @@ async function removePlayers(regId, transaction) {
 
 function gate(principal) {
   const g = gates.evaluateAction(principal, 'join_esports');
-  if (!g.allowed) throw E.forbidden(g.code, 'You cannot join tournaments yet', undefined, { next: g.next });
+  if (!g.allowed) throw E.forbidden(g.code, 'You cannot join events yet', undefined, { next: g.next });
 }
 
 /**
