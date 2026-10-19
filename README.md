@@ -50,7 +50,7 @@ In development:
 
 The image's entrypoint is Node itself (distroless), so Kubernetes passes only the script as `args`. For a one-off command inside a pod, call Node by its path: `kubectl exec deploy/backend-api -- /nodejs/bin/node scripts/create-master.js ...`.
 
-Every process also serves `/health/live`, `/health/ready` (DB + Redis, 503 while draining) and `/metrics` (Prometheus) on `OPS_PORT` (9464). That port is never exposed through the ingress. On SIGTERM a process fails readiness, waits `SHUTDOWN_DRAIN_MS`, then closes its servers, queues, Redis and DB in order.
+Every process also serves `/health/live`,  `/health/ready` (DB + Redis, 503 while draining) and `/metrics` (Prometheus) on `OPS_PORT` (9464). That port is never exposed through the ingress. On SIGTERM a process fails readiness, waits `SHUTDOWN_DRAIN_MS`, then closes its servers, queues, Redis and DB in order.
 
 ### Enabling "Sign in with Google"
 1. Open the Google Cloud Console and go to **APIs & Services → OAuth consent screen**. Configure it with the app name *Kriraghor* and the scopes *email*, *profile* and *openid*.
