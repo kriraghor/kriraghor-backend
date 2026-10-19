@@ -50,6 +50,14 @@ async function main() {
   const { runId } = await rt.boot({ profile });
   console.log(`Demo seed ${runId} (${profile}) into ${config.db?.name ?? process.env.DB_NAME ?? 'the database'}`);
 
+  // Hidden demo data stays hidden: demo:hide suspended its accounts, and the seeder never re-opens them.
+  const demoUsers = (await rt.models.DemoRecord.findAll({ where: { entity: 'user' }, attributes: ['entityId'] })).map((r) => r.entityId);
+  const hidden = demoUsers.length ? await rt.models.User.count({ where: { id: demoUsers, status: 'suspended' } }) : 0;
+  if (hidden) {
+    console.log(`Demo data was hidden (${hidden} demo accounts suspended). Nothing to do; restore those accounts on the admin desk to show it again.`);
+    return;
+  }
+
   const { master, reviewer } = await step('staff (no sign-in possible)', () => people.staff());
   const owner = await step('owners: sign-up, NID and business documents', () => L.owners(reviewer));
   await step('venues', () => L.venues(owner, reviewer));

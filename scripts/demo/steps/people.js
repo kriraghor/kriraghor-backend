@@ -58,7 +58,11 @@ async function staff() {
 async function review(reviewer, kind, subjectId) {
   await rt.drain();
   const sub = await models.Submission.findOne({ where: { kind, subjectId, status: 'pending_review' } });
-  if (!sub) throw new Error(`no open ${kind} submission for ${subjectId}`);
+  if (!sub) {
+    // Approved by an earlier run that stopped before the decision was applied: applying it is enough.
+    if (await models.Submission.findOne({ where: { kind, subjectId, status: 'approved' } })) return rt.drain();
+    throw new Error(`no open ${kind} submission for ${subjectId}`);
+  }
   await rt.post(reviewer, `/admin/submissions/${sub.id}/claim`);
   const rubric = await models.ReviewRubric.findByPk(sub.rubricId);
   await rt.put(reviewer, `/admin/submissions/${sub.id}/ticks`, { ticks: rubric.items.map((i) => i.key) });

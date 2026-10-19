@@ -67,6 +67,33 @@ async function main() {
   startOpsServer();
   lifecycle.handleSignals();
   lifecycle.setReady(true);
+  startDemoSeed();
+}
+
+/**
+ * Demo data on hosts without a shell (scripts/demo/README.md). After the API is ready it runs, in the
+ * background and with its own environment:
+ *   DEMO_SEED=listings  the seeder, listings profile only (no payments); it skips what exists, so a
+ *                       restart resumes it
+ *   DEMO_SEED=hide      the hide command (cancels demo events, suspends demo accounts; deletes nothing)
+ * Remove the variable when the log shows the run finished.
+ */
+const DEMO_COMMANDS = {
+  listings: ['scripts/demo-seed.js', '--profile=listings', '--confirm-live'],
+  hide: ['scripts/demo-hide.js', '--confirm-live'],
+};
+
+function startDemoSeed() {
+  const mode = process.env.DEMO_SEED;
+  if (!mode) return;
+  if (!DEMO_COMMANDS[mode]) {
+    logger.warn({ mode }, 'DEMO_SEED ignored: use "listings" or "hide"');
+    return;
+  }
+  logger.info({ mode }, 'DEMO_SEED: starting the demo command in the background');
+  const child = spawn(process.execPath, DEMO_COMMANDS[mode], { stdio: 'inherit', env: process.env });
+  child.on('close', (code) => logger.info({ mode, code }, code === 0 ? 'demo command finished; remove DEMO_SEED' : 'demo command stopped; it runs again on the next start'));
+  child.on('error', (err) => logger.warn({ err: err.message }, 'demo command could not start'));
 }
 
 main().catch((err) => {

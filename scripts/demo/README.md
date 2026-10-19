@@ -11,6 +11,8 @@ Realistic demo content for every public section, so the sites can be shown befor
 | `npm run demo:hide -- --dry-run` | Lists what hiding would change. |
 | `npm run demo:hide` | Hides all demo data (add `--confirm-live` in production). |
 
+**On a host without a shell** (Render's free plan): set the environment variable `DEMO_SEED=listings` on the backend service. After the API starts and is ready, it runs the listings seeder in the background with its own environment; the log shows each step and "Demo records: …" at the end. Remove the variable afterwards. `DEMO_SEED=hide` runs the hide command the same way. Only these two values are accepted (never the full profile). If the host restarts mid-run (a free instance sleeps after 15 minutes without visitors), the next start resumes it.
+
 Both commands are safe to re-run: the seeder skips what exists, and a second run takes under a minute. A fresh run takes about 3.5 minutes for listings (it waits one minute for esports registration to open), plus about 3 minutes for the full profile.
 
 Local needs: PostgreSQL, Redis and the S3 container from `docker compose up -d` (photos are uploaded to the public bucket), and the S3 and simulator lines from `.env.example` in `.env`.
@@ -41,4 +43,6 @@ Local needs: PostgreSQL, Redis and the S3 container from `docker compose up -d` 
 3. Suspends the demo accounts. The existing `user.suspended` consumers then pause their venues, gyms, shops and hire profiles.
 4. Offboards the demo reviewer.
 
-In the full local profile, the six finished esports events stay as history, and their players stay on the top-players list.
+In the full local profile, the six finished esports events stay as history. Once Q161 is merged, their suspended players also leave the leaderboards and top players.
+
+Hidden demo data stays hidden: the seeder notices the suspended demo accounts and does nothing. To show it again, restore those accounts on the admin desk.
