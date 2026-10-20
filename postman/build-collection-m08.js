@@ -36,6 +36,7 @@ const collection = {
     ['adminAccessToken', ''],
     ['adminAccessToken2', ''],
     ['accessToken', ''],
+    ['pushId', ''],
     ['stepUpToken', ''],
     ['stepUpTokenB', ''],
     ['requestId', ''],
@@ -114,6 +115,30 @@ const collection = {
           expect: { status: 200 },
           checks: [['saved', "j.quietHours === false && j.categories.find((c) => c.category === 'moderation').channels.find((c) => c.channel === 'sms').enabled === false"]],
         }),
+      ],
+    },
+    {
+      name: '4. Push (the mobile app)',
+      item: [
+        member('Register a token that is not an Expo token (expect 422)', 'POST', '/me/push-subscriptions', { body: { token: 'not-an-expo-token', platform: 'expo' }, expect: { status: 422 } }),
+        member('Register this phone', 'POST', '/me/push-subscriptions', {
+          body: { token: 'ExponentPushToken[postmanPhone000001]', platform: 'expo', deviceLabel: 'Postman phone' },
+          expect: { status: 201 },
+          save: { pushId: 'id' },
+          checks: [['token never returned', "j.tokenTail === '00001]' && !JSON.stringify(j).includes('postmanPhone') && j.current === true"]],
+        }),
+        member('Register the same token again (200, same device)', 'POST', '/me/push-subscriptions', {
+          body: { token: 'ExponentPushToken[postmanPhone000001]', platform: 'expo', deviceLabel: 'Postman phone' },
+          expect: { status: 200 },
+          checks: [['same device', "j.id === pm.collectionVariables.get('pushId')"]],
+        }),
+        member('List phones', 'GET', '/me/push-subscriptions', { expect: { status: 200 }, checks: [['one phone', 'j.items.length === 1']] }),
+        member('Push is offered in preferences, never locked', 'GET', '/me/notification-prefs', {
+          expect: { status: 200 },
+          checks: [['push cell', "j.categories.every((c) => { const p = c.channels.find((x) => x.channel === 'push'); return p && p.offered && !p.locked; })"]],
+        }),
+        member('Remove this phone', 'DELETE', '/me/push-subscriptions/{{pushId}}', { expect: { status: 204 } }),
+        member('List phones (none)', 'GET', '/me/push-subscriptions', { expect: { status: 200 }, checks: [['none', 'j.items.length === 0']] }),
       ],
     },
   ],

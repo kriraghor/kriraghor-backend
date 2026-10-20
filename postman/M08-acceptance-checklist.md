@@ -45,3 +45,19 @@ Request names refer to the **"Kriraghor API: M08 Notifications (Phase 1 exit che
 | 4.4 | A code without an active template | Fails closed: no blank message sent, error logged 🤖 |
 | 4.5 | Sign in with a phone OTP | `sms_log` row with route `otp`, masked phone `+8801•••••NNNN`, body with the code redacted |
 | 4.6 | **Delivery log** (`manage_users`) | Masked recipients only; filter by user, code, status, phone suffix |
+
+## 5. Push to the mobile app (M08 push channel)
+🤖 = covered by `tests/e2e/push.test.js`; the requests are in folder **4. Push (the mobile app)**.
+
+| # | Do | Expect |
+|---|---|---|
+| 5.1 | **Register a token that is not an Expo token** | `422 VALIDATION_FAILED` |
+| 5.2 | **Register this phone**, then **again** | `201`, then `200` with the same id; only `tokenTail` comes back, never the token |
+| 5.3 | **List phones**, **Remove this phone**, list again | One phone, `204`, none; the row is kept with `revoke_reason = removed` |
+| 5.4 | **Push is offered in preferences** | A `push` cell in every category, never locked |
+| 5.5 | A member with a phone gets any in-app notification | A push with the same title and text in their language, and only `notificationId`, `code`, `link` in `data` 🤖 |
+| 5.6 | Turn push off for a category; sign out on the phone | No push row for that category; nothing to a signed-out phone 🤖 |
+| 5.7 | A non-urgent push at 22:00–08:00 Dhaka; `PASSWORD_CHANGED` at the same time | The first is `deferred`; the second goes at once with `priority: high` 🤖 |
+| 5.8 | The app is uninstalled (Expo answers `DeviceNotRegistered`, at send or in the receipt) | The phone is revoked; the delivery `suppressed` (`no_device`) or the receipt `error` 🤖 |
+| 5.9 | `notify.push-receipts` after `notify.push_receipt_delay_minutes` | Accepted pushes become `delivered`; receipts never answered expire after `notify.push_receipt_expire_hours` 🤖 |
+| 5.10 | On a real phone (development build, `PUSH_DRIVER=expo`) | `ESPORTS_ROOM_READY` arrives at high priority; tapping it opens the room screen; the text has no room ID or password |
