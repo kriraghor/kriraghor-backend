@@ -402,12 +402,12 @@
             "type": "string",
             "enum": [
               "applied",
+              "documents_pending",
               "in_review",
               "active",
               "changes_requested",
               "rejected",
               "suspended",
-              "documents_pending",
               "withdrawn"
             ]
           },
@@ -32610,12 +32610,12 @@
               "type": "string",
               "enum": [
                 "applied",
+                "documents_pending",
                 "in_review",
                 "active",
                 "changes_requested",
                 "rejected",
                 "suspended",
-                "documents_pending",
                 "withdrawn"
               ]
             },

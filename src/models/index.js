@@ -2,11 +2,11 @@
 
 const { DataTypes, Model } = require('sequelize');
 const { sequelize } = require('../db');
-const { ROLE_LIST } = require('../common/enums');
+const { ROLE_LIST, ROLE_STATUS_LIST } = require('../common/enums');
 const { uuid7 } = require('../common/uuid7');
 const { toPoisha } = require('../common/money');
 
-const ROLE_STATUSES = ['applied', 'documents_pending', 'in_review', 'changes_requested', 'active', 'rejected', 'suspended', 'withdrawn'];
+const ROLE_STATUSES = ROLE_STATUS_LIST;
 const PERMS = ['approve_listings', 'approve_documents', 'resolve_reports', 'refund_small', 'view_payouts', 'release_payouts', 'edit_fees', 'manage_staff', 'manage_users', 'manage_catalog', 'manage_esports', 'enter_results', 'view_analytics', 'manage_organisers'];
 
 const uuidPk = { type: DataTypes.UUID, primaryKey: true, defaultValue: DataTypes.UUIDV4 };
