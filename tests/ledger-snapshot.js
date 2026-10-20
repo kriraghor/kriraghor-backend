@@ -19,12 +19,12 @@ const mask = (s) => String(s).replace(UUID, '*');
 afterEach(async () => {
   const { sequelize } = require('../src/models');
   const [rows] = await sequelize.query(
-    `SELECT t.id AS txn, t.created_at, t.kind, t.ref_type, t.total_poisha, a.code, e.debit_poisha, e.credit_poisha
+    `SELECT t.id AS txn, t.posted_at, t.kind, t.ref_type, t.total_poisha, a.code, e.debit_poisha, e.credit_poisha
        FROM ledger_transactions t JOIN ledger_entries e ON e.txn_id = t.id JOIN ledger_accounts a ON a.id = e.account_id`
   );
   const byTxn = new Map();
   for (const r of rows) {
-    if (!byTxn.has(r.txn)) byTxn.set(r.txn, { at: new Date(r.created_at).getTime(), kind: r.kind, ref: r.ref_type, total: String(r.total_poisha), entries: [] });
+    if (!byTxn.has(r.txn)) byTxn.set(r.txn, { at: new Date(r.posted_at).getTime(), kind: r.kind, ref: r.ref_type, total: String(r.total_poisha), entries: [] });
     byTxn.get(r.txn).entries.push({ code: r.code, dr: String(r.debit_poisha), cr: String(r.credit_poisha) });
   }
   const shape = (t) => `${t.kind}|${t.ref}|${t.total}|${t.entries.map((e) => `${mask(e.code)}:${e.dr}:${e.cr}`).join(',')}`;
