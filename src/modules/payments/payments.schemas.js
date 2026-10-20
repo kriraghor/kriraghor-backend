@@ -15,7 +15,13 @@ const HOLD_STATUSES = ['holding', 'partially_released', 'released', 'refunded', 
 const ITEM_TYPES = ['matched', 'missing_internal', 'missing_provider', 'amount_mismatch', 'status_mismatch', 'refund_mismatch', 'fee_mismatch'];
 
 const idParam = z.object({ id: z.uuid() });
-const attemptBody = z.object({ method: z.enum(['bkash', 'nagad', 'card']) });
+const attemptBody = z.object({
+  method: z.enum(['bkash', 'nagad', 'card']),
+  returnTo: z
+    .enum(['web', 'app'])
+    .default('web')
+    .meta({ description: "After the gateway, send the payer to the website's result page (web) or back to the mobile app at APP_RETURN_URL/{paymentId}/result (app)" }),
+});
 const meListQuery = z.object({ cursor: z.uuid().optional(), limit: limit(50, 20) });
 
 // Gateway return: SSLCommerz POSTs a form, the simulator redirects with a query. Read loosely, verify strictly.

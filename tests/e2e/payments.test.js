@@ -131,6 +131,30 @@ describe('paying through the gateway (FR-02 to FR-06)', () => {
     expect(again.body.code).toBe('PAYMENT_ALREADY_SUCCEEDED');
   });
 
+  it("returnTo 'app' sends the payer back to the mobile app on success, failure and cancel; nothing else can steer the return", async () => {
+    const startApp = async (p) => {
+      const a = await api().post(`${P}/payments/${p.id}/attempts`).set(h.bearer(payer)).set('Idempotency-Key', key()).send({ method: 'bkash', returnTo: 'app' }).expect(201);
+      return a.body.redirectUrl.split('/').pop();
+    };
+    for (const outcome of ['success', 'fail', 'cancel']) {
+      const p = await charge(3000);
+      const back = new URL(await h.simulator.pay(await startApp(p), outcome));
+      const ret = await api().get(`${P}/payments/return/sslcommerz${back.search}`).expect(303);
+      expect(ret.headers.location).toBe(`${config.apps.payReturn}/${p.id}/result`);
+      expect((await models.PaymentAttempt.findOne({ where: { paymentId: p.id } })).returnTo).toBe('app');
+    }
+    // The return URL takes no target from the request: extra fields are ignored.
+    const p = await charge(3000);
+    const back = new URL(await h.simulator.pay(await startApp(p), 'success'));
+    const steer = await api().get(`${P}/payments/return/sslcommerz${back.search}&returnTo=https://evil.example&redirect=https://evil.example`).expect(303);
+    expect(steer.headers.location).toBe(`${config.apps.payReturn}/${p.id}/result`);
+    // An unknown transaction cannot tell whose app it was: the website's payments page.
+    const unknown = await api().get(`${P}/payments/return/sslcommerz?tran_id=00000000-0000-0000-0000-000000000000`).expect(303);
+    expect(unknown.headers.location).toBe(`${config.apps.web}/me/payments`);
+    await api().post(`${P}/payments/${p.id}/attempts`).set(h.bearer(payer)).set('Idempotency-Key', key()).send({ method: 'bkash', returnTo: 'https://evil.example' }).expect(422);
+    expect(config.apps.payReturn).toBe('kriraghor://pay');
+  });
+
   it('a replayed IPN is a no-op, and IPN racing the return captures once (FR-04, §12 #1)', async () => {
     const p = await charge(8000);
     let ipn;

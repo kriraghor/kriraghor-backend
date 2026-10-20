@@ -652,6 +652,8 @@ PaymentAttempt.init(
     request: DataTypes.JSON,
     response: DataTypes.JSON,
     failureCode: DataTypes.STRING(60),
+    // Where the payer returns after the gateway: the website (NULL or 'web') or the mobile app ('app').
+    returnTo: DataTypes.ENUM('web', 'app'),
     startedAt: { type: DataTypes.DATE(3), allowNull: false, defaultValue: DataTypes.NOW },
     finishedAt: DataTypes.DATE(3),
   },

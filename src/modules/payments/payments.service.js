@@ -124,7 +124,7 @@ function scheduleAttemptPolls(attemptId) {
 }
 
 /** POST /payments/:id/attempts — start (or restart) paying an intent; returns the gateway URL. */
-async function startAttempt(user, paymentId, { method }) {
+async function startAttempt(user, paymentId, { method, returnTo = 'web' }) {
   const provider = providers.get();
   if (!provider.configured()) throw new AppError(503, 'PROVIDER_UNAVAILABLE', 'Payments are not available right now. Try again later.');
   const { payment, attempt } = await sequelize.transaction(async (transaction) => {
@@ -135,7 +135,7 @@ async function startAttempt(user, paymentId, { method }) {
     if (p.status === 'expired' || new Date(p.expiresAt).getTime() <= Date.now()) throw new AppError(410, 'PAYMENT_EXPIRED', 'This payment has expired');
     // A new attempt replaces an unfinished one; if the old one is paid after all, its IPN still captures.
     await PaymentAttempt.update({ status: 'cancelled', finishedAt: new Date() }, { where: { paymentId: p.id, status: 'in_flight' }, transaction });
-    const a = await PaymentAttempt.create({ paymentId: p.id, provider: provider.code, method }, { transaction });
+    const a = await PaymentAttempt.create({ paymentId: p.id, provider: provider.code, method, returnTo }, { transaction });
     await p.update({ status: 'pending' }, { transaction });
     return { payment: p, attempt: a };
   });
@@ -315,13 +315,15 @@ async function handleIpn(body) {
 
 /**
  * The gateway sends the payer back here (POST from SSLCommerz, GET from the simulator). Verify if we
- * can, then send the browser to the web result page, which reads the status from the API (never from
- * this redirect).
+ * can, then send the browser to the result page, which reads the status from the API (never from
+ * this redirect): the website's, or the mobile app's (APP_RETURN_URL) for attempts started with
+ * returnTo 'app'. Only these two configured targets exist, so the return can never be an open redirect.
  */
 async function handleReturn({ pid, tranId, valId }) {
-  const target = (id) => (id ? `${config.apps.web}/pay/${id}/result` : `${config.apps.web}/me/payments`);
   const attempt = await attemptByTranId(tranId);
   const paymentId = attempt?.paymentId ?? (/^[0-9a-f-]{36}$/i.test(String(pid ?? '')) ? pid : null);
+  const base = attempt?.returnTo === 'app' ? config.apps.payReturn : `${config.apps.web}/pay`;
+  const target = (id) => (id ? `${base}/${id}/result` : `${config.apps.web}/me/payments`);
   if (!attempt) return target(paymentId);
   try {
     const provider = providers.get(attempt.provider);

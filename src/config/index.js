@@ -75,6 +75,11 @@ const schema = z.object({
   ESPORTS_APP_URL: z.string().default('http://localhost:3001'),
   VENDOR_APP_URL: z.string().default('http://localhost:3002/vendor'),
   ADMIN_APP_URL: z.string().default('http://localhost:3002'),
+  // M06: where a payment started in the mobile app returns (returnTo: 'app'); the app's own URL scheme.
+  APP_RETURN_URL: z
+    .string()
+    .regex(/^[a-z][a-z0-9+.-]*:\/\/[^\s?#]+$/i, 'APP_RETURN_URL must be a URL such as kriraghor://pay')
+    .default('kriraghor://pay'),
 
   // M06 payments. The API's public origin builds the gateway's IPN and return URLs.
   API_PUBLIC_URL: z.string().default('http://localhost:4000'),
@@ -205,6 +210,7 @@ module.exports = {
     esports: env.ESPORTS_APP_URL.replace(/\/$/, ''),
     vendor: env.VENDOR_APP_URL.replace(/\/$/, ''),
     admin: env.ADMIN_APP_URL.replace(/\/$/, ''),
+    payReturn: env.APP_RETURN_URL.replace(/\/+$/, ''),
   },
   apiPublicUrl: apiPublic,
   payments: {
