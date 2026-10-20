@@ -137,4 +137,16 @@ async function listActive(userId) {
   });
 }
 
-module.exports = { create, rotate, peek, revokeFamilyOf, revokeAllForUser, listActive };
+/** Which of these sign-in families still have a live session (not signed out, revoked or expired). */
+async function activeFamilies(familyIds) {
+  if (!familyIds.length) return new Set();
+  const rows = await Session.findAll({
+    where: { familyId: familyIds, revokedAt: null, expiresAt: { [Op.gt]: new Date() } },
+    attributes: ['familyId'],
+    group: ['familyId'],
+    raw: true,
+  });
+  return new Set(rows.map((r) => r.familyId));
+}
+
+module.exports = { create, rotate, peek, revokeFamilyOf, revokeAllForUser, listActive, activeFamilies };

@@ -277,6 +277,12 @@ function register(registry) {
     responses: { 200: json(notifyS.NotificationPrefs), ...errors(COMMON_AUTH) } });
   p({ method: 'put', path: '/me/notification-prefs', tags: ['notifications'], summary: 'Change notification preferences', security: bearer,
     request: body(notifyS.prefsBody), responses: { 200: json(notifyS.NotificationPrefs), ...errors({ ...COMMON_AUTH, 422: ['VALIDATION_FAILED', 'PREF_MANDATORY'] }) } });
+  p({ method: 'post', path: '/me/push-subscriptions', tags: ['notifications'], summary: "Register this phone's push token (the mobile app; idempotent per token: 201 new, 200 already registered)", security: bearer,
+    request: body(notifyS.pushSubscribeBody), responses: { 200: json(notifyS.PushDevice), 201: json(notifyS.PushDevice), ...errors({ ...COMMON_AUTH, ...VALIDATION }) } });
+  p({ method: 'get', path: '/me/push-subscriptions', tags: ['notifications'], summary: 'Phones that get push notifications (tokens are never returned)', security: bearer,
+    responses: { 200: json(notifyS.PushDeviceList), ...errors(COMMON_AUTH) } });
+  p({ method: 'delete', path: '/me/push-subscriptions/{id}', tags: ['notifications'], summary: 'Stop push notifications to one phone (the app calls this before signing out)', security: bearer,
+    request: { params: notifyS.pushIdParams }, responses: { 204: noContent, ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], ...VALIDATION }) } });
   p({ method: 'get', path: '/admin/notifications/deliveries', tags: ['notifications'], summary: 'Delivery log with masked phones (manage_users or master)', security: adminBearer,
     request: { query: notifyS.deliveriesQuery }, responses: { 200: json(z.object({ items: z.array(notifyS.Delivery) })), ...errors({ ...ADMIN_AUTH, ...VALIDATION }) } });
 

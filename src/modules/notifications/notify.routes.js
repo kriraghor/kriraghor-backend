@@ -26,9 +26,22 @@ prefsRouter.use(authenticate);
 prefsRouter.get('/', async (req, res) => res.json(await svc.getPrefs(req.user.id)));
 prefsRouter.put('/', validate(s.prefsBody), async (req, res) => res.json(await svc.putPrefs(req.user.id, req.body)));
 
+// /me/push-subscriptions: the mobile app's push token (M08 push channel)
+const pushRouter = Router();
+pushRouter.use(authenticate);
+pushRouter.post('/', validate(s.pushSubscribeBody), async (req, res) => {
+  const { created, device } = await svc.push.subscribe(req.user.id, req.auth.familyId, req.body);
+  res.status(created ? 201 : 200).json(device);
+});
+pushRouter.get('/', async (req, res) => res.json(await svc.push.listDevices(req.user.id, req.auth.familyId)));
+pushRouter.delete('/:id', validate(s.pushIdParams, 'params'), async (req, res) => {
+  await svc.push.unsubscribe(req.user.id, req.params.id);
+  res.status(204).end();
+});
+
 // /admin/notifications/deliveries (support, masked phones)
 const adminRouter = Router();
 adminRouter.use(authenticateAdmin, requireStaff, requireAnyPermission(PERMISSIONS.MANAGE_USERS));
 adminRouter.get('/deliveries', validate(s.deliveriesQuery, 'query'), async (req, res) => res.json(await svc.deliveries(req.validQuery)));
 
-module.exports = { meRouter, adminMeRouter, prefsRouter, adminRouter };
+module.exports = { meRouter, adminMeRouter, prefsRouter, pushRouter, adminRouter };

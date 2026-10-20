@@ -69,6 +69,17 @@ describe('channels and mandatory cells (M08-FR-06, §6.3)', () => {
     expect(r.isMandatory('reviews', 'in_app')).toBe(false);
     expect(r.isMandatory('nope', 'sms')).toBe(false);
   });
+
+  it('push mirrors in-app, is offered in every category and is never mandatory (M08 push channel)', () => {
+    expect(r.withPush(['in_app', 'sms'])).toEqual(['in_app', 'sms', 'push']);
+    expect(r.withPush(['in_app', 'push'])).toEqual(['in_app', 'push']);
+    expect(r.withPush(['email'])).toEqual(['email']);
+    for (const [category, c] of Object.entries(r.CATEGORIES)) {
+      expect([category, c.defaults.includes('push')]).toEqual([category, true]);
+      expect([category, r.isMandatory(category, 'push')]).toEqual([category, false]);
+    }
+    expect(r.resolveChannels({ category: 'money', channels: ['sms', 'push'], prefs: new Map([['money:push', false]]) })).toEqual(['sms']);
+  });
 });
 
 describe('templates (M08-FR-07, §6.2)', () => {

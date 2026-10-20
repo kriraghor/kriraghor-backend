@@ -56,6 +56,12 @@ const schema = z.object({
   SMS_DRIVER: z.enum(['console', 'memory']).default('console'),
   PASSWORD_BREACH_CHECK: bool.default(false),
 
+  // M08 push to the mobile app: `log` prints one line per message (local), `expo` sends through the Expo push API.
+  PUSH_DRIVER: z.enum(['log', 'memory', 'expo']).default('log'),
+  // Optional: needed only when the Expo project turns on enhanced push security.
+  EXPO_ACCESS_TOKEN: z.string().optional(),
+  EXPO_PUSH_URL: z.string().default('https://exp.host/--/api/v2/push'),
+
   EMAIL_DRIVER: z.enum(['console', 'memory', 'smtp']).default('console'),
   EMAIL_FROM: z.string().default('Kriraghor <no-reply@kriraghor.local>'),
   SMTP_HOST: z.string().default('127.0.0.1'),
@@ -167,6 +173,11 @@ module.exports = {
     dataKey: Buffer.from(env.DATA_ENCRYPTION_KEY, 'base64'),
   },
   sms: { driver: env.SMS_DRIVER },
+  push: {
+    driver: env.NODE_ENV === 'test' ? 'memory' : env.PUSH_DRIVER,
+    expoAccessToken: env.EXPO_ACCESS_TOKEN,
+    expoUrl: env.EXPO_PUSH_URL.replace(/\/+$/, ''),
+  },
   email: {
     driver: env.EMAIL_DRIVER,
     from: env.EMAIL_FROM,

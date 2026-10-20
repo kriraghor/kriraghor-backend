@@ -3,7 +3,7 @@
 const { z } = require('zod');
 
 const dateTime = z.iso.datetime({ offset: true });
-const CHANNELS = ['in_app', 'sms', 'email'];
+const CHANNELS = ['in_app', 'sms', 'email', 'push'];
 const STATUSES = ['queued', 'deferred', 'sent', 'delivered', 'failed', 'rate_limited', 'suppressed'];
 
 const listQuery = z.object({
@@ -87,4 +87,25 @@ const Delivery = z
   })
   .meta({ id: 'NotificationDelivery' });
 
-module.exports = { listQuery, readBody, prefsBody, deliveriesQuery, NotificationItem, NotificationPage, NotificationPrefs, Delivery };
+// ---------------- push subscriptions (the mobile app) ----------------
+const pushSubscribeBody = z.object({
+  token: z.string().min(10).max(200).meta({ description: 'The Expo push token from expo-notifications, e.g. ExponentPushToken[…]' }),
+  platform: z.literal('expo'),
+  deviceLabel: z.string().trim().min(1).max(80).optional().meta({ description: 'Shown in the device list, e.g. "Galaxy A54"' }),
+});
+const pushIdParams = z.object({ id: z.uuid() });
+
+const PushDevice = z
+  .object({
+    id: z.uuid(),
+    platform: z.enum(['expo', 'web']),
+    deviceLabel: z.string().nullable(),
+    tokenTail: z.string().meta({ description: 'The last 6 characters of the token; the token itself is never returned' }),
+    current: z.boolean().meta({ description: 'Registered by the sign-in making this request' }),
+    lastUsedAt: dateTime.nullable(),
+    createdAt: dateTime,
+  })
+  .meta({ id: 'PushDevice' });
+const PushDeviceList = z.object({ items: z.array(PushDevice) }).meta({ id: 'PushDeviceList' });
+
+module.exports = { listQuery, readBody, prefsBody, deliveriesQuery, pushSubscribeBody, pushIdParams, NotificationItem, NotificationPage, NotificationPrefs, Delivery, PushDevice, PushDeviceList };

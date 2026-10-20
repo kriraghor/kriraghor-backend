@@ -540,6 +540,37 @@ SmsLog.init(
   { sequelize, modelName: 'SmsLog', tableName: 'sms_log', timestamps: false }
 );
 
+// M08 push channel (the mobile app): device tokens and the provider's receipts.
+class PushSubscription extends Model {}
+PushSubscription.init(
+  {
+    id: uuidPk,
+    userId: { type: DataTypes.UUID, allowNull: false },
+    platform: { type: DataTypes.ENUM('expo', 'web'), allowNull: false },
+    token: { type: DataTypes.STRING(200), allowNull: false },
+    sessionFamilyId: DataTypes.UUID,
+    deviceLabel: DataTypes.STRING(80),
+    lastUsedAt: DataTypes.DATE(3),
+    revokedAt: DataTypes.DATE(3),
+    revokeReason: DataTypes.ENUM('removed', 'replaced', 'other_account', 'device_not_registered', 'device_limit'),
+  },
+  { sequelize, modelName: 'PushSubscription', tableName: 'push_subscriptions' }
+);
+
+class PushReceipt extends Model {}
+PushReceipt.init(
+  {
+    id: uuidPk,
+    deliveryId: { type: DataTypes.UUID, allowNull: false },
+    subscriptionId: { type: DataTypes.UUID, allowNull: false },
+    ticketId: { type: DataTypes.STRING(120), allowNull: false },
+    status: { type: DataTypes.ENUM('pending', 'ok', 'error', 'expired'), allowNull: false, defaultValue: 'pending' },
+    errorCode: DataTypes.STRING(60),
+    checkedAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'PushReceipt', tableName: 'push_receipts', updatedAt: false }
+);
+
 // ---- M06 payments, ledger and escrow ----
 // BIGINT columns come back from pg as strings; money getters return checked numbers.
 const poisha = (field, extra = {}) => ({
@@ -1252,6 +1283,8 @@ module.exports = {
   MessageTemplate,
   NotificationDelivery,
   SmsLog,
+  PushSubscription,
+  PushReceipt,
   PlatformSetting,
   SettingsHistory,
   SettingsChangeRequest,

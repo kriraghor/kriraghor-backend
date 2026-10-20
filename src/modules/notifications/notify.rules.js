@@ -9,23 +9,30 @@ const moneyHelpers = require('../../common/money');
 
 // ---------------------------------------------------------------- categories (§6.3)
 const CATEGORIES = {
-  security: { mandatory: ['in_app', 'sms'], defaults: ['in_app', 'sms', 'email'] },
-  money: { mandatory: ['in_app', 'sms'], defaults: ['in_app', 'sms', 'email'] },
-  bookings: { mandatory: ['in_app'], defaults: ['in_app', 'sms'] },
-  hire: { mandatory: ['in_app'], defaults: ['in_app', 'sms'] },
-  orders: { mandatory: ['in_app'], defaults: ['in_app', 'sms'] },
-  offers: { mandatory: ['in_app'], defaults: ['in_app', 'sms'] },
-  tournaments: { mandatory: ['in_app'], defaults: ['in_app', 'sms'] },
-  moderation: { mandatory: ['in_app'], defaults: ['in_app', 'sms'] },
-  disputes_reports: { mandatory: ['in_app', 'sms'], defaults: ['in_app', 'sms', 'email'] },
-  reviews: { mandatory: [], defaults: ['in_app'] },
-  // M23 follow alerts: in-app only (an entry's channels all go out unless turned off, so no SMS here, Q148).
-  event_alerts: { mandatory: [], defaults: ['in_app'] },
+  security: { mandatory: ['in_app', 'sms'], defaults: ['in_app', 'sms', 'email', 'push'] },
+  money: { mandatory: ['in_app', 'sms'], defaults: ['in_app', 'sms', 'email', 'push'] },
+  bookings: { mandatory: ['in_app'], defaults: ['in_app', 'sms', 'push'] },
+  hire: { mandatory: ['in_app'], defaults: ['in_app', 'sms', 'push'] },
+  orders: { mandatory: ['in_app'], defaults: ['in_app', 'sms', 'push'] },
+  offers: { mandatory: ['in_app'], defaults: ['in_app', 'sms', 'push'] },
+  tournaments: { mandatory: ['in_app'], defaults: ['in_app', 'sms', 'push'] },
+  moderation: { mandatory: ['in_app'], defaults: ['in_app', 'sms', 'push'] },
+  disputes_reports: { mandatory: ['in_app', 'sms'], defaults: ['in_app', 'sms', 'email', 'push'] },
+  reviews: { mandatory: [], defaults: ['in_app', 'push'] },
+  // M23 follow alerts: in-app and push only (an entry's channels all go out unless turned off, so no SMS here, Q148).
+  event_alerts: { mandatory: [], defaults: ['in_app', 'push'] },
   // M16 sports teams: invites, membership and captaincy.
-  teams: { mandatory: ['in_app'], defaults: ['in_app', 'sms'] },
-  staff_ops: { mandatory: ['in_app'], defaults: ['in_app', 'email'] },
+  teams: { mandatory: ['in_app'], defaults: ['in_app', 'sms', 'push'] },
+  staff_ops: { mandatory: ['in_app'], defaults: ['in_app', 'email', 'push'] },
 };
-const CHANNELS = ['in_app', 'sms', 'email'];
+const CHANNELS = ['in_app', 'sms', 'email', 'push'];
+
+/**
+ * Push mirrors the bell: every catalogue entry that goes in-app also goes to the user's phones, with
+ * the same title and text. Push is never mandatory (the phone's own settings can block it anyway), so
+ * a user can turn it off per category. Returns the entry's channels plus 'push' when it has 'in_app'.
+ */
+const withPush = (channels) => (channels.includes('in_app') && !channels.includes('push') ? [...channels, 'push'] : channels);
 
 /**
  * Channels a notification goes out on: the catalogue entry's channels, minus those the user turned
@@ -152,6 +159,7 @@ const redactCodes = (text) => text.replace(/\b\d{4,8}\b/g, (m) => '•'.repeat(m
 module.exports = {
   CATEGORIES,
   CHANNELS,
+  withPush,
   resolveChannels,
   isMandatory,
   smsEncoding,

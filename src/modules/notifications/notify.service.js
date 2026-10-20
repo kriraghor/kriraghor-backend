@@ -19,6 +19,7 @@ const email = require('../../providers/email');
 const templates = require('./notify.templates');
 const realtime = require('./notify.realtime');
 const rules = require('./notify.rules');
+const pushSvc = require('./notify.push');
 const { emailHtml } = require('./notify.email');
 
 const DELIVER_JOB = 'notify.deliver';
@@ -68,6 +69,9 @@ async function route(entry, event, { transaction }) {
   const windowHours = settings.get('notify.dedupe_hours');
   const quietStart = settings.get('notify.quiet_hours_start');
   const quietEnd = settings.get('notify.quiet_hours_end');
+  // Push mirrors in-app, for recipients with a phone that can receive it (notify.push).
+  const offered = rules.withPush(entry.channels).filter((c) => c !== 'in_app');
+  const pushable = offered.includes('push') ? await pushSvc.reachable(userIds, { transaction }) : new Set();
   let created = 0;
 
   for (const userId of userIds) {
@@ -107,7 +111,7 @@ async function route(entry, event, { transaction }) {
 
     const userPrefs = prefs.get(userId) ?? new Map();
     const quietEnabled = userPrefs.get(`${QUIET}:sms`) !== false;
-    const channels = rules.resolveChannels({ category: entry.category, channels: entry.channels.filter((c) => c !== 'in_app'), prefs: userPrefs });
+    const channels = rules.resolveChannels({ category: entry.category, channels: offered.filter((c) => c !== 'push' || pushable.has(userId)), prefs: userPrefs });
     for (const channel of channels) {
       const at = rules.deliverAt({ now, urgent: Boolean(entry.urgent), channel, quietStart, quietEnd, quietEnabled });
       const delivery = await NotificationDelivery.create(
@@ -164,6 +168,7 @@ async function deliver({ deliveryId }, { attemptsMade = 0 } = {}) {
   const suppress = (code) => d.update({ status: 'suppressed', errorCode: code }).then(() => ({ status: 'suppressed', code }));
   // Edge case 5: inactive users get only security and money messages.
   if (!contact || (contact.status !== 'active' && !['security', 'money'].includes(n.category))) return suppress('user_inactive');
+  if (d.channel === 'push') return deliverPush(d, n, attemptsMade);
   if (d.channel === 'sms' && !contact.phone) return suppress('no_phone');
   if (d.channel === 'email' && !contact.email) return suppress('no_email');
   if (d.channel === 'sms' && !(await smsAllowed(d.userId))) {
@@ -187,6 +192,29 @@ async function deliver({ deliveryId }, { attemptsMade = 0 } = {}) {
     const last = attemptsMade + 1 >= MAX_DELIVERY_ATTEMPTS;
     await d.update({ attempts: d.attempts + 1, errorCode: String(err?.code ?? err?.message ?? 'send_failed').slice(0, 60), ...(last ? { status: 'failed' } : {}) });
     logger.warn({ deliveryId, channel: d.channel, attempt: attemptsMade + 1, err: err?.message }, last ? 'delivery failed' : 'delivery will retry');
+    throw err;
+  }
+}
+
+/**
+ * The push channel: the bell's own title and text go to the user's phones (no channel template).
+ * Accepted by the provider → sent (the receipts job marks it delivered later); no live device →
+ * suppressed; provider unreachable → retried like the other channels.
+ */
+async function deliverPush(d, n, attemptsMade) {
+  const urgent = Boolean(require('./notify.catalogue').byCode.get(n.code)?.urgent);
+  try {
+    const r = await pushSvc.send(d, n, { urgent });
+    if (r.status === 'suppressed') {
+      await d.update({ status: 'suppressed', attempts: d.attempts + 1, errorCode: r.errorCode });
+      return { status: 'suppressed', code: r.errorCode };
+    }
+    await d.update({ status: 'sent', attempts: d.attempts + 1, provider: r.provider, providerMessageId: r.messageId, sentAt: new Date(), errorCode: null });
+    return { status: 'sent' };
+  } catch (err) {
+    const last = attemptsMade + 1 >= MAX_DELIVERY_ATTEMPTS;
+    await d.update({ attempts: d.attempts + 1, errorCode: String(err?.code ?? err?.message ?? 'send_failed').slice(0, 60), ...(last ? { status: 'failed' } : {}) });
+    logger.warn({ deliveryId: d.id, channel: 'push', attempt: attemptsMade + 1, err: err?.message }, last ? 'delivery failed' : 'delivery will retry');
     throw err;
   }
 }
@@ -362,5 +390,7 @@ module.exports = {
   putPrefs,
   deliveries,
   retryDelay,
+  checkPushReceipts: (opts) => pushSvc.checkReceipts(opts),
+  push: { subscribe: pushSvc.subscribe, listDevices: pushSvc.listDevices, unsubscribe: pushSvc.unsubscribe },
   takeTestJobs: () => testJobs.splice(0, testJobs.length),
 };

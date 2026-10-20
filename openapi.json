@@ -2827,7 +2827,8 @@
                         "enum": [
                           "in_app",
                           "sms",
-                          "email"
+                          "email",
+                          "push"
                         ]
                       },
                       "enabled": {
@@ -2886,6 +2887,70 @@
           "quietHours",
           "quietWindow",
           "locale"
+        ]
+      },
+      "PushDevice": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "expo",
+              "web"
+            ]
+          },
+          "deviceLabel": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tokenTail": {
+            "type": "string",
+            "description": "The last 6 characters of the token; the token itself is never returned"
+          },
+          "current": {
+            "type": "boolean",
+            "description": "Registered by the sign-in making this request"
+          },
+          "lastUsedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "platform",
+          "deviceLabel",
+          "tokenTail",
+          "current",
+          "lastUsedAt",
+          "createdAt"
+        ]
+      },
+      "PushDeviceList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PushDevice"
+            }
+          }
+        },
+        "required": [
+          "items"
         ]
       },
       "NotificationDelivery": {
@@ -39407,7 +39472,8 @@
                           "enum": [
                             "in_app",
                             "sms",
-                            "email"
+                            "email",
+                            "push"
                           ]
                         },
                         "enabled": {
@@ -39454,6 +39520,186 @@
           },
           "422": {
             "description": "Error. Codes: VALIDATION_FAILED, PREF_MANDATORY",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/push-subscriptions": {
+      "post": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Register this phone's push token (the mobile app; idempotent per token: 201 new, 200 already registered)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 200,
+                    "description": "The Expo push token from expo-notifications, e.g. ExponentPushToken[…]"
+                  },
+                  "platform": {
+                    "type": "string",
+                    "enum": [
+                      "expo"
+                    ]
+                  },
+                  "deviceLabel": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80,
+                    "description": "Shown in the device list, e.g. \"Galaxy A54\""
+                  }
+                },
+                "required": [
+                  "token",
+                  "platform"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushDevice"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushDevice"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Phones that get push notifications (tokens are never returned)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushDeviceList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/push-subscriptions/{id}": {
+      "delete": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Stop push notifications to one phone (the app calls this before signing out)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No content"
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
             "content": {
               "application/problem+json": {
                 "schema": {

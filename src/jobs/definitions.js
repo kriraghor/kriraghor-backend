@@ -125,6 +125,13 @@ const JOBS = [
     every: 60 * 60 * 1000,
     run: async () => notify.dlrTimeout(),
   },
+  {
+    // M08 push: ask the provider how accepted pushes ended; dead tokens (app removed) are revoked.
+    name: 'notify.push-receipts',
+    queue: QUEUES.NOTIFY,
+    every: 5 * 60 * 1000,
+    run: async () => notify.checkPushReceipts(),
+  },
 
   // ---------------- M06 payments (§10). Each is idempotent: status guards and ledger idempotency keys.
   {

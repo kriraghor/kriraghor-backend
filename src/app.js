@@ -89,6 +89,7 @@ function createApp() {
   api.use('/auth', authRoutes);
   api.use('/me/notifications', notifyRoutes.meRouter);
   api.use('/me/notification-prefs', notifyRoutes.prefsRouter);
+  api.use('/me/push-subscriptions', notifyRoutes.pushRouter);
   api.use('/me/payments', paymentRoutes.meRouter);
   api.use('/me/payout-accounts', payoutRoutes.meAccounts);
   api.use('/me/payouts', payoutRoutes.mePayouts);
