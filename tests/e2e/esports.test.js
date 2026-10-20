@@ -457,8 +457,10 @@ describe('results, disputes and prizes (FR-18 to FR-25, §6.5)', () => {
     // Rankings and the public player page.
     const lb = await api().get(`${P}/esports/leaderboards?game=free_fire`).expect(200);
     expect(lb.body.items[0]).toMatchObject({ rank: 1, userId: p1.user.id });
+    const winnings = await api().get(`${P}/me/esports/winnings`).set(h.bearer(p1)).expect(200);
+    expect(winnings.body).toMatchObject({ available: { amount: 11000 }, totalWon: { amount: 11000 } });
 
-    // Q161: a suspended player leaves the leaderboard and top players, and the ranks renumber; a
+    // Q161 (suspending ends p1's sessions, so p1's own calls come before it): a suspended player leaves the leaderboard and top players, and the ranks renumber; a
     // restore brings them back. Their tournament history stays.
     const board = async () => (await api().get(`${P}/esports/leaderboards?game=free_fire`).expect(200)).body.items;
     const top = async () => (await api().get(`${P}/esports/top-players`).expect(200)).body.items ?? [];
@@ -471,8 +473,6 @@ describe('results, disputes and prizes (FR-18 to FR-25, §6.5)', () => {
     await api().post(`${P}/admin/users/${p1.user.id}/restore`).set(h.bearer(master)).send({ note: 'Q161 ranking check done' }).expect(200);
     await h.drainEvents();
     expect((await board())[0]).toMatchObject({ rank: 1, userId: p1.user.id });
-    const winnings = await api().get(`${P}/me/esports/winnings`).set(h.bearer(p1)).expect(200);
-    expect(winnings.body).toMatchObject({ available: { amount: 11000 }, totalWon: { amount: 11000 } });
 
     // Disqualified after credit (Q123): the unwithdrawn prize is taken back as revenue; nobody is moved up.
     await api().post(`${P}/admin/esports/registrations/${p1.reg.id}/disqualify`).set(h.bearer(master)).send({ reasonCode: 'cheating', note: 'Emulator in a mobile lobby', userId: p1.user.id, banUid: true }).expect(200);
