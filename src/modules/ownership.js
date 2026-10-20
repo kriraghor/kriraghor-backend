@@ -52,6 +52,9 @@ const OWNERS = {
   'teams': ['Team', 'TeamMember', 'TeamInvite', 'PlayerProfile', 'Roster', 'RosterPlayer', 'EligibilityCheck'],
   'tournaments': ['Tournament', 'TournamentRules', 'TournamentVenue', 'Stage', 'Group', 'GroupTeam', 'Registration', 'Match', 'Standing'],
   'scoring': ['MatchResult'],
+  // Not a module: the demo seeder (scripts/demo) owns its bookkeeping table. It has no group, so any
+  // module that reads or writes it fails the boundary test.
+  'scripts/demo': ['DemoRecord'],
 };
 
 const groupOf = Object.fromEntries(Object.entries(GROUPS).flatMap(([g, ms]) => ms.map((m) => [m, g])));
