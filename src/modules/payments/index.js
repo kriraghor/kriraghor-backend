@@ -18,7 +18,7 @@ const lazy = (file, names, constants = []) => {
 
 module.exports = {
   /** Payment intents: create and cancel what a payer pays, and where they pay it. */
-  intents: lazy('./payments.service', ['createIntent', 'cancelIntent', 'payUrl', 'facts']),
+  intents: lazy('./payments.service', ['createIntent', 'cancelIntent', 'payUrl', 'facts', 'paymentFact', 'exportPaymentFacts', 'payeeRefundStats']),
 
   /** Purpose hooks: a module registers what happens when its payments are captured or closed. */
   purposes: lazy('./payments.purposes', ['register'], ['PURPOSES']),
@@ -47,7 +47,7 @@ module.exports = {
   fees: lazy('./fee.service', ['snapshot', 'accrueReceivable', 'reverseReceivable']),
 
   /** Ledger reads; post and reverse are for the payment group (payouts) only. */
-  ledger: lazy('./ledger.service', ['balance', 'payableEntries', 'transactionsFor', 'post', 'reverse']),
+  ledger: lazy('./ledger.service', ['balance', 'payableEntries', 'transactionsFor', 'feeFact', 'exportFeeFacts', 'post', 'reverse']),
 
   /** Ledger invariants other modules add (checked by the payments invariants job). */
   invariants: lazy('./invariants.service', ['register']),

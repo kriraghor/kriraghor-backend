@@ -25,6 +25,12 @@ describe('module boundaries (ADR-007)', () => {
     expect([...baseline].filter((v) => !current.has(v))).toEqual([]);
   });
 
+  it('calls only what a module index exposes, and every exposed name exists (lazy facades fail late otherwise)', () => {
+    const { missingCalls, deadNames } = require('./facades.scan');
+    expect(missingCalls()).toEqual([]);
+    expect(deadNames()).toEqual([]);
+  });
+
   it('gives every module a group and every model an owner', () => {
     const fs = require('fs');
     const path = require('path');

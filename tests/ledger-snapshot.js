@@ -17,6 +17,8 @@ const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 const mask = (s) => String(s).replace(UUID, '*');
 
 afterEach(async () => {
+  // Unit tests post nothing and some mock or close the database: only end-to-end tests are recorded.
+  if (!/[\\/]e2e[\\/]/.test(expect.getState().testPath ?? '')) return;
   const { sequelize } = require('../src/models');
   const [rows] = await sequelize.query(
     `SELECT t.id AS txn, t.posted_at, t.kind, t.ref_type, t.total_poisha, a.code, e.debit_poisha, e.credit_poisha
