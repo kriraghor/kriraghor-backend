@@ -172,8 +172,8 @@ async function update(principal, id, body, req) {
 async function checksFor(organisationId, { transaction } = {}) {
   const o = await Organisation.findByPk(organisationId, { transaction });
   if (!o) return [];
-  const organiserRole = await users.roleStatus(o.ownerUserId, 'organiser', { transaction });
-  const role = (r) => (r === 'organiser' ? organiserRole : null);
+  const statuses = { organiser: await users.roleStatus(o.ownerUserId, 'organiser', { transaction }), member: await users.roleStatus(o.ownerUserId, 'member', { transaction }) };
+  const role = (r) => statuses[r] ?? null;
   const [similar] = await sequelize.query("SELECT COUNT(*)::int AS n FROM organisations WHERE id <> :id AND status IN ('verified', 'pending_review', 'suspended') AND similarity(lower(name), lower(:name)) > 0.8", {
     replacements: { id: o.id, name: o.name },
     transaction,
