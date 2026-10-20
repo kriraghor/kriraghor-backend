@@ -46,6 +46,10 @@ function registerEsportsConsumers() {
   for (const name of ['user.suspended', 'user.banned']) {
     onEvent(name, `esports.sanction-${name.split('.')[1]}`, (e, { transaction }) => require('./registrations.service').withdrawForSanction(e.payload.userId, { transaction }));
   }
+  // Q161: leaderboards and top players rank only active accounts; a sanction or a restore rebuilds them.
+  for (const name of ['user.suspended', 'user.banned', 'user.restored']) {
+    onEvent(name, `esports.rankings-${name.split('.')[1]}`, (e, { transaction }) => require('./rankings.service').recomputeForPlayer(e.payload.userId, { transaction }));
+  }
 }
 
 module.exports = { registerEsportsConsumers };

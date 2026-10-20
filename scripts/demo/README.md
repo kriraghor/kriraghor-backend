@@ -43,6 +43,6 @@ Local needs: PostgreSQL, Redis and the S3 container from `docker compose up -d` 
 3. Suspends the demo accounts. The existing `user.suspended` consumers then pause their venues, gyms, shops and hire profiles.
 4. Offboards the demo reviewer.
 
-In the full local profile, the six finished esports events stay as history. Once Q161 is merged, their suspended players also leave the leaderboards and top players.
+In the full local profile, the six finished esports events stay as history, and their suspended players leave the leaderboards and top players (Q161).
 
 Hidden demo data stays hidden: the seeder notices the suspended demo accounts and does nothing. To show it again, restore those accounts on the admin desk.
