@@ -17,7 +17,7 @@ module.exports = {
     q: z.string().trim().min(2).max(100).optional(),
     status: z.enum(['active', 'suspended', 'banned', 'closed']).optional(),
     role: z.enum(ROLE_LIST).optional(),
-    roleStatus: z.enum(ROLE_STATUS_LIST.concat(['documents_pending', 'withdrawn'])).optional(),
+    roleStatus: z.enum(ROLE_STATUS_LIST).optional(),
     limit: z.coerce.number().int().min(1).max(100).default(20),
     cursor: z.string().max(200).optional(),
   }),

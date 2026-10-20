@@ -58,3 +58,21 @@ describe('gate: book_ground needs only a verified phone (M10, 17 Oct 2026)', () 
     expect(gate.evaluateAction(p({ phone: '+8801711000001', phoneVerifiedAt: new Date() }), 'book_ground')).toEqual({ allowed: true }));
   it('asks for a phone otherwise', () => expect(gate.evaluateAction(p({ phone: null }), 'book_ground').code).toBe('PHONE_REQUIRED'));
 });
+
+describe('M01 role statuses: one list for code, API and database', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const { ROLE_STATUS_LIST } = require('../../src/common/enums');
+
+  it('the shared list holds every status the user_roles CHECK allows', () => {
+    const migration = fs.readFileSync(path.join(__dirname, '../../src/db/migrations/20261012000001-create-identity-tables.js'), 'utf8');
+    const inDb = JSON.parse(migration.match(/const ROLE_STATUS = (\[[^\]]+\])/)[1].replace(/'/g, '"'));
+    expect([...ROLE_STATUS_LIST].sort()).toEqual([...inDb].sort());
+  });
+
+  it('the admin filter and the OpenAPI role object accept documents_pending and withdrawn', () => {
+    const { ROLE_STATUS } = require('../../src/common/enums');
+    expect(ROLE_STATUS.DOCUMENTS_PENDING).toBe('documents_pending');
+    expect(ROLE_STATUS.WITHDRAWN).toBe('withdrawn');
+  });
+});

@@ -18,13 +18,16 @@ const ROLE_LIST = Object.values(ROLES);
 const SELF_SERVICE_ROLES = [ROLES.PLAYER, ROLES.PRO, ROLES.GROUND_OWNER, ROLES.SHOP_OWNER, ROLES.ORGANISER, ROLES.GYM_OWNER];
 const ADMIN_ROLES = [ROLES.STAFF, ROLES.MASTER_ADMIN];
 
+// Every status a user_roles row can have (the table's CHECK, models ROLE_STATUSES).
 const ROLE_STATUS = Object.freeze({
   APPLIED: 'applied',
+  DOCUMENTS_PENDING: 'documents_pending',
   IN_REVIEW: 'in_review',
   ACTIVE: 'active',
   CHANGES_REQUESTED: 'changes_requested',
   REJECTED: 'rejected',
   SUSPENDED: 'suspended',
+  WITHDRAWN: 'withdrawn',
 });
 const ROLE_STATUS_LIST = Object.values(ROLE_STATUS);
 

@@ -26,7 +26,7 @@ const Problem = z
 const UserRole = z
   .object({
     role: z.enum(ROLE_LIST),
-    status: z.enum(ROLE_STATUS_LIST.concat(['documents_pending', 'withdrawn'])),
+    status: z.enum(ROLE_STATUS_LIST),
     meta: z.record(z.string(), z.unknown()).nullable(),
     appliedAt: nullableDateTime,
     activatedAt: nullableDateTime,
