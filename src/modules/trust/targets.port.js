@@ -29,11 +29,11 @@ function register(sourceType, impl) {
 function ensure() {
   if (loaded) return;
   loaded = true;
-  require('../bookings/bookings.disputes').register();
-  require('../esports/esports.disputes').register();
-  require('../orders/orders.disputes').register();
-  require('../hire/hire.disputes').register();
-  require('../gym/gym.disputes').register();
+  require('../bookings').disputes.register();
+  require('../esports').disputes.register();
+  require('../orders').disputes.register();
+  require('../hire').disputes.register();
+  require('../gym').disputes.register();
 }
 
 function get(sourceType) {

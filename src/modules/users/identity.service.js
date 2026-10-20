@@ -2,12 +2,12 @@
 
 const { User, OAuthIdentity, sequelize } = require('../../models');
 const { E } = require('../../common/errors');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
-const otp = require('../auth/otp.service');
+const audit = require('../audit').audit;
+const events = require('../events').events;
+const otp = require('../auth').otp;
 const google = require('../../providers/google');
 const { AppError } = require('../../common/errors');
-const authz = require('../auth/authz.service');
+const authz = require('../auth').authz;
 const { normalizePhone } = require('../../common/identifiers');
 
 /** Set or change the username. */

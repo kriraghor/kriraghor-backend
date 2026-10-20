@@ -7,7 +7,7 @@
  */
 const { Op } = require('sequelize');
 const { HireRequest, HireJob, HireProfile } = require('../../models');
-const taxonomy = require('../catalog/hire.reads');
+const taxonomy = require('../catalog').hireReads;
 const c = require('./hire.common');
 
 const earliest = (rows, key) => rows.reduce((m, r) => (r[key] && (!m || r[key] < m) ? r[key] : m), null);

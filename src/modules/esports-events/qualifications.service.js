@@ -15,8 +15,8 @@
 const { UniqueConstraintError } = require('sequelize');
 const { E } = require('../../common/errors');
 const models = require('../../models');
-const audit = require('../audit/audit.service');
-const reads = require('../esports/esports.reads');
+const audit = require('../audit').audit;
+const reads = require('../esports').reads;
 const rules = require('./events.rules');
 const c = require('./events.common');
 const feed = require('./feed.service');

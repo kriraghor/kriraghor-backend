@@ -3,10 +3,10 @@
 /**
  * M14 lite on M05: kind `organisation` for staff with approve_listings (masters see all). The owner's
  * organiser role (documents approved) is a locked check: no override. Consumers apply the decisions.
- * Registered once per process (subscriptions.registerAll).
+ * Registered once per process (registry.registerAll).
  */
-const adapters = require('../moderation/moderation.adapters');
-const { onEvent } = require('../events/events.consumers');
+const adapters = require('../moderation').adapters;
+const { onEvent } = require('../events').consumers;
 
 adapters.register({
   kind: 'organisation',

@@ -2,10 +2,10 @@
 
 /**
  * M23 → M21: the entry-policy hooks (invite-only finals) and the consumers of M21's outbox events.
- * Loaded once per process (subscriptions.registerAll) and by the M23 routes.
+ * Loaded once per process (registry.registerAll) and by the M23 routes.
  */
-const { onEvent } = require('../events/events.consumers');
-const { registerEntryPolicy } = require('../esports/esports.common');
+const { onEvent } = require('../events').consumers;
+const { registerEntryPolicy } = require('../esports').common;
 const qualifications = require('./qualifications.service');
 
 registerEntryPolicy({ entryBlock: qualifications.entryBlock, onEntered: qualifications.onEntered });

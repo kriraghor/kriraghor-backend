@@ -9,7 +9,7 @@
  */
 const logger = require('../../common/logger');
 const { sequelize, OutboxEvent } = require('../../models');
-const settings = require('../settings/settings.service');
+const settings = require('../settings').settings;
 const { backoffMs } = require('./events.backoff');
 const consumers = require('./events.consumers');
 

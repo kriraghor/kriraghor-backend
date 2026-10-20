@@ -14,15 +14,16 @@
  */
 const { Op } = require('sequelize');
 const { E } = require('../../common/errors');
-const { sequelize, HireProfile, RateCard, RateCardItem, Area } = require('../../models');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
-const moderation = require('../moderation/moderation.service');
-const authz = require('../auth/authz.service');
-const directory = require('../users/directory.service');
-const kyc = require('../kyc/kyc.service');
-const taxonomy = require('../catalog/hire.reads');
-const { slugify } = require('../market/market.rules');
+const { sequelize, HireProfile, RateCard, RateCardItem } = require('../../models');
+const { Area } = require('../catalog').reference;
+const audit = require('../audit').audit;
+const events = require('../events').events;
+const moderation = require('../moderation').moderation;
+const authz = require('../auth').authz;
+const directory = require('../users').directory;
+const kyc = require('../kyc').kyc;
+const taxonomy = require('../catalog').hireReads;
+const { slugify } = require('../../common/identifiers');
 const rules = require('./hire.rules');
 const c = require('./hire.common');
 

@@ -21,13 +21,13 @@ const { AppError, E } = require('../../common/errors');
 const { nextCode } = require('../../common/sequences');
 const logger = require('../../common/logger');
 const { sequelize, Payout, PayoutItem, PayoutBatch, PayoutApproval, PayoutReveal, PayoutAccount } = require('../../models');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
-const settings = require('../settings/settings.service');
-const directory = require('../users/directory.service');
-const ledger = require('../payments/ledger.service');
-const purposes = require('../payments/payments.purposes');
-const invariants = require('../payments/invariants.service');
+const audit = require('../audit').audit;
+const events = require('../events').events;
+const settings = require('../settings').settings;
+const directory = require('../users').directory;
+const ledger = require('../payments').ledger;
+const purposes = require('../payments').purposes;
+const invariants = require('../payments').invariants;
 const accounts = require('./payout-accounts.service');
 const holds = require('./holds.service');
 const rules = require('./payouts.rules');
@@ -120,8 +120,8 @@ async function describe(entry) {
   if (entry.source === 'pool') return 'Esports prize';
   if (entry.source === 'escrow_hold') {
     try {
-      const hold = await require('../payments/escrow.service').getOne(entry.sourceId);
-      const p = await require('../payments/payments.service').facts(hold.paymentId);
+      const hold = await require('../payments').escrow.getOne(entry.sourceId);
+      const p = await require('../payments').intents.facts(hold.paymentId);
       return `${p.title} (${p.code})`.slice(0, 200);
     } catch {
       return 'Released payment';
@@ -488,7 +488,7 @@ async function markPaid(actor, id, { reference, note }, req) {
       { transaction }
     );
     await p.update({ status: 'paid', providerRef: reference, paidBy: actor.id, paidAt: new Date(), ledgerTxnIds: [...p.ledgerTxnIds, posted.id] }, { transaction });
-    if (p.kind === 'refund') await require('../payments/refunds.service').settleManually(p.refundId, { payoutCode: p.code }, { transaction });
+    if (p.kind === 'refund') await require('../payments').refunds.settleManually(p.refundId, { payoutCode: p.code }, { transaction });
     const account = await accountOf(p, transaction);
     await events.publish(transaction, {
       name: 'payout.paid',

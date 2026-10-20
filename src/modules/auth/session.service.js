@@ -5,8 +5,8 @@ const { Op } = require('sequelize');
 const { Session, sequelize } = require('../../models');
 const { sha256, randomToken } = require('../../common/crypto');
 const { E } = require('../../common/errors');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
+const audit = require('../audit').audit;
+const events = require('../events').events;
 
 // Admin sessions (ADR-004) live auth.admin_refresh_ttl_hours; customer sessions auth.refresh_ttl_days.
 const { refreshTtlMs } = require('./limits');

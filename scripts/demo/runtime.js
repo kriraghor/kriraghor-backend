@@ -31,7 +31,7 @@ async function boot(opts) {
   profile = opts.profile;
   runId = `demo-${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')}-${crypto.randomBytes(2).toString('hex')}`;
   await settings.load();
-  require('../../src/modules/events/subscriptions').registerAll();
+  require('../../src/modules/registry').registerAll();
   consumers.useDispatcher((job) => {
     jobs.push(job);
     return Promise.resolve();

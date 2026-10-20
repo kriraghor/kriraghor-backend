@@ -19,10 +19,10 @@ const { Op, UniqueConstraintError } = require('sequelize');
 const { E } = require('../../common/errors');
 const { nextCode } = require('../../common/sequences');
 const { sequelize, Dispute, DisputeEvidence } = require('../../models');
-const settings = require('../settings/settings.service');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
-const authz = require('../auth/authz.service');
+const settings = require('../settings').settings;
+const audit = require('../audit').audit;
+const events = require('../events').events;
+const authz = require('../auth').authz;
 const targets = require('./targets.port');
 const evidence = require('./evidence.service');
 const { fail } = require('./trust.errors');
@@ -346,7 +346,7 @@ async function staffView(actor, d) {
   const rows = await DisputeEvidence.findAll({ where: { disputeId: d.id }, order: [['createdAt', 'ASC']] });
   const now = new Date();
   const claimed = rules.claimHeld({ ...d.get(), now });
-  const names = await require('../users/directory.service').publicNames([d.claimantId, d.respondentId, d.claimedBy, d.decidedBy, d.recommendedBy, ...rows.map((e) => e.authorId)]);
+  const names = await require('../users').directory.publicNames([d.claimantId, d.respondentId, d.claimedBy, d.decidedBy, d.recommendedBy, ...rows.map((e) => e.authorId)]);
   const who = (id) => (id ? { id, displayName: names.get(id)?.displayName ?? null } : null);
   return {
     dispute: {

@@ -3,7 +3,7 @@
 const { Router } = require('express');
 const { validate } = require('../../common/validate');
 const { authenticate } = require('../../middlewares/auth');
-const authz = require('../auth/authz.service');
+const authz = require('../auth').authz;
 const service = require('./users.service');
 const identity = require('./identity.service');
 const limits = require('../../middlewares/rateLimit');

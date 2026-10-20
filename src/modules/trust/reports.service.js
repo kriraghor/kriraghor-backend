@@ -15,11 +15,11 @@ const { Op, UniqueConstraintError } = require('sequelize');
 const { E } = require('../../common/errors');
 const { nextCode } = require('../../common/sequences');
 const { sequelize, Report } = require('../../models');
-const settings = require('../settings/settings.service');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
-const authz = require('../auth/authz.service');
-const directory = require('../users/directory.service');
+const settings = require('../settings').settings;
+const audit = require('../audit').audit;
+const events = require('../events').events;
+const authz = require('../auth').authz;
+const directory = require('../users').directory;
 const reviews = require('./reviews.service');
 const { fail } = require('./trust.errors');
 const rules = require('./trust.rules');
@@ -36,13 +36,13 @@ const OPEN = ['open', 'escalated'];
  */
 const SUBJECTS = {
   async ground(id) {
-    const g = await require('../grounds/grounds.reads').ground(id);
+    const g = await require('../grounds').reads.ground(id);
     if (!g || g.status === 'removed') return null;
-    const f = await require('../grounds/grounds.service').facts(id);
+    const f = await require('../grounds').grounds.facts(id);
     return { owners: [g.ownerId], suspendable: g.ownerId, summary: { name: f.name, slug: f.slug, status: g.status } };
   },
   async booking(id, reporterId) {
-    const b = await require('../bookings/bookings.reads').reviewSource(id);
+    const b = await require('../bookings').reads.reviewSource(id);
     if (!b || (reporterId && ![b.bookerUserId, b.ownerId].includes(reporterId))) return null;
     return { owners: [], suspendable: null, summary: { code: b.code, status: b.status, start: iso(b.start), groundId: b.groundId } };
   },
@@ -58,17 +58,17 @@ const SUBJECTS = {
   },
   // M12: a shop or a shop product; taking it down suspends it (M12), suspending hits the shop owner.
   async shop(id) {
-    const s = await require('../market/market.reads').shop(id);
+    const s = await require('../market').reads.shop(id);
     if (!s) return null;
     return { owners: [s.ownerId], suspendable: s.ownerId, summary: { name: s.name, slug: s.slug, status: s.status } };
   },
   async product(id) {
-    const p = await require('../market/market.reads').product(id);
+    const p = await require('../market').reads.product(id);
     if (!p) return null;
     return { owners: [p.ownerId], suspendable: p.ownerId, summary: { title: p.title, slug: p.slug, status: p.status, shopId: p.shopId } };
   },
   async esports_tournament(id) {
-    const t = await require('../esports/esports.facts').tournament(id).catch(() => null);
+    const t = await require('../esports').facts.tournament(id).catch(() => null);
     if (!t) return null;
     return { owners: [], suspendable: null, summary: { slug: t.slug ?? null, title: t.titleEn ?? null, status: t.status ?? null } };
   },
@@ -194,10 +194,10 @@ async function resolve(actor, { subjectType, subjectId, action, note }, req) {
       const rv = await reviews.lockReview(subjectId, transaction);
       if (rv.status === 'hidden' && rv.hiddenReason === 'reports') await reviews.restoreInTx(rv, { actor, transaction });
     }
-    if (subjectType === 'ground' && action === 'content_removed') await require('../grounds/grounds.service').staffActionInTx(actor, subjectId, 'suspend', { reason: note, transaction, req });
-    if (subjectType === 'shop' && action === 'content_removed') await require('../market/shops.service').staffActionInTx(actor, subjectId, 'suspend', { reason: note, transaction, req });
-    if (subjectType === 'product' && action === 'content_removed') await require('../market/products.service').staffActionInTx(actor, subjectId, 'suspend', { reason: note, transaction, req });
-    if (action === 'user_suspended') await require('../admin/admin-users.service').suspendInTx(actor, subject.suspendable, { reasonCode: 'reported', note }, { transaction, req });
+    if (subjectType === 'ground' && action === 'content_removed') await require('../grounds').grounds.staffActionInTx(actor, subjectId, 'suspend', { reason: note, transaction, req });
+    if (subjectType === 'shop' && action === 'content_removed') await require('../market').shops.staffActionInTx(actor, subjectId, 'suspend', { reason: note, transaction, req });
+    if (subjectType === 'product' && action === 'content_removed') await require('../market').products.staffActionInTx(actor, subjectId, 'suspend', { reason: note, transaction, req });
+    if (action === 'user_suspended') await require('../admin').adminUsers.suspendInTx(actor, subject.suspendable, { reasonCode: 'reported', note }, { transaction, req });
     const now = new Date();
     await Report.update({ status: 'resolved', resolutionAction: action, resolutionNote: note, resolvedBy: actor.id, resolvedAt: now }, { where: { id: open.map((r) => r.id) }, transaction });
     await publish(transaction, 'report.resolved', { subjectType, subjectId, subjectOwnerId: subject.suspendable ?? null, action, reports: open.length, reporterIds: [...new Set(open.map((r) => r.reporterId))] }, actor);

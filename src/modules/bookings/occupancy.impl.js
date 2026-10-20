@@ -15,11 +15,11 @@ const { Op } = require('sequelize');
 const { sequelize, Booking, BookingSlot } = require('../../models');
 const { nextCode } = require('../../common/sequences');
 const { feeOf } = require('../../common/money');
-const occupancyPort = require('../grounds/occupancy.port');
-const reads = require('../grounds/grounds.reads');
-const pr = require('../grounds/pricing.rules');
-const grules = require('../grounds/grounds.rules');
-const fees = require('../payments/fee.service');
+const occupancyPort = require('../grounds').occupancyPort;
+const reads = require('../grounds').reads;
+const pr = require('../grounds').pricingRules;
+const grules = require('../grounds').rules;
+const fees = require('../payments').fees;
 const c = require('./bookings.common');
 const rules = require('./bookings.rules');
 

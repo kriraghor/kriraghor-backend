@@ -21,7 +21,7 @@ const settingsRoutes = require('./modules/settings/settings.routes');
 const catalogRoutes = require('./modules/catalog/catalog.routes');
 const auditRoutes = require('./modules/audit/audit.routes');
 const eventsRoutes = require('./modules/events/events.routes');
-const subscriptions = require('./modules/events/subscriptions');
+const registry = require('./modules/registry');
 const notifyRoutes = require('./modules/notifications/notify.routes');
 const paymentRoutes = require('./modules/payments/payments.routes');
 const payoutRoutes = require('./modules/payouts/payouts.routes');
@@ -47,7 +47,7 @@ const allowedOrigin = compile([...config.corsOrigins, ...config.adminOrigins]);
 
 function createApp() {
   // Event consumers are known to every process (replay checks here, delivery in the worker).
-  subscriptions.registerAll();
+  registry.registerAll();
   const app = express();
   app.disable('x-powered-by');
   // Number of proxy hops (Cloudflare + ingress-nginx) so req.ip is the real client for rate limits.

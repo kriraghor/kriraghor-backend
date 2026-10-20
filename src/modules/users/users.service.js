@@ -3,12 +3,12 @@
 const { UserRole, sequelize } = require('../../models');
 const { E } = require('../../common/errors');
 const { SELF_SERVICE_ROLES } = require('../../common/enums');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
-const passwords = require('../auth/password');
-const sessions = require('../auth/session.service');
-const authz = require('../auth/authz.service');
-const gate = require('../auth/gate.service');
+const audit = require('../audit').audit;
+const events = require('../events').events;
+const passwords = require('../auth').password;
+const sessions = require('../auth').session;
+const authz = require('../auth').authz;
+const gate = require('../auth').gate;
 
 async function updateProfile(principal, { displayName, locale, lastPanelRole }, req) {
   const { user } = principal;

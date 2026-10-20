@@ -17,8 +17,8 @@ const { Op } = require('sequelize');
 const { E } = require('../../common/errors');
 const realtime = require('../../common/realtime');
 const models = require('../../models');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
+const audit = require('../audit').audit;
+const events = require('../events').events;
 const { fail, setting, rooms } = require('./esports.common');
 const rules = require('./esports.rules');
 
@@ -287,7 +287,7 @@ async function dispute(principal, matchId, { reason, evidenceIds = [] }, req) {
     if (open) throw fail('ESPORTS_DISPUTE_LIMIT');
     const d = await EsportsResultDispute.create({ matchId: m.id, registrationId: regId, raisedBy: principal.user.id, reason, evidenceIds }, { transaction });
     if (m.status === 'results_pending') await m.update({ status: 'disputed' }, { transaction });
-    const kase = await require('../trust/disputes.service').openFromSource(
+    const kase = await require('../trust').disputes.openFromSource(
       {
         sourceType: 'esports_result',
         sourceId: d.id,
@@ -356,7 +356,7 @@ async function resolveInTx(actor, disputeId, { outcome, rows = [], note }, { tra
  * esports desk; it decides the M17 case, which calls resolveInTx.
  */
 async function resolve(actor, disputeId, { outcome, rows = [], note }, req) {
-  await require('../trust/disputes.service').decideForSource(actor, 'esports_result', disputeId, { outcome, rows, reason: note }, req);
+  await require('../trust').disputes.decideForSource(actor, 'esports_result', disputeId, { outcome, rows, reason: note }, req);
   return serializeDispute(await EsportsResultDispute.findByPk(disputeId));
 }
 

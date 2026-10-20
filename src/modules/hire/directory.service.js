@@ -9,11 +9,12 @@
  */
 const { Op } = require('sequelize');
 const { E } = require('../../common/errors');
-const { HireProfile, HireJob, HireShortlist, Area } = require('../../models');
-const directory = require('../users/directory.service');
-const authz = require('../auth/authz.service');
-const kyc = require('../kyc/kyc.service');
-const taxonomy = require('../catalog/hire.reads');
+const { HireProfile, HireJob, HireShortlist } = require('../../models');
+const { Area } = require('../catalog').reference;
+const directory = require('../users').directory;
+const authz = require('../auth').authz;
+const kyc = require('../kyc').kyc;
+const taxonomy = require('../catalog').hireReads;
 const profiles = require('./profiles.service');
 const rules = require('./hire.rules');
 const c = require('./hire.common');

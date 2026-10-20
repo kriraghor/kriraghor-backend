@@ -18,12 +18,12 @@ const { requireIdempotencyKey } = require('../../common/idempotency');
 const { PERMISSIONS } = require('../../common/enums');
 const { authenticate, authenticateAdmin, requireStaff, requireAnyPermission, requireMaster, requireStepUp } = require('../../middlewares/auth');
 const limits = require('../../middlewares/rateLimit');
-const { requireOrgRole } = require('../organisations/organisations.guard');
+const { requireOrgRole } = require('../organisations').guard;
 require('./tournaments.moderation'); // the M05 adapter loads with the routes
 const tournaments = require('./tournaments.service');
 const registrations = require('./registrations.service');
 const fixtures = require('./fixtures.service');
-const results = require('../scoring/results.service');
+const results = require('../scoring').results;
 const s = require('./tournaments.schemas');
 
 // ---------------- the organiser console

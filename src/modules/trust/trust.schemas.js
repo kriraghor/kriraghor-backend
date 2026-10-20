@@ -4,7 +4,7 @@
  * M17 request and response schemas (zod → validation and OpenAPI). Money in poisha; times ISO.
  */
 const { z } = require('zod');
-const esS = require('../esports/esports.schemas');
+const esS = require('../esports').schemas;
 
 const id = z.uuid();
 const poisha = z.number().int().nonnegative();

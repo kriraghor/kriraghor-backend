@@ -17,7 +17,7 @@ const { AppError } = require('../../common/errors');
 const { toPoisha } = require('../../common/money');
 const { uuid7 } = require('../../common/uuid7');
 const { sequelize, LedgerAccount, LedgerTransaction, LedgerEntry } = require('../../models');
-const events = require('../events/events.service');
+const events = require('../events').events;
 const rules = require('./ledger.rules');
 
 const insufficient = (code, balance, needed) =>

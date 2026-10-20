@@ -8,7 +8,7 @@
 const { Op, UniqueConstraintError } = require('sequelize');
 const storage = require('../../common/storage');
 const { sequelize, Cart, CartItem } = require('../../models');
-const reads = require('../market/market.reads');
+const reads = require('../market').reads;
 const rules = require('./orders.rules');
 const c = require('./orders.common');
 

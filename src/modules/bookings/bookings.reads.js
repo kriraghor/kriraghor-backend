@@ -15,8 +15,8 @@
  */
 const { Op } = require('sequelize');
 const { Booking } = require('../../models');
-const reads = require('../grounds/grounds.reads');
-const pr = require('../grounds/pricing.rules');
+const reads = require('../grounds').reads;
+const pr = require('../grounds').pricingRules;
 const rules = require('./bookings.rules');
 
 const PLAYED = ['checked_in', 'completed'];
@@ -25,7 +25,7 @@ async function facts(bookingId) {
   const b = await Booking.findByPk(bookingId);
   if (!b) return null;
   const g = await reads.ground(b.groundId);
-  const groundName = await require('../grounds/grounds.service').facts(b.groundId).then((f) => f?.name ?? '');
+  const groundName = await require('../grounds').grounds.facts(b.groundId).then((f) => f?.name ?? '');
   return {
     code: b.code,
     groundName,

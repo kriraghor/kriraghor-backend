@@ -13,8 +13,8 @@
 const { Op } = require('sequelize');
 const { AppError, E } = require('../../common/errors');
 const { sequelize, EscrowHold } = require('../../models');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
+const audit = require('../audit').audit;
+const events = require('../events').events;
 const logger = require('../../common/logger');
 const ledger = require('./ledger.service');
 const lrules = require('./ledger.rules');
@@ -42,6 +42,11 @@ const holdIdForPayment = async (paymentId, { splitRef = null } = {}) =>
 /** The hold opened for a captured payment (or one of its splits, M13), locked; null when it never captured. */
 async function lockHoldForPayment(paymentId, transaction, { splitRef = null } = {}) {
   return EscrowHold.findOne({ where: { paymentId, ...(splitRef ? { splitRef } : {}) }, order: [['createdAt', 'ASC']], transaction, lock: transaction.LOCK.UPDATE });
+}
+
+/** Every hold of a purpose that still holds money, locked for update (oldest first). */
+async function lockOpenHoldsForPurpose(purpose, transaction) {
+  return EscrowHold.findAll({ where: { purpose, status: ['holding', 'partially_released'] }, order: [['createdAt', 'ASC']], transaction, lock: transaction.LOCK.UPDATE });
 }
 
 /**
@@ -419,4 +424,5 @@ async function getOne(id) {
 }
 
 module.exports = { openHold,
-  openHolds, holdIdForPayment, lockHoldForPayment, releaseInTx, releaseManually, takeForRefund, freeze, unfreeze, freezeInTx, unfreezeInTx, releaseDue, settlePool, settleOrganiserPool, collectToRevenueInTx, reverseToOrganiser, reversePoolCredit, list, getOne, serialize, lockHold };
+  openHolds, holdIdForPayment, lockHoldForPayment,
+  lockOpenHoldsForPurpose, releaseInTx, releaseManually, takeForRefund, freeze, unfreeze, freezeInTx, unfreezeInTx, releaseDue, settlePool, settleOrganiserPool, collectToRevenueInTx, reverseToOrganiser, reversePoolCredit, list, getOne, serialize, lockHold };

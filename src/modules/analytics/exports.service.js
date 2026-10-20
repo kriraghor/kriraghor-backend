@@ -11,9 +11,9 @@ const { AppError } = require('../../common/errors');
 const config = require('../../config');
 const { getRedis } = require('../../common/redis');
 const { sequelize } = require('../../models');
-const settings = require('../settings/settings.service');
-const audit = require('../audit/audit.service');
-const { csv } = require('../payouts/payouts.rules');
+const settings = require('../settings').settings;
+const audit = require('../audit').audit;
+const { csv } = require('../payouts').rules;
 const dashboards = require('./dashboards.service');
 
 const taka = (p) => (Number(p) / 100).toFixed(2);

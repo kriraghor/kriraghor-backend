@@ -6,11 +6,11 @@
  *    staff with approve_listings (masters see all); UID taken / banned are locked checks (no override);
  *  - consumers: M05 decisions, M06 payment failures, M01 sanctions;
  *  - M06 hook: esports_entry captures confirm the entry in the capture transaction.
- * Registered once per process (subscriptions.registerAll).
+ * Registered once per process (registry.registerAll).
  */
-const adapters = require('../moderation/moderation.adapters');
-const { onEvent } = require('../events/events.consumers');
-const purposes = require('../payments/payments.purposes');
+const adapters = require('../moderation').adapters;
+const { onEvent } = require('../events').consumers;
+const purposes = require('../payments').purposes;
 
 adapters.register({
   kind: 'game_profile',

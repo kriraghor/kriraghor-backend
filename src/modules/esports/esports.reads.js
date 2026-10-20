@@ -69,7 +69,7 @@ async function standingsWithEntries(tournamentId, { transaction } = {}) {
 /** Display names for entries that may not have a registration yet (invites): squads and players. */
 async function entryLabels({ squadIds = [], userIds = [] }, { transaction } = {}) {
   const squads = squadIds.length ? await EsportsSquad.findAll({ where: { id: [...new Set(squadIds)] }, attributes: ['id', 'name', 'tag', 'gameId', 'captainUserId'], transaction }) : [];
-  const names = await require('../users/directory.service').publicNames([...new Set(userIds)], { transaction });
+  const names = await require('../users').directory.publicNames([...new Set(userIds)], { transaction });
   return {
     squads: new Map(squads.map((s) => [s.id, { id: s.id, name: s.name, tag: s.tag, gameId: s.gameId, captainUserId: s.captainUserId }])),
     users: new Map([...names.entries()].map(([id, n]) => [id, { id, username: n?.username ?? null, displayName: n?.displayName ?? null }])),

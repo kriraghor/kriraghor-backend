@@ -8,7 +8,7 @@
  * risk_freeze (M18), dispute (M17) and kyc (M02) holds are placed through PayoutHoldService when
  * those modules are built (§2.4), not from events.
  */
-const { onEvent } = require('../events/events.consumers');
+const { onEvent } = require('../events').consumers;
 const holds = require('./holds.service');
 const payouts = require('./payouts.service');
 

@@ -9,25 +9,15 @@
 const crypto = require('crypto');
 const { E } = require('../../common/errors');
 const storage = require('../../common/storage');
-const { sniffMime } = require('../../common/filetype');
+const { sniffMime, PHOTO_TYPES: ALLOWED, fileBlock } = require('../../common/filetype');
 const { uuid7 } = require('../../common/uuid7');
 const { sequelize, GroundPhoto } = require('../../models');
-const audit = require('../audit/audit.service');
-const settings = require('../settings/settings.service');
+const audit = require('../audit').audit;
+const settings = require('../settings').settings;
 const rules = require('./grounds.rules');
 const c = require('./grounds.common');
 
 const { fail } = c;
-const ALLOWED = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
-
-/** Why an upload is refused, or null (declared type, real type, size). */
-function fileBlock({ declared, sniffed, size, max }) {
-  if (!size) return 'FILE_EMPTY';
-  if (size > max) return 'FILE_TOO_LARGE';
-  if (!ALLOWED[declared]) return 'FILE_TYPE_NOT_ALLOWED';
-  if (sniffed !== declared) return 'FILE_TYPE_MISMATCH';
-  return null;
-}
 
 function editable(g) {
   if (g.status === 'pending_review' || g.editStatus === 'pending_review') throw fail('GROUND_IN_REVIEW');
@@ -112,4 +102,4 @@ async function remove(principal, groundId, photoId, req) {
   });
 }
 
-module.exports = { upload, reorder, remove, fileBlock };
+module.exports = { upload, reorder, remove };

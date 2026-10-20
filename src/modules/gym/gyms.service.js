@@ -14,11 +14,12 @@ const { E } = require('../../common/errors');
 const storage = require('../../common/storage');
 const { sniffMime } = require('../../common/filetype');
 const { uuid7 } = require('../../common/uuid7');
-const { sequelize, Gym, GymHours, GymPhoto, GymPackage, Area, Facility } = require('../../models');
-const audit = require('../audit/audit.service');
-const moderation = require('../moderation/moderation.service');
-const authz = require('../auth/authz.service');
-const { slugify } = require('../market/market.rules');
+const { sequelize, Gym, GymHours, GymPhoto, GymPackage } = require('../../models');
+const { Area, Facility } = require('../catalog').reference;
+const audit = require('../audit').audit;
+const moderation = require('../moderation').moderation;
+const authz = require('../auth').authz;
+const { slugify } = require('../../common/identifiers');
 const rules = require('./gym.rules');
 const c = require('./gym.common');
 

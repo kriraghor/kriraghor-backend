@@ -8,7 +8,7 @@
  * Esports has no percentage fee: platform revenue is the pool remainder after prizes (v3 rules), so
  * its snapshot is 0 bps.
  */
-const settings = require('../settings/settings.service');
+const settings = require('../settings').settings;
 const { pctToBps } = require('../../common/money');
 const ledger = require('./ledger.service');
 const lrules = require('./ledger.rules');

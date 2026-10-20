@@ -7,7 +7,7 @@
  * freeze: an open dispute already keeps the match from becoming final and the tournament from paying
  * out (ESPORTS_NOT_FINALISABLE). The decision is rejected or corrected (with the corrected rows).
  */
-const { fail } = require('../trust/trust.errors');
+const { fail } = require('../trust').errors;
 
 const snapshot = async () => {
   throw fail('DISPUTE_NOT_ELIGIBLE'); // opened from the match page only
@@ -29,7 +29,7 @@ async function withdrawn({ sourceId, actor, transaction }) {
 const describe = (sourceId) => require('./results.service').disputeSummary(sourceId);
 
 function register() {
-  require('../trust/targets.port').register('esports_result', { permission: 'manage_esports', snapshot, options, freeze, unfreeze, applyOutcome, withdrawn, describe });
+  require('../trust').targetsPort.register('esports_result', { permission: 'manage_esports', snapshot, options, freeze, unfreeze, applyOutcome, withdrawn, describe });
 }
 
 module.exports = { register };

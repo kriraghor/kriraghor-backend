@@ -5,7 +5,7 @@
  * env vars and constants; a master can now change them on the Fees and rules screen with history.
  * Read at call time, never cached here, so a change applies within the settings bust window.
  */
-const settings = require('../settings/settings.service');
+const settings = require('../settings').settings;
 
 const MIN = 60 * 1000;
 const HOUR = 60 * MIN;

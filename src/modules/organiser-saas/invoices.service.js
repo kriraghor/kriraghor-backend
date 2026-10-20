@@ -11,12 +11,12 @@
 const { Op } = require('sequelize');
 const { E } = require('../../common/errors');
 const { nextCode } = require('../../common/sequences');
-const { sequelize, OrganiserContract, OrganiserInvoice, OrganiserInvoiceLine, EscrowHold } = require('../../models');
-const audit = require('../audit/audit.service');
-const payments = require('../payments/payments.service');
-const purposes = require('../payments/payments.purposes');
-const escrow = require('../payments/escrow.service');
-const { payUrl } = require('../bookings/holds.service');
+const { sequelize, OrganiserContract, OrganiserInvoice, OrganiserInvoiceLine } = require('../../models');
+const audit = require('../audit').audit;
+const payments = require('../payments').intents;
+const purposes = require('../payments').purposes;
+const escrow = require('../payments').escrow;
+const { payUrl } = require('../payments').intents;
 const rules = require('./saas.rules');
 const c = require('./saas.common');
 
@@ -121,7 +121,7 @@ purposes.register('fee_invoice', { onCaptured });
 async function collectPaid({ transaction: outer } = {}) {
   const run = (fn) => (outer ? fn(outer) : sequelize.transaction(fn));
   return run(async (transaction) => {
-    const holds = await EscrowHold.findAll({ where: { purpose: 'fee_invoice', status: ['holding', 'partially_released'] }, transaction, lock: transaction.LOCK.UPDATE });
+    const holds = await escrow.lockOpenHoldsForPurpose('fee_invoice', transaction);
     let n = 0;
     for (const h of holds) {
       const inv = await OrganiserInvoice.findByPk(h.groupRef, { attributes: ['status'], transaction });

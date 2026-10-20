@@ -5,6 +5,8 @@ const FULL = { branches: 100, functions: 100, lines: 100, statements: 100 };
 module.exports = {
   testEnvironment: 'node',
   setupFiles: ['<rootDir>/tests/env.js'],
+  // ADR-007 Q163: LEDGER_SNAPSHOT=<file> records each test's ledger postings (tests/ledger-snapshot.js).
+  setupFilesAfterEnv: process.env.LEDGER_SNAPSHOT ? ['<rootDir>/tests/ledger-snapshot.js'] : [],
   globalSetup: '<rootDir>/tests/global-setup.js',
   testTimeout: 30000,
   collectCoverageFrom: ['src/**/*.js', '!src/server.js', '!src/worker.js', '!src/realtime.js', '!src/db/migrations/**'],

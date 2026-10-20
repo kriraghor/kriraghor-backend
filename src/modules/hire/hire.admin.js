@@ -8,7 +8,7 @@
 const { Op } = require('sequelize');
 const { E } = require('../../common/errors');
 const { HireRequest, HireJob, HireProfile } = require('../../models');
-const escrow = require('../payments/escrow.service');
+const escrow = require('../payments').escrow;
 const c = require('./hire.common');
 
 async function requestView(r) {

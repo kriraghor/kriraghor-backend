@@ -15,8 +15,8 @@
  */
 const { E } = require('../../common/errors');
 const models = require('../../models');
-const audit = require('../audit/audit.service');
-const directory = require('../users/directory.service');
+const audit = require('../audit').audit;
+const directory = require('../users').directory;
 const rules = require('./teams.rules');
 const c = require('./teams.common');
 
@@ -61,7 +61,7 @@ async function publicPage(handle) {
   const sports = await teamsSvc.sportsById(teams.map((t) => t.sportId));
   const catalog = await Sport.findAll({ where: { key: (p.sports ?? []).map((s) => s.sportKey) } });
   const byKey = new Map(catalog.map((s) => [s.key, s]));
-  const [hire, esports] = await Promise.all([require('../hire/profiles.service').liveFor(userId), require('../esports/esports.reads').hasAnyVerifiedProfile(userId)]);
+  const [hire, esports] = await Promise.all([require('../hire').profiles.liveFor(userId), require('../esports').reads.hasAnyVerifiedProfile(userId)]);
   return {
     handle: names.get(userId)?.username ?? handle,
     displayName: names.get(userId)?.displayName ?? '—',

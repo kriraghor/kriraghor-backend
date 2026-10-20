@@ -19,11 +19,11 @@ const { E } = require('../../common/errors');
 const { randomToken } = require('../../common/crypto');
 const { nextCode } = require('../../common/sequences');
 const { sequelize, Gym, GymPackage, GymPass } = require('../../models');
-const audit = require('../audit/audit.service');
-const payments = require('../payments/payments.service');
-const purposes = require('../payments/payments.purposes');
-const settings = require('../settings/settings.service');
-const { payUrl } = require('../bookings/holds.service');
+const audit = require('../audit').audit;
+const payments = require('../payments').intents;
+const purposes = require('../payments').purposes;
+const settings = require('../settings').settings;
+const { payUrl } = require('../payments').intents;
 const rules = require('./gym.rules');
 const c = require('./gym.common');
 

@@ -11,10 +11,11 @@ const { Op } = require('sequelize');
 const config = require('../../config');
 const logger = require('../../common/logger');
 const { AppError, E } = require('../../common/errors');
-const { sequelize, AuditLog, AuditExport, User } = require('../../models');
+const { sequelize, AuditLog, AuditExport } = require('../../models');
+const users = require('../users').directory;
 const storage = require('../../common/storage');
-const settings = require('../settings/settings.service');
-const events = require('../events/events.service');
+const settings = require('../settings').settings;
+const events = require('../events').events;
 const audit = require('./audit.service');
 const chain = require('./audit.chain');
 const { summarize } = require('./audit.actions');
@@ -56,7 +57,7 @@ function whereFrom(filters, { maxDays }) {
 async function namesFor(rows) {
   const ids = [...new Set(rows.map((r) => r.actorId).filter(Boolean))];
   if (!ids.length) return new Map();
-  return new Map((await User.findAll({ where: { id: ids }, attributes: ['id', 'displayName'] })).map((u) => [u.id, u.displayName]));
+  return users.displayNames(ids);
 }
 
 function serialize(row, names, { fullIp = false } = {}) {
@@ -201,7 +202,7 @@ async function runExport({ exportId }) {
     }
     const objectKey = `audit-exports/${row.id}.csv`;
     await storage.putPrivate(objectKey, `${lines.join('\r\n')}\r\n`, 'text/csv; charset=utf-8');
-    const requester = await User.findByPk(row.requestedBy);
+    const requester = { id: row.requestedBy }; // a master (requested_by references users)
     await sequelize.transaction(async (transaction) => {
       await row.update({ status: 'ready', rowCount: count, objectKey, completedAt: new Date(), expiresAt: new Date(Date.now() + settings.get('audit.export_link_hours') * 3600 * 1000) }, { transaction });
       await audit.record(

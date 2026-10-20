@@ -9,10 +9,10 @@ const { AppError } = require('../../common/errors');
 const crypto = require('../../common/crypto');
 const storage = require('../../common/storage');
 const { Gym, GymPass, TrainerSubscription, TrainerSubscriptionPeriod } = require('../../models');
-const settings = require('../settings/settings.service');
-const events = require('../events/events.service');
-const escrow = require('../payments/escrow.service');
-const refunds = require('../payments/refunds.service');
+const settings = require('../settings').settings;
+const events = require('../events').events;
+const escrow = require('../payments').escrow;
+const refunds = require('../payments').refunds;
 const rules = require('./gym.rules');
 
 const ERRORS = {

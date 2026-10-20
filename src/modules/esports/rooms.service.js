@@ -14,8 +14,8 @@ const { E } = require('../../common/errors');
 const { encrypt, decrypt } = require('../../common/crypto');
 const realtime = require('../../common/realtime');
 const models = require('../../models');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
+const audit = require('../audit').audit;
+const events = require('../events').events;
 const { fail, setting } = require('./esports.common');
 const rules = require('./esports.rules');
 
@@ -176,7 +176,7 @@ async function staffRead(actor, matchId, req) {
 async function views(matchId) {
   const rows = await EsportsCredentialView.findAll({ where: { matchId }, order: [['id', 'DESC']], limit: 500 });
   const versions = new Map((await EsportsRoomCredential.findAll({ where: { matchId }, attributes: ['id', 'version'] })).map((c) => [c.id, c.version]));
-  const names = await require('../users/directory.service').publicNames(rows.map((r) => r.userId));
+  const names = await require('../users').directory.publicNames(rows.map((r) => r.userId));
   return {
     items: rows.map((r) => ({ id: Number(r.id), userId: r.userId, username: names.get(r.userId)?.username ?? null, displayName: names.get(r.userId)?.displayName ?? null, version: versions.get(r.credentialId) ?? null, actorType: r.actorType, channel: r.channel, createdAt: r.createdAt })),
   };

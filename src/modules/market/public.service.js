@@ -16,8 +16,9 @@
 const { QueryTypes } = require('sequelize');
 const { AppError, E } = require('../../common/errors');
 const storage = require('../../common/storage');
-const { sequelize, Shop, Product, ProductVariant, ItemType, ItemCategory } = require('../../models');
-const catalog = require('../catalog/catalog.service');
+const { sequelize, Shop, Product, ProductVariant } = require('../../models');
+const { ItemType, ItemCategory } = require('../catalog').reference;
+const catalog = require('../catalog').catalog;
 const rules = require('./market.rules');
 const c = require('./market.common');
 

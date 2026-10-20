@@ -5,11 +5,11 @@ const { User, UserRole, UserSanction, StaffMember, sequelize } = require('../../
 const { E } = require('../../common/errors');
 const { ROLES, ADMIN_ROLES, ROLE_TRANSITIONS } = require('../../common/enums');
 const { hmac } = require('../../common/crypto');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
-const sessions = require('../auth/session.service');
-const authz = require('../auth/authz.service');
-const { serializeUserForAdmin } = require('../users/users.serializer');
+const audit = require('../audit').audit;
+const events = require('../events').events;
+const sessions = require('../auth').session;
+const authz = require('../auth').authz;
+const { serializeUserForAdmin } = require('../users').serializer;
 
 const MAX_SUSPENSION_DAYS = 365;
 

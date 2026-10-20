@@ -6,7 +6,7 @@ const { OtpCode, sequelize } = require('../../models');
 const { hmac, randomDigits, timingSafeEqualHex } = require('../../common/crypto');
 const { E } = require('../../common/errors');
 // M08-FR-08: OTPs go out through the notification service's priority route (logged, code redacted).
-const notifications = require('../notifications/notify.service');
+const notifications = require('../notifications').notify;
 const limits = require('./limits');
 
 // Limits come from platform_settings (auth.otp_*), read per call so a change applies at once.

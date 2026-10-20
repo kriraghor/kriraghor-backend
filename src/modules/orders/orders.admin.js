@@ -8,9 +8,10 @@
  */
 const { Op } = require('sequelize');
 const { E } = require('../../common/errors');
-const { sequelize, Order, SubOrder, Area } = require('../../models');
-const audit = require('../audit/audit.service');
-const escrow = require('../payments/escrow.service');
+const { sequelize, Order, SubOrder } = require('../../models');
+const { Area } = require('../catalog').reference;
+const audit = require('../audit').audit;
+const escrow = require('../payments').escrow;
 const checkout = require('./checkout.service');
 const settle = require('./orders.settle');
 const rules = require('./orders.rules');

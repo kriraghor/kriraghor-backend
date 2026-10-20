@@ -12,8 +12,8 @@
  */
 const { AppError, E } = require('../../common/errors');
 const { sequelize, EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset, Sport, Division, District, Area, Facility, Surface, ItemCategory, ItemType, ItemTypeField, HireCategory, HireRole, AREA_FLAGS } = require('../../models');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
+const audit = require('../audit').audit;
+const events = require('../events').events;
 const { modeCapacityError, presetPointsError, uidRegexError, itemFieldError, hireRoleError } = require('./catalog.validate');
 
 /** parentKey: the immutable foreign key to the parent row (and the list filter). */

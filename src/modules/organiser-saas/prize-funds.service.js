@@ -10,12 +10,12 @@
  */
 const { E } = require('../../common/errors');
 const { sequelize, EsportsTournament, EsportsPrizePlace, OrganiserPrizeFund } = require('../../models');
-const audit = require('../audit/audit.service');
-const payments = require('../payments/payments.service');
-const purposes = require('../payments/payments.purposes');
-const escrow = require('../payments/escrow.service');
-const { payUrl } = require('../bookings/holds.service');
-const organisations = require('../organisations/organisations.service');
+const audit = require('../audit').audit;
+const payments = require('../payments').intents;
+const purposes = require('../payments').purposes;
+const escrow = require('../payments').escrow;
+const { payUrl } = require('../payments').intents;
+const organisations = require('../organisations').organisations;
 const rules = require('./saas.rules');
 const c = require('./saas.common');
 

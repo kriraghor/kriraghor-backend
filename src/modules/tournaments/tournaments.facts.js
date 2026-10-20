@@ -3,7 +3,7 @@
 /** M14 facts for notifications (M08 catalogue): names, captains and money, never personal data. */
 const { Op } = require('sequelize');
 const { Tournament, Registration, Match } = require('../../models');
-const teamsSvc = require('../teams/teams.service');
+const teamsSvc = require('../teams').teams;
 
 async function tournament(id) {
   const t = await Tournament.findByPk(id, { attributes: ['id', 'name', 'slug', 'organisationId'] });

@@ -6,10 +6,10 @@
  *    are a locked check (no override);
  *  - consumers: M05 decisions on ground submissions; an owner whose ground_owner role is suspended or
  *    withdrawn, or whose account is suspended or banned, has every live ground paused (§2.2).
- * Registered once per process (subscriptions.registerAll).
+ * Registered once per process (registry.registerAll).
  */
-const adapters = require('../moderation/moderation.adapters');
-const { onEvent } = require('../events/events.consumers');
+const adapters = require('../moderation').adapters;
+const { onEvent } = require('../events').consumers;
 
 adapters.register({
   kind: 'ground',
@@ -40,7 +40,7 @@ function registerGroundsConsumers() {
   // replayed event never writes an old figure).
   onEvent('review.aggregate_updated', 'grounds.rating', async (e, { transaction }) => {
     if (e.payload.subjectType !== 'ground') return null;
-    const r = await require('../trust/reviews.service').ratingOf('ground', e.payload.subjectId, { transaction });
+    const r = await require('../trust').reviews.ratingOf('ground', e.payload.subjectId, { transaction });
     return require('./grounds.service').setRating(e.payload.subjectId, r, { transaction });
   });
 }

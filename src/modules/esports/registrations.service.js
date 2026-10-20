@@ -16,15 +16,14 @@
  */
 const { Op, UniqueConstraintError } = require('sequelize');
 const { E } = require('../../common/errors');
-const config = require('../../config');
 const realtime = require('../../common/realtime');
 const models = require('../../models');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
-const settings = require('../settings/settings.service');
-const gates = require('../auth/gate.service');
-const payments = require('../payments/payments.service');
-const refunds = require('../payments/refunds.service');
+const audit = require('../audit').audit;
+const events = require('../events').events;
+const settings = require('../settings').settings;
+const gates = require('../auth').gate;
+const payments = require('../payments').intents;
+const refunds = require('../payments').refunds;
 const squads = require('./squads.service');
 const { fail, setting, rooms, money, entryPolicy } = require('./esports.common');
 const rules = require('./esports.rules');
@@ -39,7 +38,7 @@ const DONE_TOURNAMENT = ['finalised', 'paid_out', 'cancelled'];
 async function playersOf(regIds, { transaction } = {}) {
   const rows = await EsportsRegistrationPlayer.findAll({ where: { registrationId: regIds, status: 'active' }, transaction });
   const profiles = new Map((await EsportsGameProfile.findAll({ where: { id: rows.map((r) => r.gameProfileId) }, transaction })).map((p) => [p.id, p]));
-  const names = await require('../users/directory.service').publicNames(rows.map((r) => r.userId), { transaction });
+  const names = await require('../users').directory.publicNames(rows.map((r) => r.userId), { transaction });
   const by = new Map();
   for (const r of rows) {
     if (!by.has(r.registrationId)) by.set(r.registrationId, []);
@@ -69,7 +68,7 @@ function serialize(r, players = []) {
   };
 }
 
-const payUrl = (paymentId) => `${config.apps.web}/pay/${paymentId}`;
+const { payUrl } = require('../payments').intents;
 const announceSlots = (t, transaction) =>
   transaction.afterCommit(async () => {
     const c = (await require('./tournaments.service').slotCounts([t.id])).get(t.id);

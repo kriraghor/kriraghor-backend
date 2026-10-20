@@ -14,7 +14,7 @@
 const { Op } = require('sequelize');
 const realtime = require('../../common/realtime');
 const models = require('../../models');
-const events = require('../events/events.service');
+const events = require('../events').events;
 const registrations = require('./registrations.service');
 const rooms = require('./rooms.service');
 const results = require('./results.service');

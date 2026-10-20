@@ -7,8 +7,8 @@
  */
 const { E } = require('../../common/errors');
 const { sequelize, GymPass, TrainerSubscription } = require('../../models');
-const audit = require('../audit/audit.service');
-const escrow = require('../payments/escrow.service');
+const audit = require('../audit').audit;
+const escrow = require('../payments').escrow;
 const subscriptions = require('./subscriptions.service');
 const passes = require('./passes.service');
 const c = require('./gym.common');

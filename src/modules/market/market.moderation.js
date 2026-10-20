@@ -7,10 +7,10 @@
  *  - consumers: M05 decisions on shop and product submissions; an owner whose shop_owner role is
  *    suspended or withdrawn, or whose account is suspended or banned, has the live shop paused (its
  *    products leave Market with it); saved-item alerts on restock and price drops (FR-33).
- * Registered once per process (subscriptions.registerAll).
+ * Registered once per process (registry.registerAll).
  */
-const adapters = require('../moderation/moderation.adapters');
-const { onEvent } = require('../events/events.consumers');
+const adapters = require('../moderation').adapters;
+const { onEvent } = require('../events').consumers;
 
 adapters.register({
   kind: 'shop',

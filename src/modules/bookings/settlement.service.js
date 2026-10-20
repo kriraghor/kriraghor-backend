@@ -8,9 +8,9 @@
  *   venue fee → fees.accrueReceivable (netted at the owner's next payout, M07)
  * Every call is idempotent by key (`booking:{id}:{step}`), so a retried job never moves money twice.
  */
-const escrow = require('../payments/escrow.service');
-const refunds = require('../payments/refunds.service');
-const fees = require('../payments/fee.service');
+const escrow = require('../payments').escrow;
+const refunds = require('../payments').refunds;
+const fees = require('../payments').fees;
 
 /**
  * Apply a plan to a booking: refund first (from the hold), then release what is left to the owner.

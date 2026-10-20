@@ -11,15 +11,15 @@
  *           trust.w.booker_no_show + member cancels within trust.booker_late_cancel_hours × trust.w.booker_late_cancel
  */
 const { TrustScore } = require('../../models');
-const settings = require('../settings/settings.service');
-const events = require('../events/events.service');
+const settings = require('../settings').settings;
+const events = require('../events').events;
 const rules = require('./risk.rules');
 
 const DAY = 24 * 3600 * 1000;
 const KINDS = ['owner', 'booker'];
 const iso = (d) => (d ? new Date(d).toISOString() : null);
-const bookings = () => require('../bookings/bookings.reads');
-const disputes = () => require('../trust/disputes.service');
+const bookings = () => require('../bookings').reads;
+const disputes = () => require('../trust').disputes;
 
 const weights = () => ({
   owner_cancel: settings.get('trust.w.owner_cancel'),

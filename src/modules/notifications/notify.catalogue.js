@@ -9,7 +9,7 @@
  *          values(e, { locale, userId }) → template values, link(e) → in-app link }
  */
 const config = require('../../config');
-const directory = require('../users/directory.service');
+const directory = require('../users').directory;
 const { formatValue } = require('./notify.rules');
 
 const ROLE_LABELS = {
@@ -31,41 +31,41 @@ async function nameOf(userId) {
 }
 
 // Lazy requires: these services sit above M08 in the dependency order.
-const settingsRequest = (id) => require('../settings/change-request.service').getOne(id);
-const auditEntry = (id) => require('../audit/audit.admin.service').getOne(id);
-const paymentFacts = (id) => require('../payments/payments.service').facts(id);
-const refundFacts = (id) => require('../payments/refunds.service').facts(id);
-const documentFacts = (id) => require('../kyc/kyc.service').facts(id);
+const settingsRequest = (id) => require('../settings').changeRequest.getOne(id);
+const auditEntry = (id) => require('../audit').admin.getOne(id);
+const paymentFacts = (id) => require('../payments').intents.facts(id);
+const refundFacts = (id) => require('../payments').refunds.facts(id);
+const documentFacts = (id) => require('../kyc').kyc.facts(id);
 // M05 reason codes for the document kind (moderation.v1.json), worded for the member.
 const KYC_REASONS = {
   en: { docs_mismatch_nid: 'the details do not match the NID', unreadable: 'the photos are unclear or cut off', expired: 'the NID looks expired', duplicate: 'this NID is already on another account', info_incomplete: 'some required information is missing', breaks_rules: 'it breaks our rules', other: 'see the note from our team' },
   bn: { docs_mismatch_nid: 'তথ্য NID-এর সাথে মেলে না', unreadable: 'ছবি অস্পষ্ট বা কাটা', expired: 'NID-এর মেয়াদ শেষ মনে হচ্ছে', duplicate: 'এই NID অন্য অ্যাকাউন্টে আছে', info_incomplete: 'প্রয়োজনীয় তথ্য নেই', breaks_rules: 'এটি আমাদের নিয়ম ভঙ্গ করে', other: 'আমাদের টিমের নোট দেখুন' },
 };
-const reviewersOf = (kind) => directory.withPermission(require('../moderation/moderation.adapters').get(kind).permission);
+const reviewersOf = (kind) => directory.withPermission(require('../moderation').adapters.get(kind).permission);
 const KIND_LABELS = {
   en: { document: 'identity document', game_profile: 'game UID', esports_tournament: 'esports event', ground: 'venue listing', shop: 'shop', product: 'shop product', tournament: 'tournament' },
   bn: { document: 'পরিচয় ডকুমেন্ট', game_profile: 'গেম UID', esports_tournament: 'এস্পোর্টস ইভেন্ট', ground: 'ভেন্যুর তালিকা', shop: 'দোকান', product: 'দোকানের পণ্য', tournament: 'টুর্নামেন্ট' },
 };
 const kindLabel = (kind, locale) => KIND_LABELS[locale]?.[kind] ?? KIND_LABELS.en[kind] ?? kind;
-const es = () => require('../esports/esports.facts');
+const es = () => require('../esports').facts;
 // M09: grounds and the ground owner's business documents.
-const groundFacts = (id) => require('../grounds/grounds.service').facts(id);
+const groundFacts = (id) => require('../grounds').grounds.facts(id);
 // VENDOR_APP_URL already ends in /vendor (values/backend/*.yaml): pass the path inside the vendor area.
 const vendorUrl = (p) => `${config.apps.vendor}${p}`;
 // M20: gyms (the owner), passes (the holder), trainer subscriptions (the member and the trainer).
-const gymFacts = (id) => require('../gym/gyms.service').facts(id);
+const gymFacts = (id) => require('../gym').gyms.facts(id);
 // M14 lite and M22: the organisation (its name) and its admins (owner and admins get organiser news).
-const orgAdmins = (id) => require('../organisations/organisations.service').adminIds(id);
+const orgAdmins = (id) => require('../organisations').organisations.adminIds(id);
 // M14: tournament names, registrations and captains.
-const tf = () => require('../tournaments/tournaments.facts');
+const tf = () => require('../tournaments').facts;
 const eventOf = async (id) => require('../../models').EsportsEvent.findByPk(id, { attributes: ['id', 'slug', 'titleEn'] });
 const eventTitle = async (id) => (await eventOf(id))?.titleEn ?? '';
 // Links take the id: the esports app's /showcases/[slug] page accepts an id too (M23 showcases).
 const eventLink = (id) => `/showcases/${id}`;
-const followerPage = (kind) => (e) => (e.payload.kind === kind ? require('../esports-events/alerts.service').pageRecipients(e.payload) : []);
-const teamName = async (id) => (await require('../teams/teams.service').getTeam(id))?.name ?? '';
-const orgName = async (id) => (await require('../organisations/organisations.service').publicRefs([id])).get(id)?.name ?? '';
-const passFacts = (id) => require('../gym/gym.reads').passFacts(id);
+const followerPage = (kind) => (e) => (e.payload.kind === kind ? require('../esports-events').alerts.pageRecipients(e.payload) : []);
+const teamName = async (id) => (await require('../teams').teams.getTeam(id))?.name ?? '';
+const orgName = async (id) => (await require('../organisations').organisations.publicRefs([id])).get(id)?.name ?? '';
+const passFacts = (id) => require('../gym').reads.passFacts(id);
 const isNid = (e) => !e.payload.role || e.payload.role === 'member';
 const DOC_LABELS = {
   en: { trade_license: 'trade licence', deed_or_lease: 'land deed or lease', tin: 'TIN certificate', bin: 'VAT registration (BIN)' },
@@ -79,9 +79,9 @@ const GROUND_REASONS = {
 const groundReason = (code, locale) => GROUND_REASONS[locale]?.[code] ?? GROUND_REASONS.en[code] ?? reasonText(code, locale);
 const esportsUrl = (p) => `${config.apps.esports}${p}`;
 // M12: shops, products and stock (the shop owner), saved items (members).
-const shopFacts = (id) => require('../market/shops.service').facts(id);
-const productFacts = (id) => require('../market/products.service').facts(id);
-const variantFacts = (id) => require('../market/products.service').variantFacts(id);
+const shopFacts = (id) => require('../market').shops.facts(id);
+const productFacts = (id) => require('../market').products.facts(id);
+const variantFacts = (id) => require('../market').products.variantFacts(id);
 const MARKET_REASONS = {
   en: { photos_unclear: 'the photos are unclear or not of this item', price_wrong: 'the price looks wrong', duplicate: 'it is already listed', info_incomplete: 'some information is missing', breaks_rules: 'it breaks our rules', specs_wrong: 'the details or sizes do not match the item', supplement_details: 'the importer, BSTI or expiry details are missing', shop_details: 'the shop name, type or address is not right', other: 'see the note from our team' },
   bn: { photos_unclear: 'ছবি অস্পষ্ট বা এই পণ্যের নয়', price_wrong: 'দাম ঠিক মনে হচ্ছে না', duplicate: 'এটি আগেই তালিকায় আছে', info_incomplete: 'কিছু তথ্য নেই', breaks_rules: 'এটি আমাদের নিয়ম ভঙ্গ করে', specs_wrong: 'তথ্য বা সাইজ পণ্যের সাথে মেলে না', supplement_details: 'আমদানিকারক, BSTI বা মেয়াদের তথ্য নেই', shop_details: 'দোকানের নাম, ধরন বা ঠিকানা ঠিক নয়', other: 'আমাদের টিমের নোট দেখুন' },
@@ -92,17 +92,17 @@ const variantValues = async (e, locale) => {
   return { product: f.title, variant: locale === 'bn' ? f.labelBn : f.labelEn };
 };
 const webProduct = async (productId) => webUrl(`/shop/p/${(await productFacts(productId)).slug}`);
-const bookingFacts = (id) => require('../bookings/bookings.reads').facts(id);
+const bookingFacts = (id) => require('../bookings').reads.facts(id);
 // M11: hire requests and jobs (the manager and the pro). Codes, role names and amounts only.
-const hireFacts = (e) => require('../hire/hire.reads').facts({ requestId: e.payload.requestId, jobId: e.payload.jobId ?? null });
-const hireProfileFacts = (id) => require('../hire/profiles.service').facts(id);
+const hireFacts = (e) => require('../hire').reads.facts({ requestId: e.payload.requestId, jobId: e.payload.jobId ?? null });
+const hireProfileFacts = (id) => require('../hire').profiles.facts(id);
 const hireRole = async (e, locale) => {
   const f = await hireFacts(e);
   return locale === 'bn' ? f.roleBn : f.roleEn;
 };
 const hireReason = (code, locale) => marketReason(code, locale);
 // M13: shop orders (the buyer and the shop owner). Codes, shop names and amounts only.
-const orderFacts = (id) => require('../orders/orders.reads').facts(id);
+const orderFacts = (id) => require('../orders').reads.facts(id);
 const ORDER_REASONS = {
   en: { out_of_stock: 'the item is out of stock', cannot_deliver_area: 'the shop cannot deliver to your area', price_error: 'the price was wrong', shop_closed: 'the shop is closed', not_accepted: 'the shop did not accept in time', not_shipped: 'the shop did not ship in time', ship_overdue: 'you cancelled a late shipment', buyer_cancelled: 'you cancelled it', platform: 'our team cancelled it', payment_not_completed: 'the payment was not completed', payment_timeout: 'the payment was not completed in time', other: 'see the order for details' },
   bn: { out_of_stock: 'পণ্যটি স্টকে নেই', cannot_deliver_area: 'দোকান আপনার এলাকায় পাঠাতে পারে না', price_error: 'দাম ভুল ছিল', shop_closed: 'দোকান বন্ধ', not_accepted: 'দোকান সময়মতো গ্রহণ করেনি', not_shipped: 'দোকান সময়মতো পাঠায়নি', ship_overdue: 'দেরিতে পাঠানোর কারণে আপনি বাতিল করেছেন', buyer_cancelled: 'আপনি বাতিল করেছেন', platform: 'আমাদের টিম বাতিল করেছে', payment_not_completed: 'পেমেন্ট সম্পন্ন হয়নি', payment_timeout: 'সময়মতো পেমেন্ট হয়নি', other: 'বিস্তারিত অর্ডারে দেখুন' },
@@ -117,9 +117,9 @@ const bookingValues = async (e) => {
 const toBooker = (e) => (e.payload.bookerUserId ? [e.payload.bookerUserId] : []);
 const myBooking = (e) => `/me/bookings/${e.payload.bookingId}`;
 const tTitle = async (id, locale) => es().title(await es().tournament(id), locale);
-const payoutFacts = (id) => require('../payouts/payouts.service').facts(id);
-const accountFacts = (id) => require('../payouts/payout-accounts.service').facts(id);
-const settingsHours = () => require('../settings/settings.service').get('risk.payout_change_hold_hours');
+const payoutFacts = (id) => require('../payouts').payouts.facts(id);
+const accountFacts = (id) => require('../payouts').payoutAccounts.facts(id);
+const settingsHours = () => require('../settings').settings.get('risk.payout_change_hold_hours');
 const HOLD_REASONS = {
   en: { manual: 'our finance team is checking it', account_change: 'your payout account changed recently', account_suspended: 'your account is suspended', kyc: 'your verification needs renewing' },
   bn: { manual: 'আমাদের ফিনান্স টিম যাচাই করছে', account_change: 'সম্প্রতি আপনার পেআউট অ্যাকাউন্ট বদলেছে', account_suspended: 'আপনার অ্যাকাউন্ট স্থগিত', kyc: 'আপনার যাচাই নবায়ন দরকার' },
@@ -129,13 +129,13 @@ function holdNote(until, locale) {
   return locale === 'bn' ? `নিরাপত্তার জন্য ${when} পর্যন্ত পেআউট বন্ধ থাকবে।` : `For your safety, payouts to it start after ${when}.`;
 }
 async function holdFacts(holdId) {
-  const hold = await require('../payments/escrow.service').getOne(holdId);
+  const hold = await require('../payments').escrow.getOne(holdId);
   return { ...hold, title: (await paymentFacts(hold.paymentId)).title };
 }
 
 // M17 disputes, reports and reviews.
-const disputeFacts = (id) => require('../trust/disputes.service').facts(id);
-const reviewFacts = (id) => require('../trust/reviews.service').facts(id);
+const disputeFacts = (id) => require('../trust').disputes.facts(id);
+const reviewFacts = (id) => require('../trust').reviews.facts(id);
 const OUTCOMES = {
   en: { all: 'full refund', half: 'half refunded', none: 'no refund', custom: 'part refunded', upheld: 'upheld', rejected: 'not upheld', corrected: 'results corrected' },
   bn: { all: 'পুরো টাকা ফেরত', half: 'অর্ধেক ফেরত', none: 'ফেরত নেই', custom: 'আংশিক ফেরত', upheld: 'আপনার পক্ষে', rejected: 'গ্রহণযোগ্য নয়', corrected: 'ফলাফল সংশোধিত' },
@@ -1551,8 +1551,8 @@ const CATALOGUE = [
     events: ['team_invite.sent', 'team_invite.linked'],
     category: 'teams',
     channels: ['in_app', 'sms'],
-    recipients: (e) => (e.name === 'team_invite.linked' || e.payload.linked ? require('../teams/invites.service').recipientOf(e.payload.inviteId) : []),
-    values: (e) => require('../teams/invites.service').noticeValues(e.payload.inviteId),
+    recipients: (e) => (e.name === 'team_invite.linked' || e.payload.linked ? require('../teams').invites.recipientOf(e.payload.inviteId) : []),
+    values: (e) => require('../teams').invites.noticeValues(e.payload.inviteId),
     link: () => '/me/teams',
   },
   {
@@ -1561,10 +1561,10 @@ const CATALOGUE = [
     category: 'teams',
     channels: ['in_app'],
     recipients: async (e) => {
-      const members = await require('../teams/teams.service').activeMembers(e.payload.teamId);
+      const members = await require('../teams').teams.activeMembers(e.payload.teamId);
       return members.filter((m) => ['captain', 'vice_captain'].includes(m.role) && m.userId !== e.payload.userId).map((m) => m.userId);
     },
-    values: async (e) => ({ team: await teamName(e.payload.teamId), name: (await require('../users/directory.service').publicNames([e.payload.userId])).get(e.payload.userId)?.displayName ?? '' }),
+    values: async (e) => ({ team: await teamName(e.payload.teamId), name: (await require('../users').directory.publicNames([e.payload.userId])).get(e.payload.userId)?.displayName ?? '' }),
     link: (e) => `/me/teams/${e.payload.teamId}`,
   },
   {
@@ -1742,7 +1742,7 @@ const CATALOGUE = [
     events: ['esports_event_qualification.granted'],
     category: 'tournaments',
     channels: ['in_app', 'sms'],
-    recipients: (e) => require('../esports-events/qualifications.service').recipientsOf(e.payload.qualificationId),
+    recipients: (e) => require('../esports-events').qualifications.recipientsOf(e.payload.qualificationId),
     values: async (e) => ({ title: await eventTitle(e.payload.eventId) }),
     link: (e) => eventLink(e.payload.eventId),
   },
@@ -1751,7 +1751,7 @@ const CATALOGUE = [
     events: ['esports_event_qualification.revoked'],
     category: 'tournaments',
     channels: ['in_app'],
-    recipients: (e) => require('../esports-events/qualifications.service').recipientsOf(e.payload.qualificationId),
+    recipients: (e) => require('../esports-events').qualifications.recipientsOf(e.payload.qualificationId),
     values: async (e) => ({ title: await eventTitle(e.payload.eventId) }),
     link: (e) => eventLink(e.payload.eventId),
   },
@@ -1760,7 +1760,7 @@ const CATALOGUE = [
     events: ['esports_event_qualification.missed'],
     category: 'staff_ops',
     channels: ['in_app'],
-    recipients: () => require('../users/directory.service').withPermission('manage_esports'),
+    recipients: () => require('../users').directory.withPermission('manage_esports'),
     values: async (e) => ({ title: await eventTitle(e.payload.eventId) }),
     link: (e) => `/admin/esports/showcases?id=${e.payload.eventId}`,
   },

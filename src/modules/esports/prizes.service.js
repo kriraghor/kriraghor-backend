@@ -17,9 +17,9 @@
  */
 const { E } = require('../../common/errors');
 const models = require('../../models');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
-const escrow = require('../payments/escrow.service');
+const audit = require('../audit').audit;
+const events = require('../events').events;
+const escrow = require('../payments').escrow;
 const { organiser, isOrganised, fail, money } = require('./esports.common');
 const rules = require('./esports.rules');
 
@@ -193,7 +193,7 @@ async function forfeitForRegistrationInTx(actor, r, t, { transaction }) {
 }
 
 async function reverseShare(actor, s, t, transaction) {
-  const balance = await require('../payments/ledger.service').balance(`payable:user:${s.userId}`, transaction);
+  const balance = await require('../payments').ledger.balance(`payable:user:${s.userId}`, transaction);
   if (balance < s.amountPoisha) {
     // Already withdrawn: record it for M18 (a recoverable debt against future winnings).
     await audit.record({ action: 'esports_prize.reversal_blocked', actor, entityType: 'esports_prize_share', entityId: s.id, after: { userId: s.userId, amount: s.amountPoisha, balance } }, { transaction });
@@ -213,7 +213,7 @@ async function winnings(userId) {
   const shares = await EsportsPrizeShare.findAll({ where: { userId }, order: [['createdAt', 'DESC']], limit: 200 });
   const awards = new Map((await EsportsPrizeAward.findAll({ where: { id: shares.map((s) => s.awardId) } })).map((a) => [a.id, a]));
   const ts = new Map((await EsportsTournament.findAll({ where: { id: shares.map((s) => s.tournamentId) } })).map((t) => [t.id, t]));
-  const withdrawals = require('../payouts/withdrawals.service');
+  const withdrawals = require('../payouts').withdrawals;
   const available = await withdrawals.available(userId);
   return {
     available: money(available.amount),

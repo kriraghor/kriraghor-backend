@@ -176,12 +176,10 @@ module.exports = { load, isLoaded, get, definition, list, snapshot, getAt, publi
 /** History of one key, newest first (admin History drawer). */
 async function history(key, { limit = 50 } = {}) {
   entry(key);
-  const { User } = require('../../models');
   const { serializeHistory } = require('./settings.serializer');
   const rows = await SettingsHistory.findAll({ where: { key }, order: [['version', 'DESC']], limit });
   const ids = [...new Set(rows.flatMap((r) => [r.changedBy, r.approvedBy]).filter(Boolean))];
-  const users = ids.length ? await User.findAll({ where: { id: ids }, attributes: ['id', 'displayName'] }) : [];
-  const names = new Map(users.map((u) => [u.id, u.displayName]));
+  const names = await require('../users').directory.displayNames(ids);
   return { key, items: rows.map((r) => serializeHistory(r, names)) };
 }
 

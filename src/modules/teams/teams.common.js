@@ -3,8 +3,8 @@
 /** Shared bits of M16: the error catalogue, settings read per call, events, phone hashing. */
 const { AppError } = require('../../common/errors');
 const { hmac } = require('../../common/crypto');
-const events = require('../events/events.service');
-const settings = require('../settings/settings.service');
+const events = require('../events').events;
+const settings = require('../settings').settings;
 
 const ERRORS = {
   TEAM_NAME_INVALID: [422, 'Use 2 to 40 characters, with no links or phone numbers'],

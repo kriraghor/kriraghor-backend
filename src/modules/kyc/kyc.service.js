@@ -29,12 +29,12 @@ const config = require('../../config');
 const storage = require('../../common/storage');
 const { uuid7 } = require('../../common/uuid7');
 const { sequelize, DocumentRequirement, VerificationDocument, DocumentFile, DocumentRequest } = require('../../models');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
-const settings = require('../settings/settings.service');
-const directory = require('../users/directory.service');
+const audit = require('../audit').audit;
+const events = require('../events').events;
+const settings = require('../settings').settings;
+const directory = require('../users').directory;
 const rules = require('./kyc.rules');
-const moderation = require('../moderation/moderation.service');
+const moderation = require('../moderation').moderation;
 const { subjectIdFor } = require('./kyc.moderation');
 
 const ERRORS = {
@@ -313,7 +313,7 @@ async function submitBusiness(principal, { docType, fields = {}, files = {}, rol
     if (errors) throw E.validation(errors);
     let subjectKey = role;
     if (requirement.scope === 'hire_role') {
-      const hireRole = await require('../catalog/hire.reads').role(String(fields.hireRole ?? ''), { transaction });
+      const hireRole = await require('../catalog').hireReads.role(String(fields.hireRole ?? ''), { transaction });
       if (!hireRole || hireRole.forRole !== role) throw E.validation([{ field: 'fields.hireRole', message: 'Choose one of your hire roles' }]);
       if (!hireRole.levels.includes(String(fields.level ?? ''))) throw E.validation([{ field: 'fields.level', message: 'Choose a level of this role' }]);
       subjectKey = `hire:${hireRole.key}`;

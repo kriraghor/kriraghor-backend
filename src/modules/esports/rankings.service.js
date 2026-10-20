@@ -13,8 +13,8 @@
 const { Op } = require('sequelize');
 const { E } = require('../../common/errors');
 const models = require('../../models');
-const settings = require('../settings/settings.service');
-const directory = require('../users/directory.service');
+const settings = require('../settings').settings;
+const directory = require('../users').directory;
 const rules = require('./esports.rules');
 
 const {

@@ -9,8 +9,8 @@
  * price (feeBaseMax).
  */
 const { TrainerSubscription, TrainerSubscriptionPeriod } = require('../../models');
-const { fail } = require('../trust/trust.errors');
-const escrow = require('../payments/escrow.service');
+const { fail } = require('../trust').errors;
+const escrow = require('../payments').escrow;
 const rules = require('./gym.rules');
 const c = require('./gym.common');
 
@@ -108,7 +108,7 @@ async function describe(sourceId) {
 }
 
 function register() {
-  require('../trust/targets.port').register('trainer_subscription', { permission: 'resolve_reports', snapshot, options, freeze, unfreeze, applyOutcome, describe });
+  require('../trust').targetsPort.register('trainer_subscription', { permission: 'resolve_reports', snapshot, options, freeze, unfreeze, applyOutcome, describe });
 }
 
 module.exports = { register, evaluate, snapshot, options, freeze, unfreeze, applyOutcome, describe };

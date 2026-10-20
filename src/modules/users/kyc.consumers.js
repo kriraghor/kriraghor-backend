@@ -14,12 +14,12 @@
  *   document.submitted → in_review; .changes_requested / .rejected → the same; verification.passed
  *   {role} → active, but only once the member (NID) role is active (M01-FR-14).
  */
-const { onEvent } = require('../events/events.consumers');
+const { onEvent } = require('../events').consumers;
 const { UserRole, User } = require('../../models');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
-const authz = require('../auth/authz.service');
-const rules = require('../kyc/kyc.rules');
+const audit = require('../audit').audit;
+const events = require('../events').events;
+const authz = require('../auth').authz;
+const rules = require('../kyc').rules;
 
 async function applyKyc(userId, kind, { reasonCode = null, documentId = null } = {}, { transaction }) {
   const row = await UserRole.findOne({ where: { userId, role: 'member' }, transaction, lock: transaction.LOCK.UPDATE });
@@ -32,7 +32,7 @@ async function applyKyc(userId, kind, { reasonCode = null, documentId = null } =
     { transaction }
   );
   const user = await User.findByPk(userId, { transaction, lock: transaction.LOCK.UPDATE });
-  const identity = kind === 'approved' ? await require('../kyc/kyc.service').getVerifiedIdentity(userId, { transaction }) : null;
+  const identity = kind === 'approved' ? await require('../kyc').kyc.getVerifiedIdentity(userId, { transaction }) : null;
   await user.update(
     { kycStatus: move.kyc, ...(identity ? { legalName: identity.legalName, dob: identity.dob, nidHash: identity.nidHash, nidLast4: identity.nidLast4 } : {}) },
     { transaction }

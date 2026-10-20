@@ -18,9 +18,9 @@ const config = require('../../config');
 const { normalizePhone } = require('../../common/identifiers');
 const { randomToken, sha256 } = require('../../common/crypto');
 const models = require('../../models');
-const audit = require('../audit/audit.service');
-const gates = require('../auth/gate.service');
-const directory = require('../users/directory.service');
+const audit = require('../audit').audit;
+const gates = require('../auth').gate;
+const directory = require('../users').directory;
 const rules = require('./teams.rules');
 const c = require('./teams.common');
 

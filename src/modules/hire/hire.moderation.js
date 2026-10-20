@@ -7,10 +7,10 @@
  *  - consumers: M05 decisions on profile submissions; payment.failed / payment.expired (purpose hire)
  *    lapse the request; a suspended player or pro role, or a suspended or banned account, pauses the
  *    live profiles. Loading this file also loads requests.service (the M06 purpose hook).
- * Registered once per process (subscriptions.registerAll).
+ * Registered once per process (registry.registerAll).
  */
-const adapters = require('../moderation/moderation.adapters');
-const { onEvent } = require('../events/events.consumers');
+const adapters = require('../moderation').adapters;
+const { onEvent } = require('../events').consumers;
 
 adapters.register({
   kind: 'hire_profile',

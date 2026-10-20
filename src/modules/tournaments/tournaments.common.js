@@ -2,8 +2,8 @@
 
 /** Shared bits of M14: the error catalogue, settings read per call, events, ownership loaders. */
 const { AppError, E } = require('../../common/errors');
-const events = require('../events/events.service');
-const settings = require('../settings/settings.service');
+const events = require('../events').events;
+const settings = require('../settings').settings;
 const { Tournament, TournamentRules, Match } = require('../../models');
 
 const ERRORS = {

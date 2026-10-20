@@ -15,10 +15,10 @@
 const { Op, UniqueConstraintError } = require('sequelize');
 const { AppError, E } = require('../../common/errors');
 const { sequelize, Submission, SubmissionCheck, ReviewClaim, ReviewRubric, RejectionReason } = require('../../models');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
-const settings = require('../settings/settings.service');
-const directory = require('../users/directory.service');
+const audit = require('../audit').audit;
+const events = require('../events').events;
+const settings = require('../settings').settings;
+const directory = require('../users').directory;
 const adapters = require('./moderation.adapters');
 const rules = require('./moderation.rules');
 

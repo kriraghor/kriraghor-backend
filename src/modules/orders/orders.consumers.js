@@ -7,7 +7,7 @@
  * Registering the consumers also loads checkout.service, which registers the M06 purpose hook, so the
  * worker (payment polls) has it too.
  */
-const { onEvent } = require('../events/events.consumers');
+const { onEvent } = require('../events').consumers;
 
 function registerOrdersConsumers() {
   require('./checkout.service'); // the M06 purpose hook

@@ -7,10 +7,10 @@
  *  - consumers: M05 decisions on tournament submissions; payment.failed / payment.expired (purpose
  *    tournament_entry) end unpaid registrations. Loading the registrations service registers the M06
  *    purpose hook.
- * Registered once per process (subscriptions.registerAll).
+ * Registered once per process (registry.registerAll).
  */
-const adapters = require('../moderation/moderation.adapters');
-const { onEvent } = require('../events/events.consumers');
+const adapters = require('../moderation').adapters;
+const { onEvent } = require('../events').consumers;
 
 adapters.register({
   kind: 'tournament',

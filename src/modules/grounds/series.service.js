@@ -11,9 +11,9 @@
 const { E } = require('../../common/errors');
 const { encrypt } = require('../../common/crypto');
 const { sequelize, BookingSeries, Court } = require('../../models');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
-const settings = require('../settings/settings.service');
+const audit = require('../audit').audit;
+const events = require('../events').events;
+const settings = require('../settings').settings;
 const rules = require('./grounds.rules');
 const pr = require('./pricing.rules');
 const c = require('./grounds.common');

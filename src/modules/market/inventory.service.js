@@ -19,9 +19,9 @@
  */
 const { Op, QueryTypes } = require('sequelize');
 const { sequelize, Shop, Product, ProductVariant, InventoryMovement } = require('../../models');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
-const settings = require('../settings/settings.service');
+const audit = require('../audit').audit;
+const events = require('../events').events;
+const settings = require('../settings').settings;
 const rules = require('./market.rules');
 const c = require('./market.common');
 

@@ -74,7 +74,7 @@ async function record(entry, { transaction } = {}) {
 
   if (severity === 'critical') {
     // Required lazily: events.service → models only, but events.consumers → audit.service.
-    const events = require('../events/events.service');
+    const events = require('../events').events;
     await events.publish(transaction ?? null, {
       name: 'audit.critical_recorded',
       aggregateType: 'audit_log',

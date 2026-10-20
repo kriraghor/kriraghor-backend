@@ -13,8 +13,9 @@
  */
 const { E } = require('../../common/errors');
 const storage = require('../../common/storage');
-const { Ground, CourtHours, PricingRule, Sport, Surface, Facility } = require('../../models');
-const directory = require('../users/directory.service');
+const { Ground, CourtHours, PricingRule } = require('../../models');
+const { Sport, Surface, Facility } = require('../catalog').reference;
+const directory = require('../users').directory;
 const pr = require('./pricing.rules');
 const rules = require('./grounds.rules');
 const occupancy = require('./occupancy.port');
@@ -22,7 +23,7 @@ const c = require('./grounds.common');
 const pricing = require('./pricing.service');
 
 /** M17: the average shows once the ground has reviews.min_count_display published reviews. */
-const shownRating = (g) => (g.ratingCount >= require('../settings/settings.service').get('reviews.min_count_display') ? (g.ratingAvg ?? null) : null);
+const shownRating = (g) => (g.ratingCount >= require('../settings').settings.get('reviews.min_count_display') ? (g.ratingAvg ?? null) : null);
 
 /** Lowest and highest hourly rate in the coming week across the public courts. */
 function priceBand(r, courtIds) {
@@ -208,7 +209,7 @@ async function detail(slug) {
       halfRefundHours: policy.advanceRefundable ? r.halfRefundHours : null,
     },
     // M18: the owner's reliability, only once it is shown (enough bookings, trust.min_sample).
-    owner: { displayName: owner?.displayName ?? null, reliability: (await require('../risk/trust.service').publicFor(g.ownerId)).items.find((t) => t.kind === 'owner')?.score ?? null },
+    owner: { displayName: owner?.displayName ?? null, reliability: (await require('../risk').trust.publicFor(g.ownerId)).items.find((t) => t.kind === 'owner')?.score ?? null },
     ratingAvg: shownRating(g),
     ratingCount: g.ratingCount,
     bookingOpen: g.status === 'live', // M10: live grounds take bookings

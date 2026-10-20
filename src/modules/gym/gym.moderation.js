@@ -8,10 +8,10 @@
  *    gym_package and trainer_subscription) close what was not paid; a suspended or withdrawn gym_owner
  *    role, or a suspended or banned account, pauses the owner's live gyms. Loading this file also
  *    loads the services that register the M06 purpose hooks.
- * Registered once per process (subscriptions.registerAll).
+ * Registered once per process (registry.registerAll).
  */
-const adapters = require('../moderation/moderation.adapters');
-const { onEvent } = require('../events/events.consumers');
+const adapters = require('../moderation').adapters;
+const { onEvent } = require('../events').consumers;
 
 adapters.register({
   kind: 'gym',

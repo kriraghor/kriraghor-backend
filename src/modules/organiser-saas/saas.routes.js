@@ -19,12 +19,11 @@ const { validate } = require('../../common/validate');
 const { requireIdempotencyKey } = require('../../common/idempotency');
 const { PERMISSIONS } = require('../../common/enums');
 const { authenticate, authenticateAdmin, requireStaff, requireAnyPermission, requireMaster, requireStepUp } = require('../../middlewares/auth');
-require('../organisations/organisations.moderation'); // the M05 adapter loads with the routes
 require('./saas.hooks'); // the M21 organiser hooks
-const organisations = require('../organisations/organisations.service');
-const os = require('../organisations/organisations.schemas');
-const { requireOrgRole } = require('../organisations/organisations.guard');
-const es = require('../esports/esports.schemas');
+const organisations = require('../organisations').organisations;
+const os = require('../organisations').schemas;
+const { requireOrgRole } = require('../organisations').guard;
+const es = require('../esports').schemas;
 const consoleSvc = require('./console.service');
 const contracts = require('./contracts.service');
 const invoices = require('./invoices.service');

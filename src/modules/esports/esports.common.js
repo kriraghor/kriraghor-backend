@@ -5,8 +5,8 @@
  * the models M03 owns, read-only), the settings a tournament snapshots, and realtime room names.
  */
 const { AppError } = require('../../common/errors');
-const { EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset } = require('../../models');
-const settings = require('../settings/settings.service');
+const { EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset } = require('../catalog').reference;
+const settings = require('../settings').settings;
 
 const ERRORS = {
   // profiles and squads

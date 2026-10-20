@@ -19,10 +19,10 @@ const { AppError, E } = require('../../common/errors');
 const { nextCode } = require('../../common/sequences');
 const { uuid7 } = require('../../common/uuid7');
 const { sequelize, Payment, PaymentAttempt, ProviderWebhookEvent, Refund, EscrowHold } = require('../../models');
-const settings = require('../settings/settings.service');
-const audit = require('../audit/audit.service');
-const events = require('../events/events.service');
-const directory = require('../users/directory.service');
+const settings = require('../settings').settings;
+const audit = require('../audit').audit;
+const events = require('../events').events;
+const directory = require('../users').directory;
 const providers = require('../../providers/payments');
 const ledger = require('./ledger.service');
 const lrules = require('./ledger.rules');
@@ -109,7 +109,7 @@ async function createTestCharge(actor, { payerId, payeeId, amount, title }, idem
       { action: 'payment.test_charge_created', actor, entityType: 'payment', entityId: payment.id, entityCode: payment.code, after: { amount, payerId, payeeId }, req },
       { transaction }
     );
-    return { payment: serialize(payment), payUrl: `${config.apps.web}/pay/${payment.id}` };
+    return { payment: serialize(payment), payUrl: payUrl(payment.id) };
   });
 }
 
@@ -533,7 +533,13 @@ async function payeeRefundStats(payeeId, since, { reasonCodes = [] } = {}) {
   return { payments: row.payments, refunded: row.refunded };
 }
 
+/** Where the payer completes a payment: the kriraghor.com pay page (every product links here). */
+function payUrl(paymentId) {
+  return `${config.apps.web}/pay/${paymentId}`;
+}
+
 module.exports = {
+  payUrl,
   payeeRefundStats,
   paymentFact,
   exportPaymentFacts,

@@ -9,8 +9,8 @@
  *              the shop's payable; M07's shop_weekly run pays it out
  * Every call is idempotent by key (`sub_order:{id}:{step}`), so a retried job never moves money twice.
  */
-const escrow = require('../payments/escrow.service');
-const refunds = require('../payments/refunds.service');
+const escrow = require('../payments').escrow;
+const refunds = require('../payments').refunds;
 const { Order } = require('../../models');
 const c = require('./orders.common');
 
