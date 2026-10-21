@@ -4,23 +4,27 @@
  * M11 directory on kriraghor.com/hiring (FR-01 to FR-07): live profiles of active people by category,
  * role, experience, unit, sport, area and search, sorted by rating, rate (the normalised hourly rate,
  * FR-03), jobs done or experience; the profile page with rates, the verified credential level and a
- * 14-day busy strip (times only); a non-binding quote; the member's shortlist. Reads the public
- * version (live_snapshot) only.
+ * 14-day busy strip (times only: jobs and the pro's blocked time, Round B1); a non-binding quote; the
+ * member's shortlist. Reads the public version (live_snapshot) only. Round B1: cards carry the photo,
+ * the reply stats (FR-52) and "available today" (FR-05, derived from blocks and jobs, never stored).
  */
 const { Op } = require('sequelize');
 const { E } = require('../../common/errors');
-const { HireProfile, HireJob, HireShortlist } = require('../../models');
+const { HireProfile, HireShortlist } = require('../../models');
 const { Area } = require('../catalog').reference;
 const directory = require('../users').directory;
 const authz = require('../auth').authz;
 const kyc = require('../kyc').kyc;
 const taxonomy = require('../catalog').hireReads;
 const profiles = require('./profiles.service');
+const availability = require('./availability.service');
 const rules = require('./hire.rules');
 const c = require('./hire.common');
 
 const { fail } = c;
 const DAY = 86400000;
+/** M17: the average shows once there are reviews.min_count_display published reviews (FR-35). */
+const shownRating = (x) => (x.ratingCount >= require('../settings').settings.get('reviews.min_count_display') ? (x.ratingAvg ?? null) : null);
 
 /** GET /hire/taxonomy: categories with their roles (M03), for the directory and the pro desk. */
 const categories = () => taxonomy.taxonomy();
@@ -31,10 +35,11 @@ async function areaMap(ids) {
 }
 
 async function cards(rows, { unit = null, viewer = null } = {}) {
-  const [names, areas, saved] = await Promise.all([
+  const [names, areas, saved, freeToday] = await Promise.all([
     directory.publicNames(rows.map((p) => p.userId)),
     areaMap(rows.map((p) => p.liveSnapshot.baseAreaId)),
     viewer ? HireShortlist.findAll({ where: { userId: viewer, profileId: rows.map((p) => p.id), removedAt: null }, attributes: ['profileId'] }) : [],
+    availability.availableToday(rows.map((p) => p.userId)),
   ]);
   const savedIds = new Set(saved.map((s) => s.profileId));
   const out = [];
@@ -47,6 +52,7 @@ async function cards(rows, { unit = null, viewer = null } = {}) {
       id: p.id,
       slug: p.slug,
       name: names.get(p.userId)?.displayName ?? '',
+      avatarUrl: names.get(p.userId)?.avatarUrl ?? null,
       headline: s.headline,
       specialisation: s.specialisation,
       experienceLevel: s.experienceLevel,
@@ -56,9 +62,12 @@ async function cards(rows, { unit = null, viewer = null } = {}) {
       rateFrom: shown.length ? Math.min(...shown.map((i) => i.rate)) : null,
       rateUnit: shown[0]?.unit ?? null,
       units: [...new Set(items.map((i) => i.unit))],
-      ratingAvg: p.ratingAvg ?? null,
+      ratingAvg: shownRating(p),
       ratingCount: p.ratingCount,
       jobsDone: p.jobsDone,
+      acceptanceRate: p.acceptanceRate ?? null,
+      medianReplyMinutes: p.medianReplyMinutes ?? null,
+      availableToday: p.status === 'live' && Boolean(freeToday.get(p.userId)),
       shortlisted: savedIds.has(p.id),
     });
   }
@@ -87,7 +96,7 @@ async function list({ category, role, exp, unit, sport, areaId, q, sort = 'ratin
   const members = await Promise.all(rows.map((p) => authz.loadPrincipal(p.userId)));
   const listed = rows.filter((p, i) => members[i]?.roles?.member === 'active' && members[i]?.user?.status !== 'suspended');
   const sorted = listed
-    .map((p) => ({ p, norm: p.normalisedHourlyPoisha, ratingAvg: p.ratingAvg, jobsDone: p.jobsDone, experienceLevel: p.liveSnapshot.experienceLevel, years: p.liveSnapshot.years }))
+    .map((p) => ({ p, norm: p.normalisedHourlyPoisha, ratingAvg: shownRating(p), jobsDone: p.jobsDone, experienceLevel: p.liveSnapshot.experienceLevel, years: p.liveSnapshot.years }))
     .sort(SORTS[sort] ?? SORTS.rating)
     .map((x) => x.p);
   const offset = cursor ? Number(cursor) : 0;
@@ -106,11 +115,8 @@ async function page(slug, viewer = null) {
   const credential = role.requiresCredential || role.credentialTiers.length ? await kyc.credentialFor(p.userId, role.key) : null;
   const tier = credential ? role.credentialTiers.find((t) => t.level === credential.level) : null;
   const now = Date.now();
-  const busy = await HireJob.findAll({
-    where: { proUserId: p.userId, status: rules.ACTIVE_JOB, startAt: { [Op.lt]: new Date(now + 14 * DAY) }, endAt: { [Op.gt]: new Date(now) } },
-    attributes: ['startAt', 'endAt'],
-    order: [['startAt', 'ASC']],
-  });
+  const strip = await availability.busyFor(p.userId, { from: new Date(now), to: new Date(now + 14 * DAY) });
+  const busy = rules.mergeSpans([...strip.spans, ...strip.jobs.map((j) => ({ start: j.startAt, end: j.endAt }))]);
   return {
     ...card,
     bio: p.liveSnapshot.bio,
@@ -120,7 +126,7 @@ async function page(slug, viewer = null) {
     role: { ...card.role, allowedUnits: role.allowedUnits, formatPriced: role.formatPriced, formats: role.formats },
     credential: credential ? { level: credential.level, labelEn: tier?.labelEn ?? null, labelBn: tier?.labelBn ?? null, verified: true } : null,
     rateCard: profiles.cardView(rc),
-    busy: busy.map((j) => ({ start: c.iso(j.startAt), end: c.iso(j.endAt) })),
+    busy: busy.map((j) => ({ start: c.iso(j.start), end: c.iso(j.end) })),
   };
 }
 

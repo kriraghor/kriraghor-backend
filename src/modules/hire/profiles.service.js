@@ -23,7 +23,9 @@ const authz = require('../auth').authz;
 const directory = require('../users').directory;
 const kyc = require('../kyc').kyc;
 const taxonomy = require('../catalog').hireReads;
+const payoutAccounts = require('../payouts').payoutAccounts;
 const { slugify } = require('../../common/identifiers');
+const availability = require('./availability.service');
 const rules = require('./hire.rules');
 const c = require('./hire.common');
 
@@ -103,8 +105,26 @@ async function own(principal, id, { transaction, lock = false } = {}) {
   return p;
 }
 
+/**
+ * Round B1: how complete the profile is for its owner (hire.rules.completeness): photo (M01 avatar),
+ * headline, bio, rate card, credential (roles with credential levels), police clearance (under-16
+ * work), the availability calendar used, a payout account (M07).
+ */
+async function completenessOf(p, role, card) {
+  const credentialApplies = Boolean(role && (role.requiresCredential || role.credentialTiers.length));
+  const [names, credential, police, calendar, payout] = await Promise.all([
+    directory.publicNames([p.userId]),
+    credentialApplies ? kyc.credentialFor(p.userId, role.key) : null,
+    p.worksWithU16 ? kyc.policeClearedUntil(p.userId) : null,
+    availability.hasUsedCalendar(p.userId),
+    payoutAccounts.activeFor(p.userId),
+  ]);
+  return rules.completeness(p, { photo: Boolean(names.get(p.userId)?.avatarUrl), rateCard: Boolean(card), credentialApplies, credential: Boolean(credential), policeClearance: Boolean(police), availability: calendar, payoutAccount: Boolean(payout) }, { bioMinChars: c.config().bioMinChars });
+}
+
 async function ownerView(p) {
   const [role, card] = await Promise.all([taxonomy.role(p.roleId), currentCard(p.id)]);
+  const completeness = await completenessOf(p, role, card);
   return {
     id: p.id,
     slug: p.slug,
@@ -116,6 +136,8 @@ async function ownerView(p) {
     live: p.liveSnapshot ?? null,
     reviewReason: p.reviewReasonCode ? { code: p.reviewReasonCode, text: p.reviewReasonText ?? null } : null,
     rateCard: cardView(card),
+    stats: { jobsDone: p.jobsDone, acceptanceRate: p.acceptanceRate ?? null, medianReplyMinutes: p.medianReplyMinutes ?? null, ratingAvg: p.ratingAvg ?? null, ratingCount: p.ratingCount },
+    completeness,
     limits: role ? Object.fromEntries(role.allowedUnits.flatMap((u) => (u === 'match' && role.formatPriced ? role.formats.map((f) => [`match:${f}`, limitsFor(role)(u, f)]) : [[`${u}:`, limitsFor(role)(u, null)]]))) : {},
   };
 }

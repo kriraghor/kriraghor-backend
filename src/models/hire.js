@@ -107,6 +107,9 @@ HireProfile.init(
     ratingAvg: { ...num('ratingAvg', DataTypes.DECIMAL(3, 2)), allowNull: true },
     ratingCount: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
     jobsDone: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+    // Round B1 (FR-52, migration 20261109000002): reply stats over hire.acceptance_window_days.
+    acceptanceRate: { ...num('acceptanceRate', DataTypes.DECIMAL(5, 2)), allowNull: true },
+    medianReplyMinutes: DataTypes.INTEGER,
     ...by,
   },
   { sequelize, modelName: 'HireProfile', tableName: 'hire_profiles' }
@@ -229,4 +232,25 @@ HireMessage.init({ id, requestId: req(DataTypes.UUID), authorId: req(DataTypes.U
 class HireShortlist extends Model {}
 HireShortlist.init({ id, userId: req(DataTypes.UUID), profileId: req(DataTypes.UUID), removedAt: DataTypes.DATE(3) }, { sequelize, modelName: 'HireShortlist', tableName: 'hire_shortlists', updatedAt: false });
 
-module.exports = { HireCategory, HireRole, HireProfile, RateCard, RateCardItem, HireRequest, HireJob, HireMessage, HireShortlist };
+/**
+ * Round B1 (§7, FR-05): time a person is not available. period is the block itself, or a weekly
+ * repeat's validity (upper bound open without an until); repeatRule { weekdays, from, to, until? }.
+ */
+class AvailabilityBlock extends Model {}
+AvailabilityBlock.init(
+  {
+    id,
+    userId: req(DataTypes.UUID),
+    profileId: DataTypes.UUID,
+    period: req(DataTypes.RANGE(DataTypes.DATE)),
+    reason: DataTypes.STRING(120),
+    repeatRule: DataTypes.JSONB,
+    status: { type: DataTypes.ENUM('active', 'removed'), allowNull: false, defaultValue: 'active' },
+    createdBy: DataTypes.UUID,
+    removedBy: DataTypes.UUID,
+    removedAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'AvailabilityBlock', tableName: 'availability_blocks' }
+);
+
+module.exports = { HireCategory, HireRole, HireProfile, RateCard, RateCardItem, HireRequest, HireJob, HireMessage, HireShortlist, AvailabilityBlock };

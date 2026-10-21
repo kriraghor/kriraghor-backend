@@ -296,4 +296,25 @@ async function payableEntries({ upTo, payeeIds = null, transaction } = {}) {
   }));
 }
 
-module.exports = { ensureAccount, post, reverse, findByKey, feeFact, exportFeeFacts, balance, balancesByPrefix, trialBalance, listAccounts, accountEntries, getTransaction, transactionsFor, payableEntries };
+/**
+ * M11 / M19 §6.3 "Earned" for a pro (Round B1): what escrow releases put on the payee's own account
+ * (payable:user:{id}), net of the platform fee (the fee goes to fee_revenue in the same posting), for
+ * holds of the given purposes, posted in [from, to). A reversal of such a release counts against the
+ * day it was posted. Grouped by Asia/Dhaka calendar day: [{ day 'YYYY-MM-DD', purpose, net }], oldest
+ * first. Payouts (M07) are not earnings and are left out.
+ */
+async function earningsBy(userId, { purposes, from, to, transaction } = {}) {
+  if (!purposes?.length) return [];
+  const [rows] = await sequelize.query(
+    "SELECT to_char(t.posted_at AT TIME ZONE 'Asia/Dhaka', 'YYYY-MM-DD') AS day, h.purpose, SUM(e.credit_poisha - e.debit_poisha) AS net " +
+      'FROM ledger_entries e JOIN ledger_accounts a ON a.id = e.account_id JOIN ledger_transactions t ON t.id = e.txn_id ' +
+      'LEFT JOIN ledger_transactions o ON o.id = t.reverses_txn_id ' +
+      "JOIN escrow_holds h ON COALESCE(o.ref_type, t.ref_type) = 'escrow_hold' AND h.id = COALESCE(o.ref_id, t.ref_id) " +
+      "WHERE a.code = ? AND COALESCE(o.kind, t.kind) LIKE 'escrow.release%' AND h.purpose IN (?) AND t.posted_at >= ? AND t.posted_at < ? " +
+      'GROUP BY 1, 2 ORDER BY 1, 2',
+    { replacements: [`payable:user:${userId}`, purposes, from, to], transaction }
+  );
+  return rows.map((r) => ({ day: r.day, purpose: r.purpose, net: toPoisha(r.net) }));
+}
+
+module.exports = { ensureAccount, post, reverse, findByKey, feeFact, exportFeeFacts, balance, balancesByPrefix, trialBalance, listAccounts, accountEntries, getTransaction, transactionsFor, payableEntries, earningsBy };

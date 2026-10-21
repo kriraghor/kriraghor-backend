@@ -114,9 +114,10 @@ class Review extends Model {}
 Review.init(
   {
     id,
-    subjectType: req(DataTypes.ENUM('ground')),
+    subjectType: req(DataTypes.ENUM('ground', 'hire_profile', 'shop', 'gym')),
     subjectId: req(DataTypes.UUID),
-    sourceType: req(DataTypes.ENUM('booking')),
+    subjectOwnerId: DataTypes.UUID,
+    sourceType: req(DataTypes.ENUM('booking', 'hire_job', 'sub_order', 'gym_pass')),
     sourceId: req(DataTypes.UUID),
     authorId: req(DataTypes.UUID),
     stars: req(DataTypes.SMALLINT),

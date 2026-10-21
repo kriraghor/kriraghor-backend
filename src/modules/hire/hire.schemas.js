@@ -82,6 +82,29 @@ const adminListQuery = z.object({ code: z.string().trim().max(24).optional(), st
 const adminProfilesQuery = z.object({ status: z.enum(['pending_review', 'live', 'paused', 'suspended', 'rejected', 'changes_requested']).optional(), q: z.string().trim().max(60).optional() });
 const reasonBody = z.object({ reason: text(5, 300) });
 
+// ---------------- Round B1: insights, availability
+const insightsQuery = z.object({ period: z.enum(['7w', 'qtr', 'yr']).default('7w') });
+const rangeQuery = z.object({ from: dateTime.optional(), to: dateTime.optional() });
+const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use HH:MM');
+const repeatRule = z.object({
+  weekdays: z
+    .array(z.number().int().min(0).max(6))
+    .min(1)
+    .max(7)
+    .refine((d) => new Set(d).size === d.length, 'Each weekday once')
+    .meta({ description: '0 = Sunday … 6 = Saturday (Dhaka calendar)' }),
+  from: hhmm,
+  to: z.union([hhmm, z.literal('24:00')]).meta({ description: 'HH:MM, or 24:00 for the end of the day' }),
+  until: z.iso.date().optional().meta({ description: 'The last day the repeat applies (Dhaka); open without it' }),
+  reason: text(1, 120).optional(),
+});
+const blocksBody = z.object({
+  from: dateTime,
+  to: dateTime,
+  blocks: z.array(z.object({ start: dateTime, end: dateTime, reason: text(1, 120).optional() })).max(200),
+  repeats: z.array(repeatRule).max(20).optional().meta({ description: 'When sent, the full set of weekly repeats (missing ones are removed)' }),
+});
+
 // ---------------- responses (the views of hire.common, directory, profiles and hire.admin)
 const nullable = (t) => t.nullable();
 const ZONES = ['home', 'north', 'south', 'outside'];
@@ -129,6 +152,10 @@ const Card = z
     ratingAvg: nullable(z.number()),
     ratingCount: z.number().int(),
     jobsDone: z.number().int(),
+    acceptanceRate: nullable(z.number()).meta({ description: '% of requests accepted over hire.acceptance_window_days (FR-52)' }),
+    medianReplyMinutes: nullable(z.number().int()),
+    availableToday: z.boolean().meta({ description: 'Some time left today (Dhaka) that is neither blocked nor booked (FR-05)' }),
+    avatarUrl: nullable(z.string()),
     shortlisted: z.boolean(),
   })
   .meta({ id: 'HireCard' });
@@ -159,6 +186,9 @@ const QuotedEngagement = z.object({
   total: poisha,
 });
 const Quote = z.object({ lines: z.array(QuotedEngagement), total: poisha }).meta({ id: 'HireQuote' });
+const Completeness = z
+  .object({ score: z.number().int().min(0).max(100), steps: z.array(z.object({ key: z.string(), done: z.boolean() })) })
+  .meta({ id: 'Completeness', description: 'Steps left to a complete profile; score = % of steps done' });
 const OwnerProfile = z
   .object({
     id,
@@ -178,6 +208,8 @@ const OwnerProfile = z
     live: nullable(z.object({ version: z.number().int() }).loose()),
     reviewReason: nullable(z.object({ code: z.string(), text: nullable(z.string()) })),
     rateCard: nullable(RateCard),
+    stats: z.object({ jobsDone: z.number().int(), acceptanceRate: nullable(z.number()), medianReplyMinutes: nullable(z.number().int()), ratingAvg: nullable(z.number()), ratingCount: z.number().int() }),
+    completeness: Completeness,
     limits: z.record(z.string(), z.object({ min: poisha, max: poisha }).loose()).meta({ description: 'unit:format → the allowed rate range (Q74)' }),
   })
   .meta({ id: 'HireOwnerProfile' });
@@ -216,7 +248,7 @@ const Job = z
   })
   .meta({ id: 'HireJob' });
 const JobList = z.object({ items: z.array(Job) }).meta({ id: 'HireJobList' });
-const Check = z.object({ key: z.enum(['credential', 'police_clearance', 'free', 'daily_limit', 'in_future']), ok: z.boolean() });
+const Check = z.object({ key: z.enum(['credential', 'police_clearance', 'free', 'daily_limit', 'in_future', 'available']), ok: z.boolean() });
 const Request = z
   .object({
     id,
@@ -276,6 +308,35 @@ const StaffProfile = OwnerProfile.extend({
 }).meta({ id: 'HireStaffProfile' });
 const StaffProfileList = z.object({ items: z.array(StaffProfile) }).meta({ id: 'HireStaffProfileList' });
 const StaffAction = z.object({ id, status: z.enum(PROFILE_STATUSES) });
+const Span = z.object({ start: dateTime, end: dateTime });
+const Insights = z
+  .object({
+    period: z.enum(['7w', 'qtr', 'yr']),
+    asOf: dateTime,
+    from: z.string().meta({ description: 'First Dhaka day of the period' }),
+    buckets: z.array(z.object({ key: z.string(), from: z.string(), amount: poisha })).meta({ description: 'Earned (net) per Dhaka week or month, oldest first' }),
+    earned: z.object({ total: poisha, previous: poisha, delta: nullable(z.number()).meta({ description: '% change against the same days one period earlier' }) }),
+    releasingSoon: z.object({ net: poisha, count: z.number().int(), nextAt: nullable(dateTime) }),
+    jobs: z.object({ done: z.number().int(), upcoming: z.number().int() }),
+    acceptanceRate: nullable(z.number()),
+    medianReplyMinutes: nullable(z.number().int()),
+    rating: z.object({ avg: nullable(z.number()), count: z.number().int() }),
+    whoHiresYou: z.array(z.object({ key: z.string(), label: z.string(), jobs: z.number().int() })),
+  })
+  .meta({ id: 'HireInsights' });
+const Availability = z
+  .object({
+    from: dateTime,
+    to: dateTime,
+    horizonDays: z.number().int(),
+    horizonEnd: dateTime,
+    blocks: z.array(Span.extend({ id, reason: nullable(z.string()) })),
+    repeats: z.array(z.object({ id, weekdays: z.array(z.number().int()), from: z.string(), to: z.string(), until: z.string().optional(), validFrom: dateTime, reason: nullable(z.string()) })),
+    spans: z.array(Span.extend({ reason: nullable(z.string()), blockId: id, repeat: z.boolean() })).meta({ description: 'Blocked time in the range, repeats expanded' }),
+    booked: z.array(Span.extend({ jobId: id, code: z.string(), status: z.string(), locked: z.literal(true) })),
+  })
+  .meta({ id: 'HireAvailability' });
+const PublicAvailability = z.object({ from: dateTime, to: dateTime, busy: z.array(Span) }).meta({ id: 'HireBusy', description: 'Busy spans only: no reasons, no jobs' });
 
 module.exports = {
   UNITS,
@@ -320,4 +381,11 @@ module.exports = {
   StaffProfile,
   StaffProfileList,
   StaffAction,
+  insightsQuery,
+  rangeQuery,
+  blocksBody,
+  Insights,
+  Availability,
+  PublicAvailability,
+  Completeness,
 };

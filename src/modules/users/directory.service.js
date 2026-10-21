@@ -7,6 +7,7 @@
  */
 const { Op } = require('sequelize');
 const { User, UserRole, StaffMember, StaffPermission } = require('../../models');
+const storage = require('../../common/storage');
 
 /** Map userId → { phone, email, emailVerified, locale, status }. Missing users are absent. */
 async function contactFor(userIds, { transaction } = {}) {
@@ -70,12 +71,12 @@ async function byUsername(username, { transaction } = {}) {
   return u ? { id: u.id, username: u.username, displayName: u.displayName, status: u.status } : null;
 }
 
-/** M21 public pages: id → { username, displayName } (never phone, email or legal name). */
+/** M21 public pages: id → { username, displayName, avatarUrl } (never phone, email or legal name). */
 async function publicNames(userIds, { transaction } = {}) {
   const ids = [...new Set(userIds.filter(Boolean))];
   if (!ids.length) return new Map();
-  const users = await User.findAll({ where: { id: ids }, attributes: ['id', 'username', 'displayName'], transaction });
-  return new Map(users.map((u) => [u.id, { username: u.username ?? null, displayName: u.displayName }]));
+  const users = await User.findAll({ where: { id: ids }, attributes: ['id', 'username', 'displayName', 'avatarKey'], transaction });
+  return new Map(users.map((u) => [u.id, { username: u.username ?? null, displayName: u.displayName, avatarUrl: u.avatarKey ? storage.publicUrl(u.avatarKey) : null }]));
 }
 
 /** M19 live counts: verified members (active member role) and active business roles. */

@@ -47,7 +47,7 @@ module.exports = {
   fees: lazy('./fee.service', ['snapshot', 'accrueReceivable', 'reverseReceivable']),
 
   /** Ledger reads; post and reverse are for the payment group (payouts) only. */
-  ledger: lazy('./ledger.service', ['balance', 'payableEntries', 'transactionsFor', 'feeFact', 'exportFeeFacts', 'post', 'reverse']),
+  ledger: lazy('./ledger.service', ['balance', 'payableEntries', 'earningsBy', 'transactionsFor', 'feeFact', 'exportFeeFacts', 'post', 'reverse']),
 
   /** Ledger invariants other modules add (checked by the payments invariants job). */
   invariants: lazy('./invariants.service', ['register']),

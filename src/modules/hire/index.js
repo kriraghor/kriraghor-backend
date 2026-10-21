@@ -15,6 +15,7 @@ const lazy = (file, names, values = []) => {
 module.exports = {
   directory: lazy('./directory.service', ['list']),
   disputes: lazy('./hire.disputes', ['register']),
+  reviewSource: lazy('./hire.reviews', ['register']),
   reads: lazy('./hire.reads', ['facts', 'pendingActions', 'profileRef', 'profilesOf']),
   schemas: lazy('./hire.schemas', [], ['Card']),
   profiles: lazy('./profiles.service', ['facts', 'liveFor']),

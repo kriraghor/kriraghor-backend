@@ -60,6 +60,8 @@ User.init(
     lockedUntil: DataTypes.DATE(3),
     lastLoginAt: DataTypes.DATE(3),
     closedAt: DataTypes.DATE(3),
+    // M01 §6 (Round B1): the member's photo, a public-bucket key (storage.publicUrl builds the URL).
+    avatarKey: DataTypes.STRING(200),
   },
   { sequelize, modelName: 'User', tableName: 'users' }
 );

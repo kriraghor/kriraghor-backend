@@ -49,7 +49,9 @@ const esShare = z.object({ shareId: uuid, tournamentId: uuid, userId: uuid, amou
 const bookingEvent = z.object({ bookingId: uuid, code: z.string().max(16), groundId: uuid, ownerId: uuid, bookerUserId: uuid.nullable() });
 const disputeEvent = z.object({ disputeId: uuid, code: z.string().max(20), sourceType: z.enum(['booking', 'esports_result', 'sub_order', 'hire_job', 'trainer_subscription']), sourceId: uuid, category: z.string().max(30), claimantId: uuid, respondentId: uuid.nullable() });
 const subjectType = z.enum(['ground', 'booking', 'user', 'review', 'esports_tournament', 'shop', 'product']);
-const reviewEvent = z.object({ reviewId: uuid, subjectType: z.literal('ground'), subjectId: uuid, authorId: uuid });
+// M17 review subjects (Round B1): venues, pro profiles (M11), shops (M12), gyms (M20).
+const reviewSubject = z.enum(['ground', 'hire_profile', 'shop', 'gym']);
+const reviewEvent = z.object({ reviewId: uuid, subjectType: reviewSubject, subjectId: uuid, authorId: uuid });
 const docRequestEvent = z.object({ requestId: uuid, userId: uuid, docType: z.string().max(30), sourceRef: uuid.nullable(), dueAt: iso.nullable() });
 const riskFlagEvent = z.object({ flagId: uuid, userId: uuid, ruleKey: z.string().max(40), severity: z.enum(['info', 'medium', 'high', 'critical']) });
 const catalogItem = z.object({ table: z.string(), id: uuid, key: z.string(), version: z.number().int().optional(), isActive: z.boolean().optional() });
@@ -442,8 +444,8 @@ const EVENTS = {
   'review.hidden': { module: 'M17', version: 1, schema: reviewEvent.extend({ reason: z.string().max(60) }) },
   'review.restored': { module: 'M17', version: 1, schema: reviewEvent },
   'review.published': { module: 'M17', version: 1, schema: reviewEvent },
-  'review.replied': { module: 'M17', version: 1, schema: reviewEvent },
-  'review.aggregate_updated': { module: 'M17', version: 1, schema: z.object({ subjectType: z.literal('ground'), subjectId: uuid, count: z.number().int().nonnegative(), avg: z.number().nullable() }) },
+  'review.replied': { module: 'M17', version: 1, schema: reviewEvent.extend({ firstReply: z.boolean().optional() }) },
+  'review.aggregate_updated': { module: 'M17', version: 1, schema: z.object({ subjectType: reviewSubject, subjectId: uuid, count: z.number().int().nonnegative(), avg: z.number().nullable() }) },
 
   // ---------------- M02 document requests (for M18)
   'document_request.created': { module: 'M02', version: 1, schema: docRequestEvent },

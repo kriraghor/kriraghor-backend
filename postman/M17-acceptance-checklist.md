@@ -77,3 +77,14 @@ Step 1 covers disputes on bookings (no-show contested, a problem at the venue, m
 | 7.3 | kriraghor.com | The booking page offers a dispute inside the window and "Rate this ground" after play; `/me/disputes` and the case page (statements, files, withdraw); reviews and "Report" on `/grounds/[slug]`; `/me/reports`, `/me/reviews` |
 | 7.4 | admin.kriraghor.com | Disputes desk (queue, claim, outcome previews, decide, escalate, master decide with a code), Reports, Reviews; the esports desk links to the disputes desk |
 | 7.5 | vendor.kriraghor.com | `/vendor/disputes` (give your side, add files) and `/vendor/reviews` (reply) |
+
+## 8. Reviews of pros, shops and gyms (Round B1: FR-30 to FR-35, M11-FR-06, M20-FR-10)
+| # | Do | Expect |
+|---|---|---|
+| 8.1 | **Waiting: the pro and the shop** | `/me/reviewable` lists played bookings, paid-out hire jobs, completed sub-orders and used gym passes (one per gym until it is reviewed), newest first |
+| 8.2 | **Rate my own job**, **Rate the pro**, **Twice** | 403 `NOT_YOUR_JOB`; 201 about the `hire_profile`; 409 `REVIEW_EXISTS`. Before the money is released: 409 `JOB_NOT_RELEASED` 🤖 |
+| 8.3 | **Rate the shop** | 201 about the `shop` (`rating` is another name for `stars`). Before the buyer receives it: 409 `ORDER_NOT_COMPLETED`; after `reviews.window_days`: 409 `REVIEW_WINDOW_CLOSED` 🤖 |
+| 8.4 | **Rate the gym**, **The same pass again**, **Runner: a newer gym pass**, **A newer pass updates the one gym review** | 201; 409 `REVIEW_EXISTS`; 200 `updated: true`, the same review id with the new stars. Before the pass is used: 409 `PASS_NOT_REDEEMED`; a hidden gym review stays hidden: 409 `REVIEW_HIDDEN` 🤖 |
+| 8.5 | **Reviews of my profile**, **Reply with a phone number**, **Reply to the pro review** (the seller), **Reply** ×3 | `GET /me/reviews?role=owner` lists reviews of what I own; 422 `REPLY_HAS_CONTACT`; 403 `NOT_OWNER`; 200, and the author gets `REVIEW_REPLIED` once (EN, BN) |
+| 8.6 | **Public reviews of the pro / shop / gym**, **An unknown subject type** | `GET /reviews?subjectType&subjectId`: published only, with the reply, no source ids; the average from `reviews.min_count_display`; 422 |
+| 8.7 | Ratings | `review.aggregate_updated` sets `hire_profiles`, `shops` and `gyms` `rating_avg` / `rating_count`; `/hire/profiles`, `/market/shops/{slug}` and `/gym/gyms/{slug}` show the average only from `reviews.min_count_display` reviews; a dispute on a booking, sub-order or hire job holds its review and the rating drops it until the dispute ends 🤖 |

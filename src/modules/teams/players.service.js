@@ -29,10 +29,17 @@ async function positionsBySport() {
 
 const profileView = (p) => ({ sports: p?.sports ?? [], bio: p?.bio ?? null, visibility: p?.visibility ?? 'public', updatedAt: p?.updatedAt ?? null });
 
+/** The owner's view: the profile, the username and how complete it is (Round B1). */
+async function ownView(principal, p, { transaction } = {}) {
+  const view = profileView(p);
+  const [teams, esportsUid] = await Promise.all([require('./teams.service').teamsOf(principal.user.id, { transaction }), require('../esports').reads.hasAnyVerifiedProfile(principal.user.id, { transaction })]);
+  const completeness = rules.playerCompleteness(view, { team: teams.length > 0, esportsUid, nid: principal.roles?.member === 'active' });
+  return { ...view, username: principal.user.username ?? null, completeness };
+}
+
 /** GET /me/player-profile */
 async function getMine(principal) {
-  const p = await PlayerProfile.findByPk(principal.user.id);
-  return { ...profileView(p), username: principal.user.username ?? null };
+  return ownView(principal, await PlayerProfile.findByPk(principal.user.id));
 }
 
 /** PUT /me/player-profile {sports, bio, visibility} */
@@ -44,7 +51,7 @@ async function putMine(principal, { sports, bio = null, visibility = 'public' },
     const [p] = await PlayerProfile.findOrCreate({ where: { userId: principal.user.id }, defaults: { sports: clean, bio, visibility }, transaction });
     await p.update({ sports: clean, bio: bio?.trim() || null, visibility }, { transaction });
     await audit.record({ action: 'player_profile.updated', actor: principal, entityType: 'user', entityId: principal.user.id, after: { sports: clean.length, visibility }, req }, { transaction });
-    return { ...profileView(p), username: principal.user.username ?? null };
+    return ownView(principal, p, { transaction });
   });
 }
 
@@ -65,6 +72,7 @@ async function publicPage(handle) {
   return {
     handle: names.get(userId)?.username ?? handle,
     displayName: names.get(userId)?.displayName ?? '—',
+    avatarUrl: names.get(userId)?.avatarUrl ?? null,
     bio: p.bio ?? null,
     sports: (p.sports ?? []).map((s) => {
       const sport = byKey.get(s.sportKey);

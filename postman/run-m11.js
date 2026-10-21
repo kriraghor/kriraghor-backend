@@ -118,6 +118,14 @@ async function main() {
     start4: x.at1930(4),
     start5: x.at1930(5),
     start6: x.at1930(6),
+    // Round B1: the calendar range (today 00:00 Dhaka to 14 and 70 days on) and a block around a day-8 match.
+    ...(() => {
+      const rules = require('../src/modules/hire/hire.rules');
+      const day = (n) => rules.dhakaMidnight(rules.addDays(rules.dhakaDay(new Date()), n)).toISOString();
+      const start8 = x.at1930(8);
+      const off = (min) => new Date(Date.parse(start8) + min * 60000).toISOString();
+      return { day0: day(0), day14: day(14), day70: day(70), start8, block8Start: off(-30), block8End: off(90) };
+    })(),
     stepUpQueueA: await h.stepUp(a, 'escrow.manage'),
     controlUrl: `http://127.0.0.1:${controlPort}`,
   };

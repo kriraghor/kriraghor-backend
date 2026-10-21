@@ -14,6 +14,7 @@ const lazy = (file, names, values = []) => {
 
 module.exports = {
   disputes: lazy('./gym.disputes', ['register']),
+  reviewSource: lazy('./gym.reviews', ['register']),
   reads: lazy('./gym.reads', ['passFacts', 'pendingActions']),
   gyms: lazy('./gyms.service', ['facts']),
 };

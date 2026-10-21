@@ -61,12 +61,33 @@ const resolveBody = z.object({ subjectType: z.enum(SUBJECTS), subjectId: id, act
 const escalateReportBody = z.object({ subjectType: z.enum(SUBJECTS), subjectId: id, note: text(500) });
 const dismissBody = z.object({ note: text(500) });
 
-const reviewBody = z.object({ bookingId: id, stars: z.number().int().min(1).max(5), text: z.string().trim().max(1000).optional() });
+const REVIEW_SUBJECTS = ['ground', 'hire_profile', 'shop', 'gym'];
+const REVIEW_SOURCES = ['booking', 'hire_job', 'sub_order', 'gym_pass'];
+const starsField = z.number().int().min(1).max(5);
+const reviewBody = z
+  .object({
+    sourceType: z.enum(REVIEW_SOURCES).optional().meta({ description: 'booking → the venue, hire_job → the pro, sub_order → the shop, gym_pass → the gym (one review per gym: a newer pass updates it). Default booking' }),
+    sourceId: id.optional(),
+    bookingId: id.optional().meta({ description: 'v1: the same as sourceType booking with sourceId' }),
+    stars: starsField.optional(),
+    rating: starsField.optional().meta({ description: 'Another name for stars' }),
+    text: z.string().trim().max(1000).optional(),
+  })
+  .refine((v) => v.stars !== undefined || v.rating !== undefined, { message: 'Give the stars (1 to 5)', path: ['stars'] })
+  .refine((v) => v.sourceId !== undefined || (v.bookingId !== undefined && (v.sourceType ?? 'booking') === 'booking'), { message: 'Give the sourceId (or the bookingId)', path: ['sourceId'] });
 const reviewPatch = z.object({ stars: z.number().int().min(1).max(5).optional(), text: z.string().trim().max(1000).nullable().optional() }).refine((v) => v.stars !== undefined || v.text !== undefined, 'Change the stars or the text');
 const replyBody = z.object({ text: text(1000) });
 const publicReviewsQuery = z.object({ cursor: dateTime.optional(), limit: limit(50, 20) });
+const subjectReviewsQuery = z.object({ subjectType: z.enum(REVIEW_SUBJECTS), subjectId: id, cursor: dateTime.optional(), limit: limit(50, 20) });
+const myReviewsQuery = z.object({
+  role: z.enum(['author', 'owner']).optional().meta({ description: 'author: the reviews I wrote (the default); owner: the published reviews of my venues, pro profiles, shops and gyms (implied by subjectType or subjectId)' }),
+  subjectType: z.enum(REVIEW_SUBJECTS).optional(),
+  subjectId: id.optional(),
+  cursor: dateTime.optional(),
+  limit: limit(100, 50),
+});
 const ownerReviewsQuery = z.object({ groundId: id.optional(), cursor: dateTime.optional(), limit: limit(100, 50) });
-const adminReviewsQuery = z.object({ status: z.enum(['held', 'hidden', 'published']).default('held'), groundId: id.optional(), cursor: dateTime.optional(), limit: limit(100, 50) });
+const adminReviewsQuery = z.object({ status: z.enum(['held', 'hidden', 'published']).default('held'), subjectType: z.enum(REVIEW_SUBJECTS).optional(), subjectId: id.optional(), groundId: id.optional(), cursor: dateTime.optional(), limit: limit(100, 50) });
 const hideReviewBody = z.object({ reason: text(200) });
 
 // ---------------- responses
@@ -113,13 +134,31 @@ const ReportSubject = z.object({ subjectType: z.string(), subjectId: id, subject
 const ReportAction = z.object({}).loose().meta({ id: 'ReportActionResult' });
 
 const ReviewView = z
-  .object({ id, subjectType: z.string(), subjectId: id, bookingId: id, stars: z.number().int(), text: z.string().nullable(), status: z.string(), author: z.object({ displayName: z.string().nullable() }).loose(), reply: z.object({ text: z.string(), at: dateTime.nullable() }).nullable(), createdAt: dateTime })
+  .object({ id, subjectType: z.enum(REVIEW_SUBJECTS), subjectId: id, sourceType: z.enum(REVIEW_SOURCES).optional(), sourceId: id.optional(), subjectName: z.string().nullable().optional().meta({ description: 'In the member and owner lists' }), subjectSlug: z.string().nullable().optional(), bookingId: id.nullable(), stars: z.number().int(), text: z.string().nullable(), status: z.string(), author: z.object({ displayName: z.string().nullable() }).loose(), reply: z.object({ text: z.string(), at: dateTime.nullable() }).nullable(), createdAt: dateTime })
   .loose()
   .meta({ id: 'Review' });
 const ReviewResult = z.object({ review: ReviewView }).meta({ id: 'ReviewResult' });
 const ReviewList = z.object({ items: z.array(ReviewView), nextCursor: z.string().nullable().optional() }).meta({ id: 'ReviewList' });
 const PublicReviews = ReviewList.extend({ summary: z.object({ count: z.number().int(), avg: z.number().nullable(), histogram: z.array(z.number().int()) }) }).meta({ id: 'PublicReviews' });
-const Reviewable = z.object({ items: z.array(z.object({ bookingId: id, code: z.string(), groundId: id, groundName: z.string().nullable(), groundSlug: z.string().nullable(), end: dateTime })) }).meta({ id: 'Reviewable' });
+const ReviewableItem = z.object({
+  sourceType: z.enum(REVIEW_SOURCES),
+  sourceId: id,
+  ref: z.string(),
+  subjectType: z.enum(REVIEW_SUBJECTS),
+  subjectId: id,
+  subjectName: z.string().nullable(),
+  subjectSlug: z.string().nullable(),
+  doneAt: dateTime,
+  closesAt: dateTime,
+  existingReviewId: id.nullable().meta({ description: 'Gyms (one review per member and gym): the review a post from this pass updates' }),
+  bookingId: id.optional().meta({ description: 'v1 booking fields (sourceType booking only): bookingId, code, groundId, groundName, groundSlug, end' }),
+  code: z.string().optional(),
+  groundId: id.optional(),
+  groundName: z.string().nullable().optional(),
+  groundSlug: z.string().nullable().optional(),
+  end: dateTime.optional(),
+});
+const Reviewable = z.object({ items: z.array(ReviewableItem) }).meta({ id: 'Reviewable' });
 
 module.exports = {
   OUTCOMES,
@@ -150,6 +189,10 @@ module.exports = {
   reviewPatch,
   replyBody,
   publicReviewsQuery,
+  subjectReviewsQuery,
+  myReviewsQuery,
+  REVIEW_SUBJECTS,
+  REVIEW_SOURCES,
   ownerReviewsQuery,
   adminReviewsQuery,
   hideReviewBody,

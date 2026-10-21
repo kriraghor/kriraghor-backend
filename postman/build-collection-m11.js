@@ -6,8 +6,11 @@
  * no-show dispute). node postman/build-collection-m11.js
  *
  * Variables: adminAccessToken (master A), docsToken / listingsToken / deskToken (staff), proToken (a
- * pro applicant), m1Token / m2Token (managers), areaDhanmondi / areaMirpur, start4 / start5 / start6
- * (19:30 Dhaka in 4, 5 and 6 days), controlUrl (the runner: /refresh, /pay, /move, /tick, /check).
+ * pro applicant), m1Token / m2Token (managers), areaDhanmondi / areaMirpur, start4 / start5 / start6 /
+ * start8 (19:30 Dhaka in 4, 5, 6 and 8 days), day0 / day14 / day70 (00:00 Dhaka today and 14 or 70 days
+ * on), block8Start / block8End (around the day-8 match), controlUrl (the runner: /refresh, /pay, /move,
+ * /tick, /check). Folder 6 is Round B1: insights, stats, completeness, the availability calendar and the
+ * M01 avatar.
  * Unattended: `node postman/run-m11.js` (kriraghor_test database; fixtures in postman/fixtures).
  */
 const fs = require('fs');
@@ -61,11 +64,12 @@ const PROFILE_RUBRIC = ['identity_ok', 'role_ok', 'credential_ok', 'rates_ok', '
 
 const collection = {
   info: {
-    name: 'Kriraghor API: M11 Hire (step 1)',
+    name: 'Kriraghor API: M11 Hire (step 1 and Round B1)',
     description: [
       'A pro (an active member who applied as a pro) sends a BCB Level 2 umpire credential (M02, kept per hire role); the documents desk approves it and the pro role turns active. The pro lists as a semi-pro cricket umpire based in Dhanmondi with the design rate card (T20 ৳3,500, night 20%, short notice 15%, travel north ৳300); the listings desk approves it (M05 kind hire_profile).',
       'Manager 1 asks for two T20 night matches in Mirpur; the server quotes ৳4,500 each. Manager 2 asks for the first evening too; once the pro accepts manager 1, manager 2 fails the clash check. Messages refuse phone numbers before payment. Manager 1 pays (one payment, a hold per job) and both phones show.',
       'Match day: check in (late), start, mark complete; the manager confirms and the pro gets ৳4,050 (10% fee). The second match is cancelled 30 h before: 25% to the pro less 10% (৳1,012.50), 75% back. Manager 2 hires again and the pro withdraws (100% back). A third hire is a no-show: an M17 dispute, the hold frozen, decided all back.',
+      'Round B1: the pro reads their insights (earned from the ledger, net), stats and completeness, blocks an evening in the calendar (the public strip shows times only, a request over it is refused with PRO_UNAVAILABLE, the horizon is enforced), and sets and removes a profile photo (M01 avatar).',
       'Requests named "Runner" go to the local test runner (pay, move a job in time, refresh the pro token, read the ledger).',
       'Unattended: `node postman/run-m11.js` (kriraghor_test database).',
       'Rebuild this file with: node postman/build-collection-m11.js',
@@ -170,6 +174,25 @@ const collection = {
         numeric(idem(desk('All back', 'POST', '/admin/disputes/{{disputeCode}}/decide', { body: { outcome: 'all', reason: 'No check-in and the pro agrees', version: '{{version}}' }, expect: { status: 200 }, checks: [['resolved', "j.dispute.status === 'resolved' && j.dispute.refund === 450000"]] })), 'version', 'version'),
         req('Staff: the first request with its holds', 'GET', '/admin/hire/requests/{{r1code}}', { expect: { status: 200 }, checks: [['two jobs, holds', 'j.jobs.length === 2 && j.jobs.every((x) => x.escrow !== null)'], ['no phone', "!JSON.stringify(j).includes('+8801')"]] }),
         control('ledger still balanced', 'check', { checks: [['balanced', 'j.invariantsOk === true'], ['payable unchanged', 'j.proPayable === 506250']] }),
+      ],
+    },
+    {
+      name: '6. Round B1: insights, calendar and photo (FR-05, FR-14, FR-52, M19 §6.3, M01)',
+      item: [
+        pro('Insights: earned this period from the ledger (net)', 'GET', '/pro/insights?period=7w', { expect: { status: 200 }, checks: [['৳5,062.50 earned', 'j.earned.total === 506250 && j.buckets.length === 7'], ['one job done', 'j.jobs.done === 1'], ['acceptance', "typeof j.acceptanceRate === 'number'"]] }),
+        pro('Insights by month', 'GET', '/pro/insights?period=yr', { expect: { status: 200 }, checks: [['12 months', 'j.buckets.length === 12 && j.earned.total === 506250']] }),
+        pro('A period that does not exist (expect 422)', 'GET', '/pro/insights?period=month', { expect: { status: 422 } }),
+        pro('My profile: stats and completeness', 'GET', '/pro/profiles/{{profileId}}', { expect: { status: 200 }, checks: [['jobs done 1', 'j.stats.jobsDone === 1'], ['steps', "j.completeness.steps.some((s) => s.key === 'availability' && s.done === false)"]] }),
+        pro('Block the evening of the day-8 match', 'PUT', '/pro/availability/blocks', { body: { from: '{{day0}}', to: '{{day14}}', blocks: [{ start: '{{block8Start}}', end: '{{block8End}}', reason: 'Family wedding' }], repeats: [] }, expect: { status: 200 }, checks: [['one block', "j.blocks.length === 1 && j.blocks[0].reason === 'Family wedding'"]] }),
+        req('The public strip: times only', 'GET', '/hire/profiles/{{profileId}}/availability?from={{day0}}&to={{day14}}', { as: false, expect: { status: 200 }, checks: [['busy', 'j.busy.length >= 1'], ['no reason', "!JSON.stringify(j).includes('wedding')"]] }),
+        idem(m2('A request over the block (expect 409)', 'POST', '/hire/requests', { body: { profileId: '{{profileId}}', unit: 'match', engagements: [engagement('start8')] }, expect: { status: 409, code: 'PRO_UNAVAILABLE' } })),
+        pro('Beyond the horizon (expect 422)', 'PUT', '/pro/availability/blocks', { body: { from: '{{day0}}', to: '{{day70}}', blocks: [] }, expect: { status: 422 } }),
+        pro('My calendar', 'GET', '/pro/availability?from={{day0}}&to={{day14}}', { expect: { status: 200 }, checks: [['the block, 60-day horizon', 'j.spans.length === 1 && j.horizonDays === 60']] }),
+        pro('Clear the calendar', 'PUT', '/pro/availability/blocks', { body: { from: '{{day0}}', to: '{{day14}}', blocks: [], repeats: [] }, expect: { status: 200 }, checks: [['empty', 'j.blocks.length === 0']] }),
+        upload('A profile photo (PNG)', '/me/avatar', 'nid-back.png', 'image/png', { expect: { status: 200 }, checks: [['avatar url', "typeof j.avatarUrl === 'string' && j.avatarUrl.includes('/avatars/')"]] }),
+        upload('A PDF is not a photo (expect 415)', '/me/avatar', 'nid-selfie.pdf', 'application/pdf', { expect: { status: 415, code: 'FILE_TYPE_NOT_ALLOWED' } }),
+        req('The directory card shows the photo', 'GET', '/hire/profiles?category=officials', { as: false, expect: { status: 200 }, checks: [['photo', "typeof j.items[0].avatarUrl === 'string'"], ['available today', "typeof j.items[0].availableToday === 'boolean'"], ['stats', 'j.items[0].jobsDone === 1']] }),
+        pro('Remove the photo', 'DELETE', '/me/avatar', { expect: { status: 200 }, checks: [['gone', 'j.avatarUrl === null']] }),
       ],
     },
   ],

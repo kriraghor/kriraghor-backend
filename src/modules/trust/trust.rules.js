@@ -151,13 +151,36 @@ const resolutionAllowed = (subjectType, action) => RESOLUTIONS[subjectType].incl
 
 const PLAYED = ['checked_in', 'completed'];
 
-/** Can the member review this booking now? */
-function reviewBlock({ isBooker, status, endAt, now, windowDays }) {
-  if (!isBooker) return 'NOT_YOUR_BOOKING';
-  if (!PLAYED.includes(status) || ms(now) < ms(endAt)) return 'NOT_PLAYED';
-  if (ms(now) > ms(endAt) + windowDays * DAY) return 'REVIEW_WINDOW_CLOSED';
+/**
+ * Can the member review this source now (M17-FR-30, FR-31)? Every source answers who paid and when it
+ * became reviewable (`doneAt`: a booking's end once played, a hire job's release, a sub-order's
+ * completion, a gym pass's latest visit; null while not done). The window is reviews.window_days from
+ * doneAt. `notPayer` and `notDone` are the source's own codes.
+ */
+function sourceReviewBlock({ isPayer, doneAt, now, windowDays, notPayer, notDone }) {
+  if (!isPayer) return notPayer;
+  if (!doneAt || ms(now) < ms(doneAt)) return notDone;
+  if (ms(now) > ms(doneAt) + windowDays * DAY) return 'REVIEW_WINDOW_CLOSED';
   return null;
 }
+
+/** Can the member review this booking now? (played: checked in or completed, and ended) */
+const reviewBlock = ({ isBooker, status, endAt, now, windowDays }) =>
+  sourceReviewBlock({ isPayer: isBooker, doneAt: PLAYED.includes(status) ? endAt : null, now, windowDays, notPayer: 'NOT_YOUR_BOOKING', notDone: 'NOT_PLAYED' });
+
+/**
+ * One review per subject for gyms (M20-FR-10): a member who already reviewed the gym and posts again
+ * from a newer pass updates that review. The same pass twice is REVIEW_EXISTS; a review hidden by
+ * staff stays hidden (REVIEW_HIDDEN).
+ */
+function repostBlock({ sameSource, status }) {
+  if (sameSource) return 'REVIEW_EXISTS';
+  if (status === 'hidden') return 'REVIEW_HIDDEN';
+  return null;
+}
+
+/** An owner's reply passes the same checks (M17-FR-34): a phone number or a link is refused. */
+const replyBlock = (text) => (contentFlag(text) ? 'REPLY_HAS_CONTACT' : null);
 
 function editBlock({ status, editUntil, now }) {
   if (status === 'hidden') return 'REVIEW_HIDDEN';
@@ -208,7 +231,10 @@ module.exports = {
   RESOLUTIONS,
   resolutionAllowed,
   PLAYED,
+  sourceReviewBlock,
   reviewBlock,
+  repostBlock,
+  replyBlock,
   editBlock,
   contentFlag,
   initialReview,
