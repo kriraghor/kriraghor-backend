@@ -14,6 +14,7 @@ const { closeAllRedis } = require('../../src/common/redis');
 const ledger = require('../../src/modules/payments/ledger.service');
 const invariants = require('../../src/modules/payments/invariants.service');
 const bookings = require('../../src/modules/bookings/bookings.service');
+const pr = require('../../src/modules/grounds/pricing.rules');
 const { owner, liveGround, moveTo } = require('../fixtures/bookings');
 
 const { api, P, models } = h;
@@ -391,11 +392,14 @@ describe('M10 moves and M09 step 2 (closures, series, the port)', () => {
     await liveGround(o, { name: 'Quiet Arena' });
     const m = await h.signupUser();
     const start = new Date(Math.ceil((Date.now() + 60000) / HALF) * HALF + HALF);
-    if (new Date(start.getTime() + 6 * 3600000).getUTCDate() === new Date(Date.now() + 6 * 3600000).getUTCDate()) {
+    // The fixture is open all day, so the 2-hour hold counts in full only if it ends by Dhaka midnight;
+    // from about 21:30 Dhaka no such window is left today and the list check is skipped.
+    const midnight = pr.dhakaInstant(pr.dhakaParts(new Date()).date, 24 * 60);
+    if (start.getTime() + 2 * 3600000 <= midnight.getTime()) {
       await hold(m, busy, { start: start.toISOString(), minutes: 120 });
       const list = await api().get(`${P}/grounds?sort=most_open`).expect(200);
       expect(list.body.items.map((x) => x.name)).toEqual(['Quiet Arena', 'Busy Arena']);
-      expect(list.body.items[0].openHoursToday - list.body.items[1].openHoursToday).toBe(1);
+      expect(list.body.items[0].openHoursToday - list.body.items[1].openHoursToday).toBe(2);
     }
     const slug = (await models.Ground.findByPk(busy.id)).slug;
     expect((await api().get(`${P}/grounds/${slug}`).expect(200)).body.bookingOpen).toBe(true);
