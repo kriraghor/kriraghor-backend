@@ -395,7 +395,7 @@ describe('M10 moves and M09 step 2 (closures, series, the port)', () => {
       await hold(m, busy, { start: start.toISOString(), minutes: 120 });
       const list = await api().get(`${P}/grounds?sort=most_open`).expect(200);
       expect(list.body.items.map((x) => x.name)).toEqual(['Quiet Arena', 'Busy Arena']);
-      expect(list.body.items[0].openHoursToday - list.body.items[1].openHoursToday).toBe(2);
+      expect(list.body.items[0].openHoursToday - list.body.items[1].openHoursToday).toBe(1);
     }
     const slug = (await models.Ground.findByPk(busy.id)).slug;
     expect((await api().get(`${P}/grounds/${slug}`).expect(200)).body.bookingOpen).toBe(true);

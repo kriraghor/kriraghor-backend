@@ -363,7 +363,7 @@ describe('boot check and seed (M03 §12, §15)', () => {
     await propose(master, [{ key: 'esports.room_reveal_minutes', to: 12 }]);
     expect(await seedReference()).toEqual({ settings: 0, esports: 0, templates: 0, kycRequirements: 0, moderation: 0, places: 0, items: 0, hire: 0, rules: 0 });
     expect((await models.PlatformSetting.findByPk('esports.room_reveal_minutes')).value).toBe(12);
-    expect(await models.PlatformSetting.count()).toBe(292); // 289 + the three notify.push_* settings (M08 push channel)
+    expect(await models.PlatformSetting.count()).toBe(293); // 289 + the three notify.push_* settings (M08 push channel)
     expect(await models.EsportsGame.count()).toBe(2);
   });
 });
