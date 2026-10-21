@@ -4,6 +4,7 @@ Node.js · Express 5 · Sequelize 6 · PostgreSQL 17 · Redis · BullMQ · Socke
 
 The specification for every module is in [`../kriraghor-docs/modules`](../kriraghor-docs/modules/README.md). Modules are built one at a time, in dependency order.
 
+
 | Module | Status |
 |---|---|
 | **M01 Identity and Access**: authentication and authorisation | ✅ Implemented: [`src/modules/auth`](src/modules/auth), [`src/modules/users`](src/modules/users), [`src/modules/admin`](src/modules/admin). Separate admin sessions per [ADR-004](../kriraghor-docs/decisions/ADR-004-cross-subdomain-auth.md) |
