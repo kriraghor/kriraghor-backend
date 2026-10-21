@@ -23,6 +23,8 @@ module.exports = {
     './src/modules/notifications/notify.rules.js': FULL,
     // M06 money: helpers, ledger postings, escrow holds and refund authority.
     './src/common/money.js': FULL,
+    // Shared CSV cells, taka from poisha and Dhaka times (M19-FR-22, M04-FR-10, M07, M14).
+    './src/common/csv.js': FULL,
     './src/modules/payments/ledger.rules.js': FULL,
     './src/modules/payments/escrow.rules.js': FULL,
     './src/modules/payments/refunds.rules.js': FULL,

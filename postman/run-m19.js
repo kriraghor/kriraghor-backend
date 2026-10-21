@@ -12,6 +12,11 @@
  *   POST /settle                drain events and refresh the dashboard views
  *   POST /forget?bookingId=     delete one booking fact (the nightly reconcile must restore it)
  *   POST /reconcile             run the nightly reconcile now
+ *   POST /forget-sub-order?subOrderId=   delete one shop fact (Round B2)
+ *   POST /backfill              empty the shop and gym facts and the backfill marker, then reconcile
+ *   POST /businesses            Round B2: make a live shop with four orders (one rejected), a live gym
+ *                               with three passes (two admitted) and a sports organisation with a busy
+ *                               event and a staff member; answers their tokens and ids
  * Never point this at a real database.
  */
 require('../tests/env');
@@ -40,6 +45,9 @@ async function main() {
 
   const h = require('../tests/helpers');
   const fx = require('../tests/fixtures/bookings');
+  const mf = require('../tests/fixtures/market');
+  const gf = require('../tests/fixtures/gym');
+  const bf = require('../tests/fixtures/business');
   const { closeAllRedis } = require('../src/common/redis');
   const facts = require('../src/modules/analytics/facts.service');
   const { models } = h;
@@ -50,6 +58,43 @@ async function main() {
   const member = await h.signupUser({ name: 'Rafi Ahmed' });
   const ground = await fx.liveGround(owner, { name: 'Dhanmondi Turf Arena' });
   const base = Math.ceil((Date.now() + 86400000) / HALF) * HALF;
+
+  /**
+   * Round B2 businesses, made when the collection reaches them (so the earlier platform and member
+   * numbers stay those of the bookings): a shop with four orders from two buyers (one rejected), a gym
+   * with a day, a month and a tomorrow's day pass (two admitted), a sports organisation with a busy event.
+   */
+  async function businesses() {
+    const reviewer = await mf.staffWith(a, ['approve_listings', 'approve_documents']);
+    const shop = await bf.bootShop(reviewer, reviewer);
+    const tanvir = await h.signupUser({ name: 'Tanvir Hasan' });
+    const nadia = await h.signupUser({ name: 'Nadia Islam' });
+    const s1 = await bf.paidOrder(tanvir, shop, ['42', '43']);
+    const s2 = await bf.paidOrder(tanvir, shop, ['44']);
+    const s3 = await bf.paidOrder(nadia, shop, ['40']);
+    const s4 = await bf.paidOrder(nadia, shop, ['41']);
+    await bf.shopPost(shop.owner, s4.id, 'reject', { reason: 'out_of_stock' }).expect(200);
+    const { owner: gymOwner, gym } = await bf.liveGym(reviewer, reviewer);
+    const fahim = await h.signupUser({ name: 'Fahim Rahman' });
+    const rina = await h.signupUser({ name: 'Rina Begum' });
+    const day = await bf.paidPass(fahim, gym, 'day');
+    const month = await bf.paidPass(rina, gym, 'month');
+    await bf.paidPass(rina, gym, 'day', gf.inDays(1));
+    await bf.admit(gymOwner, gym, day);
+    await bf.admit(gymOwner, gym, month);
+    const busy = await bf.busyOrganiser(reviewer);
+    const orgStaff = await bf.addOrgMember(busy.owner, busy.org.id, 'staff');
+    await h.drainEvents({ rounds: 10 });
+    return {
+      shopOwnerToken: shop.owner.accessToken,
+      shopSales: [s1, s2, s3].reduce((n, x) => n + x.itemsPoisha, 0),
+      subOrderId: s1.id,
+      gymOwnerToken: gymOwner.accessToken,
+      orgOwnerToken: busy.owner.accessToken,
+      orgStaffToken: orgStaff.accessToken,
+      orgId: busy.org.id,
+    };
+  }
 
   let queue = Promise.resolve();
   const serial = (fn) => {
@@ -73,6 +118,15 @@ async function main() {
     },
     forget: async (q) => ({ deleted: await models.KpiFactBooking.destroy({ where: { bookingId: q.get('bookingId') } }) }),
     reconcile: async () => facts.reconcile(),
+    businesses: async () => businesses(),
+    // Round B2: lose one shop fact; or empty every shop and gym fact and the backfill marker (as on the
+    // day of the migration) and let the reconcile backfill them once.
+    'forget-sub-order': async (q) => ({ deleted: await models.KpiFactSubOrder.destroy({ where: { subOrderId: q.get('subOrderId') } }) }),
+    backfill: async () => {
+      for (const m of [models.KpiFactSubOrder, models.KpiFactOrderLine, models.KpiFactGymPass, models.KpiFactGymAdmission]) await m.destroy({ where: {} });
+      await models.KpiProcessedEvent.destroy({ where: { consumer: 'analytics.backfill.round-b2' } });
+      return facts.reconcile();
+    },
   };
   const control = http.createServer((rq, rs) => {
     const u = new URL(rq.url, 'http://127.0.0.1');

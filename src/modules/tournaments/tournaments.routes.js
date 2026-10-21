@@ -47,6 +47,11 @@ consoleRouter.post('/tournaments/:id/registration/close', admin, tid, async (req
 consoleRouter.post('/tournaments/:id/registration/extend', admin, tid, validate(s.extendBody), async (req, res) => res.json(await tournaments.extendRegistration(req.user, req.org, req.params.id, req.body, req)));
 consoleRouter.post('/tournaments/:id/rules/unlock', admin, tid, validate(s.unlockBody), async (req, res) => res.json(await tournaments.unlockRules(req.user, req.org, req.params.id, req.body, req)));
 consoleRouter.get('/tournaments/:id/registrations', staff, tid, validate(s.regQuery, 'query'), async (req, res) => res.json(await registrations.orgList(req.org, req.params.id, req.validQuery)));
+// Round B2: the registrations as CSV, org admins only (names and NID yes/no, never phones or ids).
+consoleRouter.get('/tournaments/:id/registrations.csv', admin, tid, validate(s.regCsvQuery, 'query'), async (req, res) => {
+  const { filename, body } = await registrations.orgCsv(req.user, req.org, req.params.id, req.validQuery, req);
+  res.set('Content-Type', 'text/csv; charset=utf-8').set('Content-Disposition', `attachment; filename="${filename}"`).set('Cache-Control', 'no-store').send(body);
+});
 consoleRouter.post('/registrations/:regId/approve', admin, rid, async (req, res) => res.json(await registrations.approve(req.user, req.org, req.params.regId, req)));
 consoleRouter.post('/registrations/:regId/reject', admin, rid, validate(s.reasonBody), async (req, res) => res.json(await registrations.reject(req.user, req.org, req.params.regId, req.body, req)));
 consoleRouter.post('/registrations/:regId/remove', admin, rid, validate(s.reasonBody), async (req, res) => res.json(await registrations.remove(req.user, req.org, req.params.regId, req.body, req)));

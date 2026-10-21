@@ -144,4 +144,105 @@ KpiDrift.init(
   opts('kpi_drift', 'KpiDrift')
 );
 
-module.exports = { KpiFactBooking, KpiFactCourtDay, KpiFactPayment, KpiFactLedgerTxn, KpiFactEsportsEntry, KpiFactEsportsTournament, KpiProcessedEvent, KpiDrift };
+// ---- Round B2 (migration 20261110000001-create-business-kpis): shop and gym facts.
+const version = { type: DataTypes.BIGINT, allowNull: false, get() { return Number(this.getDataValue('sourceVersion')); } };
+const updatedAt = { type: DataTypes.DATE(3), allowNull: false, defaultValue: DataTypes.NOW };
+
+class KpiFactSubOrder extends Model {}
+KpiFactSubOrder.init(
+  {
+    subOrderId: { type: DataTypes.UUID, primaryKey: true },
+    sourceVersion: version,
+    code: req(DataTypes.STRING(24)),
+    orderId: req(DataTypes.UUID),
+    shopId: req(DataTypes.UUID),
+    sellerId: req(DataTypes.UUID),
+    buyerId: req(DataTypes.UUID),
+    status: req(DataTypes.STRING(20)),
+    units: req(DataTypes.INTEGER),
+    itemsPoisha: poisha('itemsPoisha'),
+    deliveryPoisha: poisha('deliveryPoisha'),
+    commissionPoisha: poisha('commissionPoisha'),
+    refundedPoisha: poisha('refundedPoisha'),
+    placedAt: DataTypes.DATE(3),
+    completedAt: DataTypes.DATE(3),
+    cancelledAt: DataTypes.DATE(3),
+    updatedAt,
+  },
+  opts('kpi_fact_sub_order', 'KpiFactSubOrder')
+);
+
+class KpiFactOrderLine extends Model {}
+KpiFactOrderLine.init(
+  {
+    orderItemId: { type: DataTypes.UUID, primaryKey: true },
+    subOrderId: req(DataTypes.UUID),
+    shopId: req(DataTypes.UUID),
+    sellerId: req(DataTypes.UUID),
+    productId: req(DataTypes.UUID),
+    categoryId: DataTypes.UUID,
+    title: req(DataTypes.STRING(120)),
+    status: req(DataTypes.STRING(20)),
+    placedAt: DataTypes.DATE(3),
+    qty: req(DataTypes.INTEGER),
+    amountPoisha: poisha('amountPoisha'),
+    updatedAt,
+  },
+  opts('kpi_fact_order_line', 'KpiFactOrderLine')
+);
+
+class KpiFactGymPass extends Model {}
+KpiFactGymPass.init(
+  {
+    passId: { type: DataTypes.UUID, primaryKey: true },
+    sourceVersion: version,
+    code: req(DataTypes.STRING(20)),
+    gymId: req(DataTypes.UUID),
+    ownerId: req(DataTypes.UUID),
+    packageId: req(DataTypes.UUID),
+    kind: req(DataTypes.STRING(10)),
+    title: req(DataTypes.STRING(80)),
+    status: req(DataTypes.STRING(20)),
+    pricePoisha: poisha('pricePoisha'),
+    feePoisha: poisha('feePoisha'),
+    refundedPoisha: poisha('refundedPoisha'),
+    releasedPoisha: poisha('releasedPoisha'),
+    paidAt: DataTypes.DATE(3),
+    validFrom: req(DataTypes.DATEONLY),
+    validTo: req(DataTypes.DATEONLY),
+    firstRedeemedAt: DataTypes.DATE(3),
+    admissions: req(DataTypes.INTEGER),
+    updatedAt,
+  },
+  opts('kpi_fact_gym_pass', 'KpiFactGymPass')
+);
+
+class KpiFactGymAdmission extends Model {}
+KpiFactGymAdmission.init(
+  {
+    redemptionId: { type: DataTypes.UUID, primaryKey: true },
+    passId: req(DataTypes.UUID),
+    gymId: req(DataTypes.UUID),
+    ownerId: req(DataTypes.UUID),
+    kind: req(DataTypes.STRING(10)),
+    method: req(DataTypes.STRING(8)),
+    redeemedAt: req(DataTypes.DATE(3)),
+    updatedAt,
+  },
+  opts('kpi_fact_gym_admission', 'KpiFactGymAdmission')
+);
+
+module.exports = {
+  KpiFactBooking,
+  KpiFactCourtDay,
+  KpiFactPayment,
+  KpiFactLedgerTxn,
+  KpiFactEsportsEntry,
+  KpiFactEsportsTournament,
+  KpiProcessedEvent,
+  KpiDrift,
+  KpiFactSubOrder,
+  KpiFactOrderLine,
+  KpiFactGymPass,
+  KpiFactGymAdmission,
+};

@@ -19,6 +19,7 @@
 const { Op, UniqueConstraintError } = require('sequelize');
 const { AppError, E } = require('../../common/errors');
 const { nextCode } = require('../../common/sequences');
+const { taka } = require('../../common/csv');
 const logger = require('../../common/logger');
 const { sequelize, Payout, PayoutItem, PayoutBatch, PayoutApproval, PayoutReveal, PayoutAccount } = require('../../models');
 const audit = require('../audit').audit;
@@ -679,7 +680,6 @@ async function summary(userId, now = new Date()) {
 /** GET /me/payouts/:id/statement.csv (§4.2): the payout and its lines, EN or BN headings. */
 async function statementCsv(userId, id, locale = 'en') {
   const d = await meGet(userId, id);
-  const taka = (p) => (p / 100).toFixed(2);
   const bn = locale === 'bn';
   const head = bn ? ['বিবরণ', 'মোট (৳)', 'ফি (৳)', 'নিট (৳)'] : ['Description', 'Gross (৳)', 'Fee (৳)', 'Net (৳)'];
   const rows = [

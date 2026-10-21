@@ -29,7 +29,7 @@ const OWNERS = {
   'admin': ['StaffMember', 'StaffPermission'],
   'settings': ['PlatformSetting', 'SettingsHistory', 'SettingsChangeRequest'],
   'catalog': ['Sport', 'Division', 'District', 'Area', 'Facility', 'Surface', 'SportRuleSchema', 'ItemCategory', 'ItemType', 'ItemTypeField', 'HireCategory', 'HireRole', 'EsportsGame', 'EsportsMode', 'EsportsMap', 'EsportsPointsPreset'],
-  'analytics': ['KpiFactBooking', 'KpiFactCourtDay', 'KpiFactPayment', 'KpiFactLedgerTxn', 'KpiFactEsportsEntry', 'KpiFactEsportsTournament', 'KpiProcessedEvent', 'KpiDrift'],
+  'analytics': ['KpiFactBooking', 'KpiFactCourtDay', 'KpiFactPayment', 'KpiFactLedgerTxn', 'KpiFactEsportsEntry', 'KpiFactEsportsTournament', 'KpiProcessedEvent', 'KpiDrift', 'KpiFactSubOrder', 'KpiFactOrderLine', 'KpiFactGymPass', 'KpiFactGymAdmission'],
   'audit': ['AuditLog', 'AuditChain', 'AuditExport'],
   'events': ['OutboxEvent', 'ConsumedEvent'],
   'notifications': ['Notification', 'NotificationPref', 'MessageTemplate', 'NotificationDelivery', 'SmsLog', 'PushSubscription', 'PushReceipt'],

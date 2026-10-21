@@ -193,14 +193,8 @@ function nextRun(schedule, now, { runHour, groundWeekday, shopWeekday }) {
 
 // ---------------------------------------------------------------- statements (§4.2)
 
-/** A CSV cell, guarded against spreadsheet formula injection (plain numbers such as -20.00 stay numbers). */
-function csvCell(v) {
-  if (v === null || v === undefined) return '';
-  let s = String(v);
-  if (/^[=+\-@\t\r]/.test(s) && !/^-?\d+(\.\d+)?$/.test(s)) s = `'${s}`;
-  return `"${s.replace(/"/g, '""')}"`;
-}
-const csv = (rows) => `${rows.map((r) => r.map(csvCell).join(',')).join('\r\n')}\r\n`;
+/** A CSV cell and file, from the shared helper (formula guard; plain numbers such as -20.00 stay numbers). */
+const { cell: csvCell, csv } = require('../../common/csv');
 
 module.exports = {
   TRANSITIONS,

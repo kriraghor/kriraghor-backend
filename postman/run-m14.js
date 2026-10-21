@@ -6,7 +6,7 @@
  *
  * Uses the kriraghor_test database (reset): migrates and seeds it, signs in master A and a reviewer
  * (approve_listings, approve_documents), makes a verified sports organisation whose owner has an
- * active payout account, and five captains with an NID and a badminton team. It serves {{controlUrl}},
+ * active payout account (and a staff member of it), and five captains with an NID and a badminton team. It serves {{controlUrl}},
  * a local test-only control: /approve (claims, ticks and approves the open submission of a subject),
  * /pay (pays an intent on the simulator as a captain), /settle (drains events), /check (the owner's
  * payable and notice counts). Never point this at a real database.
@@ -38,6 +38,7 @@ async function main() {
   const h = require('../tests/helpers');
   const f = require('../tests/fixtures/market');
   const tf = require('../tests/fixtures/tournaments');
+  const bf = require('../tests/fixtures/business');
   const { closeAllRedis } = require('../src/common/redis');
   const { models } = h;
 
@@ -45,6 +46,8 @@ async function main() {
   const a = await h.createSignedInMaster();
   const reviewer = await f.staffWith(a, ['approve_listings', 'approve_documents']);
   const { owner, org } = await tf.sportsOrg(reviewer);
+  // Round B2: a staff member of the organisation (the registrations CSV is for admins only).
+  const orgStaff = await bf.addOrgMember(owner, org.id, 'staff');
   const caps = [];
   for (const name of ['Rafi Ahmed', 'Sakib Hasan', 'Nabil Khan', 'Tamim Iqbal', 'Mushfiq Rahim']) caps.push(await tf.captain(name));
   const area = await f.areaId();
@@ -97,6 +100,7 @@ async function main() {
   const vars = {
     ownerToken: owner.accessToken,
     orgId: org.id,
+    orgStaffToken: orgStaff.accessToken,
     modToken: reviewer.accessToken,
     venueArea: area,
     opensAt: d.registrationOpensAt,

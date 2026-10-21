@@ -96,3 +96,54 @@ describe('M19 KPI formulas (§6, v3)', () => {
     expect(A.addsUp([1, 2], 6)).toBe(false);
   });
 });
+
+describe('M19 Round B2 KPI helpers (§6.3 shops, gyms, organisers)', () => {
+  it('counted sub-orders: placed and not given back', () => {
+    expect([...A.SHOP_COUNTED]).toEqual(['placed', 'accepted', 'shipped', 'delivered', 'completed', 'disputed']);
+    for (const s of ['pending_payment', 'rejected', 'expired', 'cancelled', 'refunded']) expect(A.SHOP_COUNTED.has(s)).toBe(false);
+  });
+
+  it('average order: whole poisha, half up; null without orders (Sales / Orders reconciles)', () => {
+    expect(A.average(500000, 2)).toBe(250000);
+    expect(A.average(100001, 2)).toBe(50001); // 50,000.5 → 50,001
+    expect(A.average(100000, 3)).toBe(33333);
+    expect(A.average(0, 0)).toBeNull();
+    expect(A.average(5, -1)).toBeNull();
+  });
+
+  it('unused share of ended passes: three places; null when nothing ended', () => {
+    expect(A.share(1, 3)).toBe(0.333);
+    expect(A.share(0, 4)).toBe(0);
+    expect(A.share(2, 2)).toBe(1);
+    expect(A.share(1, 0)).toBeNull();
+  });
+
+  it('Dhaka hours and the days of a bucket', () => {
+    expect(A.dhakaHour('2026-10-22T00:30:00Z')).toBe(6);
+    expect(A.dhakaHour('2026-10-21T18:10:00Z')).toBe(0);
+    expect(A.dhakaHour(new Date('2026-10-22T17:59:00Z'))).toBe(23);
+    expect(A.daysOf({ from: '2026-10-19', to: '2026-10-26' })).toEqual(['2026-10-19', '2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23', '2026-10-24', '2026-10-25']);
+    expect(A.daysOf({ from: '2026-10-01', to: '2026-10-01' })).toEqual([]);
+  });
+
+  it('top rows: largest first, ties by key (numbers as numbers, text as text)', () => {
+    const hours = [{ hour: 9, n: 2 }, { hour: 10, n: 2 }, { hour: 18, n: 5 }, { hour: 7, n: 1 }];
+    expect(A.top(hours, 'n', 3, 'hour').map((h) => h.hour)).toEqual([18, 9, 10]);
+    const products = [{ title: 'Shin guard', units: 3 }, { title: 'Boots', units: 3 }, { title: 'Ball', units: 7 }];
+    expect(A.top(products, 'units', 10, 'title').map((p) => p.title)).toEqual(['Ball', 'Boots', 'Shin guard']);
+    expect(hours.map((h) => h.hour)).toEqual([9, 10, 18, 7]); // the input is not reordered
+  });
+
+  it('organiser totals: teams of running events, matches and money of all (M14 §4.1)', () => {
+    const money = (collected, held, released, refunded) => ({ collected, held, released, refunded, fees: 0 });
+    const t = A.organiserTotals([
+      { status: 'registration_open', maxTeams: 8, approved: 3, waiting: 2, unpaid: 1, reserve: 0, matches: 0, played: 0, money: money(7200000, 7200000, 0, 0) },
+      { status: 'live', maxTeams: 4, approved: 4, waiting: 0, unpaid: 0, reserve: 1, matches: 6, played: 2, money: money(7200000, 3420000, 3420000, 360000) },
+      { status: 'completed', maxTeams: 6, approved: 6, waiting: 0, unpaid: 0, reserve: 0, matches: 15, played: 15, money: money(10800000, 0, 10800000, 0) },
+      { status: 'cancelled', maxTeams: 4, approved: 2, waiting: 1, unpaid: 0, reserve: 0, matches: 0, played: 0, money: money(3600000, 0, 0, 3600000) },
+    ]);
+    expect(t).toEqual({ approved: 7, maxTeams: 12, waiting: 2, unpaid: 1, reserve: 1, matches: 21, played: 17, collected: 28800000, held: 10620000, released: 14220000, refunded: 3960000 });
+    expect([...A.RUNNING]).toEqual(['registration_open', 'registration_closed', 'live']);
+    expect(A.organiserTotals([])).toMatchObject({ approved: 0, collected: 0 });
+  });
+});

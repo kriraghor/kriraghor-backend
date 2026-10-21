@@ -69,6 +69,8 @@ const unlockBody = z.object({ reason: z.string().trim().min(10).max(255) });
 const extendBody = z.object({ closesAt: dateTime });
 const listQuery = z.object({ status: z.string().max(30).optional() });
 const regQuery = z.object({ status: z.string().max(30).optional() });
+// Round B2: the registrations CSV (org admins); include=roster adds a row per player (display name and NID yes/no).
+const regCsvQuery = z.object({ include: z.enum(['roster']).optional() });
 const drawBody = z.object({ seeding: z.enum(['registration_order', 'manual', 'random']), manualOrder: z.array(id).max(256).optional() });
 const generateBody = z.object({
   dryRun: z.boolean().default(false),
@@ -271,6 +273,7 @@ module.exports = {
   extendBody,
   listQuery,
   regQuery,
+  regCsvQuery,
   drawBody,
   generateBody,
   moveBody,

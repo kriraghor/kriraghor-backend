@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Kriraghor API: M14 Tournaments (step 1)",
-    "description": "A verified sports organisation (M14 lite, kind sports) drafts a badminton league for four teams: ৳18,000 a team, a prize pool shown on the page (Q86: not held), a venue with two courts. Its submission fails without a venue; with one it goes to the Moderation desk (kind tournament) and the runner approves it: registration opens with the 5% fee and the 50% first release snapshotted.\n\nFour captains (NID members with a badminton team) register with a squad and pay into escrow (M06 purpose tournament_entry); a fifth joins the reserve list. Registering the same team twice is refused.\n\nThe organiser approves the four (squads ready), closes registration (the reserve team lapses), draws at random (the seed is published), dry-runs and then generates the schedule, and publishes the fixtures.\n\nResults: the first locks the rules and releases half of every entry less 5% (৳34,200 to the owner); a stale move is refused; an amendment needs a reason; the last result completes the tournament and releases the rest (৳68,400 in all, ৳3,600 fee). The public hub shows the standings without any personal data.\n\nUnattended: `node postman/run-m14.js` (kriraghor_test database). Rebuild with: node postman/build-collection-m14.js",
+    "description": "A verified sports organisation (M14 lite, kind sports) drafts a badminton league for four teams: ৳18,000 a team, a prize pool shown on the page (Q86: not held), a venue with two courts. Its submission fails without a venue; with one it goes to the Moderation desk (kind tournament) and the runner approves it: registration opens with the 5% fee and the 50% first release snapshotted.\n\nFour captains (NID members with a badminton team) register with a squad and pay into escrow (M06 purpose tournament_entry); a fifth joins the reserve list. Registering the same team twice is refused.\n\nThe organiser exports the registrations as CSV (organisation admins only; team, status, fees, dates, squad counts, and with the roster display names and NID yes/no; never phones or ids).\n\nThe organiser approves the four (squads ready), closes registration (the reserve team lapses), draws at random (the seed is published), dry-runs and then generates the schedule, and publishes the fixtures.\n\nResults: the first locks the rules and releases half of every entry less 5% (৳34,200 to the owner); a stale move is refused; an amendment needs a reason; the last result completes the tournament and releases the rest (৳68,400 in all, ৳3,600 fee). The public hub shows the standings without any personal data.\n\nUnattended: `node postman/run-m14.js` (kriraghor_test database). Rebuild with: node postman/build-collection-m14.js",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -1584,6 +1584,236 @@
                 "tournaments",
                 "{{tournamentId}}",
                 "overview"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Registrations as CSV (organisation admins)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"a CSV download (Postman strips the byte-order mark; jest checks it)\", () => { pm.expect(pm.response.headers.get('Content-Type').includes('text/csv') && pm.response.headers.get('Content-Disposition').includes('registrations')).to.eql(true); });",
+                  "pm.test(\"five registrations and the header\", () => { pm.expect(pm.response.text().trim().split('\\r\\n').length === 6).to.eql(true); });",
+                  "pm.test(\"four approved with ready squads, the reserve team\", () => { pm.expect((pm.response.text().match(/\"approved\",\"\",/g) || []).length === 4 && pm.response.text().includes('\"reserve\",\"1\"')).to.eql(true); });",
+                  "pm.test(\"fees in taka\", () => { pm.expect(pm.response.text().includes('\"18000.00\"')).to.eql(true); });",
+                  "pm.test(\"no phones or ids\", () => { pm.expect(!/01[3-9]\\d{8}|[0-9a-f]{8}-[0-9a-f]{4}-/i.test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/tournaments/{{tournamentId}}/registrations.csv",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "tournaments",
+                "{{tournamentId}}",
+                "registrations.csv"
+              ]
+            }
+          }
+        },
+        {
+          "name": "… with the roster: display names and NID verified yes/no",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"player columns\", () => { pm.expect(pm.response.text().includes('\"player\",\"nid_verified\"') && pm.response.text().includes('\"Rafi Ahmed\",\"yes\"')).to.eql(true); });",
+                  "pm.test(\"no phones or ids\", () => { pm.expect(!/01[3-9]\\d{8}|[0-9a-f]{8}-[0-9a-f]{4}-/i.test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/tournaments/{{tournamentId}}/registrations.csv?include=roster",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "tournaments",
+                "{{tournamentId}}",
+                "registrations.csv"
+              ],
+              "query": [
+                {
+                  "key": "include",
+                  "value": "roster"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Organisation staff cannot export (expect 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 404', () => {",
+                  "  pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{orgStaffToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/tournaments/{{tournamentId}}/registrations.csv",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "tournaments",
+                "{{tournamentId}}",
+                "registrations.csv"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A captain cannot export (expect 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 404', () => {",
+                  "  pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cap1Token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/tournaments/{{tournamentId}}/registrations.csv",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "tournaments",
+                "{{tournamentId}}",
+                "registrations.csv"
+              ]
+            }
+          }
+        },
+        {
+          "name": "An unknown include (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 VALIDATION_FAILED', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('VALIDATION_FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/org/{{orgId}}/sports/tournaments/{{tournamentId}}/registrations.csv?include=phones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "org",
+                "{{orgId}}",
+                "sports",
+                "tournaments",
+                "{{tournamentId}}",
+                "registrations.csv"
+              ],
+              "query": [
+                {
+                  "key": "include",
+                  "value": "phones"
+                }
               ]
             }
           }

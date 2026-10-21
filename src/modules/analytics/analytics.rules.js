@@ -2,7 +2,9 @@
 
 /**
  * M19 pure rules (§6, FR-02 to FR-06): periods and buckets on the Asia/Dhaka calendar, deltas, the v3
- * meaning of "earned" for a booking, occupancy, repeat teams, GTV and take rate. 100% branch coverage.
+ * meaning of "earned" for a booking, occupancy, repeat teams, GTV and take rate; since Round B2 the
+ * counted sub-orders, average order, unused share, Dhaka hours, top lists and the organiser's totals
+ * (§6.3). 100% branch coverage.
  * Dates are 'YYYY-MM-DD' strings (Dhaka calendar days); money is integer poisha.
  */
 const DHAKA_MS = 6 * 60 * 60 * 1000;
@@ -113,6 +115,61 @@ const takeRate = (fee, total) => (total > 0 ? Math.round((fee / total) * 10000) 
 /** FR-06: a chart that splits a tile must add up to it. */
 const addsUp = (parts, total) => parts.reduce((n, x) => n + x, 0) === total;
 
+// ---------------------------------------------------------------- Round B2: shops, gyms, organisers (§6.3)
+
+/** Sub-order statuses that count as a sale: placed and not given back (pending payment, rejected, expired, cancelled and refunded are not). */
+const SHOP_COUNTED = new Set(['placed', 'accepted', 'shipped', 'delivered', 'completed', 'disputed']);
+
+/** Average order (and any money average): whole poisha, rounded half up; null with nothing to divide by. */
+const average = (total, count) => (count > 0 ? Math.round(total / count) : null);
+
+/** A share (unused passes of the ended ones): a fraction to three places; null with nothing to compare. */
+const share = (part, whole) => (whole > 0 ? Math.round((part / whole) * 1000) / 1000 : null);
+
+/** The Dhaka hour (0–23) of an instant. */
+const dhakaHour = (at) => new Date(new Date(at).getTime() + DHAKA_MS).getUTCHours();
+
+/** The Dhaka days of a bucket [from, to), oldest first. */
+function daysOf({ from, to }) {
+  const out = [];
+  for (let d = from; d < to; d = addDays(d, 1)) out.push(d);
+  return out;
+}
+
+/** Ascending order of two keys: numbers as numbers, anything else as text. */
+const byKey = (x, y) => (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y)));
+
+/** The first `n` rows by `field` (largest first), ties by `key` ascending so the order is stable. */
+const top = (rows, field, n, key) => [...rows].sort((a, b) => b[field] - a[field] || byKey(a[key], b[key])).slice(0, n);
+
+/** Events that still take teams or play matches (the Teams tile counts these). */
+const RUNNING = new Set(['registration_open', 'registration_closed', 'live']);
+
+/**
+ * The organiser's tiles from M14's events (M14 §4.1 KPIs summed over the organisation):
+ * teams approved of the places, waiting, unpaid and reserve from running events; matches played of
+ * all non-cancelled matches; entry-fee money (collected, held, released, refunded) of every event.
+ */
+function organiserTotals(tournaments) {
+  const t = { approved: 0, maxTeams: 0, waiting: 0, unpaid: 0, reserve: 0, matches: 0, played: 0, collected: 0, held: 0, released: 0, refunded: 0 };
+  for (const x of tournaments) {
+    if (RUNNING.has(x.status)) {
+      t.approved += x.approved;
+      t.maxTeams += x.maxTeams;
+      t.waiting += x.waiting;
+      t.unpaid += x.unpaid;
+      t.reserve += x.reserve;
+    }
+    t.matches += x.matches;
+    t.played += x.played;
+    t.collected += x.money.collected;
+    t.held += x.money.held;
+    t.released += x.money.released;
+    t.refunded += x.money.refunded;
+  }
+  return t;
+}
+
 module.exports = {
   DHAKA_MS,
   PERIODS,
@@ -137,4 +194,12 @@ module.exports = {
   gtv,
   takeRate,
   addsUp,
+  SHOP_COUNTED,
+  RUNNING,
+  average,
+  share,
+  dhakaHour,
+  daysOf,
+  top,
+  organiserTotals,
 };

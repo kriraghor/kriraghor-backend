@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Kriraghor API: M19 Dashboards",
-    "description": "v3 money on a ৳2,000/h ground with a 25% advance. A member books and pays the ৳500 advance; it is played (checked in) today, earning the owner ৳2,000 gross. A second booking is cancelled by the member, earning the kept ৳500. The facts are written from the real events; the views refresh; the owner, member and platform dashboards show the numbers, the charts add up to their tiles, and the ledger fee revenue is ৳125 (৳100 + ৳25). A deleted fact comes back with the nightly reconcile. CSV exports are scoped and audited.\n\nRequests named \"Runner\" go to the local test runner (paying through the simulator, moving a booking in time, settling events and views, the reconcile).\n\nUnattended: `node postman/run-m19.js` (kriraghor_test database).\n\nRebuild this file with: node postman/build-collection-m19.js",
+    "description": "v3 money on a ৳2,000/h ground with a 25% advance. A member books and pays the ৳500 advance; it is played (checked in) today, earning the owner ৳2,000 gross. A second booking is cancelled by the member, earning the kept ৳500. The facts are written from the real events; the views refresh; the owner, member and platform dashboards show the numbers, the charts add up to their tiles, and the ledger fee revenue is ৳125 (৳100 + ৳25). A deleted fact comes back with the nightly reconcile. CSV exports are scoped and audited.\n\nRound B2, numbers for businesses: a shop with four orders from two buyers (one rejected) shows Sales, Orders, Average order (= Sales / Orders) and Repeat buyers with charts that add up, and CSVs without any buyer data; a lost fact comes back with the reconcile and an empty fact table is backfilled once. A gym with a day, a month and a day pass (two admitted) shows pass sales, passes by kind, admissions, busiest hours and sales by package. A sports organisation with two approved teams, one waiting and one unpaid shows teams of places and ৳54,000 of entry fees held in escrow (M06), to its members only, and its to-do list.\n\nRequests named \"Runner\" go to the local test runner (paying through the simulator, moving a booking in time, settling events and views, the reconcile and the backfill).\n\nUnattended: `node postman/run-m19.js` (kriraghor_test database).\n\nRebuild this file with: node postman/build-collection-m19.js",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -55,6 +55,34 @@
     },
     {
       "key": "b2Payment",
+      "value": ""
+    },
+    {
+      "key": "shopOwnerToken",
+      "value": ""
+    },
+    {
+      "key": "gymOwnerToken",
+      "value": ""
+    },
+    {
+      "key": "orgOwnerToken",
+      "value": ""
+    },
+    {
+      "key": "orgStaffToken",
+      "value": ""
+    },
+    {
+      "key": "orgId",
+      "value": ""
+    },
+    {
+      "key": "subOrderId",
+      "value": ""
+    },
+    {
+      "key": "shopSales",
       "value": ""
     }
   ],
@@ -446,7 +474,7 @@
                   "pm.test('status 200', () => {",
                   "  pm.response.to.have.status(200);",
                   "});",
-                  "pm.test(\"refreshed\", () => { pm.expect(j.refreshed === 4).to.eql(true); });"
+                  "pm.test(\"refreshed\", () => { pm.expect(j.refreshed === 8).to.eql(true); });"
                 ]
               }
             }
@@ -1155,6 +1183,1038 @@
                 {
                   "key": "period",
                   "value": "7w"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Shops (Round B2, §6.3 \"Shop\", FR-22/23)",
+      "item": [
+        {
+          "name": "Runner: a shop, a gym and a sports organisation with real orders, passes and registrations",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"saves shopOwnerToken\", () => { pm.expect((pm.collectionVariables.set('shopOwnerToken', j.shopOwnerToken), true)).to.eql(true); });",
+                  "pm.test(\"saves shopSales\", () => { pm.expect((pm.collectionVariables.set('shopSales', j.shopSales), true)).to.eql(true); });",
+                  "pm.test(\"saves subOrderId\", () => { pm.expect((pm.collectionVariables.set('subOrderId', j.subOrderId), true)).to.eql(true); });",
+                  "pm.test(\"saves gymOwnerToken\", () => { pm.expect((pm.collectionVariables.set('gymOwnerToken', j.gymOwnerToken), true)).to.eql(true); });",
+                  "pm.test(\"saves orgOwnerToken\", () => { pm.expect((pm.collectionVariables.set('orgOwnerToken', j.orgOwnerToken), true)).to.eql(true); });",
+                  "pm.test(\"saves orgStaffToken\", () => { pm.expect((pm.collectionVariables.set('orgStaffToken', j.orgStaffToken), true)).to.eql(true); });",
+                  "pm.test(\"saves orgId\", () => { pm.expect((pm.collectionVariables.set('orgId', j.orgId), true)).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/businesses",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "businesses"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: settle the businesses",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"eight views\", () => { pm.expect(j.refreshed === 8).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/settle",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "settle"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Shop dashboard: sales, orders, average order, repeat buyers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"sales = the counted items (the rejected order is out)\", () => { pm.expect(j.tiles.sales.value === Number(pm.collectionVariables.get('shopSales')) && j.tiles.sales.note.items === 4).to.eql(true); });",
+                  "pm.test(\"three orders, average = sales / orders\", () => { pm.expect(j.tiles.orders.value === 3 && j.tiles.averageOrder.value === Math.round(j.tiles.sales.value / 3)).to.eql(true); });",
+                  "pm.test(\"repeat buyers: one of two\", () => { pm.expect(j.tiles.repeatBuyers.value === 0.5).to.eql(true); });",
+                  "pm.test(\"orders by day add up\", () => { pm.expect(j.charts.ordersByDay.reduce((n, x) => n + x.value, 0) === j.tiles.orders.value).to.eql(true); });",
+                  "pm.test(\"sales by category add up\", () => { pm.expect(j.charts.salesByCategory.reduce((n, x) => n + x.value, 0) === j.tiles.sales.value).to.eql(true); });",
+                  "pm.test(\"best seller: 4 pairs\", () => { pm.expect(j.charts.bestSellers[0].units === 4).to.eql(true); });",
+                  "pm.test(\"conversion comes later\", () => { pm.expect(j.comingLater.includes('conversion')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{shopOwnerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard?role=shop_owner&period=7w",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "shop_owner"
+                },
+                {
+                  "key": "period",
+                  "value": "7w"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "A member asks for the shop view (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 ROLE_REQUIRED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('ROLE_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard?role=shop_owner",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "shop_owner"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Shop orders CSV",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"a CSV download\", () => { pm.expect(pm.response.headers.get('Content-Type').includes('text/csv') && pm.response.headers.get('Content-Disposition').includes('.csv')).to.eql(true); });",
+                  "pm.test(\"5 lines with the header\", () => { pm.expect(pm.response.text().trim().split('\\r\\n').length === 5).to.eql(true); });",
+                  "pm.test(\"the rejected order is listed with its status\", () => { pm.expect(pm.response.text().includes('\"rejected\"')).to.eql(true); });",
+                  "pm.test(\"no buyer or holder data (names, phones, address, ids)\", () => { pm.expect(!/Tanvir Hasan|Nadia Islam|Fahim Rahman|Rina Begum|01711000111|Road 5|[0-9a-f]{8}-[0-9a-f]{4}-/i.test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{shopOwnerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard/export?dataset=shop_orders&period=7w",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard",
+                "export"
+              ],
+              "query": [
+                {
+                  "key": "dataset",
+                  "value": "shop_orders"
+                },
+                {
+                  "key": "period",
+                  "value": "7w"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sales by product CSV",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"a CSV download\", () => { pm.expect(pm.response.headers.get('Content-Type').includes('text/csv') && pm.response.headers.get('Content-Disposition').includes('.csv')).to.eql(true); });",
+                  "pm.test(\"2 lines with the header\", () => { pm.expect(pm.response.text().trim().split('\\r\\n').length === 2).to.eql(true); });",
+                  "pm.test(\"four pairs\", () => { pm.expect(pm.response.text().includes('\"4\",\"' + (Number(pm.collectionVariables.get('shopSales')) / 100).toFixed(2) + '\"')).to.eql(true); });",
+                  "pm.test(\"no buyer or holder data (names, phones, address, ids)\", () => { pm.expect(!/Tanvir Hasan|Nadia Islam|Fahim Rahman|Rina Begum|01711000111|Road 5|[0-9a-f]{8}-[0-9a-f]{4}-/i.test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{shopOwnerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard/export?dataset=shop_sales_by_product&period=7w",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard",
+                "export"
+              ],
+              "query": [
+                {
+                  "key": "dataset",
+                  "value": "shop_sales_by_product"
+                },
+                {
+                  "key": "period",
+                  "value": "7w"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Shop CSV as a member (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 ROLE_REQUIRED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('ROLE_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard/export?dataset=shop_orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard",
+                "export"
+              ],
+              "query": [
+                {
+                  "key": "dataset",
+                  "value": "shop_orders"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: forget a sub-order fact",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"deleted\", () => { pm.expect(j.deleted === 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/forget-sub-order?subOrderId={{subOrderId}}",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "forget-sub-order"
+              ],
+              "query": [
+                {
+                  "key": "subOrderId",
+                  "value": "{{subOrderId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: nightly reconcile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"repaired\", () => { pm.expect(j.repaired >= 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/reconcile",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "reconcile"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The shop dashboard is whole again",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"three orders\", () => { pm.expect(j.tiles.orders.value === 3).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{shopOwnerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard?role=shop_owner&period=7w",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "shop_owner"
+                },
+                {
+                  "key": "period",
+                  "value": "7w"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: backfill from empty facts (as on the day of the migration)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"every sub-order and pass, once\", () => { pm.expect(j.backfilled.subOrders === 4 && j.backfilled.passes === 3 && j.repaired === 0).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/backfill",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "backfill"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Gyms (Round B2)",
+      "item": [
+        {
+          "name": "Gym dashboard: pass sales, passes by kind, admissions, unused share",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"৳400 + ৳4,500 + ৳400\", () => { pm.expect(j.tiles.passSales.value === 530000).to.eql(true); });",
+                  "pm.test(\"three passes: two day, one month\", () => { pm.expect(j.tiles.passesSold.value === 3 && j.tiles.passesSold.note.day === 2 && j.tiles.passesSold.note.month === 1).to.eql(true); });",
+                  "pm.test(\"two admissions\", () => { pm.expect(j.tiles.admissions.value === 2 && j.charts.admissionsByDay.reduce((n, x) => n + x.value, 0) === 2).to.eql(true); });",
+                  "pm.test(\"sales by package add up\", () => { pm.expect(j.charts.salesByPackage.reduce((n, x) => n + x.value, 0) === j.tiles.passSales.value).to.eql(true); });",
+                  "pm.test(\"busiest hours\", () => { pm.expect(j.charts.busiestHours.reduce((n, x) => n + x.admissions, 0) === 2).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{gymOwnerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard?role=gym_owner&period=7w",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "gym_owner"
+                },
+                {
+                  "key": "period",
+                  "value": "7w"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "A member asks for the gym view (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 ROLE_REQUIRED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('ROLE_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard?role=gym_owner",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "gym_owner"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Gym passes CSV",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"a CSV download\", () => { pm.expect(pm.response.headers.get('Content-Type').includes('text/csv') && pm.response.headers.get('Content-Disposition').includes('.csv')).to.eql(true); });",
+                  "pm.test(\"4 lines with the header\", () => { pm.expect(pm.response.text().trim().split('\\r\\n').length === 4).to.eql(true); });",
+                  "pm.test(\"the month pass in taka\", () => { pm.expect(pm.response.text().includes('\"4500.00\"')).to.eql(true); });",
+                  "pm.test(\"no buyer or holder data (names, phones, address, ids)\", () => { pm.expect(!/Tanvir Hasan|Nadia Islam|Fahim Rahman|Rina Begum|01711000111|Road 5|[0-9a-f]{8}-[0-9a-f]{4}-/i.test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{gymOwnerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard/export?dataset=gym_passes&period=7w",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard",
+                "export"
+              ],
+              "query": [
+                {
+                  "key": "dataset",
+                  "value": "gym_passes"
+                },
+                {
+                  "key": "period",
+                  "value": "7w"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admissions CSV",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"a CSV download\", () => { pm.expect(pm.response.headers.get('Content-Type').includes('text/csv') && pm.response.headers.get('Content-Disposition').includes('.csv')).to.eql(true); });",
+                  "pm.test(\"3 lines with the header\", () => { pm.expect(pm.response.text().trim().split('\\r\\n').length === 3).to.eql(true); });",
+                  "pm.test(\"no buyer or holder data (names, phones, address, ids)\", () => { pm.expect(!/Tanvir Hasan|Nadia Islam|Fahim Rahman|Rina Begum|01711000111|Road 5|[0-9a-f]{8}-[0-9a-f]{4}-/i.test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{gymOwnerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard/export?dataset=gym_admissions&period=7w",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard",
+                "export"
+              ],
+              "query": [
+                {
+                  "key": "dataset",
+                  "value": "gym_admissions"
+                },
+                {
+                  "key": "period",
+                  "value": "7w"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "A shop dataset as a gym owner (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 ROLE_REQUIRED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('ROLE_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{gymOwnerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard/export?dataset=shop_orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard",
+                "export"
+              ],
+              "query": [
+                {
+                  "key": "dataset",
+                  "value": "shop_orders"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Sports organisers (Round B2, §6.3 \"Organiser\", M14 §4.1)",
+      "item": [
+        {
+          "name": "Organiser dashboard: teams of places, entry fees from escrow",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"two approved of four, one waiting, one unpaid\", () => { pm.expect(j.tiles.teams.value === 2 && j.tiles.teams.note.maxTeams === 4 && j.tiles.teams.note.waiting === 1 && j.tiles.teams.note.unpaid === 1).to.eql(true); });",
+                  "pm.test(\"three ৳18,000 fees held in escrow\", () => { pm.expect(j.tiles.entryFees.value === 5400000 && j.tiles.entryFees.note.held === 5400000 && j.tiles.entryFees.note.released === 0).to.eql(true); });",
+                  "pm.test(\"registrations this week\", () => { pm.expect(j.charts.registrationsOverTime[6].registered === 4 && j.charts.registrationsOverTime[6].approved === 2).to.eql(true); });",
+                  "pm.test(\"fees by event\", () => { pm.expect(j.charts.feesByEvent.length === 1 && j.charts.feesByEvent[0].collected === 5400000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{orgOwnerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard?role=organiser&orgId={{orgId}}&period=7w",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "organiser"
+                },
+                {
+                  "key": "orgId",
+                  "value": "{{orgId}}"
+                },
+                {
+                  "key": "period",
+                  "value": "7w"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Organisation staff see it too",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{orgStaffToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard?role=organiser&orgId={{orgId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "organiser"
+                },
+                {
+                  "key": "orgId",
+                  "value": "{{orgId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Not a member (expect 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 404 NOT_FOUND', () => {",
+                  "  pm.response.to.have.status(404);",
+                  "  pm.expect(j && j.code).to.eql('NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard?role=organiser&orgId={{orgId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "organiser"
+                },
+                {
+                  "key": "orgId",
+                  "value": "{{orgId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "No organisation chosen (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 VALIDATION_FAILED', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('VALIDATION_FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{orgOwnerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard?role=organiser",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "organiser"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Needs your action (organiser admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"waiting and unpaid\", () => { pm.expect(j.items.some((x) => x.key === 'registrations_waiting' && x.count === 1) && j.items.some((x) => x.key === 'registrations_unpaid' && x.count === 1)).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{orgOwnerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard/actions?role=organiser",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard",
+                "actions"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "organiser"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Needs your action (organiser staff: no approvals)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"unpaid only\", () => { pm.expect(j.items.length === 1 && j.items[0].key === 'registrations_unpaid').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{orgStaffToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard/actions?role=organiser",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard",
+                "actions"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "organiser"
                 }
               ]
             }
