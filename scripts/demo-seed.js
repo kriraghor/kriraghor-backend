@@ -7,6 +7,7 @@
  *
  *   node scripts/demo-seed.js --profile=listings [--confirm-live]   venues, shops, gyms, hire, events (no payments)
  *   node scripts/demo-seed.js --profile=full                         everything, payments through the simulator (never production)
+ *   node scripts/demo-seed.js --access-only [--confirm-live]         only the demo sign-in accounts (needs DEMO_PASSWORD)
  *
  * Every record is created through the real API and approved on the Moderation desk, and is listed in
  * demo_records so `npm run demo:hide` can hide it all later. Re-running skips what already exists.
@@ -36,6 +37,7 @@ if (profile === 'full' && !config.payments.simulator) {
 const rt = require('./demo/runtime');
 const L = require('./demo/steps/listings');
 const people = require('./demo/steps/people');
+const access = require('./demo/steps/access');
 
 async function step(name, fn) {
   const t = Date.now();
@@ -43,6 +45,17 @@ async function step(name, fn) {
   const r = await fn();
   console.log(`done (${((Date.now() - t) / 1000).toFixed(1)} s)`);
   return r;
+}
+
+/** The demo sign-in accounts (steps/access.js): printed without the password, which only the host knows. */
+async function signIns(master) {
+  const { skipped, rows } = await step('demo sign-in accounts', () => access.run({ master }));
+  if (skipped) {
+    console.log(`  ${skipped}`);
+    return;
+  }
+  console.log('\nDemo sign-in (phone number + the DEMO_PASSWORD you set; staff then set up an authenticator):');
+  for (const r of rows) console.log(`  ${r.phone.replace('+880', '0')}  ${r.name.padEnd(22)} ${r.kind.padEnd(34)} ${r.where}  [${r.result}]`);
 }
 
 async function main() {
@@ -59,6 +72,10 @@ async function main() {
   }
 
   const { master, reviewer } = await step('staff (no sign-in possible)', () => people.staff());
+  if (args['access-only']) {
+    await signIns(master);
+    return;
+  }
   const owner = await step('owners: sign-up, NID and business documents', () => L.owners(reviewer));
   await step('venues', () => L.venues(owner, reviewer));
   await step('shops and products', () => L.shops(owner, reviewer));
@@ -75,6 +92,7 @@ async function main() {
     await full.run({ master, reviewer, owner, step });
   }
 
+  await signIns(master);
   await rt.drain();
   const counts = await rt.models.DemoRecord.findAll({ attributes: ['entity', [rt.models.sequelize.fn('COUNT', '*'), 'n']], group: ['entity'], raw: true });
   console.log(`\nDemo records: ${counts.map((c) => `${c.entity} ${c.n}`).join(', ')}`);

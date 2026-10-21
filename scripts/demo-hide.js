@@ -8,7 +8,8 @@
  *  - demo sports events are cancelled by their organiser;
  *  - demo accounts are suspended, which pauses their venues, gyms, shops and hire profiles and withdraws
  *    their esports entries (the existing user.suspended consumers);
- *  - the demo reviewer is offboarded. The demo master keeps no way to sign in (no phone, email or password).
+ *  - the demo staff (the reviewer and the demo sign-in staff) are offboarded. The demo master keeps no way
+ *    to sign in (no phone, email or password).
  *
  *   node scripts/demo-hide.js --dry-run        list what would change
  *   node scripts/demo-hide.js [--confirm-live]
@@ -35,7 +36,6 @@ async function main() {
   const say = (msg) => console.log(`${dry ? '[dry run] ' : ''}${msg}`);
 
   const masterId = rows.find((r) => r.entity === 'staff' && r.label === 'master')?.entityId;
-  const reviewerId = rows.find((r) => r.entity === 'staff' && r.label === 'reviewer')?.entityId;
   if (!masterId) {
     console.log('No demo data found.');
     return;
@@ -85,11 +85,12 @@ async function main() {
   say(`suspend ${n} demo accounts (their venues, gyms, shops and hire profiles pause)`);
   await rt.drain();
 
-  if (reviewerId) {
-    const staff = await models.StaffMember.findOne({ where: { userId: reviewerId } });
+  // Every demo staff account but the master: the review desk and the demo sign-in staff (steps/access.js).
+  for (const r of rows.filter((x) => x.entity === 'staff' && x.label !== 'master')) {
+    const staff = await models.StaffMember.findOne({ where: { userId: r.entityId } });
     if (staff && staff.status !== 'offboarded') {
-      say('offboard the demo reviewer');
-      if (!dry) await rt.post(master, `/admin/staff/${reviewerId}/offboard`, { note: REASON }, { headers: { 'X-Step-Up': await rt.stepUp(master, 'staff.write') }, ok: [404, 409, 422] });
+      say(`offboard the demo staff account ${r.label}`);
+      if (!dry) await rt.post(master, `/admin/staff/${r.entityId}/offboard`, { note: REASON }, { headers: { 'X-Step-Up': await rt.stepUp(master, 'staff.write') }, ok: [404, 409, 422] });
     }
   }
   await rt.drain();

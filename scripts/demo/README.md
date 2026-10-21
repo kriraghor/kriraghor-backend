@@ -17,6 +17,29 @@ Both commands are safe to re-run: the seeder skips what exists, and a second run
 
 Local needs: PostgreSQL, Redis and the S3 container from `docker compose up -d` (photos are uploaded to the public bucket), and the S3 and simulator lines from `.env.example` in `.env`.
 
+## Demo sign-in (no SMS needed)
+
+SMS codes are not delivered yet, so one account of each kind can sign in with a **phone number and a password**. The password is never in the code or the logs: set `DEMO_PASSWORD` (12 to 128 characters) in the host's environment, then run the seeder (`DEMO_SEED=listings` adds them at the end) or only this step: `DEMO_SEED=access` on Render, or `npm run demo:seed -- --access-only` locally. The run prints the list, without the password.
+
+| Phone | Account | Sign in at |
+|---|---|---|
+| 01300000001 | Venue owner (Kamal Hossain) | vendor.kriraghor.com |
+| 01300000008 | Shop owner (Mahbub Alam) | vendor.kriraghor.com |
+| 01300000010 | Gym owner (Nusrat Jahan) | vendor.kriraghor.com |
+| 01300000011 | Sports events organiser (Tanvir Hossain) | vendor.kriraghor.com |
+| 01300000021 | Football referee for hire (Jahid Hasan) | kriraghor.com/pro |
+| 01300000030 | Gym trainer with monthly plans (Sabbir Hossain) | kriraghor.com/pro |
+| 01300000041 | Esports player, Free Fire (Fahim Shahriar) | esports.kriraghor.com |
+| 01300000052 | Esports player, PUBG Mobile (Arnob Saha) | esports.kriraghor.com |
+| 01300000090 | Member who books, buys and hires (Ayesha Siddiqua) | kriraghor.com |
+| 01300000191 | Staff: users, listings, documents, reports | admin.kriraghor.com |
+| 01300000192 | Staff: payouts view, small refunds | admin.kriraghor.com |
+| 01300000193 | Staff: esports desk and results | admin.kriraghor.com |
+
+- Use **Sign in with a password**. Staff then scan the two-factor QR code with an authenticator app on their first sign-in, so there is no shared second factor.
+- No demo account is ever a master: the step skips any account holding `master_admin`. Your own master comes from `BOOTSTRAP_MASTER` with your email (email codes work).
+- Re-running keeps passwords already set. `demo:hide` suspends these accounts and offboards the demo staff with the rest of the demo data. Hide them before launch.
+
 ## How it works
 
 - `runtime.js` starts the API in-process on a loopback port and calls the real routes, so every gate, validation rule, Moderation review, ledger posting and event applies. It mints sessions for demo accounts instead of signing in, and relays and consumes events in-process (what the worker does).
@@ -33,7 +56,7 @@ Local needs: PostgreSQL, Redis and the S3 container from `docker compose up -d` 
 - Fake NID numbers use district code 99, which no real NID has.
 - Game UIDs are 12 digits starting `9999`, outside what the games hand out.
 - Demo accounts have no email address, so no email is sent.
-- The two demo staff accounts have no phone, email, password or Google link, so nobody can sign in as them.
+- The demo master and the demo review desk have no phone, email, password or Google link, so nobody can sign in as them. The demo sign-in staff (above) get a password only when `DEMO_PASSWORD` is set, and are never masters.
 
 ## Hiding
 

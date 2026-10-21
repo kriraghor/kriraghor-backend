@@ -10,6 +10,8 @@ const logger = pino({
     paths: [
       'req.headers.authorization',
       'req.headers.cookie',
+      // A step-up token authorises one sensitive action for a few minutes (M01-FR-30): never logged.
+      'req.headers["x-step-up"]',
       'res.headers["set-cookie"]',
       '*.password',
       '*.newPassword',

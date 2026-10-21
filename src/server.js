@@ -76,11 +76,13 @@ async function main() {
  * background and with its own environment:
  *   DEMO_SEED=listings  the seeder, listings profile only (no payments); it skips what exists, so a
  *                       restart resumes it
+ *   DEMO_SEED=access    only the demo sign-in accounts (needs DEMO_PASSWORD; listings must exist)
  *   DEMO_SEED=hide      the hide command (cancels demo events, suspends demo accounts; deletes nothing)
  * Remove the variable when the log shows the run finished.
  */
 const DEMO_COMMANDS = {
   listings: ['scripts/demo-seed.js', '--profile=listings', '--confirm-live'],
+  access: ['scripts/demo-seed.js', '--access-only', '--confirm-live'],
   hide: ['scripts/demo-hide.js', '--confirm-live'],
 };
 
@@ -106,7 +108,7 @@ function startDemoSeed() {
   const mode = process.env.DEMO_SEED;
   if (!mode) return;
   if (!DEMO_COMMANDS[mode]) {
-    logger.warn({ mode }, 'DEMO_SEED ignored: use "listings" or "hide"');
+    logger.warn({ mode }, 'DEMO_SEED ignored: use "listings", "access" or "hide"');
     return;
   }
   logger.info({ mode }, 'DEMO_SEED: starting the demo command in the background');
