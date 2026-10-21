@@ -21,6 +21,7 @@ The specification for every module is in [`../kriraghor-docs/modules`](../krirag
 | **M19 Dashboards (step 1)** | ✅ [`src/modules/analytics`](src/modules/analytics): read models only. Facts (`kpi_fact_booking`, court-day occupancy, payments, ledger fee lines, esports entries and tournaments) are written from the events by re-reading each record through its owner's service, guarded twice against replays; four day-grained materialised views refresh CONCURRENTLY (`asOf`); a nightly reconcile repairs drift and alerts masters. The ground owner's Overview and Analytics (revenue gross, occupancy, bookings, repeat teams, four charts), the member's Overview, the platform overview (GTV with venue money, fee revenue, take rate, esports; master or `view_analytics`), "Needs your action" and CSV exports. The pure `analytics.rules` (Dhaka periods, deltas, v3 earned, take rate) has a 100% gate |
 | Everything else | Not started |
 
+
 ## Quick start
 
 ```bash
