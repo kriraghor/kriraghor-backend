@@ -103,7 +103,7 @@ const OrganiserDashboard = z
     }),
     ...Meta,
   })
-  .meta({ id: 'OrganiserDashboard' });
+  .meta({ id: 'SportsOrganiserDashboard' });
 const Actions = z
   .object({ items: z.array(z.object({ key: z.string(), count: z.number(), severity: z.enum(['high', 'normal', 'low']), dueAt: z.string().nullable(), href: z.string() })), total: z.number() })
   .meta({ id: 'PendingActions' });

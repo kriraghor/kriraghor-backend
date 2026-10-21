@@ -56,7 +56,7 @@ async function ownerDashboard(principal, { period = '7w', groundId = null, local
   const [ahead] = await select(`SELECT COALESCE(SUM(total_poisha), 0)::bigint AS ahead FROM kpi_fact_booking WHERE owner_id = :owner AND status = 'confirmed' AND start_at > :now ${ground}`, { ...q, now });
   const keys = await select(
     `SELECT booker_key, COUNT(*)::int AS n FROM kpi_fact_booking WHERE owner_id = :owner AND status IN ('confirmed', 'checked_in', 'completed', 'no_show') AND start_at >= :since AND start_at < :now ${ground} GROUP BY booker_key`,
-    { ...q, since: new Date(now.getTime() - 90 * DAY), now }
+    { ...q, since: new Date(now.getTime() - settings.get('analytics.repeat_customer_days') * DAY), now }
   );
   const cur = f.list[f.list.length - 1];
   const inCur = (r) => r.day >= cur.from && r.day < cur.to;
@@ -199,8 +199,6 @@ function shareTile(rows, f, part, whole) {
 }
 
 const COUNTED_SQL = `status IN (${[...rules.SHOP_COUNTED].map((s) => `'${s}'`).join(', ')})`;
-const BEST_SELLER_DAYS = 30;
-const REPEAT_DAYS = 90;
 const NO_CATEGORY = '00000000-0000-0000-0000-000000000000';
 
 async function categoryNames(ids, locale) {
@@ -223,7 +221,7 @@ async function shopDashboard(principal, { period = '7w', locale = 'en' }, now = 
   const days = num(dayStr(await select('SELECT day, SUM(orders)::int AS orders, SUM(units)::int AS units, SUM(sales_poisha)::bigint AS sales FROM kpi_mv_shop_day WHERE seller_id = :me AND day >= :from AND day < :to GROUP BY day', q)), ['sales']);
   const buyers = await select(`SELECT buyer_id, COUNT(*)::int AS n FROM kpi_fact_sub_order WHERE seller_id = :me AND ${COUNTED_SQL} AND placed_at >= :since AND placed_at < :now GROUP BY buyer_id`, {
     me: principal.id,
-    since: new Date(now.getTime() - REPEAT_DAYS * DAY),
+    since: new Date(now.getTime() - settings.get('analytics.repeat_customer_days') * DAY),
     now,
   });
   const inCur = days.filter((r) => r.day >= cur.from && r.day < cur.to);
@@ -236,7 +234,7 @@ async function shopDashboard(principal, { period = '7w', locale = 'en' }, now = 
   const today = rules.dhakaDate(now);
   const best = await select(
     `SELECT product_id, MAX(title) AS title, SUM(qty)::int AS units, SUM(amount_poisha)::bigint AS sales FROM kpi_fact_order_line WHERE seller_id = :me AND ${COUNTED_SQL} AND placed_at >= :since AND placed_at < :until GROUP BY product_id`,
-    { me: principal.id, since: dhakaTs(rules.addDays(today, 1 - BEST_SELLER_DAYS)), until: dhakaTs(rules.addDays(today, 1)) }
+    { me: principal.id, since: dhakaTs(rules.addDays(today, 1 - settings.get('analytics.best_sellers_days'))), until: dhakaTs(rules.addDays(today, 1)) }
   );
   return {
     role: 'shop_owner',
@@ -250,7 +248,7 @@ async function shopDashboard(principal, { period = '7w', locale = 'en' }, now = 
       weeklySales: lineWithLastYear(days, f, 'sales'),
       ordersByDay: byDay(days, cur, 'orders'),
       salesByCategory: cats.map((c) => ({ categoryId: c.category_id === NO_CATEGORY ? null : c.category_id, name: names.get(c.category_id) ?? '', units: c.units, value: Number(c.sales) })).sort((a, b) => b.value - a.value),
-      bestSellers: rules.top(best.map((b) => ({ productId: b.product_id, title: b.title, units: b.units, value: Number(b.sales) })), 'units', 10, 'title'),
+      bestSellers: rules.top(best.map((b) => ({ productId: b.product_id, title: b.title, units: b.units, value: Number(b.sales) })), 'units', settings.get('analytics.top_list_size'), 'title'),
     },
     comingLater: ['conversion', 'shopperFunnel'],
     ...(await meta(f, ['sales', 'orders', 'average_order', 'repeat_buyers', 'conversion'], locale)),
@@ -293,7 +291,8 @@ async function gymDashboard(principal, { period = '7w', locale = 'en' }, now = n
     charts: {
       sales: lineWithLastYear(days, f, 'sales'),
       admissionsByDay: byDay(days, cur, 'admissions'),
-      busiestHours: rules.top(hours.map((h) => ({ hour: h.hour, admissions: h.admissions })), 'admissions', 6, 'hour'),
+      // Every Dhaka hour with admissions, in hour order (the chart shows all 24).
+      busiestHours: hours.map((h) => ({ hour: Number(h.hour), admissions: Number(h.admissions) })).sort((a, b) => a.hour - b.hour),
       salesByPackage: packages.map((p) => ({ packageId: p.package_id, kind: p.kind, title: p.title, passes: p.passes, value: Number(p.sales) })).sort((a, b) => b.value - a.value),
     },
     ...(await meta(f, ['pass_sales', 'passes_sold', 'admissions', 'unused_share'], locale)),

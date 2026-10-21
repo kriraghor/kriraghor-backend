@@ -14122,7 +14122,7 @@
           "definitions"
         ]
       },
-      "OrganiserDashboard": {
+      "SportsOrganiserDashboard": {
         "type": "object",
         "properties": {
           "role": {
@@ -25617,6 +25617,199 @@
         },
         "required": [
           "id"
+        ]
+      },
+      "OrganiserDashboard": {
+        "type": "object",
+        "properties": {
+          "organisation": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "status",
+              "role"
+            ]
+          },
+          "contract": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "organisationId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "model": {
+                "type": "string",
+                "enum": [
+                  "percentage",
+                  "flat"
+                ]
+              },
+              "pct": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "flatFee": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "billingCycle": {
+                "type": "string",
+                "enum": [
+                  "monthly",
+                  "quarterly",
+                  "per_tournament"
+                ]
+              },
+              "startsOn": {
+                "type": "string",
+                "format": "date"
+              },
+              "endsOn": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "draft",
+                  "active",
+                  "suspended",
+                  "ended"
+                ]
+              },
+              "hasSignedDocument": {
+                "type": "boolean"
+              },
+              "notes": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "activatedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "suspendedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "suspendReason": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "endedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "endReason": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "effectivePct": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "organisationId",
+              "model",
+              "pct",
+              "flatFee",
+              "billingCycle",
+              "startsOn",
+              "endsOn",
+              "status",
+              "hasSignedDocument",
+              "notes",
+              "activatedAt",
+              "suspendedAt",
+              "suspendReason",
+              "endedAt",
+              "endReason",
+              "effectivePct"
+            ]
+          },
+          "canSubmit": {
+            "type": "boolean"
+          },
+          "unpaidInvoices": {
+            "type": "integer"
+          },
+          "unpaidTotal": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "tournaments": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "upcoming": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": {}
+            }
+          }
+        },
+        "required": [
+          "organisation",
+          "contract",
+          "canSubmit",
+          "unpaidInvoices",
+          "unpaidTotal",
+          "tournaments",
+          "upcoming"
         ]
       },
       "OrganiserPrizeFundPayment": {
@@ -60293,7 +60486,7 @@
                       "$ref": "#/components/schemas/GymDashboard"
                     },
                     {
-                      "$ref": "#/components/schemas/OrganiserDashboard"
+                      "$ref": "#/components/schemas/SportsOrganiserDashboard"
                     }
                   ]
                 }

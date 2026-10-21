@@ -25,7 +25,13 @@ const countBy = (rows, status) => rows.filter((r) => r.status === status).length
 
 /** Entry-fee money of one event from its escrow holds (M06), plus when each fee was collected. */
 async function moneyOf(t) {
-  const { items } = await escrow.list({ purpose: 'tournament_entry', groupRef: t.id, limit: 1000 });
+  const items = [];
+  for (let cursor; ; ) {
+    const page = await escrow.list({ purpose: 'tournament_entry', groupRef: t.id, cursor, limit: 500 });
+    items.push(...page.items);
+    if (!page.nextCursor) break;
+    cursor = page.nextCursor;
+  }
   const money = { collected: 0, held: 0, released: 0, refunded: 0, fees: 0 };
   for (const h of items) {
     money.collected += h.held;
