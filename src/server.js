@@ -68,6 +68,7 @@ async function main() {
   lifecycle.handleSignals();
   lifecycle.setReady(true);
   startDemoSeed();
+  void bootstrapMasterFromEnv();
 }
 
 /**
@@ -82,6 +83,24 @@ const DEMO_COMMANDS = {
   listings: ['scripts/demo-seed.js', '--profile=listings', '--confirm-live'],
   hide: ['scripts/demo-hide.js', '--confirm-live'],
 };
+
+/**
+ * The first master admin on hosts without a shell (M01-FR-40): BOOTSTRAP_MASTER=<email or phone> of
+ * an account that already exists with that identifier verified. It does nothing once a master who can
+ * sign in exists, so leaving the variable set cannot create a second one; remove it after the log
+ * says it is done. Logs carry a masked identifier only.
+ */
+async function bootstrapMasterFromEnv() {
+  const identifier = process.env.BOOTSTRAP_MASTER;
+  if (!identifier) return;
+  try {
+    const result = await require('./modules/admin').masterBootstrap.bootstrapMaster({ identifier });
+    if (result.created) logger.info({ target: result.target }, 'BOOTSTRAP_MASTER: master admin created; sign in at the admin portal with a code and enrol two-factor, then remove BOOTSTRAP_MASTER');
+    else logger.warn({ target: result.target, reason: result.reason }, 'BOOTSTRAP_MASTER: nothing done');
+  } catch (err) {
+    logger.error({ err: err.message }, 'BOOTSTRAP_MASTER failed');
+  }
+}
 
 function startDemoSeed() {
   const mode = process.env.DEMO_SEED;

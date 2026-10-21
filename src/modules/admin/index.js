@@ -14,4 +14,6 @@ const lazy = (file, names, values = []) => {
 
 module.exports = {
   adminUsers: lazy('./admin-users.service', ['banInTx', 'restoreInTx', 'suspendInTx']),
+  // The first master: scripts/create-master.js and BOOTSTRAP_MASTER at startup (src/server.js).
+  masterBootstrap: lazy('./master-bootstrap.service', ['bootstrapMaster']),
 };

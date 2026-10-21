@@ -15,8 +15,8 @@ const { Op } = require('sequelize');
 const logger = require('../../common/logger');
 const { E } = require('../../common/errors');
 const { sequelize, PushSubscription, PushReceipt, NotificationDelivery } = require('../../models');
-const settings = require('../settings/settings.service');
-const sessions = require('../auth/session.service');
+const settings = require('../settings').settings;
+const sessions = require('../auth').session;
 const push = require('../../providers/push');
 
 const tail = (token) => String(token).slice(-6);

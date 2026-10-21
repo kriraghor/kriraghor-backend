@@ -17,5 +17,5 @@ module.exports = {
   gate: lazy('./gate.service', ['evaluateAction']),
   otp: lazy('./otp.service', ['consume', 'issue']),
   password: lazy('./password', ['assertAcceptable', 'hash', 'verify']),
-  session: lazy('./session.service', ['listActive', 'revokeAllForUser', 'revokeFamilyOf']),
+  session: lazy('./session.service', ['activeFamilies', 'listActive', 'revokeAllForUser', 'revokeFamilyOf']),
 };

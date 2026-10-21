@@ -161,12 +161,14 @@ describe('relay and consumers (M04-FR-13, FR-14, FR-16, FR-17)', () => {
     const results = await Promise.all([relay.relayOnce({ batch: 10 }), relay.relayOnce({ batch: 10 }), relay.relayOnce({ batch: 10 })]);
     await relay.relayOnce({ batch: 10 });
     expect(results.reduce((n, r) => n + r.published, 0)).toBeGreaterThan(0);
-    // Every user.restored goes to the test consumer, to M08 (notify.ACCOUNT_RESTORED) and to M07
-    // (payouts.account-hold-lift).
+    // Every user.restored goes to each consumer registered for it: this test's, M08
+    // (notify.ACCOUNT_RESTORED), M07 (payouts.account-hold-lift), M21 (esports rankings) and any
+    // added later, so the count comes from the registry rather than a fixed number.
     const mine = dispatched.filter((id) => id.endsWith('__test.restored'));
     expect(mine).toHaveLength(25);
     expect(new Set(dispatched).size).toBe(dispatched.length);
-    expect(dispatched).toHaveLength(75);
+    expect(consumers.consumersFor('user.restored').length).toBeGreaterThanOrEqual(3);
+    expect(dispatched).toHaveLength(25 * consumers.consumersFor('user.restored').length);
     expect(await models.OutboxEvent.count({ where: { status: 'published' } })).toBe(25);
     expect(await relay.health()).toEqual({ pending: 0, oldestPendingSeconds: null });
   });

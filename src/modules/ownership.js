@@ -32,7 +32,7 @@ const OWNERS = {
   'analytics': ['KpiFactBooking', 'KpiFactCourtDay', 'KpiFactPayment', 'KpiFactLedgerTxn', 'KpiFactEsportsEntry', 'KpiFactEsportsTournament', 'KpiProcessedEvent', 'KpiDrift'],
   'audit': ['AuditLog', 'AuditChain', 'AuditExport'],
   'events': ['OutboxEvent', 'ConsumedEvent'],
-  'notifications': ['Notification', 'NotificationPref', 'MessageTemplate', 'NotificationDelivery', 'SmsLog'],
+  'notifications': ['Notification', 'NotificationPref', 'MessageTemplate', 'NotificationDelivery', 'SmsLog', 'PushSubscription', 'PushReceipt'],
   'payments': ['Payment', 'PaymentAttempt', 'ProviderWebhookEvent', 'Refund', 'LedgerAccount', 'LedgerTransaction', 'LedgerEntry', 'EscrowHold', 'ReconciliationRun', 'ReconciliationItem', 'IdempotencyKey', 'IdSequence'],
   'payouts': ['PayoutAccount', 'PayoutBatch', 'Payout', 'PayoutItem', 'PayoutHold', 'PayoutApproval', 'PayoutReveal'],
   'kyc': ['DocumentRequirement', 'VerificationDocument', 'DocumentFile', 'DocumentRequest'],
