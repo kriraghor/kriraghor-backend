@@ -25,9 +25,9 @@ async function organiserOwner(docsReviewer, name = 'Rafsan Chowdhury') {
   return f.refresh(m);
 }
 
-/** A verified organisation owned by `owner` (draft, submitted, approved by `reviewer`). */
+/** A verified esports organisation owned by `owner` (draft, submitted, approved by `reviewer`); needs esports.external_organisers_enabled on. */
 async function verifiedOrg(owner, reviewer, name = 'Dhaka Clutch League') {
-  const o = await api().post(`${P}/me/organisations`).set(h.bearer(owner)).send({ name, about: 'Weekly Free Fire scrims for Dhaka colleges.' }).expect(201);
+  const o = await api().post(`${P}/me/organisations`).set(h.bearer(owner)).send({ name, kind: 'esports', about: 'Weekly Free Fire scrims for Dhaka colleges.' }).expect(201);
   await api().post(`${P}/me/organisations/${o.body.id}/submit`).set(h.bearer(owner)).expect(200);
   await h.drainEvents();
   await f.review(reviewer, 'organisation', o.body.id);

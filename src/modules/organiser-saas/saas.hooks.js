@@ -14,6 +14,7 @@ const c = require('./saas.common');
 
 /** FR-01, FR-05, FR-09, FR-13: a verified (not suspended) organisation, an active contract, no invoice overdue past grace, a funded pool. */
 async function submitBlock(t, { transaction }) {
+  if (!c.externalOpen()) throw c.fail('ESPORTS_ORGANISERS_CLOSED');
   const status = await organisations.statusOf(t.organisationId, { transaction });
   if (status !== 'verified') throw c.fail(status === 'suspended' ? 'ORG_SUSPENDED' : 'ORG_NOT_VERIFIED');
   const block = rules.contractBlock(await contracts.currentFor(t.organisationId, { transaction }), c.today());

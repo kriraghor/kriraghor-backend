@@ -17,9 +17,10 @@ const fields = {
   about: z.string().trim().max(1000).nullable().optional(),
   contactEmail: z.email().max(160).nullable().optional(),
 };
-// kind: esports (M22 console) or sports (M14 physical tournaments); set once, never edited.
+// kind: sports (M14 physical tournaments) or esports (the M22 console, only while
+// esports.external_organisers_enabled is on); set once, never edited.
 const KINDS = ['esports', 'sports'];
-const createBody = z.object({ ...fields, kind: z.enum(KINDS).default('esports') });
+const createBody = z.object({ ...fields, kind: z.enum(KINDS).default('sports') });
 const updateBody = z
   .object(fields)
   .partial()

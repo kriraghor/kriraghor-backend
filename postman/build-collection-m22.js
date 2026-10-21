@@ -85,7 +85,10 @@ const collection = {
       name: '1. The organisation and its review (M14 lite)',
       item: [
         plain('Without the organiser role (expect 403)', 'POST', '/me/organisations', { body: { name: 'No Role Esports' }, expect: { status: 403, code: 'ORG_ROLE_REQUIRED' } }),
-        owner('A draft', 'POST', '/me/organisations', { body: { name: 'Dhaka Clutch League', about: 'Weekly Free Fire scrims for Dhaka colleges.' }, expect: { status: 201 }, save: { orgId: 'id' }, checks: [['draft, owner', "j.status === 'draft' && j.role === 'owner' && j.slug === 'dhaka-clutch-league'"]] }),
+        owner('Esports is organised by Kriraghor only: closed by default (expect 403)', 'POST', '/me/organisations', { body: { name: 'Dhaka Clutch League', kind: 'esports' }, expect: { status: 403, code: 'ORG_KIND_CLOSED' } }),
+        owner('A sports organisation is still open (kind defaults to sports)', 'POST', '/me/organisations', { body: { name: 'Mirpur Sports Club' }, expect: { status: 201 }, checks: [['sports', "j.kind === 'sports'"]] }),
+        control('switch outside esports organisers on (esports.external_organisers_enabled)', 'esports-on'),
+        owner('A draft', 'POST', '/me/organisations', { body: { name: 'Dhaka Clutch League', kind: 'esports', about: 'Weekly Free Fire scrims for Dhaka colleges.' }, expect: { status: 201 }, save: { orgId: 'id' }, checks: [['draft, owner', "j.status === 'draft' && j.role === 'owner' && j.slug === 'dhaka-clutch-league'"]] }),
         owner('A draft has no console (expect 404)', 'GET', con('/esports/dashboard'), { expect: { status: 404 } }),
         owner('Send for review', 'POST', '/me/organisations/{{orgId}}/submit', { expect: { status: 200 } }),
         control('drain events', 'settle'),

@@ -1788,6 +1788,144 @@
           }
         },
         {
+          "name": "Search my bookings by team name (Round A)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"finds the walk-in\", () => { pm.expect(j.items.some((b) => b.teamName === 'Shapla FC' || b.contactName === 'Shapla FC')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/ground-bookings/search?q=shapla",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "ground-bookings",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "shapla"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search by the phone's last four digits",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"phone stays masked\", () => { pm.expect(j.items.length > 0 && j.items.every((b) => b.phoneLast4 === '0099') && !JSON.stringify(j).includes('01711000099')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/ground-bookings/search?q=0099",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "ground-bookings",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "0099"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Another owner cannot see them",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"nothing\", () => { pm.expect(j.items.length === 0).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{owner2Token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/ground-bookings/search?q=shapla",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "ground-bookings",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "shapla"
+                }
+              ]
+            }
+          }
+        },
+        {
           "name": "Hold (a closure will clash)",
           "event": [
             {

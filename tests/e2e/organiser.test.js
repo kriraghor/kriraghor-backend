@@ -23,6 +23,9 @@ let docsReviewer;
 
 beforeEach(async () => {
   await h.resetDb();
+  // M22 is switched off by default (esports is organised by Kriraghor only, 21 Oct 2026); this suite
+  // covers the feature with the switch on. tests/e2e/esports-closed.test.js covers it off.
+  await h.setSettingForTest('esports.external_organisers_enabled', true);
   master = await h.createSignedInMaster();
   reviewer = await f.staffWith(master, ['approve_listings']);
   docsReviewer = await f.staffWith(master, ['approve_documents']);
@@ -56,7 +59,7 @@ describe('M14 lite organisations', () => {
     const plain = await h.signupUser({ name: 'Nadia Islam' });
     expect((await api().post(`${P}/me/organisations`).set(h.bearer(plain)).send({ name: 'No Role Esports' }).expect(403)).body.code).toBe('ORG_ROLE_REQUIRED');
     const owner = await o.organiserOwner(docsReviewer);
-    const draft = (await api().post(`${P}/me/organisations`).set(h.bearer(owner)).send({ name: 'Dhaka Clutch League' }).expect(201)).body;
+    const draft = (await api().post(`${P}/me/organisations`).set(h.bearer(owner)).send({ name: 'Dhaka Clutch League', kind: 'esports' }).expect(201)).body;
     expect(draft).toMatchObject({ status: 'draft', role: 'owner', slug: 'dhaka-clutch-league' });
     // The console needs a verified organisation: a draft is a 404 there.
     await api().get(consoleUrl(draft, '/esports/dashboard')).set(h.bearer(owner)).expect(404);

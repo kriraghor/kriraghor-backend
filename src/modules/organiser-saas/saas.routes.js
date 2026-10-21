@@ -30,8 +30,14 @@ const invoices = require('./invoices.service');
 const funds = require('./prize-funds.service');
 const branding = require('./branding.service');
 const s = require('./saas.schemas');
+const { externalOpen, fail } = require('./saas.common');
+const { E } = require('../../common/errors');
 
 const raw = express.raw({ type: () => true, limit: '12mb' });
+/** While outside esports organisers are off, their console, branding and branded page do not exist. */
+const openOr404 = (_req, _res, next) => next(externalOpen() ? undefined : E.notFound('Page'));
+/** Staff cannot sign new esports contracts while it is off (existing ones can still be suspended or ended). */
+const openOr409 = (_req, _res, next) => next(externalOpen() ? undefined : fail('ESPORTS_ORGANISERS_CLOSED'));
 const noStore = (_req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
@@ -56,6 +62,7 @@ const anyStaff = requireOrgRole('staff');
 const anyAdmin = requireOrgRole('admin');
 const tid = validate(s.orgIdParam, 'params');
 const mid = validate(s.orgMatchParam, 'params');
+orgRouter.use(['/esports', '/branding'], openOr404);
 
 orgRouter.get('/esports/dashboard', staff, async (req, res) => res.json(await consoleSvc.dashboard(req.org)));
 orgRouter.get('/esports/tournaments', staff, validate(s.tournamentsQuery, 'query'), async (req, res) => res.json(await consoleSvc.list(req.org, req.validQuery)));
@@ -88,6 +95,7 @@ orgRouter.post('/members/:memberId/remove', anyAdmin, validate(os.memberParams, 
 
 // ---------------- public
 const publicRouter = Router();
+publicRouter.use(openOr404);
 publicRouter.get('/:subdomain', validate(s.subdomainParam, 'params'), async (req, res) => res.json(await branding.bySubdomain(req.params.subdomain)));
 
 // ---------------- staff
@@ -102,7 +110,7 @@ adminRouter.get('/invoices', canSee, validate(s.invoicesQuery, 'query'), async (
 adminRouter.post('/invoices/:id/void', manage, id, validate(s.reasonBody), money, async (req, res) => res.json(await invoices.voidInvoice(req.user, req.params.id, req.body, req)));
 adminRouter.patch('/contracts/:id', manage, id, validate(s.contractPatch), async (req, res) => res.json(await contracts.update(req.user, req.params.id, req.body, req)));
 adminRouter.post('/contracts/:id/document', manage, id, raw, async (req, res) => res.json(await contracts.attachDocument(req.user, req.params.id, { contentType: req.get('content-type'), body: req.body }, req)));
-adminRouter.post('/contracts/:id/activate', manage, id, money, async (req, res) => res.json(await contracts.activate(req.user, req.params.id, req)));
+adminRouter.post('/contracts/:id/activate', manage, openOr409, id, money, async (req, res) => res.json(await contracts.activate(req.user, req.params.id, req)));
 adminRouter.post('/contracts/:id/suspend', manage, id, validate(s.reasonBody), money, async (req, res) => res.json(await contracts.stop(req.user, req.params.id, 'suspended', req.body, req)));
 adminRouter.post('/contracts/:id/end', manage, id, validate(s.reasonBody), money, async (req, res) => res.json(await contracts.stop(req.user, req.params.id, 'ended', req.body, req)));
 adminRouter.get('/', canSee, validate(os.adminQuery, 'query'), async (req, res) => res.json(await organisations.staffList(req.validQuery)));
@@ -110,6 +118,6 @@ adminRouter.get('/:id', canSee, id, async (req, res) => res.json(await organisat
 adminRouter.post('/:id/suspend', manage, id, validate(os.reasonBody), async (req, res) => res.json(await organisations.staffAction(req.user, req.params.id, 'suspend', req.body, req)));
 adminRouter.post('/:id/restore', requireMaster, id, validate(os.reasonBody), async (req, res) => res.json(await organisations.staffAction(req.user, req.params.id, 'restore', req.body, req)));
 adminRouter.get('/:id/contracts', canSee, id, async (req, res) => res.json(await contracts.listFor(req.params.id)));
-adminRouter.post('/:id/contracts', manage, id, validate(s.contractBody), async (req, res) => res.status(201).json(await contracts.create(req.user, req.params.id, req.body, req)));
+adminRouter.post('/:id/contracts', manage, openOr409, id, validate(s.contractBody), async (req, res) => res.status(201).json(await contracts.create(req.user, req.params.id, req.body, req)));
 
 module.exports = { meOrgs, orgRouter, publicRouter, adminRouter };

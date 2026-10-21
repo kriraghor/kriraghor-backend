@@ -1460,7 +1460,8 @@ const CATALOGUE = [
     channels: ['in_app', 'sms'],
     recipients: (e) => [e.payload.ownerId],
     values: async (e) => ({ name: await orgName(e.payload.organisationId) }),
-    link: (e) => `/vendor/esports/${e.payload.organisationId}`,
+    // The business home, which opens the organisation in its console (sports or esports).
+    link: () => '/vendor',
   },
   {
     code: 'ORG_CHANGES_REQUESTED',

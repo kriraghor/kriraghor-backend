@@ -47,6 +47,7 @@ meBookings.post('/:id/cancel', id, validate(s.cancelBody), async (req, res) => r
 const meOwner = Router();
 meOwner.use(authenticate, requireGate('list_ground'));
 meOwner.get('/', validate(s.timelineQuery, 'query'), async (req, res) => res.json(await bookings.timeline(req.user, req.validQuery)));
+meOwner.get('/search', validate(s.ownerSearchQuery, 'query'), async (req, res) => res.json(await bookings.ownerSearch(req.user, req.validQuery)));
 meOwner.get('/:id', id, async (req, res) => res.json(await bookings.ownerGet(req.user, req.params.id)));
 meOwner.post('/:id/check-in', id, async (req, res) => res.json(await bookings.checkIn(req.user, req.params.id, req)));
 meOwner.post('/:id/no-show', id, async (req, res) => res.json(await bookings.noShow(req.user, req.params.id, req)));

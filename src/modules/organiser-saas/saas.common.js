@@ -30,6 +30,7 @@ const ERRORS = {
   FILE_TYPE_NOT_ALLOWED: [415, 'Upload a JPEG, PNG or WebP image (or a PDF for the contract)'],
   FILE_TYPE_MISMATCH: [415, 'The file is not the type it says it is'],
   ORG_TOURNAMENT_STATE: [409, 'Organisers can cancel only drafts and events in review; ask Kriraghor to cancel a published one'],
+  ESPORTS_ORGANISERS_CLOSED: [409, 'Outside esports organisers are switched off: Kriraghor runs every esports event'],
 };
 const fail = (code, meta) => new AppError(ERRORS[code][0], code, ERRORS[code][1], meta ? { meta } : undefined);
 
@@ -43,10 +44,13 @@ const config = () => ({
   noticeDays: settings.get('saas.contract_expiry_notice_days'),
 });
 
+/** Outside esports organisers (M22) are switched off unless this setting is on (product owner, 21 Oct 2026). */
+const externalOpen = () => settings.get('esports.external_organisers_enabled') === true;
+
 const publish = (transaction, name, aggregateType, aggregateId, payload, actor = null) => events.publish(transaction, { name, aggregateType, aggregateId, payload, actor });
 
 const DHAKA_MS = 6 * 3600000;
 const today = (now = new Date()) => new Date(now.getTime() + DHAKA_MS).toISOString().slice(0, 10);
 const iso = (d) => (d ? new Date(d).toISOString() : null);
 
-module.exports = { ERRORS, fail, config, publish, today, iso };
+module.exports = { ERRORS, fail, config, externalOpen, publish, today, iso };

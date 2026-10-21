@@ -138,6 +138,18 @@ const collection = {
             checks: [['walk-in, phone hidden', "j.booking.source === 'walk_in' && j.booking.phoneLast4 === '0099' && !JSON.stringify(j).includes('01711000099')"]],
           })
         ),
+        owner('Search my bookings by team name (Round A)', 'GET', '/me/ground-bookings/search?q=shapla', {
+          expect: { status: 200 },
+          checks: [['finds the walk-in', "j.items.some((b) => b.teamName === 'Shapla FC' || b.contactName === 'Shapla FC')"]],
+        }),
+        owner('Search by the phone\'s last four digits', 'GET', '/me/ground-bookings/search?q=0099', {
+          expect: { status: 200 },
+          checks: [['phone stays masked', "j.items.length > 0 && j.items.every((b) => b.phoneLast4 === '0099') && !JSON.stringify(j).includes('01711000099')"]],
+        }),
+        owner2('Another owner cannot see them', 'GET', '/me/ground-bookings/search?q=shapla', {
+          expect: { status: 200 },
+          checks: [['nothing', 'j.items.length === 0']],
+        }),
         hold(member2, 'Hold (a closure will clash)', 's6', 'advance', 'b6'),
         pay('b6', 'member2'),
         owner('Close over a booking (expect 409)', 'POST', '/me/grounds/{{groundId}}/closures', {

@@ -21,6 +21,7 @@ const audit = require('../audit').audit;
 const events = require('../events').events;
 const moderation = require('../moderation').moderation;
 const directory = require('../users').directory;
+const settings = require('../settings').settings;
 const { normalizePhone } = require('../../common/identifiers');
 
 const ERRORS = {
@@ -32,8 +33,11 @@ const ERRORS = {
   ORG_MEMBER_EXISTS: [409, 'This person is already a member'],
   ORG_OWNER_FIXED: [409, 'The owner stays the owner'],
   AREA_UNKNOWN: [422, 'Choose an area from the list'],
+  ORG_KIND_CLOSED: [403, 'Esports events are run by Kriraghor only. Apply as a sports events organiser'],
 };
 const fail = (code, meta) => new AppError(ERRORS[code][0], code, ERRORS[code][1], meta ? { meta } : undefined);
+/** Esports is organised by Kriraghor only unless the platform turns outside organisers on (21 Oct 2026). */
+const esportsOpen = () => settings.get('esports.external_organisers_enabled') === true;
 const publish = (transaction, name, o, extra = {}, actor = null) =>
   events.publish(transaction, { name, aggregateType: 'organisation', aggregateId: o.id, payload: { organisationId: o.id, ownerId: o.ownerUserId ?? o.ownerId, ...extra }, actor });
 
@@ -119,13 +123,15 @@ async function checkFields(body, transaction) {
 /** POST /me/organisations: a draft owned by the caller (who has applied for the organiser role). */
 async function create(principal, body, req) {
   if (!principal.roles.organiser) throw fail('ORG_ROLE_REQUIRED');
+  const kind = body.kind ?? 'sports';
+  if (kind === 'esports' && !esportsOpen()) throw fail('ORG_KIND_CLOSED');
   return sequelize.transaction(async (transaction) => {
     await checkFields(body, transaction);
     const base = slugify(body.name);
     let slug = base;
     for (let i = 2; await Organisation.findOne({ where: { slug }, attributes: ['id'], transaction }); i += 1) slug = `${base}-${i}`;
     const o = await Organisation.create(
-      { ownerUserId: principal.id, slug, kind: body.kind ?? 'esports', ...Object.fromEntries(FIELDS.filter((k) => body[k] !== undefined).map((k) => [k, body[k]])), status: 'draft', createdBy: principal.id, updatedBy: principal.id },
+      { ownerUserId: principal.id, slug, kind, ...Object.fromEntries(FIELDS.filter((k) => body[k] !== undefined).map((k) => [k, body[k]])), status: 'draft', createdBy: principal.id, updatedBy: principal.id },
       { transaction }
     );
     await OrganisationMember.create({ organisationId: o.id, userId: principal.id, role: 'owner', addedBy: principal.id }, { transaction });
@@ -191,6 +197,7 @@ async function submit(principal, id, req) {
     const o = await ownedForWrite(principal, id, transaction);
     if (!EDITABLE.includes(o.status)) throw fail(o.status === 'pending_review' ? 'ORG_IN_REVIEW' : 'ORG_STATE');
     if (!principal.roles.organiser) throw fail('ORG_ROLE_REQUIRED');
+    if (o.kind === 'esports' && !esportsOpen()) throw fail('ORG_KIND_CLOSED');
     const sub = await moderation.submit(
       { kind: 'organisation', subjectId: o.id, payload: { organisationId: o.id, name: o.name, ownerId: o.ownerUserId }, title: o.name, submittedBy: principal.id, isEdit: false },
       { transaction }

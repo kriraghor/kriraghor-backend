@@ -128,6 +128,32 @@ async function timeline(principal, { groundId, date }) {
   };
 }
 
+/** The search text as an ILIKE pattern, with % and _ taken literally. */
+const like = (q) => `%${q.replace(/[\\%_]/g, (ch) => `\\${ch}`)}%`;
+
+/**
+ * GET /me/ground-bookings/search?q= : the owner's bookings at any of their venues and on any date,
+ * newest start first, by code, the contact phone's last four digits, or a team or contact name
+ * (M10 owner desk, Round A). Only the owner's own bookings; phones stay masked to the last four.
+ */
+async function ownerSearch(principal, { q, groundId, cursor, limit = 20 }) {
+  if (groundId) await ownedGround(principal, groundId);
+  const text = q.trim();
+  const digits = text.replace(/\D/g, '');
+  const match = [{ code: { [Op.iLike]: like(text) } }, { teamName: { [Op.iLike]: like(text) } }, { contactName: { [Op.iLike]: like(text) } }];
+  if (digits.length >= 4) match.push({ contactPhoneLast4: digits.slice(-4) });
+  const where = { ownerId: principal.id, status: { [Op.notIn]: ['expired'] }, [Op.or]: match };
+  if (groundId) where.groundId = groundId;
+  const [at, after] = (cursor ?? '').split('|');
+  if (at && after && !Number.isNaN(Date.parse(at))) {
+    where[Op.and] = [{ [Op.or]: [{ startAt: { [Op.lt]: new Date(at) } }, { startAt: new Date(at), id: { [Op.lt]: after } }] }];
+  }
+  const rows = await Booking.findAll({ where, order: [['startAt', 'DESC'], ['id', 'DESC']], limit: limit + 1 });
+  const page = rows.slice(0, limit);
+  const last = page[page.length - 1];
+  return { items: page.map((b) => c.ownerView(b)), nextCursor: rows.length > limit ? `${c.iso(last.startAt)}|${last.id}` : null };
+}
+
 /** GET /me/ground-bookings/:id */
 async function ownerGet(principal, id) {
   const b = await Booking.findByPk(id);
@@ -500,6 +526,7 @@ module.exports = {
   cancelPreview,
   cancel,
   timeline,
+  ownerSearch,
   ownerGet,
   checkIn,
   noShow,

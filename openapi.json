@@ -13170,6 +13170,27 @@
           "cancelActor"
         ]
       },
+      "OwnerBookingSearch": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OwnerBooking"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
       "OwnerBookingDetail": {
         "type": "object",
         "properties": {
@@ -57666,6 +57687,114 @@
         }
       }
     },
+    "/me/ground-bookings/search": {
+      "get": {
+        "tags": [
+          "bookings"
+        ],
+        "summary": "Search my bookings at any venue and date: code, phone last 4 digits, team or contact name (newest start first)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 60,
+              "description": "A booking code (or part of it), the last 4+ digits of the contact phone, or a team or contact name"
+            },
+            "required": true,
+            "description": "A booking code (or part of it), the last 4+ digits of the contact phone, or a team or contact name",
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "groundId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 80
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerBookingSearch"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: ROLE_REQUIRED, KYC_REQUIRED, NOT_OWNER",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/me/ground-bookings/{id}": {
       "get": {
         "tags": [
@@ -77065,7 +77194,7 @@
                       "esports",
                       "sports"
                     ],
-                    "default": "esports"
+                    "default": "sports"
                   }
                 },
                 "required": [
@@ -77097,7 +77226,7 @@
             }
           },
           "403": {
-            "description": "Error. Codes: ORG_ROLE_REQUIRED",
+            "description": "Error. Codes: ORG_ROLE_REQUIRED, ORG_KIND_CLOSED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -77331,7 +77460,7 @@
             }
           },
           "403": {
-            "description": "Error. Codes: ORG_ROLE_REQUIRED",
+            "description": "Error. Codes: ORG_ROLE_REQUIRED, ORG_KIND_CLOSED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -81020,6 +81149,16 @@
               }
             }
           },
+          "409": {
+            "description": "Error. Codes: ESPORTS_ORGANISERS_CLOSED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Error. Codes: CONTRACT_FIELDS_INVALID, VALIDATION_FAILED",
             "content": {
@@ -81370,7 +81509,7 @@
             }
           },
           "409": {
-            "description": "Error. Codes: CONTRACT_STATE, ORG_NOT_VERIFIED, CONTRACT_DOCUMENT_REQUIRED, CONTRACT_ACTIVE_EXISTS",
+            "description": "Error. Codes: ESPORTS_ORGANISERS_CLOSED, CONTRACT_STATE, ORG_NOT_VERIFIED, CONTRACT_DOCUMENT_REQUIRED, CONTRACT_ACTIVE_EXISTS",
             "content": {
               "application/problem+json": {
                 "schema": {

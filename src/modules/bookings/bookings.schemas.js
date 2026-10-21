@@ -32,6 +32,12 @@ const holdBody = z.object({
 const myListQuery = z.object({ scope: z.enum(['upcoming', 'past']).default('upcoming'), cursor: dateTime.optional(), limit: z.coerce.number().int().min(1).max(50).default(20) });
 const cancelBody = z.object({ expectedRefund: poisha.meta({ description: 'The refund shown in the cancel preview (409 REFUND_CHANGED if it moved)' }) });
 const timelineQuery = z.object({ groundId: id, date: day.optional() });
+const ownerSearchQuery = z.object({
+  q: z.string().trim().min(2).max(60).meta({ description: 'A booking code (or part of it), the last 4+ digits of the contact phone, or a team or contact name' }),
+  groundId: id.optional(),
+  cursor: z.string().max(80).optional(),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+});
 const balanceBody = z.object({ method: z.enum(['cash', 'bkash_venue']), amount: poisha });
 const OWNER_CANCEL_REASONS = ['weather', 'waterlogged', 'maintenance', 'closure', 'double_booked_offline', 'other'];
 const ownerCancelBody = z.object({ reason: z.enum(OWNER_CANCEL_REASONS), note: z.string().trim().max(200).optional() });
@@ -131,6 +137,7 @@ const OwnerResult = z.object({ booking: OwnerBooking }).passthrough().meta({ id:
 const OwnerDetail = z.object({ booking: OwnerBooking, checkIn: z.object({}).passthrough().nullable() }).meta({ id: 'OwnerBookingDetail' });
 const MoveTargets = z.object({ items: z.array(z.object({ groundId: id, groundName: z.string(), courtId: id, courtName: z.string(), sameGround: z.boolean(), sameArea: z.boolean() })) }).meta({ id: 'MoveTargets' });
 const StaffList = z.object({ items: z.array(OwnerBooking), nextCursor: z.string().nullable() }).meta({ id: 'StaffBookingList' });
+const OwnerSearch = z.object({ items: z.array(OwnerBooking), nextCursor: z.string().nullable() }).meta({ id: 'OwnerBookingSearch' });
 const StaffDetail = OwnerDetail.extend({ ledger: z.array(z.object({ id, kind: z.string(), refType: z.string(), refId: id, total: poisha, postedAt: z.string() }).passthrough()) }).meta({ id: 'StaffBooking' });
 
 module.exports = {
@@ -140,6 +147,7 @@ module.exports = {
   myListQuery,
   cancelBody,
   timelineQuery,
+  ownerSearchQuery,
   balanceBody,
   ownerCancelBody,
   moveBody,
@@ -158,6 +166,7 @@ module.exports = {
   Timeline,
   OwnerResult,
   OwnerDetail,
+  OwnerSearch,
   MoveTargets,
   StaffList,
   StaffDetail,

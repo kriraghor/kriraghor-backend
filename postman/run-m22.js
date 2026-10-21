@@ -56,7 +56,12 @@ async function main() {
   const people = [];
   for (const n of ['Player One', 'Player Two', 'Player Three', 'Player Four']) people.push(await es.player(listings, n));
   const otherOwner = await o.organiserOwner(docs, 'Owner of Chittagong Gamers');
+  // M22 is switched off by default (esports is organised by Kriraghor only, 21 Oct 2026): the setup
+  // turns it on for the second organisation, then off again; the collection proves it is closed, then
+  // turns it on (/esports-on) to document the feature.
+  await h.setSettingForTest('esports.external_organisers_enabled', true);
   const otherOrg = await o.verifiedOrg(otherOwner, listings, 'Chittagong Gamers');
+  await h.setSettingForTest('esports.external_organisers_enabled', false);
   const stepUps = [];
   for (let i = 0; i < 4; i += 1) stepUps.push(await h.stepUp(a, 'esports.money'));
 
@@ -71,6 +76,10 @@ async function main() {
     settle: async () => {
       await h.drainEvents();
       return {};
+    },
+    'esports-on': async () => {
+      await h.setSettingForTest('esports.external_organisers_enabled', true);
+      return { on: true };
     },
     // Places ৳1,000 and ৳500 at ৳400 a head; the capped one pays ৳100 a kill up to 5 kills.
     body: async () => ({

@@ -139,6 +139,142 @@
           }
         },
         {
+          "name": "Esports is organised by Kriraghor only: closed by default (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 ORG_KIND_CLOSED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('ORG_KIND_CLOSED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dhaka Clutch League\",\n  \"kind\": \"esports\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/organisations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "organisations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A sports organisation is still open (kind defaults to sports)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"sports\", () => { pm.expect(j.kind === 'sports').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mirpur Sports Club\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/organisations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "organisations"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: switch outside esports organisers on (esports.external_organisers_enabled)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/esports-on",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "esports-on"
+              ]
+            }
+          }
+        },
+        {
           "name": "A draft",
           "event": [
             {
@@ -172,7 +308,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Dhaka Clutch League\",\n  \"about\": \"Weekly Free Fire scrims for Dhaka colleges.\"\n}",
+              "raw": "{\n  \"name\": \"Dhaka Clutch League\",\n  \"kind\": \"esports\",\n  \"about\": \"Weekly Free Fire scrims for Dhaka colleges.\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
