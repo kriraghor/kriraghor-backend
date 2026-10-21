@@ -286,15 +286,23 @@ async function sportsEntries(reviewer, players) {
 }
 
 async function run({ master, reviewer, owner, step }) {
-  const players = await step('players (again, for their sessions)', () => L.players(reviewer));
+  // A demo player made staff on a local database (e.g. to try the admin desk) cannot act on the
+  // customer API (STAFF_USE_ADMIN_PORTAL): the paid flows leave that account out.
+  const players = await step('players (again, for their sessions)', async () => {
+    const all = await L.players(reviewer);
+    const staff = new Set((await models.StaffMember.findAll({ where: { userId: all.map((p) => p.userId) }, attributes: ['userId'] })).map((s) => s.userId));
+    return all.filter((p) => !staff.has(p.userId));
+  });
   await step('finished esports events: entries, results, prizes, rankings', () => finishedEsports(master, reviewer, players));
   const venues = await step('venues (again, for their ids)', () => L.venues(owner, reviewer));
   await step('past bookings, check-ins and reviews', () => pastBookings(players, owner, venues));
   const gymRows = await step('gyms (again, for their ids)', () => L.gyms(owner, reviewer));
   const pros = await step('hire profiles (again, for their ids)', () => L.pros(reviewer, gymRows));
-  await step('demo member: booking, orders, gym pass, trainer plan, hire job', () => memberActivity(reviewer, owner, players, venues, pros));
+  const member = await step('demo member: booking, orders, gym pass, trainer plan, hire job', () => memberActivity(reviewer, owner, players, venues, pros));
   await step('entries in the open esports events', () => openEntries(players));
   await step('teams entered in the badminton open', () => sportsEntries(reviewer, players));
+  const rated = await step('past hire jobs, shop orders and gym visits, with reviews and replies; pro stats', () => require('./reviews').run({ owner, players, pros, member }));
+  rt.log(`  ${rated}`);
 }
 
-module.exports = { run, pay, backdate };
+module.exports = { run, pay, backdate, order };

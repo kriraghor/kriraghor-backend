@@ -80,7 +80,9 @@ async function main() {
   await step('venues', () => L.venues(owner, reviewer));
   await step('shops and products', () => L.shops(owner, reviewer));
   const gymRows = await step('gyms', () => L.gyms(owner, reviewer));
-  await step('hire profiles and trainers', () => L.pros(reviewer, gymRows));
+  const pros = await step('hire profiles and trainers', () => L.pros(reviewer, gymRows));
+  const calendars = await step('availability calendars (referee, trainer)', () => require('./demo/steps/availability').run(pros));
+  console.log(`  ${calendars.join('; ')}`);
   await step('esports players and game IDs', () => L.players(reviewer));
   await step('esports events', () => L.esports(master, reviewer, { free: profile === 'listings' }));
   await step('showcase', () => L.showcase(master, reviewer));

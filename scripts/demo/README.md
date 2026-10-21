@@ -6,8 +6,8 @@ Realistic demo content for every public section, so the sites can be shown befor
 
 | Command | What it does |
 |---|---|
-| `npm run demo:seed -- --profile=full` | Everything, locally: listings plus bookings, orders, passes, hire jobs, finished esports events with results and prizes, leaderboards, top players, reviews and notifications. Payments go through the simulator, so it needs `PAYMENTS_SIMULATOR=true` and never runs in production. |
-| `npm run demo:seed -- --profile=listings` | Venues, shops and products, gyms, hire profiles and trainers, players with game IDs, upcoming esports events (free entry), the showcase and sports events. Takes no payment. Safe for production with `--confirm-live`. |
+| `npm run demo:seed -- --profile=full` | Everything, locally: listings plus bookings, orders, passes, hire jobs, finished esports events with results and prizes, leaderboards, top players, reviews (venues, pros, shops, gyms) with owner replies, pro earnings and stats, and notifications. Payments go through the simulator, so it needs `PAYMENTS_SIMULATOR=true` and never runs in production. |
+| `npm run demo:seed -- --profile=listings` | Venues, shops and products, gyms, hire profiles and trainers (the demo referee and trainer with an availability calendar), players with game IDs, upcoming esports events (free entry), the showcase and sports events. Takes no payment. Safe for production with `--confirm-live`. |
 | `npm run demo:hide -- --dry-run` | Lists what hiding would change. |
 | `npm run demo:hide` | Hides all demo data (add `--confirm-live` in production). |
 
@@ -45,7 +45,9 @@ SMS codes are not delivered yet, so one account of each kind can sign in with a 
 - `runtime.js` starts the API in-process on a loopback port and calls the real routes, so every gate, validation rule, Moderation review, ledger posting and event applies. It mints sessions for demo accounts instead of signing in, and relays and consumes events in-process (what the worker does).
 - `steps/people.js`: two demo staff (a master who drafts Kriraghor's own events and a reviewer for the four-eyes desk), members, NID verification and business roles through M01, M02 and M05.
 - `steps/listings.js`: every listing is created by its owner, submitted and approved on the Moderation desk.
-- `steps/full.js`: paid flows through the simulator. Past activity is made as the tests make it: created in the near future, played through, then moved back in time. Only time columns of demo rows are changed.
+- `steps/availability.js` (both profiles): the demo referee (01300000021) and trainer (01300000030) save a weekly repeat (Friday 09:00–13:00) and two one-off blocks in the next two weeks through `PUT /pro/availability/blocks`. A re-run keeps a calendar that still has an upcoming block.
+- `steps/full.js`: paid flows through the simulator. Past activity is made as the tests make it: created in the near future, played through, then moved back in time. Only time columns of demo rows are changed. Demo players who are staff on a local database are left out (staff cannot use the customer API).
+- `steps/reviews.js` (full profile, Round B1): released hire jobs for the referee, the umpire and the physio, received shop orders and used gym day passes, each rated by the demo player who paid, with a few owner replies; then the nightly hire stats recompute. The referee, the umpire, Iron Supply Tejgaon and PowerHouse Gym Mirpur show a rating (from `reviews.min_count_display`), the referee's `/pro/insights` shows earnings, and the demo member (01300000090) has a hire job, a sub-order and a gym pass waiting for a rating. Hire jobs and orders are moved back up to four weeks; gym visits stay today because front-desk admissions (`pass_redemptions`), like order lines and ledger postings, are append-only. A re-run finds each item by its demo account and skips it.
 - `data.js`: the content. Names are invented; no real business or person.
 - `photos/`: 54 Unsplash photos with `CREDITS.md`.
 
