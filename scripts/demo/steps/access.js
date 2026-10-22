@@ -10,6 +10,9 @@
  * - Never a master: an account holding master_admin is skipped, whatever list it is on. Demo staff
  *   get a few permissions each and set up their own authenticator on the first sign-in (the staff
  *   two-factor setup step), so no shared second factor exists.
+ * - Round B3 business staff (a venue and a gym front desk, a shop packer) are ordinary members:
+ *   steps/team.js makes them and their owner adds them to the team; this step only gives the
+ *   password. They sign in at vendor.kriraghor.com and are never Kriraghor staff.
  * - Re-running keeps passwords that are already set. demo:hide suspends these accounts and offboards
  *   the demo staff like the rest of the demo data.
  */
@@ -29,6 +32,8 @@ const MEMBERS = [
   { n: 52, kind: 'Esports player, PUBG Mobile', where: 'esports.kriraghor.com' },
   // A plain member: made here if the listings profile did not (it has no listing of its own).
   { n: 90, kind: 'Member (books, buys, hires)', where: 'kriraghor.com', create: true },
+  // Round B3 business staff: made and added to their owner's team by steps/team.js (POST /me/team).
+  ...D.BUSINESS_STAFF.map((s) => ({ n: s.n, kind: s.kind, where: 'vendor.kriraghor.com' })),
 ];
 
 /** Demo staff: their own accounts in the demo phone block, a few permissions each, never master. */
@@ -38,7 +43,7 @@ const STAFF = [
   { n: 193, label: 'esports', name: 'Demo Esports Desk', team: 'Esports', employeeId: 'KG-DEMO-ESP', permissions: ['manage_esports', 'enter_results'] },
 ];
 
-const nameOf = (n) => [...D.OWNERS, ...D.PROS, ...D.TRAINERS, ...D.PLAYERS, D.MEMBER].find((p) => p.n === n)?.name;
+const nameOf = (n) => [...D.OWNERS, ...D.PROS, ...D.TRAINERS, ...D.PLAYERS, D.MEMBER, ...D.BUSINESS_STAFF].find((p) => p.n === n)?.name;
 
 /** True when the step should run; explains why not otherwise. */
 function enabled() {

@@ -7,7 +7,10 @@
  *  - demo esports events that have not finished are cancelled (entries refunded by M21), the showcase is cancelled;
  *  - demo sports events are cancelled by their organiser;
  *  - demo accounts are suspended, which pauses their venues, gyms, shops and hire profiles and withdraws
- *    their esports entries (the existing user.suspended consumers);
+ *    their esports entries (the existing user.suspended consumers). This covers the Round B3 business
+ *    staff (steps/team.js) too: they are demo users, so they are suspended and cannot sign in, and their
+ *    owners' suspension takes away every workplace at once. Their team memberships are left as they are,
+ *    so restoring the accounts brings the teams back;
  *  - the demo staff (the reviewer and the demo sign-in staff) are offboarded. The demo master keeps no way
  *    to sign in (no phone, email or password).
  *
@@ -82,7 +85,7 @@ async function main() {
       if (!dry) await rt.post(master, `/admin/users/${id}/suspend`, { reasonCode: 'other', note: REASON }, { ok: [409] });
     }
   }
-  say(`suspend ${n} demo accounts (their venues, gyms, shops and hire profiles pause)`);
+  say(`suspend ${n} demo accounts (their venues, gyms, shops and hire profiles pause; business staff lose their workplaces)`);
   await rt.drain();
 
   // Every demo staff account but the master: the review desk and the demo sign-in staff (steps/access.js).

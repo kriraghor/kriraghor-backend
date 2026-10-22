@@ -34,4 +34,22 @@ describe('demo sign-in accounts', () => {
       expect(s).not.toHaveProperty('isMaster');
     }
   });
+
+  it('signs in the Round B3 business staff at the vendor site as members, never as Kriraghor staff', () => {
+    const D = require('../../scripts/demo/data');
+    const rules = require('../../src/modules/business-members/business-members.rules');
+    const taken = [...D.OWNERS, ...D.PROS, ...D.TRAINERS, ...D.PLAYERS, D.MEMBER, ...access.STAFF].map((p) => p.n);
+    expect(D.BUSINESS_STAFF.map((s) => s.businessType).sort()).toEqual(['gym', 'shop', 'venue']);
+    for (const s of D.BUSINESS_STAFF) {
+      expect(taken).not.toContain(s.n);
+      expect(access.MEMBERS).toContainEqual({ n: s.n, kind: s.kind, where: 'vendor.kriraghor.com' });
+      expect(access.STAFF.map((x) => x.n)).not.toContain(s.n);
+      // The listing belongs to the owner named, so POST /me/team as that owner finds it.
+      const list = { venue: D.VENUES, gym: D.GYMS, shop: D.SHOPS }[s.businessType];
+      expect(list.find((b) => b.name === s.business)?.owner).toBe(s.owner);
+    }
+    // steps/team.js adds them with the business type's defaults (B3): the shop packer can ship.
+    expect(D.BUSINESS_STAFF.every((s) => !('permissions' in s))).toBe(true);
+    expect(rules.defaultsFor('shop')).toContain('orders.ship');
+  });
 });
