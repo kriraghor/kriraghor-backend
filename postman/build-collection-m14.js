@@ -7,7 +7,8 @@
  * draws, generates and publishes fixtures, enters results (tranche 1 at the first, the rest at
  * completion), and the public hub shows the standings. node postman/build-collection-m14.js
  *
- * Variables: ownerToken, orgId (a verified sports organisation), cap1Token…cap5Token and team1…team5
+ * Variables: ownerToken, orgId (a verified sports organisation), orgStaffToken (a staff member of it),
+ * cap1Token…cap5Token and team1…team5
  * (captains with an NID and a badminton team), cap1Id…cap5Id, venueArea, modToken (approve_listings),
  * dates (opensAt, closesAt, startDate, endDate), controlUrl (the runner: /approve, /pay, /settle,
  * /check). Unattended: `node postman/run-m14.js` (kriraghor_test database).
@@ -70,6 +71,7 @@ const collection = {
     description: [
       'A verified sports organisation (M14 lite, kind sports) drafts a badminton league for four teams: ৳18,000 a team, a prize pool shown on the page (Q86: not held), a venue with two courts. Its submission fails without a venue; with one it goes to the Moderation desk (kind tournament) and the runner approves it: registration opens with the 5% fee and the 50% first release snapshotted.',
       'Four captains (NID members with a badminton team) register with a squad and pay into escrow (M06 purpose tournament_entry); a fifth joins the reserve list. Registering the same team twice is refused.',
+      'The organiser exports the registrations as CSV (organisation admins only; team, status, fees, dates, squad counts, and with the roster display names and NID yes/no; never phones or ids).',
       'The organiser approves the four (squads ready), closes registration (the reserve team lapses), draws at random (the seed is published), dry-runs and then generates the schedule, and publishes the fixtures.',
       'Results: the first locks the rules and releases half of every entry less 5% (৳34,200 to the owner); a stale move is refused; an amendment needs a reason; the last result completes the tournament and releases the rest (৳68,400 in all, ৳3,600 fee). The public hub shows the standings without any personal data.',
       'Unattended: `node postman/run-m14.js` (kriraghor_test database). Rebuild with: node postman/build-collection-m14.js',
@@ -118,6 +120,27 @@ const collection = {
         own('Approve team 4', 'POST', con('/registrations/{{reg4}}/approve'), { expect: { status: 200 } }),
         own('Approve twice (expect 409)', 'POST', con('/registrations/{{reg1}}/approve'), { expect: { status: 409, code: 'REGISTRATION_STATE' } }),
         own('Overview: four approved, ৳72,000 held', 'GET', con('/tournaments/{{tournamentId}}/overview'), { expect: { status: 200 }, checks: [['kpis', 'j.kpis.approved === 4 && j.money.held === 7200000 && j.money.released === 0']] }),
+        // Round B2: the registrations CSV for organisation admins (M19-FR-22/23 rules).
+        own('Registrations as CSV (organisation admins)', 'GET', con('/tournaments/{{tournamentId}}/registrations.csv'), {
+          expect: { status: 200 },
+          checks: [
+            ['a CSV download (Postman strips the byte-order mark; jest checks it)', "pm.response.headers.get('Content-Type').includes('text/csv') && pm.response.headers.get('Content-Disposition').includes('registrations')"],
+            ['five registrations and the header', "pm.response.text().trim().split('\\r\\n').length === 6"],
+            ['four approved with ready squads, the reserve team', "(pm.response.text().match(/\"approved\",\"\",/g) || []).length === 4 && pm.response.text().includes('\"reserve\",\"1\"')"],
+            ['fees in taka', "pm.response.text().includes('\"18000.00\"')"],
+            ['no phones or ids', '!/01[3-9]\\d{8}|[0-9a-f]{8}-[0-9a-f]{4}-/i.test(pm.response.text())'],
+          ],
+        }),
+        own('… with the roster: display names and NID verified yes/no', 'GET', con('/tournaments/{{tournamentId}}/registrations.csv?include=roster'), {
+          expect: { status: 200 },
+          checks: [
+            ['player columns', "pm.response.text().includes('\"player\",\"nid_verified\"') && pm.response.text().includes('\"Rafi Ahmed\",\"yes\"')"],
+            ['no phones or ids', '!/01[3-9]\\d{8}|[0-9a-f]{8}-[0-9a-f]{4}-/i.test(pm.response.text())'],
+          ],
+        }),
+        as('orgStaffToken')('Organisation staff cannot export (expect 404)', 'GET', con('/tournaments/{{tournamentId}}/registrations.csv'), { expect: { status: 404 } }),
+        cap(1)('A captain cannot export (expect 404)', 'GET', con('/tournaments/{{tournamentId}}/registrations.csv'), { expect: { status: 404 } }),
+        own('An unknown include (expect 422)', 'GET', con('/tournaments/{{tournamentId}}/registrations.csv?include=phones'), { expect: { status: 422, code: 'VALIDATION_FAILED' } }),
       ],
     },
     {

@@ -18,6 +18,13 @@ const BOOKING = [
 ];
 const SERIES = ['booking_series.created', 'booking_series.week_skipped', 'booking_series.week_restored', 'booking_series.ended'];
 const CLOSURE = ['closure.created', 'closure.reopened', 'closure.shortened'];
+// M13: every sub-order change (refunds and disputes too) refreshes its fact and lines.
+const SUB_ORDER = [
+  'sub_order.placed', 'sub_order.accepted', 'sub_order.rejected', 'sub_order.expired', 'sub_order.shipped', 'sub_order.delivered', 'sub_order.completed', 'sub_order.cancelled',
+  'sub_order.disputed', 'sub_order.refunded',
+];
+// M20: a pass is sold, used at the front desk (an admission), expires or is cancelled.
+const GYM_PASS = ['gym_pass.paid', 'gym_pass.redeemed', 'gym_pass.expired', 'gym_pass.cancelled'];
 const DAY = 24 * 60 * 60 * 1000;
 const MAX_CLOSURE_DAYS = 31;
 
@@ -49,6 +56,9 @@ function registerAnalyticsConsumers() {
   on(['ledger.transaction_posted'], 'ledger', (e, { transaction }) => facts.refreshLedgerTxn(e.payload.transactionId, { transaction }));
   on(['esports_registration.confirmed'], 'esports-entry', (e, { transaction }) => facts.refreshEntry(e.payload.registrationId, { transaction }));
   on(['esports_tournament.finalised'], 'esports-tournament', (e, { transaction }) => facts.refreshTournament(e.payload.tournamentId, { transaction }));
+  // Round B2 (§6.3): shops and gyms.
+  on(SUB_ORDER, 'sub-order', (e, { transaction }) => facts.refreshSubOrder(e.payload.subOrderId, { transaction }));
+  on(GYM_PASS, 'gym-pass', (e, { transaction }) => facts.refreshGymPass(e.payload.passId, { transaction }));
 }
 
-module.exports = { registerAnalyticsConsumers, BOOKING };
+module.exports = { registerAnalyticsConsumers, BOOKING, SUB_ORDER, GYM_PASS };

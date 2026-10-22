@@ -290,6 +290,7 @@ const ACTIONS = {
   'tournament.fixtures_generated': A('M14', 'info', 'Generated fixtures', 'ফিক্সচার তৈরি'),
   'tournament.fixtures_published': A('M14', 'notice', 'Published fixtures', 'ফিক্সচার প্রকাশ'),
   'tournament.lots_recorded': A('M14', 'notice', 'Recorded a draw of lots', 'লটারির ফল লেখা'),
+  'tournament.registrations_exported': A('M14', 'info', 'Exported the registrations ({meta.rows} rows)', 'নিবন্ধন এক্সপোর্ট ({meta.rows} সারি)'),
   'registration.submitted': A('M14', 'info', 'Registered a team', 'দল নিবন্ধন'),
   'registration.offer_accepted': A('M14', 'info', 'Took a reserve place', 'রিজার্ভ জায়গা নেওয়া'),
   'registration.withdrawn': A('M14', 'notice', 'Withdrew a team', 'দল প্রত্যাহার'),

@@ -15,6 +15,7 @@ const lazy = (file, names, values = []) => {
 module.exports = {
   fixtures: lazy('./fixtures.service', ['afterResultInTx']),
   facts: lazy('./tournaments.facts', ['captains', 'matchCaptains', 'registration', 'tournament']),
+  reads: lazy('./tournaments.reads', ['organiserFacts', 'pendingActions']),
   registrations: lazy('./registrations.service', ['tournamentsOf']),
   common: lazy('./tournaments.common', ['fail', 'ownMatch', 'publish', 'rulesOf']),
 };

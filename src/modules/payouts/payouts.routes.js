@@ -16,6 +16,7 @@ const { Router } = require('express');
 const { validate } = require('../../common/validate');
 const { requireIdempotencyKey } = require('../../common/idempotency');
 const { PERMISSIONS } = require('../../common/enums');
+const { withBom } = require('../../common/csv');
 const { authenticate, authenticateAdmin, requireStaff, requireMaster, requireStepUp, requireAnyPermission, requireGate } = require('../../middlewares/auth');
 const accounts = require('./payout-accounts.service');
 const payouts = require('./payouts.service');
@@ -46,7 +47,7 @@ mePayouts.get('/:id/statement.csv', idParam, validate(s.statementQuery, 'query')
   const { filename, body } = await payouts.statementCsv(req.user.id, req.params.id, req.validQuery.locale);
   res.set('Content-Type', 'text/csv; charset=utf-8').set('Content-Disposition', `attachment; filename="${filename}"`).set('Cache-Control', 'no-store');
   // Spreadsheet apps read UTF-8 CSV (Bangla headings) correctly only with a byte-order mark.
-  res.send(`${String.fromCharCode(0xfeff)}${body}`);
+  res.send(withBom(body));
 });
 
 // ---------------------------------------------------------------- admin (finance desk)

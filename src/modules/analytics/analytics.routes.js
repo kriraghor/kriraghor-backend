@@ -2,7 +2,8 @@
 
 /**
  * M19 routes (§9, step 1).
- *   meRouter     /me/dashboard     the member's and the ground owner's dashboards, actions and CSV
+ *   meRouter     /me/dashboard     the member's, ground owner's, shop owner's, gym owner's and sports
+ *                                  organiser's dashboards (?role=, organiser with ?orgId=), actions and CSV
  *   kpiRouter    /kpis             what each tile counts (public)
  *   adminRouter  /admin/analytics  the platform overview and its CSV (master or view_analytics), staff actions
  */
@@ -20,21 +21,25 @@ const s = require('./analytics.schemas');
 const sendCsv = (res, { filename, body }) =>
   res.set('Content-Type', 'text/csv; charset=utf-8').set('Content-Disposition', `attachment; filename="${filename}"`).set('Cache-Control', 'no-store').send(body);
 
+/** The dashboard of each role (M19-FR-01; Round B2 adds shops, gyms and sports organisers). */
+const DASHBOARDS = {
+  member: dashboards.memberDashboard,
+  ground_owner: dashboards.ownerDashboard,
+  shop_owner: dashboards.shopDashboard,
+  gym_owner: dashboards.gymDashboard,
+  organiser: dashboards.organiserDashboard,
+};
+
 const meRouter = Router();
 meRouter.use(authenticate);
-meRouter.get('/', validate(s.dashboardQuery, 'query'), async (req, res) => {
-  const q = req.validQuery;
-  res.json(q.role === 'ground_owner' ? await dashboards.ownerDashboard(req.user, q) : await dashboards.memberDashboard(req.user, q));
-});
+meRouter.get('/', validate(s.dashboardQuery, 'query'), async (req, res) => res.json(await DASHBOARDS[req.validQuery.role](req.user, req.validQuery)));
 meRouter.get('/actions', validate(s.actionsQuery, 'query'), async (req, res) => {
   const { role } = req.validQuery;
-  if (role !== 'member' && req.user.roles?.[role] !== 'active') throw E.forbidden('ROLE_REQUIRED', 'This list is for active business owners', undefined, { role });
+  // Organisers' items come from their organisation memberships (staff need no organiser role).
+  if (!['member', 'organiser'].includes(role) && req.user.roles?.[role] !== 'active') throw E.forbidden('ROLE_REQUIRED', 'This list is for active business owners', undefined, { role });
   res.json(await actions.list(req.user, req.validQuery.role));
 });
-meRouter.get('/export', validate(s.exportQuery, 'query'), async (req, res) => {
-  const scope = req.validQuery.dataset.startsWith('owner_') ? 'ground_owner' : 'member';
-  sendCsv(res, await exportsSvc.exportCsv(req.user, req.validQuery, scope, req));
-});
+meRouter.get('/export', validate(s.exportQuery, 'query'), async (req, res) => sendCsv(res, await exportsSvc.exportCsv(req.user, req.validQuery, exportsSvc.DATASETS[req.validQuery.dataset].role, req)));
 
 const kpiRouter = Router();
 kpiRouter.get('/:key/definition', validate(s.kpiParam, 'params'), validate(s.kpiQuery, 'query'), async (req, res) => {

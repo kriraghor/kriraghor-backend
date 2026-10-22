@@ -40,6 +40,37 @@ const KPIS = {
   take_rate: { en: 'Fee revenue divided by GTV.', bn: 'ফি আয় ÷ মোট লেনদেন।' },
   esports_entries: { en: 'Esports entries confirmed in the period.', bn: 'এই সময়ে নিশ্চিত এস্পোর্টস এন্ট্রি।' },
   prizes_paid: { en: 'Prize money credited to winners when events were finalised.', bn: 'ইভেন্ট চূড়ান্ত হলে বিজয়ীদের দেওয়া পুরস্কারের টাকা।' },
+  // Round B2 (§6.3): shops, gyms and sports organisers.
+  sales: {
+    en: 'The price of the items in orders placed in the period, before the Kriraghor commission and without delivery. Rejected, expired, cancelled and refunded orders are not counted. Your payouts show the amount after the commission.',
+    bn: 'এই সময়ে দেওয়া অর্ডারের পণ্যের দাম, ক্রীড়াঘর কমিশনের আগে ও ডেলিভারি ছাড়া। বাতিল, প্রত্যাখ্যাত, মেয়াদোত্তীর্ণ ও ফেরত অর্ডার ধরা হয় না। পেআউটে কমিশন বাদে পরিমাণ দেখায়।',
+  },
+  orders: { en: 'Orders placed with your shop in the period (the same orders as Sales).', bn: 'এই সময়ে আপনার দোকানে দেওয়া অর্ডার (বিক্রির একই অর্ডার)।' },
+  average_order: { en: 'Sales divided by orders, so the three tiles always agree.', bn: 'বিক্রি ÷ অর্ডার, তাই তিনটি টাইল সবসময় মেলে।' },
+  repeat_buyers: { en: 'Share of buyers who ordered from you at least twice in the last 90 days.', bn: 'গত ৯০ দিনে অন্তত দুবার অর্ডার করা ক্রেতার অংশ।' },
+  conversion: {
+    en: 'Coming later: conversion and the shopper funnel need product-view counts, which Kriraghor does not collect yet.',
+    bn: 'পরে আসছে: কনভার্সন ও ক্রেতার ধাপের জন্য পণ্য দেখার হিসাব লাগে, যা ক্রীড়াঘর এখনও রাখে না।',
+  },
+  pass_sales: {
+    en: 'The price of passes bought in the period, before the Kriraghor fee. Cancelled and refunded passes are not counted.',
+    bn: 'এই সময়ে কেনা পাসের দাম, ক্রীড়াঘর ফির আগে। বাতিল ও ফেরত পাস ধরা হয় না।',
+  },
+  passes_sold: { en: 'Passes bought in the period, split into day, monthly and quarterly passes.', bn: 'এই সময়ে কেনা পাস: দিনের, মাসিক ও তিন মাসের।' },
+  admissions: { en: 'Front-desk admissions in the period (one per member per day on a monthly or quarterly pass).', bn: 'এই সময়ে ফ্রন্ট ডেস্কে প্রবেশ (মাসিক বা তিন মাসের পাসে দিনে একবার)।' },
+  unused_share: {
+    en: 'Of the passes whose last day was in the period, the share never used at the front desk.',
+    bn: 'যে পাসের শেষ দিন এই সময়ে, তার মধ্যে ফ্রন্ট ডেস্কে কখনও ব্যবহার না হওয়ার অংশ।',
+  },
+  teams: {
+    en: 'Approved teams of the places in your running events. Waiting: registrations for you to approve; unpaid: entry fees not paid yet.',
+    bn: 'চলমান ইভেন্টে জায়গার মধ্যে অনুমোদিত দল। অপেক্ষায়: আপনার অনুমোদনের নিবন্ধন; বাকি: এখনও না দেওয়া এন্ট্রি ফি।',
+  },
+  entry_fees: {
+    en: 'Entry fees paid in the period, from the escrow holds. The note shows what Kriraghor still holds, what was released to you and what was refunded, for all your events.',
+    bn: 'এই সময়ে দেওয়া এন্ট্রি ফি, এসক্রো থেকে। নোটে আপনার সব ইভেন্টের জন্য ক্রীড়াঘরে রাখা, আপনাকে ছাড়া ও ফেরত দেওয়া টাকা।',
+  },
+  matches_played: { en: 'Matches with a result, of all matches not cancelled.', bn: 'ফল হওয়া ম্যাচ, বাতিল নয় এমন সব ম্যাচের মধ্যে।' },
 };
 
 const definitionsFor = (keys, locale = 'en') => Object.fromEntries(keys.map((k) => [k, KPIS[k][locale === 'bn' ? 'bn' : 'en']]));

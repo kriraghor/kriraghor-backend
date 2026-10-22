@@ -13,6 +13,7 @@
  */
 const { Op } = require('sequelize');
 const { E } = require('../../common/errors');
+const { csv, withBom, taka, dhakaTime } = require('../../common/csv');
 const audit = require('../audit').audit;
 const gates = require('../auth').gate;
 const payments = require('../payments').intents;
@@ -271,6 +272,49 @@ async function orgList(org, tournamentId, { status } = {}) {
   };
 }
 
+const CSV_HEAD = ['team', 'short_code', 'status', 'reserve_position', 'fee_taka', 'fee_waived', 'refunded_taka', 'registered', 'approved', 'squad_players', 'eligible_players', 'squad_ready'];
+const yesNo = (b) => (b ? 'yes' : 'no');
+
+/**
+ * GET …/tournaments/:id/registrations.csv?include=roster (Round B2, org admins; M19-FR-22/23 rules):
+ * one row per registration (team, status, fees, dates, squad and eligibility counts), or with the
+ * roster one row per player with their display name and NID verified yes/no. Never phones, emails or
+ * ids of people. Capped by analytics.export_sync_max_rows, counted against analytics.exports_per_hour,
+ * audited.
+ */
+async function orgCsv(principal, org, tournamentId, { include } = {}, req = null) {
+  const t = await c.ownTournament(org, tournamentId);
+  const rows = await Registration.findAll({ where: { tournamentId: t.id }, order: [['reservePosition', 'ASC NULLS FIRST'], ['createdAt', 'ASC']] });
+  const teams = await Promise.all(rows.map((r) => teamsSvc.getTeam(r.teamId)));
+  const ready = await Promise.all(rows.map((r) => (rules.LIVE.includes(r.status) ? rosters.readiness(r.id, t) : null)));
+  const withRoster = include === 'roster';
+  const out = [];
+  rows.forEach((r, i) => {
+    const base = [
+      teams[i]?.name ?? '',
+      teams[i]?.shortCode ?? '',
+      r.status,
+      r.reservePosition ?? '',
+      taka(r.feePoisha),
+      yesNo(r.feeWaived),
+      taka(r.refundedPoisha),
+      dhakaTime(r.createdAt),
+      dhakaTime(r.approvedAt),
+      ready[i]?.total ?? '',
+      ready[i]?.eligible ?? '',
+      ready[i] ? yesNo(ready[i].ready) : '',
+    ];
+    if (!withRoster) out.push(base);
+    else if (!ready[i]?.players.length) out.push([...base, '', '']);
+    else for (const p of ready[i].players) out.push([...base, p.displayName, yesNo(p.nidVerified)]);
+  });
+  const guard = require('../analytics').exportsGuard;
+  guard.checkSize(out.length);
+  await guard.take(principal.id);
+  await audit.record({ action: 'tournament.registrations_exported', actor: principal, entityType: 'tournament', entityId: t.id, meta: { rows: out.length, roster: withRoster }, req });
+  return { filename: `kriraghor-${t.slug}-registrations-${c.today()}.csv`, body: withBom(csv([withRoster ? [...CSV_HEAD, 'player', 'nid_verified'] : CSV_HEAD, ...out])) };
+}
+
 /** POST …/registrations/:id/approve: needs a ready roster and a free approved place (FR-10/12). */
 async function approve(principal, org, id, req) {
   return sequelize.transaction(async (transaction) => {
@@ -457,6 +501,7 @@ module.exports = {
   setRoster,
   mine,
   orgList,
+  orgCsv,
   approve,
   reject,
   remove,

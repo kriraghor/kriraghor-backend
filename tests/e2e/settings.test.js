@@ -364,10 +364,14 @@ describe('boot check and seed (M03 §12, §15)', () => {
     expect(await seedReference()).toEqual({ settings: 0, esports: 0, templates: 0, kycRequirements: 0, moderation: 0, places: 0, items: 0, hire: 0, rules: 0 });
     expect((await models.PlatformSetting.findByPk('esports.room_reveal_minutes')).value).toBe(12);
 <<<<<<< HEAD
+<<<<<<< HEAD
     expect(await models.PlatformSetting.count()).toBe(293); // 289 + the three notify.push_* settings (M08 push channel)
 =======
     expect(await models.PlatformSetting.count()).toBe(297); // 289 + the three notify.push_* settings (M08 push channel), esports.external_organisers_enabled (v23), four Round B1 keys (v24, v25)
 >>>>>>> origin/feat/round-b1
+=======
+    expect(await models.PlatformSetting.count()).toBe(300); // 289 + the three notify.push_* settings (M08 push channel), esports.external_organisers_enabled (v23), four Round B1 keys (v24, v25), three Round B2 keys (v26)
+>>>>>>> origin/feat/round-b2
     expect(await models.EsportsGame.count()).toBe(2);
   });
 });

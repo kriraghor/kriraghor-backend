@@ -10,9 +10,18 @@ const period = z.enum(['7w', 'qtr', 'yr']);
 const locale = z.enum(['en', 'bn']).default('en');
 const day = z.string();
 
-const dashboardQuery = z.object({ role: z.enum(['member', 'ground_owner']).default('member'), period: period.default('7w'), groundId: z.uuid().optional(), locale });
-const actionsQuery = z.object({ role: z.enum(['member', 'ground_owner', 'shop_owner', 'gym_owner']).default('member') });
-const exportQuery = z.object({ dataset: z.enum(['owner_bookings', 'owner_revenue', 'member_payments']), period: period.default('7w') });
+const dashboardQuery = z
+  .object({
+    role: z.enum(['member', 'ground_owner', 'shop_owner', 'gym_owner', 'organiser']).default('member'),
+    period: period.default('7w'),
+    groundId: z.uuid().optional(),
+    orgId: z.uuid().optional().describe('The sports organisation (role organiser only; you must be a member)'),
+    locale,
+  })
+  .refine((q) => q.role !== 'organiser' || Boolean(q.orgId), { path: ['orgId'], message: 'Choose the organisation (orgId) for the organiser dashboard' });
+const actionsQuery = z.object({ role: z.enum(['member', 'ground_owner', 'shop_owner', 'gym_owner', 'organiser']).default('member') });
+const EXPORTS = ['owner_bookings', 'owner_revenue', 'member_payments', 'shop_orders', 'shop_sales_by_product', 'gym_passes', 'gym_admissions'];
+const exportQuery = z.object({ dataset: z.enum(EXPORTS), period: period.default('7w') });
 const platformQuery = z.object({ period: period.default('yr'), locale });
 const platformExportQuery = z.object({ dataset: z.enum(['platform_daily']), period: period.default('yr') });
 const kpiParam = z.object({ key: z.string().max(40) });
@@ -55,9 +64,65 @@ const PlatformOverview = z
     ...Meta,
   })
   .meta({ id: 'PlatformOverview' });
+const Line = z.object({ points: z.array(z.object({ key: z.string(), from: day, value: z.number(), lastYear: z.number() })), lastYearShown: z.boolean() });
+const ShopDashboard = z
+  .object({
+    role: z.literal('shop_owner'),
+    tiles: z.object({ sales: Tile, orders: Tile, averageOrder: Tile, repeatBuyers: Tile }),
+    charts: z.object({
+      weeklySales: Line,
+      ordersByDay: z.array(z.object({ day, value: z.number() })),
+      salesByCategory: z.array(z.object({ categoryId: z.uuid().nullable(), name: z.string(), units: z.number(), value: z.number() })),
+      bestSellers: z.array(z.object({ productId: z.uuid(), title: z.string(), units: z.number(), value: z.number() })).describe('Top 10 by units over the last 30 days'),
+    }),
+    comingLater: z.array(z.string()).describe('Tiles that need product-view counts (conversion, shopper funnel)'),
+    ...Meta,
+  })
+  .meta({ id: 'ShopDashboard' });
+const GymDashboard = z
+  .object({
+    role: z.literal('gym_owner'),
+    tiles: z.object({ passSales: Tile, passesSold: Tile, admissions: Tile, unusedShare: Tile }),
+    charts: z.object({
+      sales: Line,
+      admissionsByDay: z.array(z.object({ day, value: z.number() })),
+      busiestHours: z.array(z.object({ hour: z.number(), admissions: z.number() })),
+      salesByPackage: z.array(z.object({ packageId: z.uuid(), kind: z.enum(['day', 'month', 'quarter']), title: z.string(), passes: z.number(), value: z.number() })),
+    }),
+    ...Meta,
+  })
+  .meta({ id: 'GymDashboard' });
+const OrganiserDashboard = z
+  .object({
+    role: z.literal('organiser'),
+    organisation: z.object({ id: z.uuid(), name: z.string() }),
+    tiles: z.object({ teams: Tile, entryFees: Tile, matchesPlayed: Tile }),
+    charts: z.object({
+      registrationsOverTime: z.array(z.object({ key: z.string(), from: day, registered: z.number(), approved: z.number() })),
+      feesByEvent: z.array(z.object({ tournamentId: z.uuid(), name: z.string(), status: z.string(), collected: z.number(), held: z.number(), released: z.number(), refunded: z.number() })),
+    }),
+    ...Meta,
+  })
+  .meta({ id: 'SportsOrganiserDashboard' });
 const Actions = z
   .object({ items: z.array(z.object({ key: z.string(), count: z.number(), severity: z.enum(['high', 'normal', 'low']), dueAt: z.string().nullable(), href: z.string() })), total: z.number() })
   .meta({ id: 'PendingActions' });
 const KpiDefinition = z.object({ key: z.string(), text: z.string() }).meta({ id: 'KpiDefinition' });
 
-module.exports = { dashboardQuery, actionsQuery, exportQuery, platformQuery, platformExportQuery, kpiParam, kpiQuery, OwnerDashboard, MemberDashboard, PlatformOverview, Actions, KpiDefinition };
+module.exports = {
+  dashboardQuery,
+  actionsQuery,
+  exportQuery,
+  platformQuery,
+  platformExportQuery,
+  kpiParam,
+  kpiQuery,
+  OwnerDashboard,
+  MemberDashboard,
+  PlatformOverview,
+  ShopDashboard,
+  GymDashboard,
+  OrganiserDashboard,
+  Actions,
+  KpiDefinition,
+};

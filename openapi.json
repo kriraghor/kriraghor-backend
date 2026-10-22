@@ -69,7 +69,7 @@
     },
     {
       "name": "analytics",
-      "description": "Dashboards: member, ground owner and platform numbers, actions, CSV (M19)"
+      "description": "Dashboards: member, venue owner, shop owner, gym owner, sports organiser and platform numbers, actions, CSV (M19)"
     },
     {
       "name": "bookings",
@@ -13690,6 +13690,602 @@
         },
         "required": [
           "role",
+          "tiles",
+          "charts",
+          "period",
+          "buckets",
+          "asOf",
+          "definitions"
+        ]
+      },
+      "ShopDashboard": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "shop_owner"
+            ]
+          },
+          "tiles": {
+            "type": "object",
+            "properties": {
+              "sales": {
+                "$ref": "#/components/schemas/KpiTile"
+              },
+              "orders": {
+                "$ref": "#/components/schemas/KpiTile"
+              },
+              "averageOrder": {
+                "$ref": "#/components/schemas/KpiTile"
+              },
+              "repeatBuyers": {
+                "$ref": "#/components/schemas/KpiTile"
+              }
+            },
+            "required": [
+              "sales",
+              "orders",
+              "averageOrder",
+              "repeatBuyers"
+            ]
+          },
+          "charts": {
+            "type": "object",
+            "properties": {
+              "weeklySales": {
+                "type": "object",
+                "properties": {
+                  "points": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "key": {
+                          "type": "string"
+                        },
+                        "from": {
+                          "type": "string"
+                        },
+                        "value": {
+                          "type": "number"
+                        },
+                        "lastYear": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "from",
+                        "value",
+                        "lastYear"
+                      ]
+                    }
+                  },
+                  "lastYearShown": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "points",
+                  "lastYearShown"
+                ]
+              },
+              "ordersByDay": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "day": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "day",
+                    "value"
+                  ]
+                }
+              },
+              "salesByCategory": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "categoryId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "units": {
+                      "type": "number"
+                    },
+                    "value": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "categoryId",
+                    "name",
+                    "units",
+                    "value"
+                  ]
+                }
+              },
+              "bestSellers": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "productId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "units": {
+                      "type": "number"
+                    },
+                    "value": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "productId",
+                    "title",
+                    "units",
+                    "value"
+                  ]
+                },
+                "description": "Top 10 by units over the last 30 days"
+              }
+            },
+            "required": [
+              "weeklySales",
+              "ordersByDay",
+              "salesByCategory",
+              "bestSellers"
+            ]
+          },
+          "comingLater": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Tiles that need product-view counts (conversion, shopper funnel)"
+          },
+          "period": {
+            "type": "string",
+            "enum": [
+              "7w",
+              "qtr",
+              "yr"
+            ]
+          },
+          "buckets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "from": {
+                  "type": "string"
+                },
+                "to": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "key",
+                "from",
+                "to"
+              ]
+            }
+          },
+          "asOf": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "definitions": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "role",
+          "tiles",
+          "charts",
+          "comingLater",
+          "period",
+          "buckets",
+          "asOf",
+          "definitions"
+        ]
+      },
+      "GymDashboard": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "gym_owner"
+            ]
+          },
+          "tiles": {
+            "type": "object",
+            "properties": {
+              "passSales": {
+                "$ref": "#/components/schemas/KpiTile"
+              },
+              "passesSold": {
+                "$ref": "#/components/schemas/KpiTile"
+              },
+              "admissions": {
+                "$ref": "#/components/schemas/KpiTile"
+              },
+              "unusedShare": {
+                "$ref": "#/components/schemas/KpiTile"
+              }
+            },
+            "required": [
+              "passSales",
+              "passesSold",
+              "admissions",
+              "unusedShare"
+            ]
+          },
+          "charts": {
+            "type": "object",
+            "properties": {
+              "sales": {
+                "type": "object",
+                "properties": {
+                  "points": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "key": {
+                          "type": "string"
+                        },
+                        "from": {
+                          "type": "string"
+                        },
+                        "value": {
+                          "type": "number"
+                        },
+                        "lastYear": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "from",
+                        "value",
+                        "lastYear"
+                      ]
+                    }
+                  },
+                  "lastYearShown": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "points",
+                  "lastYearShown"
+                ]
+              },
+              "admissionsByDay": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "day": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "day",
+                    "value"
+                  ]
+                }
+              },
+              "busiestHours": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "hour": {
+                      "type": "number"
+                    },
+                    "admissions": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "hour",
+                    "admissions"
+                  ]
+                }
+              },
+              "salesByPackage": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "packageId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "day",
+                        "month",
+                        "quarter"
+                      ]
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "passes": {
+                      "type": "number"
+                    },
+                    "value": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "packageId",
+                    "kind",
+                    "title",
+                    "passes",
+                    "value"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "sales",
+              "admissionsByDay",
+              "busiestHours",
+              "salesByPackage"
+            ]
+          },
+          "period": {
+            "type": "string",
+            "enum": [
+              "7w",
+              "qtr",
+              "yr"
+            ]
+          },
+          "buckets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "from": {
+                  "type": "string"
+                },
+                "to": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "key",
+                "from",
+                "to"
+              ]
+            }
+          },
+          "asOf": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "definitions": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "role",
+          "tiles",
+          "charts",
+          "period",
+          "buckets",
+          "asOf",
+          "definitions"
+        ]
+      },
+      "SportsOrganiserDashboard": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "organiser"
+            ]
+          },
+          "organisation": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          },
+          "tiles": {
+            "type": "object",
+            "properties": {
+              "teams": {
+                "$ref": "#/components/schemas/KpiTile"
+              },
+              "entryFees": {
+                "$ref": "#/components/schemas/KpiTile"
+              },
+              "matchesPlayed": {
+                "$ref": "#/components/schemas/KpiTile"
+              }
+            },
+            "required": [
+              "teams",
+              "entryFees",
+              "matchesPlayed"
+            ]
+          },
+          "charts": {
+            "type": "object",
+            "properties": {
+              "registrationsOverTime": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string"
+                    },
+                    "from": {
+                      "type": "string"
+                    },
+                    "registered": {
+                      "type": "number"
+                    },
+                    "approved": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "from",
+                    "registered",
+                    "approved"
+                  ]
+                }
+              },
+              "feesByEvent": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "tournamentId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "collected": {
+                      "type": "number"
+                    },
+                    "held": {
+                      "type": "number"
+                    },
+                    "released": {
+                      "type": "number"
+                    },
+                    "refunded": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "tournamentId",
+                    "name",
+                    "status",
+                    "collected",
+                    "held",
+                    "released",
+                    "refunded"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "registrationsOverTime",
+              "feesByEvent"
+            ]
+          },
+          "period": {
+            "type": "string",
+            "enum": [
+              "7w",
+              "qtr",
+              "yr"
+            ]
+          },
+          "buckets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "from": {
+                  "type": "string"
+                },
+                "to": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "key",
+                "from",
+                "to"
+              ]
+            }
+          },
+          "asOf": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "definitions": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "role",
+          "organisation",
           "tiles",
           "charts",
           "period",
@@ -59799,7 +60395,7 @@
         "tags": [
           "analytics"
         ],
-        "summary": "My dashboard: member (spent, bookings, where it went) or ground owner (revenue, occupancy, bookings, repeat teams, charts) (FR-01 to FR-07)",
+        "summary": "My dashboard by role (FR-01 to FR-07, §6.3): member (spent, bookings, where it went); ground owner (revenue, occupancy, bookings, repeat teams); shop owner (sales, orders, average order, repeat buyers, sales by category, best sellers; conversion comes later); gym owner (pass sales, passes by kind, admissions, unused share, busiest hours, sales by package); sports organiser with orgId (teams of places, entry fees from escrow, matches played, registrations over time, fees by event; members of the organisation only, anyone else 404)",
         "security": [
           {
             "bearer": []
@@ -59811,7 +60407,10 @@
               "type": "string",
               "enum": [
                 "member",
-                "ground_owner"
+                "ground_owner",
+                "shop_owner",
+                "gym_owner",
+                "organiser"
               ],
               "default": "member"
             },
@@ -59845,6 +60444,17 @@
           {
             "schema": {
               "type": "string",
+              "format": "uuid",
+              "description": "The sports organisation (role organiser only; you must be a member)"
+            },
+            "required": false,
+            "description": "The sports organisation (role organiser only; you must be a member)",
+            "name": "orgId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
               "enum": [
                 "en",
                 "bn"
@@ -59868,6 +60478,15 @@
                     },
                     {
                       "$ref": "#/components/schemas/OwnerDashboard"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ShopDashboard"
+                    },
+                    {
+                      "$ref": "#/components/schemas/GymDashboard"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SportsOrganiserDashboard"
                     }
                   ]
                 }
@@ -59894,6 +60513,16 @@
               }
             }
           },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Error. Codes: VALIDATION_FAILED, PERIOD_INVALID",
             "content": {
@@ -59912,7 +60541,7 @@
         "tags": [
           "analytics"
         ],
-        "summary": "Needs your action, from the owning modules (FR-11)",
+        "summary": "Needs your action, from the owning modules (FR-11); role organiser: registrations waiting for approval (admins) and unpaid entry fees in your sports organisations",
         "security": [
           {
             "bearer": []
@@ -59926,7 +60555,8 @@
                 "member",
                 "ground_owner",
                 "shop_owner",
-                "gym_owner"
+                "gym_owner",
+                "organiser"
               ],
               "default": "member"
             },
@@ -59984,7 +60614,7 @@
         "tags": [
           "analytics"
         ],
-        "summary": "CSV of my bookings, revenue by week or payments (FR-22, FR-23; audited; per-hour limit)",
+        "summary": "CSV of my bookings, revenue by week or payments; shop orders and sales by product; gym passes and admissions (FR-22, FR-23; no buyer or holder data; at most analytics.export_sync_max_rows; audited; analytics.exports_per_hour)",
         "security": [
           {
             "bearer": []
@@ -59997,7 +60627,11 @@
               "enum": [
                 "owner_bookings",
                 "owner_revenue",
-                "member_payments"
+                "member_payments",
+                "shop_orders",
+                "shop_sales_by_product",
+                "gym_passes",
+                "gym_admissions"
               ]
             },
             "required": true,
@@ -89969,6 +90603,102 @@
           },
           "404": {
             "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/org/{orgId}/sports/tournaments/{id}/registrations.csv": {
+      "get": {
+        "tags": [
+          "tournaments"
+        ],
+        "summary": "Registrations as CSV for organisation admins (Round B2): team, status, fee, refund, dates, squad and eligibility counts; include=roster adds one row per player with the display name and NID verified yes/no. Never phones, emails or ids. At most analytics.export_sync_max_rows rows, counted against analytics.exports_per_hour, audited",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "orgId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "roster"
+              ]
+            },
+            "required": false,
+            "name": "include",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CSV (UTF-8 with a byte-order mark; taka with two decimals; +06:00 times)",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, EXPORT_TOO_LARGE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error. Codes: EXPORT_LIMIT",
             "content": {
               "application/problem+json": {
                 "schema": {

@@ -11,6 +11,8 @@ const { Op } = require('sequelize');
 const config = require('../../config');
 const logger = require('../../common/logger');
 const { AppError, E } = require('../../common/errors');
+// CSV cell: quoted, with formula-looking values neutralised (CSV injection); the shared helper.
+const { cell } = require('../../common/csv');
 const { sequelize, AuditLog, AuditExport } = require('../../models');
 const users = require('../users').directory;
 const storage = require('../../common/storage');
@@ -162,14 +164,6 @@ async function downloadExport(principal, id) {
   if (view.status !== 'ready') throw new AppError(409, 'EXPORT_NOT_READY', 'The export is still being prepared');
   const obj = await storage.getPrivate(row.objectKey);
   return { body: obj.body, filename: `kriraghor-audit-${row.id}.csv` };
-}
-
-/** CSV cell: quoted, with formula-looking values neutralised (CSV injection). */
-function cell(v) {
-  if (v === null || v === undefined) return '';
-  let s = typeof v === 'object' ? JSON.stringify(v) : String(v);
-  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
-  return `"${s.replace(/"/g, '""')}"`;
 }
 
 const CSV_COLUMNS = ['id', 'occurredAt', 'actorType', 'actorId', 'actorName', 'actorRole', 'action', 'summary', 'module', 'entityType', 'entityId', 'entityCode', 'severity', 'stepUp', 'reason', 'before', 'after', 'ip', 'requestId'];

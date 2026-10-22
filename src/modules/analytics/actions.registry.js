@@ -29,6 +29,9 @@ const PROVIDERS = {
   shop_owner: [(p) => require('../market').reads.pendingActions(p), (p) => require('../orders').reads.pendingActions(p, 'shop_owner')],
   // M20: gyms with changes requested.
   gym_owner: [(p) => require('../gym').reads.pendingActions(p, 'gym_owner')],
+  // M14 (Round B2): per sports organisation the caller belongs to, registrations waiting for approval
+  // (owners and admins) and entry fees not paid yet.
+  organiser: [(p) => require('../tournaments').reads.pendingActions(p)],
   staff: [
     async (p) => {
       const s = await require('../moderation').moderation.stats(p);

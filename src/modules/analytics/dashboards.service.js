@@ -2,7 +2,8 @@
 
 /**
  * M19 dashboards (FR-01 to FR-07, §6): the ground owner's Overview and Analytics, the member's
- * Overview and the platform overview (masters and view_analytics staff). Every number comes from M19's
+ * Overview, the platform overview (masters and view_analytics staff) and, since Round B2 (§6.3), the
+ * shop owner's, gym owner's and sports organiser's dashboards (the organiser's through M14's facade). Every number comes from M19's
  * own read models (facts and day-grained materialised views, summed into Dhaka buckets here); live
  * counts (verified members, the review queue) come from the owning services. Every answer carries
  * asOf. Money in poisha; the role is always checked on the server.
@@ -55,7 +56,7 @@ async function ownerDashboard(principal, { period = '7w', groundId = null, local
   const [ahead] = await select(`SELECT COALESCE(SUM(total_poisha), 0)::bigint AS ahead FROM kpi_fact_booking WHERE owner_id = :owner AND status = 'confirmed' AND start_at > :now ${ground}`, { ...q, now });
   const keys = await select(
     `SELECT booker_key, COUNT(*)::int AS n FROM kpi_fact_booking WHERE owner_id = :owner AND status IN ('confirmed', 'checked_in', 'completed', 'no_show') AND start_at >= :since AND start_at < :now ${ground} GROUP BY booker_key`,
-    { ...q, since: new Date(now.getTime() - 90 * DAY), now }
+    { ...q, since: new Date(now.getTime() - settings.get('analytics.repeat_customer_days') * DAY), now }
   );
   const cur = f.list[f.list.length - 1];
   const inCur = (r) => r.day >= cur.from && r.day < cur.to;
@@ -165,4 +166,172 @@ async function platformOverview(principal, { period = 'yr', locale = 'en' }, now
   };
 }
 
-module.exports = { ownerDashboard, memberDashboard, platformOverview, frame };
+// ---------------------------------------------------------------- Round B2: shops, gyms, organisers (§6.3)
+
+const requireRole = (principal, role, what) => {
+  if (principal.roles?.[role] !== 'active') throw E.forbidden('ROLE_REQUIRED', `This dashboard is for active ${what}`, undefined, { role });
+};
+const dhakaTs = (day) => new Date(`${day}T00:00:00+06:00`);
+const num = (rows, fields) => rows.map((r) => ({ ...r, ...Object.fromEntries(fields.map((k) => [k, Number(r[k])])) }));
+
+/** A line chart per bucket with the same buckets a year earlier (FR-05: hidden when last year is empty). */
+function lineWithLastYear(rows, f, field) {
+  const last = rules.bucketize(rows, f.last, [field]);
+  return {
+    points: rules.bucketize(rows, f.list, [field]).map((b, i) => ({ key: b.key, from: b.from, value: b[field], lastYear: last[i][field] })),
+    lastYearShown: last.some((b) => b[field] > 0),
+  };
+}
+
+/** Counts per day of the current bucket (bars that add up to the tile, FR-06). */
+const byDay = (rows, cur, field) => rules.daysOf(cur).map((day) => ({ day, value: rows.filter((r) => r.day === day).reduce((n, r) => n + r[field], 0) }));
+
+/** A money average tile (average order): value, delta over the comparable windows, sparkline per bucket. */
+function averageTile(rows, f, total, count) {
+  const avg = (w) => rules.average(rules.sumWindow(rows, w, total), rules.sumWindow(rows, w, count));
+  return { value: avg(f.list[f.list.length - 1]), delta: rules.delta(avg(f.window.current), avg(f.window.previous)), spark: rules.bucketize(rows, f.list, [total, count]).map((b) => rules.average(b[total], b[count])) };
+}
+
+/** A share tile (unused passes): value, points delta, sparkline per bucket. */
+function shareTile(rows, f, part, whole) {
+  const sh = (w) => rules.share(rules.sumWindow(rows, w, part), rules.sumWindow(rows, w, whole));
+  return { value: sh(f.list[f.list.length - 1]), delta: rules.delta(sh(f.window.current), sh(f.window.previous), 'rate'), spark: rules.bucketize(rows, f.list, [part, whole]).map((b) => rules.share(b[part], b[whole])) };
+}
+
+const COUNTED_SQL = `status IN (${[...rules.SHOP_COUNTED].map((s) => `'${s}'`).join(', ')})`;
+const NO_CATEGORY = '00000000-0000-0000-0000-000000000000';
+
+async function categoryNames(ids, locale) {
+  const { ItemCategory } = require('../catalog').reference;
+  const rows = ids.length ? await ItemCategory.findAll({ where: { id: ids }, attributes: ['id', 'nameEn', 'nameBn'] }) : [];
+  return new Map(rows.map((c) => [c.id, locale === 'bn' ? c.nameBn : c.nameEn]));
+}
+
+/**
+ * Shop owner (§6.3 "Shop"): Sales (items, gross of the commission, no delivery), Orders, Average order
+ * (= Sales / Orders) and Repeat buyers; weekly sales against last year, orders by day, sales by
+ * category (adds up to Sales) and best sellers over 30 days. Conversion and the shopper funnel need
+ * product-view counts that do not exist yet: listed in comingLater (no tracking in Round B).
+ */
+async function shopDashboard(principal, { period = '7w', locale = 'en' }, now = new Date()) {
+  requireRole(principal, 'shop_owner', 'shop owners');
+  const f = frame(period, now);
+  const cur = f.list[f.list.length - 1];
+  const q = { me: principal.id, from: f.from, to: f.to };
+  const days = num(dayStr(await select('SELECT day, SUM(orders)::int AS orders, SUM(units)::int AS units, SUM(sales_poisha)::bigint AS sales FROM kpi_mv_shop_day WHERE seller_id = :me AND day >= :from AND day < :to GROUP BY day', q)), ['sales']);
+  const buyers = await select(`SELECT buyer_id, COUNT(*)::int AS n FROM kpi_fact_sub_order WHERE seller_id = :me AND ${COUNTED_SQL} AND placed_at >= :since AND placed_at < :now GROUP BY buyer_id`, {
+    me: principal.id,
+    since: new Date(now.getTime() - settings.get('analytics.repeat_customer_days') * DAY),
+    now,
+  });
+  const inCur = days.filter((r) => r.day >= cur.from && r.day < cur.to);
+  const cats = await select('SELECT category_id, SUM(units)::int AS units, SUM(sales_poisha)::bigint AS sales FROM kpi_mv_shop_category_day WHERE seller_id = :me AND day >= :cfrom AND day < :cto GROUP BY category_id', {
+    me: principal.id,
+    cfrom: cur.from,
+    cto: cur.to,
+  });
+  const names = await categoryNames(cats.map((c) => c.category_id).filter((id) => id !== NO_CATEGORY), locale);
+  const today = rules.dhakaDate(now);
+  const best = await select(
+    `SELECT product_id, MAX(title) AS title, SUM(qty)::int AS units, SUM(amount_poisha)::bigint AS sales FROM kpi_fact_order_line WHERE seller_id = :me AND ${COUNTED_SQL} AND placed_at >= :since AND placed_at < :until GROUP BY product_id`,
+    { me: principal.id, since: dhakaTs(rules.addDays(today, 1 - settings.get('analytics.best_sellers_days'))), until: dhakaTs(rules.addDays(today, 1)) }
+  );
+  return {
+    role: 'shop_owner',
+    tiles: {
+      sales: tile(days, f, 'sales', { note: { items: inCur.reduce((n, r) => n + r.units, 0) } }),
+      orders: tile(days, f, 'orders', { kind: 'count' }),
+      averageOrder: averageTile(days, f, 'sales', 'orders'),
+      repeatBuyers: { value: rules.repeatShare(Object.fromEntries(buyers.map((b) => [b.buyer_id, b.n]))), delta: null, spark: null },
+    },
+    charts: {
+      weeklySales: lineWithLastYear(days, f, 'sales'),
+      ordersByDay: byDay(days, cur, 'orders'),
+      salesByCategory: cats.map((c) => ({ categoryId: c.category_id === NO_CATEGORY ? null : c.category_id, name: names.get(c.category_id) ?? '', units: c.units, value: Number(c.sales) })).sort((a, b) => b.value - a.value),
+      bestSellers: rules.top(best.map((b) => ({ productId: b.product_id, title: b.title, units: b.units, value: Number(b.sales) })), 'units', settings.get('analytics.top_list_size'), 'title'),
+    },
+    comingLater: ['conversion', 'shopperFunnel'],
+    ...(await meta(f, ['sales', 'orders', 'average_order', 'repeat_buyers', 'conversion'], locale)),
+  };
+}
+
+/**
+ * Gym owner (§6.3 gym, added in Round B2): Pass sales (gross of the fee), Passes sold by kind,
+ * Admissions and the Unused share of ended passes; sales against last year, admissions by day,
+ * busiest hours (Dhaka, over the period) and sales by package (adds up to Pass sales).
+ */
+async function gymDashboard(principal, { period = '7w', locale = 'en' }, now = new Date()) {
+  requireRole(principal, 'gym_owner', 'gym owners');
+  const f = frame(period, now);
+  const cur = f.list[f.list.length - 1];
+  const days = num(
+    dayStr(
+      await select(
+        'SELECT day, SUM(passes_sold)::int AS sold, SUM(day_passes)::int AS day_passes, SUM(month_passes)::int AS month_passes, SUM(quarter_passes)::int AS quarter_passes, SUM(sales_poisha)::bigint AS sales, SUM(admissions)::int AS admissions, SUM(ended)::int AS ended, SUM(unused)::int AS unused FROM kpi_mv_gym_day WHERE owner_id = :me AND day >= :from AND day < :to GROUP BY day',
+        { me: principal.id, from: f.from, to: f.to }
+      )
+    ),
+    ['sales']
+  );
+  const inCur = days.filter((r) => r.day >= cur.from && r.day < cur.to);
+  const kinds = inCur.reduce((a, r) => ({ day: a.day + r.day_passes, month: a.month + r.month_passes, quarter: a.quarter + r.quarter_passes }), { day: 0, month: 0, quarter: 0 });
+  const hours = await select('SELECT hour, SUM(admissions)::int AS admissions FROM kpi_mv_gym_hour_day WHERE owner_id = :me AND day >= :pfrom AND day < :to GROUP BY hour', { me: principal.id, pfrom: f.list[0].from, to: f.to });
+  const packages = await select(
+    "SELECT package_id, kind, MAX(title) AS title, COUNT(*)::int AS passes, SUM(price_poisha)::bigint AS sales FROM kpi_fact_gym_pass WHERE owner_id = :me AND status IN ('active', 'redeemed', 'expired') AND paid_at >= :fromTs AND paid_at < :toTs GROUP BY package_id, kind",
+    { me: principal.id, fromTs: dhakaTs(cur.from), toTs: dhakaTs(cur.to) }
+  );
+  return {
+    role: 'gym_owner',
+    tiles: {
+      passSales: tile(days, f, 'sales'),
+      passesSold: tile(days, f, 'sold', { kind: 'count', note: kinds }),
+      admissions: tile(days, f, 'admissions', { kind: 'count' }),
+      unusedShare: shareTile(days, f, 'unused', 'ended'),
+    },
+    charts: {
+      sales: lineWithLastYear(days, f, 'sales'),
+      admissionsByDay: byDay(days, cur, 'admissions'),
+      // Every Dhaka hour with admissions, in hour order (the chart shows all 24).
+      busiestHours: hours.map((h) => ({ hour: Number(h.hour), admissions: Number(h.admissions) })).sort((a, b) => a.hour - b.hour),
+      salesByPackage: packages.map((p) => ({ packageId: p.package_id, kind: p.kind, title: p.title, passes: p.passes, value: Number(p.sales) })).sort((a, b) => b.value - a.value),
+    },
+    ...(await meta(f, ['pass_sales', 'passes_sold', 'admissions', 'unused_share'], locale)),
+  };
+}
+
+/**
+ * Sports organiser (§6.3 "Organiser", M14 §4.1) for one organisation the caller is a member of
+ * (M22-FR-03: anyone else gets 404). Teams approved of the places (+ waiting, unpaid, reserve),
+ * entry fees collected in the period from M06 escrow (note: held, released, refunded now) and matches
+ * played; registrations over time and fees by event. M14 answers through its facade: no fact table.
+ */
+async function organiserDashboard(principal, { period = '7w', orgId, locale = 'en' }, now = new Date()) {
+  const org = await require('../organisations').organisations.getMine(principal, orgId);
+  if (org.kind !== 'sports' || !['verified', 'suspended'].includes(org.status)) throw E.notFound('Organisation');
+  const f = frame(period, now);
+  const data = await require('../tournaments').reads.organiserFacts(org.id);
+  const t = rules.organiserTotals(data.tournaments);
+  const regRows = [
+    ...data.registrations.map((r) => ({ day: rules.dhakaDate(r.createdAt), registered: 1, approved: 0 })),
+    ...data.registrations.filter((r) => r.approvedAt).map((r) => ({ day: rules.dhakaDate(r.approvedAt), registered: 0, approved: 1 })),
+  ];
+  const feeRows = data.collections.map((c) => ({ day: rules.dhakaDate(c.at), collected: c.amount }));
+  return {
+    role: 'organiser',
+    organisation: { id: org.id, name: org.name },
+    tiles: {
+      teams: { value: t.approved, delta: null, spark: null, note: { maxTeams: t.maxTeams, waiting: t.waiting, unpaid: t.unpaid, reserve: t.reserve } },
+      entryFees: tile(feeRows, f, 'collected', { note: { held: t.held, released: t.released, refunded: t.refunded } }),
+      matchesPlayed: { value: t.played, delta: null, spark: null, note: { total: t.matches } },
+    },
+    charts: {
+      registrationsOverTime: rules.bucketize(regRows, f.list, ['registered', 'approved']).map((b) => ({ key: b.key, from: b.from, registered: b.registered, approved: b.approved })),
+      feesByEvent: data.tournaments
+        .map((x) => ({ tournamentId: x.id, name: x.name, status: x.status, collected: x.money.collected, held: x.money.held, released: x.money.released, refunded: x.money.refunded }))
+        .sort((a, b) => b.collected - a.collected),
+    },
+    ...(await meta(f, ['teams', 'entry_fees', 'matches_played'], locale)),
+  };
+}
+
+module.exports = { ownerDashboard, memberDashboard, platformOverview, shopDashboard, gymDashboard, organiserDashboard, frame };

@@ -47,7 +47,7 @@ function buildOpenApi() {
       { name: 'kyc', description: 'Identity and business documents: NID and ground-owner uploads, the document panel and the checklists (M02)' },
       { name: 'moderation', description: 'Submissions, the Moderation desk: claim, rubric, decisions, SLA (M05)' },
       { name: 'grounds', description: 'Grounds: listings, courts, hours, photos, pricing, closures, series and the public browse (M09)' },
-      { name: 'analytics', description: 'Dashboards: member, ground owner and platform numbers, actions, CSV (M19)' },
+      { name: 'analytics', description: 'Dashboards: member, venue owner, shop owner, gym owner, sports organiser and platform numbers, actions, CSV (M19)' },
       { name: 'bookings', description: 'Bookings: availability, holds and payment, my bookings, the owner\'s day (M10)' },
       { name: 'esports', description: 'Esports tournaments: UIDs, squads, registration, check-in, rooms, results, prizes, leaderboards (M21)' },
     ],

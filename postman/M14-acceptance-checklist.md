@@ -27,7 +27,7 @@ Not in step 1: live ball-by-ball scoring, player stats and stat disputes (M15), 
   - templates v18 (`TOURNAMENT_*`, `REGISTRATION_*`, `RESERVE_OFFERED`, `FIXTURES_PUBLISHED`, `MATCH_RESCHEDULED`, `LOTS_NEEDED`);
   - moderation v3 (the `tournament` rubric).
 - [ ] `npm test`: everything green, including the 100% gates on `fixtures.rules.js`, `schedule.rules.js`, `tournaments.rules.js`, `sport-rules.rules.js` and `standings.rules.js`. 🤖 marks cases only the tests cover.
-- [ ] `node postman/run-m14.js` → **0 failed**.
+- [ ] `node postman/run-m14.js` → **0 failed** (63 requests, 103 assertions; the runner also adds a staff member to the organisation for the CSV checks).
   - The runner resets `kriraghor_test`.
   - It makes a verified sports organisation (the owner has an active payout account), a reviewer, and five captains with an NID and a badminton team.
   - It serves `{{controlUrl}}`: `/approve`, `/pay`, `/settle`, `/check`.
@@ -47,6 +47,10 @@ Not in step 1: live ball-by-ball scoring, player stats and stat disputes (M15), 
 - [ ] The same team again → **409 `TEAM_ALREADY_REGISTERED`**. A fifth team → `reserve`, position 1, no payment.
 - [ ] The organiser sees four ready squads with NID booleans and **no gender, DOB or phone**.
 - [ ] Approve four; twice → **409 `REGISTRATION_STATE`**. Overview: 4 approved, ৳72,000 held.
+- [ ] Round B2, **Registrations as CSV (organisation admins)**: a CSV download (UTF-8 with a BOM, checked by jest) with the header and five rows: team, short code, status, reserve position, fee in taka (৳18,000.00), waived, refunded, registered and approved times (+06:00), squad players, eligible players, squad ready. Four `approved`, one `reserve`. **No phones or ids.**
+- [ ] **… with the roster**: one row per player with the display name and NID verified `yes`/`no` (`"Rafi Ahmed","yes"`); still no phones or ids.
+- [ ] **Organisation staff** and **a captain** → **404** (admins and the owner only, M22-FR-03). **An unknown include** → **422**.
+- [ ] 🤖 At most `analytics.export_sync_max_rows` rows (**422 `EXPORT_TOO_LARGE`**); counted against `analytics.exports_per_hour` with the M19 exports (**429 `EXPORT_LIMIT`**); each export audited (`tournament.registrations_exported`).
 - [ ] 🤖 Reject refunds 100% and offers the place; an offer accepted needs payment; an offer lapses after `reserve_offer_hours`; withdraw before close 100%, after close 50%, after the first result nothing; waive (audited); `PLAYER_IN_OTHER_TEAM`; `ROSTER_NOT_READY` until gender is recorded for a women's event; the NID gate.
 
 ## 3. Draw and fixtures (FR-14 to FR-18)
