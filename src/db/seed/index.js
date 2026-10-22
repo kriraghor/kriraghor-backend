@@ -6,6 +6,9 @@
  *  - catalogue rows are inserted only when missing, so staff edits survive a redeploy.
  * Running it twice is a no-op. It runs after migrations in scripts/release.js (Helm migrate Job).
  */
+const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const settingsSeed = require('./reference/settings.v1.json');
 const esportsSeed = require('./reference/esports.v1.json');
 const templatesSeed = require('./reference/templates.v1.json');
@@ -222,4 +225,39 @@ async function seedReference() {
   }));
 }
 
-module.exports = { seedReference, seedPlaces, placesSeed, seedItems, itemsSeed, seedHire, hireSeed, seedRules, rulesSeed, seedSettings, seedEsports, seedTemplates, seedKycRequirements, kycSeed, seedModeration, moderationSeed, settingRow, SETTING_KEYS, settingsSeed, esportsSeed, templatesSeed };
+/**
+ * Fingerprint of the reference JSON and of this file (the seed logic). Any change to either means the
+ * next start reseeds; an unchanged fingerprint means the seed would insert nothing.
+ */
+function seedFingerprint() {
+  const dir = path.join(__dirname, 'reference');
+  const hash = crypto.createHash('sha256');
+  for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.json')).sort()) {
+    hash.update(file).update(fs.readFileSync(path.join(dir, file)));
+  }
+  hash.update(fs.readFileSync(__filename));
+  return hash.digest('hex');
+}
+
+/**
+ * The start-up seed: skip the full seed (about 900 sequential queries, minutes on a remote database)
+ * when the fingerprint matches the last applied one and every setting key exists. A setting missing for
+ * any reason reseeds, so the settings boot check never fails because of a skip. `force` always seeds.
+ */
+async function seedReferenceIfChanged({ force = false } = {}) {
+  const fingerprint = seedFingerprint();
+  if (!force) {
+    const [rows] = await sequelize.query('SELECT fingerprint FROM reference_seed_state WHERE id = 1');
+    const [[{ present }]] = await sequelize.query('SELECT count(*)::int AS present FROM platform_settings WHERE key IN (:keys)', { replacements: { keys: SETTING_KEYS } });
+    if (rows[0]?.fingerprint === fingerprint && present === SETTING_KEYS.length) return { skipped: true, fingerprint };
+  }
+  const inserted = await seedReference();
+  await sequelize.query(
+    `INSERT INTO reference_seed_state (id, fingerprint, seeded_at) VALUES (1, :fingerprint, CURRENT_TIMESTAMP(3))
+     ON CONFLICT (id) DO UPDATE SET fingerprint = EXCLUDED.fingerprint, seeded_at = EXCLUDED.seeded_at`,
+    { replacements: { fingerprint } }
+  );
+  return { skipped: false, fingerprint, inserted };
+}
+
+module.exports = { seedReference, seedReferenceIfChanged, seedFingerprint,seedPlaces, placesSeed, seedItems, itemsSeed, seedHire, hireSeed, seedRules, rulesSeed, seedSettings, seedEsports, seedTemplates, seedKycRequirements, kycSeed, seedModeration, moderationSeed, settingRow, SETTING_KEYS, settingsSeed, esportsSeed, templatesSeed };

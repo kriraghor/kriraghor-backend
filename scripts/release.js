@@ -17,12 +17,14 @@ function migrate() {
 async function main() {
   if (!process.argv.includes('--seed-only')) migrate();
   // Load models only after migrations, so the seed sees the final schema.
-  const { seedReference } = require('../src/db/seed');
+  // The release step always seeds (it is not on a host's start-up clock) and records the fingerprint,
+  // so the API start that follows skips the seed.
+  const { seedReferenceIfChanged } = require('../src/db/seed');
   const { sequelize } = require('../src/models');
   try {
-    const counts = await seedReference();
+    const { inserted } = await seedReferenceIfChanged({ force: true });
     // eslint-disable-next-line no-console
-    console.log(JSON.stringify({ msg: 'reference seed done', inserted: counts }));
+    console.log(JSON.stringify({ msg: 'reference seed done', inserted }));
   } finally {
     await sequelize.close();
   }

@@ -1,5 +1,6 @@
 'use strict';
 
+const http = require('http');
 const { spawn } = require('child_process');
 // API entrypoint (ADR-003 backend-api). Scheduled jobs run in src/worker.js, never here.
 const config = require('./config');
@@ -10,7 +11,7 @@ const { startOpsServer } = require('./common/ops-server');
 const { closeAllRedis } = require('./common/redis');
 const { sequelize } = require('./models');
 const settings = require('./modules/settings/settings.service');
-const { seedReference } = require('./db/seed');
+const { seedReferenceIfChanged } = require('./db/seed');
 const { createApp } = require('./app');
 
 function runCliCommand(args) {
@@ -35,19 +36,40 @@ async function runReleaseSteps() {
   logger.info('Running database migrations...');
   await runCliCommand([cliPath, 'db:migrate']);
 
-  logger.info('Seeding reference data from JSON...');
-  await seedReference();
-  logger.info('Reference data seeded successfully.');
+  // The full seed is about 900 sequential queries (minutes on a remote database): only when the
+  // reference data or seed code changed, or REFERENCE_SEED=always.
+  logger.info('Checking reference data...');
+  const seed = await seedReferenceIfChanged({ force: config.referenceSeed === 'always' });
+  logger.info({ skipped: seed.skipped, fingerprint: seed.fingerprint.slice(0, 12) }, seed.skipped ? 'Reference data unchanged; seed skipped.' : 'Reference data seeded successfully.');
 
   logger.info('Loading platform settings into cache...');
   await settings.load();
   logger.info('Platform settings loaded successfully.');
 }
 
+/** Every request before the app is ready: 503, so health checks wait and nothing reads unloaded settings. */
+function starting(_req, res) {
+  res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '5', 'Cache-Control': 'no-store' });
+  res.end(JSON.stringify({ status: 'starting' }));
+}
+
 async function main() {
   initMetrics('api');
   lifecycle.onShutdown('database', () => sequelize.close());
   lifecycle.onShutdown('redis', closeAllRedis);
+
+  // Open the port first: hosts such as Render fail a deploy when no port opens within their scan
+  // window, and migrations plus the seed can take longer than that. Until the app is ready every
+  // request (including /health) answers 503 "starting", so a health check holds traffic back.
+  let handler = starting;
+  const server = http.createServer((req, res) => handler(req, res));
+  // Keep-alive longer than the ingress idle timeout, so the proxy never reuses a closed socket.
+  server.keepAliveTimeout = 65000;
+  server.headersTimeout = 66000;
+  await new Promise((resolve, reject) => server.once('error', reject).listen(config.port, resolve));
+  logger.info(`Kriraghor API starting on :${config.port} (503 until ready)`);
+  lifecycle.onShutdown('http', () => new Promise((resolve) => server.close(() => resolve())));
+  lifecycle.handleSignals();
 
   await sequelize.authenticate();
   logger.info({ db: config.db.name }, 'database connected');
@@ -57,15 +79,10 @@ async function main() {
   await settings.bootCheck();
   await settings.subscribe();
 
-  const app = createApp();
-  const server = app.listen(config.port, () => logger.info(`Kriraghor API listening on :${config.port}${config.apiPrefix}`));
-  // Keep-alive longer than the ingress idle timeout, so the proxy never reuses a closed socket.
-  server.keepAliveTimeout = 65000;
-  server.headersTimeout = 66000;
-  lifecycle.onShutdown('http', () => new Promise((resolve) => server.close(() => resolve())));
+  handler = createApp();
+  logger.info(`Kriraghor API listening on :${config.port}${config.apiPrefix}`);
 
   startOpsServer();
-  lifecycle.handleSignals();
   lifecycle.setReady(true);
   startDemoSeed();
   void bootstrapMasterFromEnv();
