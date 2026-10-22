@@ -12,7 +12,7 @@
  * become staff) and unverifiedPhone; shopOwnerToken, shopId, subOrderId, subOrder2Id, variantId (a
  * live shop with two placed orders); gymOwnerToken, gymId, passToken (a live gym and a paid day pass);
  * s1, s2 (tomorrow's slots). Staff tokens come from the runner's /refresh step (their access changed).
- * controlUrl (the runner): /refresh?who=, /pay?paymentId=, /shift?bookingId=, /drain.
+ * controlUrl (the runner): /refresh?who=, /pay?paymentId=, /shift?bookingId=, /drain, /fill-team-adds?who=.
  * Unattended: `node postman/run-b3.js`.
  */
 const fs = require('fs');
@@ -63,9 +63,9 @@ const collection = {
   info: {
     name: 'Kriraghor API: Business members (Round B3)',
     description: [
-      'Staff accounts for businesses (Q69, Q169, Q170). A venue owner adds counter staff by their verified phone (no NID), with the default permissions; every refusal (unknown number, the owner, Kriraghor staff, an unverified phone, someone already on the team, bad permissions, another owner’s venue) answers with a stable code. Staff work the venue desk (bookings, check-in, walk-ins) without ever seeing the fee, released or retained amounts; optional permissions (cancel, move, reply to reviews) are off until the owner turns them on, and the staff member’s token goes stale at once. Staff of another venue get 404; staff without a permission get 403 PERMISSION_REQUIRED.',
+      'Staff accounts for businesses (Q69, Q169, Q170). A venue owner adds counter staff by their verified phone (no NID), with the default permissions; every refusal (unknown number, the owner, Kriraghor staff, an unverified phone, someone already on the team, bad permissions, another owner’s venue) answers with a stable code and never echoes the person’s name or number; adds are limited per owner per hour (business.team_adds_per_hour, 429 RATE_LIMITED; Q180). Staff work the venue desk (bookings, check-in, walk-ins) without ever seeing the fee, released or retained amounts; optional permissions (cancel, move, reply to reviews) are off until the owner turns them on, and the staff member’s token goes stale at once. Staff of another venue get 404; staff without a permission get 403 PERMISSION_REQUIRED.',
       'A shop packer accepts and ships orders and adjusts stock; the buyer’s phone and address show on the order page only with the shipping permission once accepted, and every view is audited (Q168); the settlement stays the owner’s. A gym front-desk member admits a pass without seeing the money. When the owner’s role is suspended, staff lose access on their next request; removed staff lose it at once.',
-      'Requests named "Runner" go to the local test runner (refreshing a staff session after their access changed, paying through the simulator, moving a booking in time, draining events).',
+      'Requests named "Runner" go to the local test runner (refreshing a staff session after their access changed, paying through the simulator, moving a booking in time, draining events, using up an owner’s staff adds for the hour).',
       'Unattended: `node postman/run-b3.js`. Rebuild this file with: node postman/build-collection-b3.js',
     ].join('\n\n'),
     schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json',
@@ -87,10 +87,14 @@ const collection = {
             ['the cap is business.team_max_members (10)', 'j.maxMembers === 10'],
           ],
         }),
-        owner('Unknown number (expect 404)', 'POST', '/me/team', { body: { businessType: 'venue', businessId: '{{groundId}}', phone: '01799999998' }, expect: code(404, 'MEMBER_NOT_FOUND') }),
+        owner('Unknown number (expect 404)', 'POST', '/me/team', { body: { businessType: 'venue', businessId: '{{groundId}}', phone: '01799999998' }, expect: code(404, 'MEMBER_NOT_FOUND'), checks: [['never echoes the number (Q180)', "!pm.response.text().includes('1799999998')"]] }),
         owner('Myself (expect 422)', 'POST', '/me/team', { body: { businessType: 'venue', businessId: '{{groundId}}', phone: '{{ownerPhone}}' }, expect: code(422, 'MEMBER_IS_OWNER') }),
         owner('A Kriraghor staff account (expect 422)', 'POST', '/me/team', { body: { businessType: 'venue', businessId: '{{groundId}}', phone: '{{masterPhone}}' }, expect: code(422, 'MEMBER_IS_STAFF') }),
-        owner('A phone that is not verified (expect 422)', 'POST', '/me/team', { body: { businessType: 'venue', businessId: '{{groundId}}', phone: '{{unverifiedPhone}}' }, expect: code(422, 'PHONE_NOT_VERIFIED') }),
+        owner('A phone that is not verified (expect 422)', 'POST', '/me/team', {
+          body: { businessType: 'venue', businessId: '{{groundId}}', phone: '{{unverifiedPhone}}' },
+          expect: code(422, 'PHONE_NOT_VERIFIED'),
+          checks: [['never echoes the person’s name or number (Q180)', "!pm.response.text().includes('Unverified Phone') && !pm.response.text().includes(pm.variables.get('unverifiedPhone').slice(1))"]],
+        }),
         owner('A permission staff never get: pricing (expect 422)', 'POST', '/me/team', {
           body: { businessType: 'venue', businessId: '{{groundId}}', phone: '{{deskPhone}}', permissions: ['bookings.view', 'pricing.publish'] },
           expect: code(422, 'PERMISSIONS_INVALID'),
@@ -119,6 +123,19 @@ const collection = {
           checks: [['the venue, its owner, my permissions', "j.items.length === 1 && j.items[0].businessId === pm.variables.get('groundId') && j.items[0].owner.displayName === 'Kamal Hossain' && j.items[0].permissions.includes('bookings.check_in')"]],
         }),
         desk('Me: workplaces in the principal', 'GET', '/me', { expect: { status: 200 }, checks: [['one workplace', "j.workplaces.length === 1 && j.workplaces[0].businessType === 'venue'"]] }),
+        // Q180: adds are limited per owner per hour (business.team_adds_per_hour), refusals included.
+        control('use up all but one of owner 2’s staff adds this hour', 'fill-team-adds?who=owner2'),
+        owner2('The last add this hour: an unknown number still counts (expect 404)', 'POST', '/me/team', { body: { businessType: 'venue', businessId: '{{ground2Id}}', phone: '01799999997' }, expect: code(404, 'MEMBER_NOT_FOUND') }),
+        owner2('Over business.team_adds_per_hour (expect 429)', 'POST', '/me/team', {
+          body: { businessType: 'venue', businessId: '{{ground2Id}}', phone: '{{nonePhone}}' },
+          expect: code(429, 'RATE_LIMITED'),
+          checks: [
+            ['says when to try again', 'j.retryAfter > 0'],
+            ['nothing about the person', "!pm.response.text().includes('Mitu Akter') && !pm.response.text().includes(pm.variables.get('nonePhone').slice(1))"],
+          ],
+        }),
+        // Per owner: the shop and gym owners below still add their staff (201).
+        owner2('Reading my team is not limited', 'GET', '/me/team', { expect: { status: 200 }, checks: [['still one member (the other venue’s staff)', 'j.items.length === 1']] }),
       ],
     },
     {

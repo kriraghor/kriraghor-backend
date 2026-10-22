@@ -101,6 +101,14 @@ describe('ownerLive, phoneVerified, workplaces', () => {
     expect(rules.phoneVerified(staff([], { phone: null }))).toBe(false);
     expect(rules.phoneVerified(null)).toBe(false);
   });
+  it('canWork and assertCanWork: the staff rule (a verified phone and an active account) shared by actFor, the reviews list and the to-do', () => {
+    expect(rules.canWork(staff([]))).toBe(true);
+    expect(rules.canWork(staff([], { phoneVerifiedAt: null }))).toBe(false);
+    expect(rules.canWork(staff([], { status: 'suspended' }))).toBe(false);
+    expect(rules.canWork(null)).toBe(false);
+    expect(() => rules.assertCanWork(staff([]))).not.toThrow();
+    expect(() => rules.assertCanWork(staff([], { phoneVerifiedAt: null }))).toThrow(expect.objectContaining({ status: 403, code: 'PHONE_REQUIRED' }));
+  });
   it('workplaceAt, worksAnyOf and businessesWith', () => {
     const p = staff([work('venue', GROUND, ['bookings.view']), work('shop', SHOP, ['orders.view'])]);
     expect(rules.workplaceAt(p, 'venue', GROUND).businessId).toBe(GROUND);

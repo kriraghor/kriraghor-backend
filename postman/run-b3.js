@@ -13,6 +13,7 @@
  *   POST /pay?paymentId=    pay through the SSLCommerz simulator as the member, then drain events
  *   POST /shift?bookingId=  move a booking so it starts now
  *   POST /drain             deliver events (as the worker would)
+ *   POST /fill-team-adds?who=  use up all but one of that owner's staff adds this hour (Q180)
  * Never point this at a real database.
  */
 require('../tests/env');
@@ -44,6 +45,8 @@ async function main() {
   const mf = require('../tests/fixtures/market');
   const bf = require('../tests/fixtures/business');
   const { closeAllRedis } = require('../src/common/redis');
+  const velocity = require('../src/common/velocity');
+  const config = require('../src/config');
   const { models } = h;
 
   await h.resetDb();
@@ -93,6 +96,16 @@ async function main() {
     drain: async () => {
       await h.drainEvents({ rounds: 10 });
       return {};
+    },
+    // Q180: use up all but one of an owner's staff adds this hour (business.team_adds_per_hour; the
+    // test config runs velocity limits ×100), so the collection can reach the limit in two requests.
+    'fill-team-adds': async (q) => {
+      const who = sessions[q.get('who')];
+      if (!who) throw new Error(`unknown session ${q.get('who')}`);
+      const limit = h.settings.get('business.team_adds_per_hour') * (config.isTest ? 100 : 1);
+      // Adds already made this hour count too: fill up to limit − 1, whatever is there.
+      while ((await velocity.hit({ name: 'bmadd', scope: who.user.id, limit: limit - 1, windowMs: 3600000 })).allowed);
+      return { limit };
     },
   };
   const control = http.createServer((rq, rs) => {

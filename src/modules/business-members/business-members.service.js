@@ -216,9 +216,14 @@ async function workplaces(principal) {
   return { items };
 }
 
-/** M19 "Needs your action" for staff: each workplace's to-do, by the staff member's permissions. */
+/**
+ * M19 "Needs your action" for staff: each workplace's to-do, by the staff member's permissions. The
+ * same staff rule as actFor applies (rules.canWork: a verified phone and an active account): without
+ * it the to-do is empty, as every desk it links to would answer 403 PHONE_REQUIRED.
+ */
 async function pendingActions(principal, now = new Date()) {
   const items = [];
+  if (!rules.canWork(principal)) return items;
   for (const w of principal.workplaces ?? []) {
     for (const item of await port.staffActions(w.businessType, w.businessId, w.permissions, now)) items.push({ ...item, businessType: w.businessType, businessId: w.businessId });
   }

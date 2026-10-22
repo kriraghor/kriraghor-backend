@@ -33,6 +33,15 @@ const addBody = z.object({
 });
 const permissionsBody = z.object({ permissions: z.array(permissionKey).max(20) });
 
+// ---------------- shared by the staff-capable desks' response schemas
+/**
+ * A response key that business staff never receive (rules.STAFF_HIDDEN_KEYS, stripped by forStaff):
+ * optional in the shared schema, always present for the owner. Other modules use it through the
+ * index's `schemas` facade so the OpenAPI document says the same thing everywhere.
+ */
+const STAFF_HIDDEN_NOTE = 'Absent for business staff (Round B3); always present for the owner';
+const staffHidden = (schema) => schema.optional().meta({ description: STAFF_HIDDEN_NOTE });
+
 // ---------------- responses
 const BusinessRef = z.object({ businessType, id, name: z.string().nullable(), status: z.string().nullable() });
 const TeamMember = z
@@ -64,4 +73,4 @@ const Workplace = z
   .meta({ id: 'BusinessWorkplace' });
 const WorkplaceList = z.object({ items: z.array(Workplace) });
 
-module.exports = { idParam, teamQuery, addBody, permissionsBody, TeamMember, TeamList, TeamChange, Workplace, WorkplaceList };
+module.exports = { idParam, teamQuery, addBody, permissionsBody, TeamMember, TeamList, TeamChange, Workplace, WorkplaceList, STAFF_HIDDEN_NOTE, staffHidden };

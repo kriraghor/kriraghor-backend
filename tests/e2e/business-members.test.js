@@ -13,9 +13,14 @@
 //    and the money still goes to the owner.
 const h = require('../helpers');
 const { closeAllRedis } = require('../../src/common/redis');
+const velocity = require('../../src/common/velocity');
 const ledger = require('../../src/modules/payments/ledger.service');
 const bookingsSvc = require('../../src/modules/bookings/bookings.service');
 const rules = require('../../src/modules/business-members/business-members.rules');
+const bkS = require('../../src/modules/bookings/bookings.schemas');
+const orS = require('../../src/modules/orders/orders.schemas');
+const mkS = require('../../src/modules/market/market.schemas');
+const gyS = require('../../src/modules/gym/gym.schemas');
 const bk = require('../fixtures/bookings');
 const f = require('../fixtures/market');
 const b = require('../fixtures/business');
@@ -60,6 +65,11 @@ async function hire(ownerSession, businessType, businessId, who, permissions) {
 function expectStaffSafe(body, { allowPhone = false } = {}) {
   expect(rules.hiddenKeysIn(body)).toEqual([]);
   if (!allowPhone) expect(JSON.stringify(body)).not.toMatch(/(\+?880|0)1[3-9]\d{8}/);
+}
+
+/** The OpenAPI response schema accepts the answer as it is (owner and staff alike: staff answers lack the hidden keys). */
+function conforms(schema, body) {
+  expect(schema.safeParse(body).error?.issues ?? []).toEqual([]);
 }
 
 async function book(m, g, { court = g.courts[0], start = slot(), minutes = 60, payment = 'advance' } = {}) {
@@ -113,13 +123,25 @@ describe('Round B3 membership lifecycle (Q169, Q170)', () => {
     const s = await h.signupUser({ name: 'Mitu Akter' });
     const add = (body) => team(o).add({ businessType: 'venue', businessId: g.id, ...body });
 
-    expect((await add({ phone: '01799999998' }).expect(404)).body.code).toBe('MEMBER_NOT_FOUND');
+    // Q180: the refusals say why, but never echo the number, the person's name or their account id.
+    const tellsNothing = (body, who = {}) => {
+      const text = JSON.stringify(body);
+      for (const secret of [who.phone?.slice(-8), who.user?.id, who.user?.displayName, who.name].filter(Boolean)) expect(text).not.toContain(secret);
+      for (const k of ['member', 'memberId', 'displayName', 'phone', 'phoneLast4']) expect(body).not.toHaveProperty(k);
+    };
+    const unknown = await add({ phone: '01799999998' }).expect(404);
+    expect(unknown.body.code).toBe('MEMBER_NOT_FOUND');
+    tellsNothing(unknown.body, { phone: '01799999998' });
     expect((await add({ phone: 'not a phone' }).expect(422)).body.code).toBe('VALIDATION_FAILED');
     expect((await add({ phone: o.phone }).expect(422)).body.code).toBe('MEMBER_IS_OWNER');
-    expect((await add({ phone: reviewer.phone }).expect(422)).body.code).toBe('MEMBER_IS_STAFF');
+    const kriraghorStaff = await add({ phone: reviewer.phone }).expect(422);
+    expect(kriraghorStaff.body.code).toBe('MEMBER_IS_STAFF');
+    tellsNothing(kriraghorStaff.body, reviewer);
     const unverified = await h.signupUser({ name: 'Unverified Phone' });
     await models.User.update({ phoneVerifiedAt: null }, { where: { id: unverified.user.id } });
-    expect((await add({ phone: unverified.phone }).expect(422)).body.code).toBe('PHONE_NOT_VERIFIED');
+    const notVerified = await add({ phone: unverified.phone }).expect(422);
+    expect(notVerified.body.code).toBe('PHONE_NOT_VERIFIED');
+    tellsNothing(notVerified.body, { ...unverified, name: 'Unverified Phone' });
     const bad = await add({ phone: s.phone, permissions: ['bookings.view', 'pricing.publish'] }).expect(422);
     expect(bad.body).toMatchObject({ code: 'PERMISSIONS_INVALID', unknown: ['pricing.publish'] });
     expect((await add({ phone: s.phone, permissions: ['bookings.check_in'] }).expect(422)).body.missing).toEqual([{ permission: 'bookings.check_in', needs: 'bookings.view' }]);
@@ -131,7 +153,9 @@ describe('Round B3 membership lifecycle (Q169, Q170)', () => {
     expect((await team(s).add({ businessType: 'venue', businessId: g.id, phone: o2.phone }).expect(404)).body.code).toBe('NOT_FOUND');
 
     await add({ phone: s.phone, permissions: ['bookings.view'] }).expect(201);
-    expect((await add({ phone: s.phone }).expect(409)).body.code).toBe('ALREADY_MEMBER');
+    const again = await add({ phone: s.phone }).expect(409);
+    expect(again.body.code).toBe('ALREADY_MEMBER');
+    tellsNothing(again.body, { ...s, name: 'Mitu Akter' });
     // The same person may work at another owner's venue too (scope is per business, Q170).
     await team(o2).add({ businessType: 'venue', businessId: g2.id, phone: s.phone }).expect(201);
     expect(await models.BusinessMember.count({ where: { memberId: s.user.id, status: 'active' } })).toBe(2);
@@ -155,6 +179,30 @@ describe('Round B3 membership lifecycle (Q169, Q170)', () => {
     expect(listed.permissionCatalogue.venue.find((p) => p.key === 'bookings.cancel')).toEqual({ key: 'bookings.cancel', default: false, needs: 'bookings.view' });
     await team(o).remove(listed.items[0].id).expect(200);
     await team(o).add({ businessType: 'venue', businessId: g.id, phone: people[3].phone }).expect(201);
+  });
+
+  it('limits adds per owner per hour (business.team_adds_per_hour, Redis; Q180): refusals count, 429 RATE_LIMITED, other owners unaffected', async () => {
+    const o = await bk.owner();
+    const g = await bk.liveGround(o);
+    const o2 = await bk.owner('Shafiq Rahman');
+    const g2 = await bk.liveGround(o2);
+    const s = await h.signupUser({ name: 'Late Hire' });
+    // Tests run every velocity limit ×100 (common/velocity), so 1 per hour here means 100: fill the
+    // owner's window up to one place below the limit, then probe with real requests.
+    await h.setSettingForTest('business.team_adds_per_hour', 1);
+    const limit = h.settings.get('business.team_adds_per_hour') * 100;
+    while ((await velocity.hit({ name: 'bmadd', scope: o.user.id, limit: limit - 1, windowMs: 3600000 })).allowed);
+    const add = (who, businessId, phone) => team(who).add({ businessType: 'venue', businessId, phone });
+    // The last place in the hour goes to an unknown number: a refusal still counts.
+    expect((await add(o, g.id, '01799999997').expect(404)).body.code).toBe('MEMBER_NOT_FOUND');
+    const limited = await add(o, g.id, s.phone).expect(429);
+    expect(limited.body).toMatchObject({ code: 'RATE_LIMITED', retryAfter: expect.any(Number) });
+    expect(limited.body.retryAfter).toBeGreaterThan(0);
+    expect(JSON.stringify(limited.body)).not.toContain(s.phone.slice(-8));
+    expect(await models.BusinessMember.count({ where: { memberId: s.user.id } })).toBe(0);
+    // Per owner: another owner adds the same person; reading the team is not limited.
+    await add(o2, g2.id, s.phone).expect(201);
+    await team(o).list().expect(200);
   });
 
   it('lists the team without full phones, changes permissions (diffed, audited, an event) and removes (TEAM_REMOVED, access gone)', async () => {
@@ -273,6 +321,26 @@ describe('Round B3 access: workplaces follow the owner (authz_version)', () => {
     await models.User.update({ phoneVerifiedAt: null }, { where: { id: s.user.id } });
     expect((await api().get(`${P}/me/ground-bookings?groundId=${g.id}`).set(h.bearer(s)).expect(403)).body.code).toBe('PHONE_REQUIRED');
   });
+
+  it('the same rule on the venue reviews (reviews.reply) and the staff to-do: a phone no longer verified sees neither', async () => {
+    const o = await bk.owner();
+    const g = await bk.liveGround(o);
+    const s = await h.signupUser({ name: 'Phone Gone' });
+    await hire(o, 'venue', g.id, s, ALL_VENUE);
+    const m = await h.signupUser({ name: 'Rafi Ahmed' });
+    const x = await bk.moveTo(await book(m, g, { start: slot(2) }), new Date(Date.now() + 30 * 60000));
+    await models.Review.create({ subjectType: 'ground', subjectId: g.id, subjectOwnerId: o.user.id, sourceType: 'booking', sourceId: x.id, authorId: m.user.id, stars: 5, text: 'Great turf', status: 'published', editUntil: new Date(Date.now() + 86400000) });
+    const reviews = () => api().get(`${P}/me/reviews?subjectType=ground&subjectId=${g.id}`).set(h.bearer(s));
+    const todo = () => api().get(`${P}/me/dashboard/actions?role=business_staff`).set(h.bearer(s));
+    expect((await reviews().expect(200)).body.items).toHaveLength(1);
+    expect((await todo().expect(200)).body.items).toEqual([expect.objectContaining({ key: 'check_in_due', businessType: 'venue', businessId: g.id })]);
+
+    await models.User.update({ phoneVerifiedAt: null }, { where: { id: s.user.id } });
+    expect((await reviews().expect(403)).body.code).toBe('PHONE_REQUIRED');
+    expect((await todo().expect(200)).body.items).toEqual([]);
+    // The owner's own view is unchanged.
+    expect((await api().get(`${P}/me/reviews?subjectType=ground&subjectId=${g.id}`).set(h.bearer(o)).expect(200)).body.items).toHaveLength(1);
+  });
 });
 
 // ====================================================================================== venue matrix
@@ -311,7 +379,7 @@ describe('Round B3 venue desk: route-by-route matrix', () => {
    * PERMISSION_REQUIRED, removed staff 403, then staff with it succeed (no money keys, no phones);
    * the owner, on a fresh state, gets today's answer.
    */
-  async function matrix({ permission, prepare, call, ok = 200, staffCheck, ownerCheck, removedCode = 'KYC_REQUIRED' }) {
+  async function matrix({ permission, prepare, call, ok = 200, staffCheck, ownerCheck, removedCode = 'KYC_REQUIRED', schema }) {
     const s1 = await prepare();
     const foreign = await call(other, s1);
     expect([foreign.status, foreign.body.code]).toEqual([404, 'NOT_FOUND']);
@@ -327,6 +395,10 @@ describe('Round B3 venue desk: route-by-route matrix', () => {
     const owner = await call(o, s2);
     expect(owner.status).toBe(ok);
     if (ownerCheck) await ownerCheck(owner.body, s2);
+    if (schema) {
+      conforms(schema, staff.body);
+      conforms(schema, owner.body);
+    }
     return { staff: staff.body, owner: owner.body };
   }
 
@@ -348,6 +420,7 @@ describe('Round B3 venue desk: route-by-route matrix', () => {
       permission: 'bookings.view',
       prepare: async () => null,
       call: (who) => api().get(`${P}/me/ground-bookings?groundId=${g.id}`).set(h.bearer(who)),
+      schema: bkS.Timeline,
       staffCheck: (body) => expect(body.bookings[0].money).toMatchObject({ price: 200000, dueAtVenue: 150000 }),
       ownerCheck: (body) => expect(body.bookings[0].money).toMatchObject({ fee: 10000, released: 0 }),
     });
@@ -360,6 +433,7 @@ describe('Round B3 venue desk: route-by-route matrix', () => {
       permission: 'bookings.view',
       prepare: async () => x,
       call: (who) => api().get(`${P}/me/ground-bookings/search?q=BK&groundId=${g.id}`).set(h.bearer(who)),
+      schema: bkS.OwnerSearch,
     });
     expect(r.staff.items.map((i) => i.code)).toEqual([x.code]);
     // Without groundId: every venue where they hold bookings.view, never another owner's.
@@ -374,6 +448,7 @@ describe('Round B3 venue desk: route-by-route matrix', () => {
       permission: 'bookings.view',
       prepare: future,
       call: (who, x) => api().get(`${P}/me/ground-bookings/${x.id}`).set(h.bearer(who)),
+      schema: bkS.OwnerDetail,
       staffCheck: (body, x) => expect(body.booking).toMatchObject({ id: x.id, code: x.code }),
       ownerCheck: (body) => expect(body.booking.money.fee).toBe(10000),
     });
@@ -386,6 +461,7 @@ describe('Round B3 venue desk: route-by-route matrix', () => {
       permission: 'bookings.check_in',
       prepare: now,
       call: (who, x) => api().post(`${P}/me/ground-bookings/${x.id}/check-in`).set(h.bearer(who)),
+      schema: bkS.OwnerResult,
       staffCheck: async (body, x) => {
         expect(body.released).toBeUndefined();
         expect(body.booking.status).toBe('checked_in');
@@ -407,6 +483,7 @@ describe('Round B3 venue desk: route-by-route matrix', () => {
       permission: 'bookings.no_show',
       prepare: late,
       call: (who, x) => api().post(`${P}/me/ground-bookings/${x.id}/no-show`).set(h.bearer(who)),
+      schema: bkS.OwnerResult,
       staffCheck: (body) => expect(body.settled).toEqual({ refunded: 0, settleDueAt: expect.any(String) }),
       ownerCheck: (body) => expect(body.settled.retained).toBe(50000),
     });
@@ -426,6 +503,7 @@ describe('Round B3 venue desk: route-by-route matrix', () => {
       permission: 'bookings.collect_balance',
       prepare: checkedIn,
       call: (who, x) => api().post(`${P}/me/ground-bookings/${x.id}/collect-balance`).set(h.bearer(who)).send({ method: 'cash', amount: 150000 }),
+      schema: bkS.OwnerResult,
       staffCheck: async (body, x) => {
         expect(body.booking.money.balanceStatus).toBe('collected');
         expect((await x.reload()).balanceCollectedBy).toBe(full.user.id);
@@ -451,6 +529,7 @@ describe('Round B3 venue desk: route-by-route matrix', () => {
       permission: 'bookings.move',
       prepare: future,
       call: (who, x) => api().get(`${P}/me/ground-bookings/${x.id}/move-targets`).set(h.bearer(who)),
+      schema: bkS.MoveTargets,
       staffCheck: (body) => expect(body.items.every((t) => t.groundId === g.id)).toBe(true),
     });
     await matrix({
@@ -544,6 +623,7 @@ describe('Round B3 gym front desk: route-by-route matrix', () => {
     const card = (await admit(full, p1).expect(201)).body;
     expect(card).toMatchObject({ passCode: p1.code, status: 'redeemed' });
     expectStaffSafe(card);
+    conforms(gyS.Admission, card);
     const pass = await models.GymPass.findOne({ where: { code: p1.code } });
     expect(await ledger.balance(`payable:user:${owner.user.id}`)).toBeGreaterThan(0);
     expect(await ledger.balance(`payable:user:${full.user.id}`)).toBe(0);
@@ -552,7 +632,9 @@ describe('Round B3 gym front desk: route-by-route matrix', () => {
     expect(a).toMatchObject({ actorId: full.user.id, actorRole: 'business_staff' });
     expect(a.meta).toMatchObject({ onBehalfOf: owner.user.id });
     const p2 = await b.paidPass(member, gym, 'month');
-    expect((await admit(owner, p2).expect(201)).body.released).toBeGreaterThan(0); // the owner's card is unchanged
+    const ownerCard = (await admit(owner, p2).expect(201)).body;
+    expect(ownerCard.released).toBeGreaterThan(0); // the owner's card is unchanged
+    conforms(gyS.Admission, ownerCard);
 
     const day = (who) => api().get(`${P}/me/gyms/${gym.id}/redemptions`).set(h.bearer(who));
     expect((await day(foreign).expect(404)).body.code).toBe('NOT_FOUND');
@@ -566,7 +648,10 @@ describe('Round B3 gym front desk: route-by-route matrix', () => {
     const staffSold = (await sold(full).expect(200)).body;
     expect(staffSold.items).toHaveLength(2);
     expect(staffSold.items.every((i) => i.money === undefined)).toBe(true);
-    expect((await sold(owner).expect(200)).body.items[0].money).toBeDefined();
+    conforms(gyS.SoldList, staffSold);
+    const ownerSold = (await sold(owner).expect(200)).body;
+    expect(ownerSold.items[0].money).toBeDefined();
+    conforms(gyS.SoldList, ownerSold);
     expect((await api().get(`${P}/me/gyms/00000000-0000-4000-8000-000000000000/passes`).set(h.bearer(foreign)).expect(404)).body.code).toBe('NOT_FOUND');
 
     // Owner-only: listing, packages, hours, photos, dashboards.
@@ -626,7 +711,7 @@ describe('Round B3 shop desk: route-by-route matrix', () => {
     await bk.refresh(gone);
   });
 
-  async function matrix({ permission, prepare, call, ok = 200, staffCheck, ownerCheck, staff = () => full }) {
+  async function matrix({ permission, prepare, call, ok = 200, staffCheck, ownerCheck, staff = () => full, schema }) {
     const s1 = await prepare();
     const x = await call(foreign, s1);
     expect([x.status, x.body.code]).toEqual([404, 'NOT_FOUND']);
@@ -642,6 +727,10 @@ describe('Round B3 shop desk: route-by-route matrix', () => {
     const ow = await call(shop.owner, s2);
     expect(ow.status).toBe(ok);
     if (ownerCheck) await ownerCheck(ow.body, s2);
+    if (schema) {
+      conforms(schema, st.body);
+      conforms(schema, ow.body);
+    }
     return { staff: st.body, owner: ow.body };
   }
 
@@ -670,9 +759,11 @@ describe('Round B3 shop desk: route-by-route matrix', () => {
     expect(st.items.map((i) => i.id)).toEqual([s.id]);
     expect(st.counts.to_accept).toBe(1);
     expectStaffSafe(st);
+    conforms(orS.ShopSubList, st);
     expect((await list(dflt, `&shopId=${shopId}`).expect(200)).body.items).toHaveLength(1);
     const own = (await list(shop.owner).expect(200)).body.items[0];
     expect(own.money).toMatchObject({ commission: expect.any(Number), net: expect.any(Number) });
+    conforms(orS.ShopSubList, (await list(shop.owner).expect(200)).body);
     // Someone working at two shops must name one (BUSINESS_REQUIRED).
     await hire(shopB.owner, 'shop', shopB.product.shopId, dflt, ['orders.view']);
     expect((await list(dflt).expect(422)).body.code).toBe('BUSINESS_REQUIRED');
@@ -687,10 +778,12 @@ describe('Round B3 shop desk: route-by-route matrix', () => {
     const v = (await get(viewer).expect(200)).body;
     expect(v).toMatchObject({ shipTo: null, contactHidden: true });
     expectStaffSafe(v);
+    conforms(orS.ShopSub, v);
     expect(await models.AuditLog.count({ where: { action: 'sub_order.contact_viewed' } })).toBe(0);
     const shipper = (await get(dflt).expect(200)).body;
     expect(shipper.shipTo).toMatchObject({ name: b.SHIP.name, phone: '+8801711000111', line: b.SHIP.line });
     expectStaffSafe(shipper, { allowPhone: true });
+    conforms(orS.ShopSub, shipper);
     await get(dflt).expect(200);
     const views = await models.AuditLog.findAll({ where: { action: 'sub_order.contact_viewed', entityId: s.id } });
     expect(views).toHaveLength(2);
@@ -700,7 +793,10 @@ describe('Round B3 shop desk: route-by-route matrix', () => {
     const p = await placed();
     expect((await get(dflt).expect(200)).body.shipTo).toBeTruthy();
     expect((await api().get(`${P}/shop/sub-orders/${p.id}`).set(h.bearer(dflt)).expect(200)).body.shipTo).toBeNull();
-    expect((await get(shop.owner).expect(200)).body.shipTo.phone).toBe('+8801711000111');
+    const ownerView = (await get(shop.owner).expect(200)).body;
+    expect(ownerView.shipTo.phone).toBe('+8801711000111');
+    expect(ownerView.contactHidden).toBeUndefined();
+    conforms(orS.ShopSub, ownerView);
     expect(await models.AuditLog.count({ where: { action: 'sub_order.contact_viewed', actorId: shop.owner.user.id } })).toBe(0);
   });
 
@@ -709,6 +805,7 @@ describe('Round B3 shop desk: route-by-route matrix', () => {
       permission: 'orders.accept',
       prepare: placed,
       call: (who, s) => b.shopPost(who, s.id, 'accept'),
+      schema: orS.ShopSub,
       staffCheck: async (body, s) => {
         expect(body).toMatchObject({ status: 'accepted', shipTo: null, contactHidden: true });
         const a = await models.AuditLog.findOne({ where: { action: 'sub_order.accepted', entityId: s.id } });
@@ -725,6 +822,7 @@ describe('Round B3 shop desk: route-by-route matrix', () => {
       permission: 'orders.reject',
       prepare: placed,
       call: (who, x) => b.shopPost(who, x.id, 'reject', { reason: 'out_of_stock' }),
+      schema: orS.ShopSub,
       staffCheck: (body) => expect(body.status).toBe('rejected'),
     });
   });
@@ -734,12 +832,14 @@ describe('Round B3 shop desk: route-by-route matrix', () => {
       permission: 'orders.ship',
       prepare: accepted,
       call: (who, s) => b.shopPost(who, s.id, 'ship', { courierName: 'Pathao', trackingNo: 'PTH-123456' }),
+      schema: orS.ShopSub,
       staffCheck: (body) => expect(body).toMatchObject({ status: 'shipped', courier: { name: 'Pathao' } }),
     });
     await matrix({
       permission: 'orders.deliver',
       prepare: shipped,
       call: (who, s) => api().post(`${P}/shop/sub-orders/${s.id}/delivered`).set(h.bearer(who)),
+      schema: orS.ShopSub,
       staffCheck: (body) => expect(body.status).toBe('delivered'),
     });
   });
@@ -750,6 +850,7 @@ describe('Round B3 shop desk: route-by-route matrix', () => {
       permission: 'stock.adjust',
       prepare: async () => variant,
       call: (who, v) => api().post(`${P}/shop/variants/${v}/adjust`).set(h.bearer(who)).send({ delta: 1, reasonCode: 'received' }),
+      schema: mkS.StockResult,
       staffCheck: async () => {
         const a = await models.AuditLog.findOne({ where: { action: 'inventory.adjusted', actorId: full.user.id } });
         expect(a.meta).toMatchObject({ onBehalfOf: shop.owner.user.id });
@@ -760,12 +861,14 @@ describe('Round B3 shop desk: route-by-route matrix', () => {
       permission: 'stock.view',
       prepare: async () => variant,
       call: (who, v) => api().get(`${P}/shop/variants/${v}/movements`).set(h.bearer(who)),
+      schema: mkS.MovementList,
       staffCheck: (body) => expect(body.items.length).toBeGreaterThan(0),
     });
     const inv = await matrix({
       permission: 'stock.view',
       prepare: async () => null,
       call: (who) => api().get(`${P}/shop/inventory${who === foreign ? `?shopId=${shopId}` : ''}`).set(h.bearer(who)),
+      schema: mkS.InventoryOverview,
       staffCheck: (body) => expect(body.kpis.stockValuePoisha).toBeUndefined(),
     });
     expect(inv.owner.kpis.stockValuePoisha).toBeGreaterThan(0);
@@ -801,6 +904,11 @@ describe('Round B3 shop desk: route-by-route matrix', () => {
     expect(lows).toBeGreaterThan(0);
     expect(await models.Notification.count({ where: { userId: viewer.user.id, code: 'STOCK_LOW' } })).toBe(lows);
     expect(await models.Notification.count({ where: { userId: full.user.id, code: 'STOCK_LOW' } })).toBe(lows);
+    // The link names the shop for staff (staff of several shops would get BUSINESS_REQUIRED without
+    // it); the owner's link is unchanged.
+    const stockLink = async (who) => (await models.Notification.findOne({ where: { userId: who.user.id, code: 'STOCK_LOW' } })).link;
+    expect(await stockLink(shop.owner)).toBe('/vendor/inventory?status=low');
+    expect(await stockLink(viewer)).toBe(`/vendor/inventory?status=low&shopId=${shopId}`);
     expect(await codes(none)).not.toContain('STOCK_LOW');
     expect(await codes(foreign)).not.toContain('STOCK_LOW');
     await b.shopPost(full, s.id, 'accept').expect(200);
@@ -819,7 +927,21 @@ describe('Round B3 shop desk: route-by-route matrix', () => {
     const fullTodo = (await api().get(`${P}/me/dashboard/actions?role=business_staff`).set(h.bearer(full)).expect(200)).body.items;
     expect(fullTodo).toEqual(expect.arrayContaining([expect.objectContaining({ key: 'orders_to_accept', count: 1, href: `/vendor/orders?tab=to_accept&shopId=${shopId}` })]));
     expectStaffSafe(fullTodo);
+    conforms(require('../../src/modules/analytics/analytics.schemas').Actions, { items: fullTodo, total: fullTodo.length });
     expect((await api().get(`${P}/me/dashboard/actions?role=business_staff`).set(h.bearer(buyer)).expect(200)).body.items).toEqual([]);
+
+    // Every stock alert (low, out, expiring) links staff to their shop; staff of two shops open it.
+    const { byCode } = require('../../src/modules/notifications/notify.catalogue');
+    const entries = ['STOCK_LOW', 'STOCK_OUT', 'SUPPLEMENT_EXPIRING'].map((c) => byCode.get(c));
+    const e = { payload: { shopId, ownerId: shop.owner.user.id } };
+    for (const entry of entries) {
+      const status = { STOCK_LOW: 'low', STOCK_OUT: 'out', SUPPLEMENT_EXPIRING: 'blocked' }[entry.code];
+      expect(entry.link(e, { userId: shop.owner.user.id })).toBe(`/vendor/inventory?status=${status}`);
+      expect(entry.link(e, { userId: viewer.user.id })).toBe(`/vendor/inventory?status=${status}&shopId=${shopId}`);
+    }
+    await hire(shopB.owner, 'shop', shopB.product.shopId, viewer, ['stock.view']);
+    expect((await api().get(`${P}/shop/inventory`).set(h.bearer(viewer)).expect(422)).body.code).toBe('BUSINESS_REQUIRED');
+    await api().get(`${P}/shop/inventory?shopId=${shopId}`).set(h.bearer(viewer)).expect(200);
   });
 });
 
@@ -853,6 +975,14 @@ describe('Round B3 venue staff notifications and to-do', () => {
     expect(await notes(none, 'TEAM_CHECKIN_SOON')).toHaveLength(0);
     const todo = (await api().get(`${P}/me/dashboard/actions?role=business_staff`).set(h.bearer(desk)).expect(200)).body.items;
     expect(todo).toEqual([expect.objectContaining({ key: 'check_in_due', count: 1, businessType: 'venue', businessId: g.id, href: `/vendor/bookings?groundId=${g.id}` })]);
+    // "Due soon" is booking.checkin_due_soon_minutes (60), for the staff and the owner alike: at 15
+    // minutes this booking (starting 30 to 60 minutes from now) is not due yet.
+    const ownerTodo = async () => (await api().get(`${P}/me/dashboard/actions?role=ground_owner`).set(h.bearer(o)).expect(200)).body.items.map((i) => i.key);
+    expect(await ownerTodo()).toContain('check_in_due');
+    await h.setSettingForTest('booking.checkin_due_soon_minutes', 15);
+    expect((await api().get(`${P}/me/dashboard/actions?role=business_staff`).set(h.bearer(desk)).expect(200)).body.items).toEqual([]);
+    expect(await ownerTodo()).not.toContain('check_in_due');
+    await h.setSettingForTest('booking.checkin_due_soon_minutes', 60);
 
     // The member cancels: staff hear it, without what the owner keeps.
     const y = await book(m, g, { start: slot(3) });

@@ -285,10 +285,11 @@ const publicList = (groundId, query = {}) => publicListFor('ground', groundId, q
  */
 async function ownerList(principal, { subjectType, subjectId, groundId, cursor, limit = 50 } = {}) {
   const where = { subjectOwnerId: principal.id, status: 'published' };
-  // Round B3 (Q170): venue staff with the optional reviews.reply permission see that venue's reviews.
+  // Round B3 (Q170): venue staff with the optional reviews.reply permission see that venue's reviews,
+  // under actFor's staff rule (a verified phone and an active account, else 403 PHONE_REQUIRED).
   const venueId = (subjectType === 'ground' || subjectType === undefined) ? subjectId ?? groundId : null;
   const w = venueId ? access().workplaceAt(principal, 'venue', venueId) : null;
-  if (w && w.permissions.includes('reviews.reply')) where.subjectOwnerId = w.ownerId;
+  if (w && w.permissions.includes('reviews.reply')) where.subjectOwnerId = access().actFor(principal, 'venue', venueId, 'reviews.reply', { ownerId: w.ownerId, notFound: 'Venue' }).ownerId;
   if (subjectType) where.subjectType = subjectType;
   if (subjectId ?? groundId) where.subjectId = subjectId ?? groundId;
   if (cursor) where.createdAt = { [Op.lt]: new Date(cursor) };

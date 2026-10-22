@@ -5,6 +5,7 @@
  */
 const { z } = require('zod');
 const { normalizePhone } = require('../../common/identifiers');
+const { staffHidden } = require('../business-members').schemas;
 
 const id = z.uuid();
 const poisha = z.number().int().nonnegative();
@@ -172,7 +173,25 @@ const shopSubFields = {
   area: AreaRef,
 };
 const ShopSub = z
-  .object({ ...shopSubFields, shipTo: z.object({ name: z.string(), phone: z.string(), line: z.string(), note: z.string().nullable() }).nullable().meta({ description: 'Shown once the shop accepts (FR-10)' }) })
+  .object({
+    ...shopSubFields,
+    // Round B3: the shop's staff never receive the commission, net or released amounts (forStaff).
+    money: z.object({
+      items: poisha,
+      delivery: poisha,
+      total: poisha,
+      refunded: poisha,
+      commissionBps: staffHidden(z.number().int()),
+      commission: staffHidden(poisha),
+      net: staffHidden(poisha),
+      released: staffHidden(poisha),
+    }),
+    shipTo: z
+      .object({ name: z.string(), phone: z.string(), line: z.string(), note: z.string().nullable() })
+      .nullable()
+      .meta({ description: 'Shown once the shop accepts (FR-10). Round B3: null for business staff in lists, in action answers and without orders.ship (then contactHidden is true)' }),
+    contactHidden: z.boolean().optional().meta({ description: 'Round B3, business staff only: true when the order has a shipping contact that is withheld from this staff member; absent for the owner' }),
+  })
   .meta({ id: 'ShopSubOrder' });
 const ShopSubList = z.object({ items: z.array(ShopSub), counts: z.record(z.string(), z.number().int()), nextCursor: z.string().nullable() }).meta({ id: 'ShopSubOrderList' });
 const Settlement = z

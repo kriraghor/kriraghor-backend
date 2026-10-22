@@ -5,6 +5,7 @@
  * specs and variant attributes are keyed by the M03 item field keys (GET /market/categories).
  */
 const { z } = require('zod');
+const { staffHidden } = require('../business-members').schemas;
 
 const dateTime = z.iso.datetime({ offset: true });
 const id = z.uuid();
@@ -204,7 +205,7 @@ const Movement = z.object({ id, type: z.string(), deltaOnHand: z.number().int(),
 const MovementList = z.object({ items: z.array(Movement), nextCursor: z.string().nullable() }).meta({ id: 'InventoryMovementList' });
 const InventoryOverview = z
   .object({
-    kpis: z.object({ stockValuePoisha: z.number().int(), outOfStock: z.number().int(), runningLow: z.number().int(), heldForOrders: z.number().int(), blocked: z.number().int() }),
+    kpis: z.object({ stockValuePoisha: staffHidden(z.number().int()), outOfStock: z.number().int(), runningLow: z.number().int(), heldForOrders: z.number().int(), blocked: z.number().int() }),
     items: z.array(VariantOwner.extend({ product: z.object({ id, title: z.string(), status: z.string(), visibility: z.string(), isMto: z.boolean() }), label: z.string() })),
     stockRules: z.object({ lowStockThreshold: z.number().int(), autoHideOutOfStock: z.boolean(), mtoDaysDefault: z.number().int() }),
   })

@@ -6,6 +6,7 @@
  */
 const { z } = require('zod');
 const hireSchemas = require('../hire').schemas;
+const { staffHidden } = require('../business-members').schemas;
 
 const id = z.uuid();
 const poisha = z.number().int().nonnegative();
@@ -166,7 +167,7 @@ const Pass = z
 const PassResult = z.object({ pass: Pass, payment: nullable(z.object({ id, payUrl: z.string() })) }).meta({ id: 'GymPassResult' });
 const PassList = z.object({ items: z.array(Pass) }).meta({ id: 'GymPassList' });
 const Admission = z
-  .object({ passCode: z.string(), kind: z.enum(KINDS), title: z.string(), validFrom: date, validTo: date, status: z.enum(PASS_STATUSES), holder: z.object({ displayName: nullable(z.string()) }), redeemedAt: dateTime, released: poisha })
+  .object({ passCode: z.string(), kind: z.enum(KINDS), title: z.string(), validFrom: date, validTo: date, status: z.enum(PASS_STATUSES), holder: z.object({ displayName: nullable(z.string()) }), redeemedAt: dateTime, released: staffHidden(poisha) })
   .meta({ id: 'GymAdmission' });
 const AdmissionList = z
   .object({ date, items: z.array(z.object({ passCode: z.string(), kind: z.enum(KINDS), title: z.string(), holder: nullable(z.string()), method: z.enum(['qr', 'code']), redeemedAt: dateTime })) })
@@ -183,7 +184,8 @@ const SoldList = z
         validFrom: date,
         validTo: date,
         holder: nullable(z.string()),
-        money: z.object({ price: poisha, fee: poisha, net: poisha, released: poisha, refunded: poisha }),
+        // Round B3: staff with passes.view get the passes without any money.
+        money: staffHidden(z.object({ price: poisha, fee: poisha, net: poisha, released: poisha, refunded: poisha })),
         paidAt: nullable(dateTime),
         firstRedeemedAt: nullable(dateTime),
       })

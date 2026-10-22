@@ -119,6 +119,15 @@ function ownerLive(principal, type) {
 
 const phoneVerified = (principal) => Boolean(principal?.user?.phone && principal?.user?.phoneVerifiedAt);
 
+/**
+ * The staff rule every staff read and action applies (Q169): a verified phone and an active account.
+ * actFor() asserts it (403 PHONE_REQUIRED); the staff to-do lists nothing without it.
+ */
+const canWork = (principal) => phoneVerified(principal) && principal.user.status === 'active';
+function assertCanWork(principal) {
+  if (!canWork(principal)) throw E.forbidden('PHONE_REQUIRED', 'Verify your phone number to work at this business', undefined, { next: '/me' });
+}
+
 /** The principal's workplace at one business, or null. */
 const workplaceAt = (principal, type, businessId) => (principal?.workplaces ?? []).find((w) => w.businessType === type && w.businessId === businessId) ?? null;
 const worksAnyOf = (principal, type) => (principal?.workplaces ?? []).some((w) => w.businessType === type);
@@ -153,7 +162,7 @@ function actFor(principal, businessType, businessId, permission, { ownerId, notF
     if (foreign && !worksAnyOf(principal, businessType)) throw foreign();
     throw E.notFound(notFound);
   }
-  if (!phoneVerified(principal) || principal.user.status !== 'active') throw E.forbidden('PHONE_REQUIRED', 'Verify your phone number to work at this business', undefined, { next: '/me' });
+  assertCanWork(principal);
   if (permission !== null && !w.permissions.includes(permission)) {
     throw new AppError(403, 'PERMISSION_REQUIRED', 'The owner has not given you this permission', { meta: { permission, businessType, businessId } });
   }
@@ -235,6 +244,8 @@ module.exports = {
   teamFull,
   ownerLive,
   phoneVerified,
+  canWork,
+  assertCanWork,
   workplaceAt,
   worksAnyOf,
   actFor,

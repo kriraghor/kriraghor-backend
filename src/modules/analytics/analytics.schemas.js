@@ -105,7 +105,20 @@ const OrganiserDashboard = z
   })
   .meta({ id: 'SportsOrganiserDashboard' });
 const Actions = z
-  .object({ items: z.array(z.object({ key: z.string(), count: z.number(), severity: z.enum(['high', 'normal', 'low']), dueAt: z.string().nullable(), href: z.string() })), total: z.number() })
+  .object({
+    items: z.array(
+      z.object({
+        key: z.string(),
+        count: z.number(),
+        severity: z.enum(['high', 'normal', 'low']),
+        dueAt: z.string().nullable(),
+        href: z.string(),
+        businessType: z.enum(['venue', 'gym', 'shop']).optional().meta({ description: 'role business_staff only (Round B3): the workplace the item belongs to' }),
+        businessId: z.uuid().optional().meta({ description: 'role business_staff only (Round B3): the workplace the item belongs to' }),
+      })
+    ),
+    total: z.number(),
+  })
   .meta({ id: 'PendingActions' });
 const KpiDefinition = z.object({ key: z.string(), text: z.string() }).meta({ id: 'KpiDefinition' });
 

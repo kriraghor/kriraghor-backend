@@ -6,7 +6,7 @@
  * every default channel; a contract test checks it). Built so far: the M01, M02, M03, M04, M05, M06, M07, M09, M10, M12, M13, M17, M18, M19 and M21 events.
  *
  * Entry: { code, events[], category, channels[], urgent, roleContext?(e), recipients(e) → userIds,
- *          values(e, { locale, userId }) → template values, link(e) → in-app link }
+ *          values(e, { locale, userId }) → template values, link(e, { userId }) → in-app link }
  */
 const config = require('../../config');
 const directory = require('../users').directory;
@@ -129,6 +129,9 @@ const staffBookingValues = async (e) => {
   return { code: f.code, ground: f.groundName, start: f.start, due: f.dueAtVenue };
 };
 const staffBookings = (e) => vendorUrl(`/bookings?groundId=${e.payload.groundId}`);
+// Stock alerts: the owner's link is unchanged; staff name the shop (staff of several shops would get
+// 422 BUSINESS_REQUIRED from GET /shop/inventory without it).
+const stockLink = (status, e, { userId } = {}) => `/vendor/inventory?status=${status}${userId && userId !== e.payload.ownerId ? `&shopId=${e.payload.shopId}` : ''}`;
 const accountFacts = (id) => require('../payouts').payoutAccounts.facts(id);
 const settingsHours = () => require('../settings').settings.get('risk.payout_change_hold_hours');
 const HOLD_REASONS = {
@@ -1103,7 +1106,7 @@ const CATALOGUE = [
     channels: ['in_app'],
     recipients: async (e) => [e.payload.ownerId, ...(await staffOf('shop', e.payload.shopId, 'stock.view'))],
     values: async (e, { locale }) => ({ ...(await variantValues(e, locale)), left: e.payload.available }),
-    link: () => '/vendor/inventory?status=low',
+    link: (e, ctx) => stockLink('low', e, ctx),
   },
   {
     code: 'STOCK_OUT',
@@ -1112,7 +1115,7 @@ const CATALOGUE = [
     channels: ['in_app'],
     recipients: async (e) => [e.payload.ownerId, ...(await staffOf('shop', e.payload.shopId, 'stock.view'))],
     values: async (e, { locale }) => variantValues(e, locale),
-    link: () => '/vendor/inventory?status=out',
+    link: (e, ctx) => stockLink('out', e, ctx),
   },
   {
     code: 'SUPPLEMENT_EXPIRING',
@@ -1121,7 +1124,7 @@ const CATALOGUE = [
     channels: ['in_app'],
     recipients: async (e) => [e.payload.ownerId, ...(await staffOf('shop', e.payload.shopId, 'stock.view'))],
     values: async (e, { locale }) => ({ ...(await variantValues(e, locale)), expiry: e.payload.expiryDate ?? '' }),
-    link: () => '/vendor/inventory?status=blocked',
+    link: (e, ctx) => stockLink('blocked', e, ctx),
   },
   {
     code: 'SAVED_BACK_IN_STOCK',

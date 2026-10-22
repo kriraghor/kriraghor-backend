@@ -12980,15 +12980,18 @@
           },
           "fee": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "description": "Absent for business staff (Round B3); always present for the owner"
           },
           "released": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "description": "Absent for business staff (Round B3); always present for the owner"
           },
           "retained": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "description": "Absent for business staff (Round B3); always present for the owner"
           },
           "refund": {
             "type": "integer",
@@ -13025,9 +13028,6 @@
           "paymentChoice",
           "paidOnline",
           "dueAtVenue",
-          "fee",
-          "released",
-          "retained",
           "refund",
           "balanceStatus",
           "balanceMethod"
@@ -14581,6 +14581,20 @@
                 },
                 "href": {
                   "type": "string"
+                },
+                "businessType": {
+                  "type": "string",
+                  "enum": [
+                    "venue",
+                    "gym",
+                    "shop"
+                  ],
+                  "description": "role business_staff only (Round B3): the workplace the item belongs to"
+                },
+                "businessId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "role business_staff only (Round B3): the workplace the item belongs to"
                 }
               },
               "required": [
@@ -18054,7 +18068,8 @@
             "type": "object",
             "properties": {
               "stockValuePoisha": {
-                "type": "integer"
+                "type": "integer",
+                "description": "Absent for business staff (Round B3); always present for the owner"
               },
               "outOfStock": {
                 "type": "integer"
@@ -18070,7 +18085,6 @@
               }
             },
             "required": [
-              "stockValuePoisha",
               "outOfStock",
               "runningLow",
               "heldForOrders",
@@ -19518,30 +19532,30 @@
                 "minimum": 0
               },
               "commissionBps": {
-                "type": "integer"
+                "type": "integer",
+                "description": "Absent for business staff (Round B3); always present for the owner"
               },
               "commission": {
                 "type": "integer",
-                "minimum": 0
+                "minimum": 0,
+                "description": "Absent for business staff (Round B3); always present for the owner"
               },
               "net": {
                 "type": "integer",
-                "minimum": 0
+                "minimum": 0,
+                "description": "Absent for business staff (Round B3); always present for the owner"
               },
               "released": {
                 "type": "integer",
-                "minimum": 0
+                "minimum": 0,
+                "description": "Absent for business staff (Round B3); always present for the owner"
               }
             },
             "required": [
               "items",
               "delivery",
               "total",
-              "refunded",
-              "commissionBps",
-              "commission",
-              "net",
-              "released"
+              "refunded"
             ]
           },
           "courier": {
@@ -19708,7 +19722,11 @@
               "line",
               "note"
             ],
-            "description": "Shown once the shop accepts (FR-10)"
+            "description": "Shown once the shop accepts (FR-10). Round B3: null for business staff in lists, in action answers and without orders.ship (then contactHidden is true)"
+          },
+          "contactHidden": {
+            "type": "boolean",
+            "description": "Round B3, business staff only: true when the order has a shipping contact that is withheld from this staff member; absent for the owner"
           }
         },
         "required": [
@@ -25105,7 +25123,8 @@
           },
           "released": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "description": "Absent for business staff (Round B3); always present for the owner"
           }
         },
         "required": [
@@ -25116,8 +25135,7 @@
           "validTo",
           "status",
           "holder",
-          "redeemedAt",
-          "released"
+          "redeemedAt"
         ]
       },
       "GymAdmissionList": {
@@ -25262,7 +25280,8 @@
                     "net",
                     "released",
                     "refunded"
-                  ]
+                  ],
+                  "description": "Absent for business staff (Round B3); always present for the owner"
                 },
                 "paidAt": {
                   "type": [
@@ -25288,7 +25307,6 @@
                 "validFrom",
                 "validTo",
                 "holder",
-                "money",
                 "paidAt",
                 "firstRedeemedAt"
               ]
@@ -33627,7 +33645,7 @@
         "tags": [
           "business-members"
         ],
-        "summary": "Add a staff member to one of my businesses by their verified phone (no NID needed, Q169; scope is that business only, Q170). Leave out permissions for the defaults. Refused: unknown numbers, myself, Kriraghor staff accounts, unverified phones, someone already on the team and a full team",
+        "summary": "Add a staff member to one of my businesses by their verified phone (no NID needed, Q169; scope is that business only, Q170). Leave out permissions for the defaults. Refused: unknown numbers, myself, Kriraghor staff accounts, unverified phones, someone already on the team and a full team (the refusals never carry the person’s name or details). At most business.team_adds_per_hour adds per owner per hour (Q180; 429 RATE_LIMITED with retryAfter)",
         "security": [
           {
             "bearer": []
@@ -33740,6 +33758,16 @@
           },
           "422": {
             "description": "Error. Codes: VALIDATION_FAILED, MEMBER_IS_OWNER, MEMBER_IS_STAFF, PHONE_NOT_VERIFIED, PERMISSIONS_INVALID",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error. Codes: RATE_LIMITED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -61327,7 +61355,7 @@
         "tags": [
           "analytics"
         ],
-        "summary": "Needs your action, from the owning modules (FR-11); role organiser: registrations waiting for approval (admins) and unpaid entry fees in your sports organisations; role business_staff (Round B3): check-ins and balances at your venues, orders to accept or ship and stock at your shops, by your permissions",
+        "summary": "Needs your action, from the owning modules (FR-11); role organiser: registrations waiting for approval (admins) and unpaid entry fees in your sports organisations; role business_staff (Round B3): check-ins and balances at your venues, orders to accept or ship and stock at your shops, by your permissions (nothing while your phone is not verified)",
         "security": [
           {
             "bearer": []
@@ -65005,7 +65033,7 @@
         "tags": [
           "reviews"
         ],
-        "summary": "My reviews; with role=owner (or a subjectType or subjectId) the published reviews of my venues, pro profiles, shops and gyms, to reply to. Round B3: venue staff with reviews.reply see that venue’s reviews (subjectType=ground&subjectId=)",
+        "summary": "My reviews; with role=owner (or a subjectType or subjectId) the published reviews of my venues, pro profiles, shops and gyms, to reply to. Round B3: venue staff with reviews.reply see that venue’s reviews (subjectType=ground&subjectId=), with a verified phone (403 PHONE_REQUIRED otherwise)",
         "security": [
           {
             "bearer": []
@@ -65082,6 +65110,16 @@
           },
           "401": {
             "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PHONE_REQUIRED",
             "content": {
               "application/problem+json": {
                 "schema": {

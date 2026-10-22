@@ -10,6 +10,7 @@
  *   businesses  the business port: venues, gyms and shops register their adapter at boot
  *   members     workplaces for the principal (M01), staff recipients (M08), the staff to-do (M19)
  *   consumers   the owner-changed consumers (registry.registerAll)
+ *   schemas     staffHidden(): marks a response key business staff never receive (OpenAPI)
  */
 const lazy = (file, names, values = []) => {
   const out = Object.fromEntries(names.map((n) => [n, (...args) => require(file)[n](...args)]));
@@ -22,4 +23,5 @@ module.exports = {
   businesses: lazy('./businesses.port', ['register']),
   members: lazy('./business-members.service', ['workplacesOf', 'staffRecipients', 'pendingActions', 'businessName']),
   consumers: lazy('./business-members.consumers', ['registerBusinessMemberConsumers']),
+  schemas: lazy('./business-members.schemas', ['staffHidden']),
 };

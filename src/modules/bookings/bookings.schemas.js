@@ -6,6 +6,7 @@
  */
 const { z } = require('zod');
 const { normalizePhone } = require('../../common/identifiers');
+const { staffHidden } = require('../business-members').schemas;
 
 const id = z.uuid();
 const dateTime = z.iso.datetime({ offset: true });
@@ -64,9 +65,10 @@ const Money = z
     paymentChoice: z.enum(['advance', 'full', 'venue']),
     paidOnline: poisha,
     dueAtVenue: poisha,
-    fee: poisha,
-    released: poisha,
-    retained: poisha,
+    // Round B3: the venue's staff never receive these (business-members forStaff).
+    fee: staffHidden(poisha),
+    released: staffHidden(poisha),
+    retained: staffHidden(poisha),
     refund: poisha,
     balanceStatus: z.enum(['not_due', 'due', 'collected', 'unrecorded', 'waived']),
     balanceMethod: z.enum(['cash', 'bkash_venue']).nullable(),
