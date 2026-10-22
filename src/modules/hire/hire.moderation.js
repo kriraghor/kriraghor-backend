@@ -24,6 +24,7 @@ const APPLY = { 'submission.approved': 'approved', 'submission.changes_requested
 
 function registerHireConsumers() {
   require('./requests.service'); // the M06 purpose hook
+  require('./hire.consumers').registerHireStatsConsumers(); // Round B1: jobs done, acceptance, reply time (FR-52)
   for (const [name, status] of Object.entries(APPLY)) {
     onEvent(name, `hire.apply-${status}`, (e, { transaction }) => {
       if (e.payload.kind !== 'hire_profile' || (status === 'withdrawn' && e.payload.superseded)) return null;

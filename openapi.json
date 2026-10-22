@@ -250,6 +250,13 @@
               "null"
             ]
           },
+          "avatarUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "M01 avatar (public bucket); null without a photo"
+          },
           "locale": {
             "type": "string",
             "enum": [
@@ -366,6 +373,7 @@
           "emailVerified",
           "gender",
           "username",
+          "avatarUrl",
           "locale",
           "status",
           "kycStatus",
@@ -14723,14 +14731,49 @@
             "format": "uuid"
           },
           "subjectType": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "ground",
+              "hire_profile",
+              "shop",
+              "gym"
+            ]
           },
           "subjectId": {
             "type": "string",
             "format": "uuid"
           },
-          "bookingId": {
+          "sourceType": {
             "type": "string",
+            "enum": [
+              "booking",
+              "hire_job",
+              "sub_order",
+              "gym_pass"
+            ]
+          },
+          "sourceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "subjectName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "In the member and owner lists"
+          },
+          "subjectSlug": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bookingId": {
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "uuid"
           },
           "stars": {
@@ -14818,9 +14861,65 @@
             "items": {
               "type": "object",
               "properties": {
-                "bookingId": {
+                "sourceType": {
+                  "type": "string",
+                  "enum": [
+                    "booking",
+                    "hire_job",
+                    "sub_order",
+                    "gym_pass"
+                  ]
+                },
+                "sourceId": {
                   "type": "string",
                   "format": "uuid"
+                },
+                "ref": {
+                  "type": "string"
+                },
+                "subjectType": {
+                  "type": "string",
+                  "enum": [
+                    "ground",
+                    "hire_profile",
+                    "shop",
+                    "gym"
+                  ]
+                },
+                "subjectId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "subjectName": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "subjectSlug": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "doneAt": {
+                  "type": "string"
+                },
+                "closesAt": {
+                  "type": "string"
+                },
+                "existingReviewId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "uuid",
+                  "description": "Gyms (one review per member and gym): the review a post from this pass updates"
+                },
+                "bookingId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "v1 booking fields (sourceType booking only): bookingId, code, groundId, groundName, groundSlug, end"
                 },
                 "code": {
                   "type": "string"
@@ -14846,12 +14945,16 @@
                 }
               },
               "required": [
-                "bookingId",
-                "code",
-                "groundId",
-                "groundName",
-                "groundSlug",
-                "end"
+                "sourceType",
+                "sourceId",
+                "ref",
+                "subjectType",
+                "subjectId",
+                "subjectName",
+                "subjectSlug",
+                "doneAt",
+                "closesAt",
+                "existingReviewId"
               ]
             }
           }
@@ -19728,6 +19831,29 @@
           "jobsDone": {
             "type": "integer"
           },
+          "acceptanceRate": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "% of requests accepted over hire.acceptance_window_days (FR-52)"
+          },
+          "medianReplyMinutes": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "availableToday": {
+            "type": "boolean",
+            "description": "Some time left today (Dhaka) that is neither blocked nor booked (FR-05)"
+          },
+          "avatarUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "shortlisted": {
             "type": "boolean"
           }
@@ -19748,6 +19874,10 @@
           "ratingAvg",
           "ratingCount",
           "jobsDone",
+          "acceptanceRate",
+          "medianReplyMinutes",
+          "availableToday",
+          "avatarUrl",
           "shortlisted"
         ]
       },
@@ -19914,6 +20044,29 @@
           "jobsDone": {
             "type": "integer"
           },
+          "acceptanceRate": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "% of requests accepted over hire.acceptance_window_days (FR-52)"
+          },
+          "medianReplyMinutes": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "availableToday": {
+            "type": "boolean",
+            "description": "Some time left today (Dhaka) that is neither blocked nor booked (FR-05)"
+          },
+          "avatarUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "shortlisted": {
             "type": "boolean"
           },
@@ -20013,6 +20166,10 @@
           "ratingAvg",
           "ratingCount",
           "jobsDone",
+          "acceptanceRate",
+          "medianReplyMinutes",
+          "availableToday",
+          "avatarUrl",
           "shortlisted",
           "bio",
           "sportKeys",
@@ -20266,7 +20423,8 @@
                     "police_clearance",
                     "free",
                     "daily_limit",
-                    "in_future"
+                    "in_future",
+                    "available"
                   ]
                 },
                 "ok": {
@@ -20772,6 +20930,45 @@
         },
         "description": "The hirer sees confirm, cancel, noShow and problem; the pro checkIn, start, complete and withdraw"
       },
+      "HireBusy": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "busy": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "start": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "end": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "start",
+                "end"
+              ]
+            }
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "busy"
+        ],
+        "description": "Busy spans only: no reasons, no jobs"
+      },
       "HireRequestList": {
         "type": "object",
         "properties": {
@@ -21114,6 +21311,45 @@
           "rateCard": {
             "$ref": "#/components/schemas/HireRateCard"
           },
+          "stats": {
+            "type": "object",
+            "properties": {
+              "jobsDone": {
+                "type": "integer"
+              },
+              "acceptanceRate": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "medianReplyMinutes": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "ratingAvg": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "ratingCount": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "jobsDone",
+              "acceptanceRate",
+              "medianReplyMinutes",
+              "ratingAvg",
+              "ratingCount"
+            ]
+          },
+          "completeness": {
+            "$ref": "#/components/schemas/Completeness"
+          },
           "limits": {
             "type": "object",
             "additionalProperties": {
@@ -21155,8 +21391,43 @@
           "live",
           "reviewReason",
           "rateCard",
+          "stats",
+          "completeness",
           "limits"
         ]
+      },
+      "Completeness": {
+        "type": "object",
+        "properties": {
+          "score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "done": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "key",
+                "done"
+              ]
+            }
+          }
+        },
+        "required": [
+          "score",
+          "steps"
+        ],
+        "description": "Steps left to a complete profile; score = % of steps done"
       },
       "HireJobList": {
         "type": "object",
@@ -21871,6 +22142,45 @@
           "rateCard": {
             "$ref": "#/components/schemas/HireRateCard"
           },
+          "stats": {
+            "type": "object",
+            "properties": {
+              "jobsDone": {
+                "type": "integer"
+              },
+              "acceptanceRate": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "medianReplyMinutes": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "ratingAvg": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "ratingCount": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "jobsDone",
+              "acceptanceRate",
+              "medianReplyMinutes",
+              "ratingAvg",
+              "ratingCount"
+            ]
+          },
+          "completeness": {
+            "$ref": "#/components/schemas/Completeness"
+          },
           "limits": {
             "type": "object",
             "additionalProperties": {
@@ -21995,11 +22305,371 @@
           "live",
           "reviewReason",
           "rateCard",
+          "stats",
+          "completeness",
           "limits",
           "owner",
           "credential",
           "baseArea",
           "updatedAt"
+        ]
+      },
+      "HireInsights": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string",
+            "enum": [
+              "7w",
+              "qtr",
+              "yr"
+            ]
+          },
+          "asOf": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "from": {
+            "type": "string",
+            "description": "First Dhaka day of the period"
+          },
+          "buckets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "from": {
+                  "type": "string"
+                },
+                "amount": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "key",
+                "from",
+                "amount"
+              ]
+            },
+            "description": "Earned (net) per Dhaka week or month, oldest first"
+          },
+          "earned": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "previous": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "delta": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "% change against the same days one period earlier"
+              }
+            },
+            "required": [
+              "total",
+              "previous",
+              "delta"
+            ]
+          },
+          "releasingSoon": {
+            "type": "object",
+            "properties": {
+              "net": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "count": {
+                "type": "integer"
+              },
+              "nextAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "net",
+              "count",
+              "nextAt"
+            ]
+          },
+          "jobs": {
+            "type": "object",
+            "properties": {
+              "done": {
+                "type": "integer"
+              },
+              "upcoming": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "done",
+              "upcoming"
+            ]
+          },
+          "acceptanceRate": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "medianReplyMinutes": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "rating": {
+            "type": "object",
+            "properties": {
+              "avg": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "count": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "avg",
+              "count"
+            ]
+          },
+          "whoHiresYou": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "jobs": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "key",
+                "label",
+                "jobs"
+              ]
+            }
+          }
+        },
+        "required": [
+          "period",
+          "asOf",
+          "from",
+          "buckets",
+          "earned",
+          "releasingSoon",
+          "jobs",
+          "acceptanceRate",
+          "medianReplyMinutes",
+          "rating",
+          "whoHiresYou"
+        ]
+      },
+      "HireAvailability": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "horizonDays": {
+            "type": "integer"
+          },
+          "horizonEnd": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "blocks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "start": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "end": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "reason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "start",
+                "end",
+                "id",
+                "reason"
+              ]
+            }
+          },
+          "repeats": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "weekdays": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  }
+                },
+                "from": {
+                  "type": "string"
+                },
+                "to": {
+                  "type": "string"
+                },
+                "until": {
+                  "type": "string"
+                },
+                "validFrom": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "reason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "weekdays",
+                "from",
+                "to",
+                "validFrom",
+                "reason"
+              ]
+            }
+          },
+          "spans": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "start": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "end": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "reason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "blockId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "repeat": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "start",
+                "end",
+                "reason",
+                "blockId",
+                "repeat"
+              ]
+            },
+            "description": "Blocked time in the range, repeats expanded"
+          },
+          "booked": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "start": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "end": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "jobId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "code": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "locked": {
+                  "type": "boolean",
+                  "enum": [
+                    true
+                  ]
+                }
+              },
+              "required": [
+                "start",
+                "end",
+                "jobId",
+                "code",
+                "status",
+                "locked"
+              ]
+            }
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "horizonDays",
+          "horizonEnd",
+          "blocks",
+          "repeats",
+          "spans",
+          "booked"
         ]
       },
       "GymList": {
@@ -22576,6 +23246,29 @@
           "jobsDone": {
             "type": "integer"
           },
+          "acceptanceRate": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "% of requests accepted over hire.acceptance_window_days (FR-52)"
+          },
+          "medianReplyMinutes": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "availableToday": {
+            "type": "boolean",
+            "description": "Some time left today (Dhaka) that is neither blocked nor booked (FR-05)"
+          },
+          "avatarUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "shortlisted": {
             "type": "boolean"
           },
@@ -22606,6 +23299,10 @@
           "ratingAvg",
           "ratingCount",
           "jobsDone",
+          "acceptanceRate",
+          "medianReplyMinutes",
+          "availableToday",
+          "avatarUrl",
           "shortlisted",
           "planFrom",
           "plans"
@@ -27181,6 +27878,46 @@
               "string",
               "null"
             ]
+          },
+          "completeness": {
+            "type": "object",
+            "properties": {
+              "score": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "steps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string",
+                      "enum": [
+                        "sports",
+                        "bio",
+                        "team",
+                        "esportsUid",
+                        "nid"
+                      ]
+                    },
+                    "done": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "done"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "score",
+              "steps"
+            ],
+            "description": "Round B1: steps left to a complete player profile"
           }
         },
         "required": [
@@ -27188,7 +27925,8 @@
           "bio",
           "visibility",
           "updatedAt",
-          "username"
+          "username",
+          "completeness"
         ]
       },
       "PublicPlayer": {
@@ -27199,6 +27937,12 @@
           },
           "displayName": {
             "type": "string"
+          },
+          "avatarUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "bio": {
             "type": [
@@ -27341,6 +28085,7 @@
         "required": [
           "handle",
           "displayName",
+          "avatarUrl",
           "bio",
           "sports",
           "teams",
@@ -31790,6 +32535,124 @@
           },
           "422": {
             "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/avatar": {
+      "post": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Upload my photo (raw JPEG, PNG or WebP; public bucket)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "requestBody": {
+          "description": "The photo itself (at most users.avatar_max_bytes)",
+          "content": {
+            "image/jpeg": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "image/png": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "image/webp": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error. Codes: FILE_TOO_LARGE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error. Codes: FILE_TYPE_NOT_ALLOWED, FILE_TYPE_MISMATCH",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: FILE_EMPTY",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Remove my photo",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -62379,11 +63242,83 @@
       }
     },
     "/reviews": {
+      "get": {
+        "tags": [
+          "reviews"
+        ],
+        "summary": "Published reviews of a venue, pro profile, shop or gym, with the owner reply and the summary (the average from reviews.min_count_display reviews) (FR-35)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ground",
+                "hire_profile",
+                "shop",
+                "gym"
+              ]
+            },
+            "required": true,
+            "name": "subjectType",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "subjectId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicReviews"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "reviews"
         ],
-        "summary": "Rate a ground after playing (once per booking; held while a dispute is open) (FR-20, FR-21)",
+        "summary": "Rate what I paid for, once per source, within reviews.window_days: a played booking (the venue), a released hire job (the pro), a completed sub-order (the shop) or a used gym pass (the gym). Held while the source has an open dispute or when the text has contact details. One review per gym: a newer pass updates it (200) (FR-30 to FR-33). v1 body { bookingId, stars, text } still works",
         "security": [
           {
             "bearer": []
@@ -62395,29 +63330,56 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "bookingId": {
+                  "sourceType": {
+                    "type": "string",
+                    "enum": [
+                      "booking",
+                      "hire_job",
+                      "sub_order",
+                      "gym_pass"
+                    ],
+                    "description": "booking → the venue, hire_job → the pro, sub_order → the shop, gym_pass → the gym (one review per gym: a newer pass updates it). Default booking"
+                  },
+                  "sourceId": {
                     "type": "string",
                     "format": "uuid"
+                  },
+                  "bookingId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "v1: the same as sourceType booking with sourceId"
                   },
                   "stars": {
                     "type": "integer",
                     "minimum": 1,
                     "maximum": 5
                   },
+                  "rating": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5,
+                    "description": "Another name for stars"
+                  },
                   "text": {
                     "type": "string",
                     "maxLength": 1000
                   }
-                },
-                "required": [
-                  "bookingId",
-                  "stars"
-                ]
+                }
               }
             }
           }
         },
         "responses": {
+          "200": {
+            "description": "Updated: my gym review, from a newer pass",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewResult"
+                }
+              }
+            }
+          },
           "201": {
             "description": "Created",
             "content": {
@@ -62439,7 +63401,7 @@
             }
           },
           "403": {
-            "description": "Error. Codes: NOT_YOUR_BOOKING",
+            "description": "Error. Codes: NOT_YOUR_BOOKING, NOT_YOUR_JOB, NOT_YOUR_ORDER, NOT_YOUR_PASS",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -62459,7 +63421,7 @@
             }
           },
           "409": {
-            "description": "Error. Codes: NOT_PLAYED, REVIEW_WINDOW_CLOSED, REVIEW_EXISTS",
+            "description": "Error. Codes: NOT_PLAYED, JOB_NOT_RELEASED, ORDER_NOT_COMPLETED, PASS_NOT_REDEEMED, REVIEW_WINDOW_CLOSED, REVIEW_EXISTS, REVIEW_HIDDEN",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -62585,7 +63547,7 @@
         "tags": [
           "reviews"
         ],
-        "summary": "My played bookings still waiting for a rating",
+        "summary": "Waiting to review, newest first: played bookings, released hire jobs, completed sub-orders and used gym passes (one per gym until it is reviewed)",
         "security": [
           {
             "bearer": []
@@ -62620,10 +63582,68 @@
         "tags": [
           "reviews"
         ],
-        "summary": "My reviews",
+        "summary": "My reviews; with role=owner (or a subjectType or subjectId) the published reviews of my venues, pro profiles, shops and gyms, to reply to",
         "security": [
           {
             "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "author",
+                "owner"
+              ],
+              "description": "author: the reviews I wrote (the default); owner: the published reviews of my venues, pro profiles, shops and gyms (implied by subjectType or subjectId)"
+            },
+            "required": false,
+            "description": "author: the reviews I wrote (the default); owner: the published reviews of my venues, pro profiles, shops and gyms (implied by subjectType or subjectId)",
+            "name": "role",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ground",
+                "hire_profile",
+                "shop",
+                "gym"
+              ]
+            },
+            "required": false,
+            "name": "subjectType",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "subjectId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
           }
         ],
         "responses": {
@@ -62646,6 +63666,121 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/reviews/{id}/reply": {
+      "post": {
+        "tags": [
+          "reviews"
+        ],
+        "summary": "Reply to (or edit my reply to) a published review of something I own; contact details are refused; the author is told about the first reply (FR-34)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 1000
+                  }
+                },
+                "required": [
+                  "text"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_OWNER",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: REVIEW_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, REPLY_HAS_CONTACT",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
           }
         }
       }
@@ -62655,7 +63790,7 @@
         "tags": [
           "reviews"
         ],
-        "summary": "Reviews of my grounds (gate list_ground)",
+        "summary": "Reviews of my venues (gate list_ground; alias of GET /me/reviews?subjectType=ground)",
         "security": [
           {
             "bearer": []
@@ -62740,7 +63875,7 @@
         "tags": [
           "reviews"
         ],
-        "summary": "Reply to a review of my ground (FR-25)",
+        "summary": "Reply to a review of my venue (alias of POST /me/reviews/{id}/reply) (FR-34)",
         "security": [
           {
             "bearer": []
@@ -62828,7 +63963,7 @@
             }
           },
           "422": {
-            "description": "Error. Codes: VALIDATION_FAILED",
+            "description": "Error. Codes: VALIDATION_FAILED, REPLY_HAS_CONTACT",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -62864,6 +63999,29 @@
             },
             "required": false,
             "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ground",
+                "hire_profile",
+                "shop",
+                "gym"
+              ]
+            },
+            "required": false,
+            "name": "subjectType",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "subjectId",
             "in": "query"
           },
           {
@@ -70316,7 +71474,7 @@
             }
           },
           "409": {
-            "description": "Error. Codes: PROFILE_NOT_AVAILABLE, DUPLICATE_REQUEST",
+            "description": "Error. Codes: PROFILE_NOT_AVAILABLE, DUPLICATE_REQUEST, PRO_UNAVAILABLE",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -70327,6 +71485,75 @@
           },
           "422": {
             "description": "Error. Codes: OWN_PROFILE, UNIT_NOT_OFFERED, AREA_UNKNOWN, VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hire/profiles/{id}/availability": {
+      "get": {
+        "tags": [
+          "hire"
+        ],
+        "summary": "Busy spans of a profile (blocked time and jobs merged; no reasons, no job details), from today up to hire.availability_horizon_days (FR-05)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "required": false,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "required": false,
+            "name": "to",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HireBusy"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -73517,6 +74744,292 @@
           },
           "409": {
             "description": "Error. Codes: PROFILE_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pro/insights": {
+      "get": {
+        "tags": [
+          "hire"
+        ],
+        "summary": "Earnings and performance (M19 §6.3 Pro): earned per Dhaka week or month from the ledger (net), releasing soon, jobs, acceptance, reply time, rating, who hires you",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "7w",
+                "qtr",
+                "yr"
+              ],
+              "default": "7w"
+            },
+            "required": false,
+            "name": "period",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HireInsights"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pro/availability": {
+      "get": {
+        "tags": [
+          "hire"
+        ],
+        "summary": "My availability calendar: blocks, weekly repeats, the blocked spans in the range (repeats expanded) and booked jobs (locked)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "required": false,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "required": false,
+            "name": "to",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HireAvailability"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pro/availability/blocks": {
+      "put": {
+        "tags": [
+          "hire"
+        ],
+        "summary": "Replace the one-off blocks starting in [from, to) (and every weekly repeat when repeats is sent); up to hire.availability_horizon_days ahead, never over a booked job; audited, not moderated (FR-14)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "to": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "blocks": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "start": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "end": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        }
+                      },
+                      "required": [
+                        "start",
+                        "end"
+                      ]
+                    },
+                    "maxItems": 200
+                  },
+                  "repeats": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "weekdays": {
+                          "type": "array",
+                          "items": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 6
+                          },
+                          "minItems": 1,
+                          "maxItems": 7,
+                          "description": "0 = Sunday … 6 = Saturday (Dhaka calendar)"
+                        },
+                        "from": {
+                          "type": "string",
+                          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                        },
+                        "to": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "24:00"
+                              ]
+                            }
+                          ],
+                          "description": "HH:MM, or 24:00 for the end of the day"
+                        },
+                        "until": {
+                          "type": "string",
+                          "format": "date",
+                          "description": "The last day the repeat applies (Dhaka); open without it"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        }
+                      },
+                      "required": [
+                        "weekdays",
+                        "from",
+                        "to"
+                      ]
+                    },
+                    "maxItems": 20,
+                    "description": "When sent, the full set of weekly repeats (missing ones are removed)"
+                  }
+                },
+                "required": [
+                  "from",
+                  "to",
+                  "blocks"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HireAvailability"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: BLOCK_OVER_JOB",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
             "content": {
               "application/problem+json": {
                 "schema": {

@@ -6,7 +6,8 @@
  *   meShortlist   /me/shortlist      the member's shortlist
  *   meRequests    /me/hire-requests  my requests as the manager (and the thread, for both parties)
  *   meJobs        /me/hire-jobs      a job as the manager: confirm, cancel, no-show and problem (M17)
- *   proRouter     /pro               my hire profiles and rate cards, requests to answer, match day
+ *   proRouter     /pro               my hire profiles and rate cards, requests to answer, match day;
+ *                                    Round B1: insights (earnings, stats) and the availability calendar
  *   adminRouter   /admin/hire        requests and their escrow, profiles, platform cancel
  */
 const { Router } = require('express');
@@ -21,6 +22,8 @@ const requests = require('./requests.service');
 const jobs = require('./jobs.service');
 const messages = require('./messages.service');
 const admin = require('./hire.admin');
+const availability = require('./availability.service');
+const insights = require('./insights.service');
 const s = require('./hire.schemas');
 
 const id = validate(s.idParam, 'params');
@@ -31,6 +34,7 @@ publicRouter.get('/taxonomy', async (req, res) => res.json({ items: await direct
 publicRouter.get('/profiles', optionalAuth, validate(s.listQuery, 'query'), async (req, res) => res.json(await directory.list(req.validQuery, req.user?.id ?? null)));
 publicRouter.get('/profiles/:slug', optionalAuth, validate(s.slugParam, 'params'), async (req, res) => res.json(await directory.page(req.params.slug, req.user?.id ?? null)));
 publicRouter.post('/profiles/:id/quote', id, validate(s.quoteBody), async (req, res) => res.json(await directory.quote(req.params.id, req.body)));
+publicRouter.get('/profiles/:id/availability', id, validate(s.rangeQuery, 'query'), async (req, res) => res.json(await availability.publicBusy(req.params.id, req.validQuery)));
 publicRouter.post('/requests', authenticate, requireGate('hire'), validate(s.requestBody), requireIdempotencyKey('hire.request'), async (req, res) =>
   res.status(201).json(await requests.create(req.user, req.body, req.idempotencyKey, req))
 );
@@ -74,6 +78,9 @@ proRouter.put('/profiles/:id/rate-card', id, validate(s.rateCardBody), async (re
 proRouter.post('/profiles/:id/submit', id, async (req, res) => res.json(await profiles.submit(req.user, req.params.id, req)));
 proRouter.post('/profiles/:id/pause', id, async (req, res) => res.json(await profiles.setPaused(req.user, req.params.id, true, req)));
 proRouter.post('/profiles/:id/resume', id, async (req, res) => res.json(await profiles.setPaused(req.user, req.params.id, false, req)));
+proRouter.get('/insights', validate(s.insightsQuery, 'query'), async (req, res) => res.json(await insights.insights(req.user, req.validQuery)));
+proRouter.get('/availability', validate(s.rangeQuery, 'query'), async (req, res) => res.json(await availability.mine(req.user, req.validQuery)));
+proRouter.put('/availability/blocks', validate(s.blocksBody), async (req, res) => res.json(await availability.save(req.user, req.body, req)));
 proRouter.get('/requests', validate(s.statusQuery, 'query'), async (req, res) => res.json(await requests.listForPro(req.user, req.validQuery)));
 proRouter.get('/requests/:id', id, async (req, res) => res.json(await requests.getOne(req.user, req.params.id)));
 proRouter.post('/requests/:id/accept', id, async (req, res) => res.json(await requests.accept(req.user, req.params.id, req)));

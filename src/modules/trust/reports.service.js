@@ -54,7 +54,7 @@ const SUBJECTS = {
   async review(id) {
     const r = await reviews.get(id);
     if (!r) return null;
-    return { owners: [r.authorId], suspendable: r.authorId, summary: { stars: r.stars, text: r.text, status: r.status, groundId: r.subjectId } };
+    return { owners: [r.authorId], suspendable: r.authorId, summary: { stars: r.stars, text: r.text, status: r.status, subjectType: r.subjectType, subjectId: r.subjectId, groundId: r.subjectType === 'ground' ? r.subjectId : null } };
   },
   // M12: a shop or a shop product; taking it down suspends it (M12), suspending hits the shop owner.
   async shop(id) {

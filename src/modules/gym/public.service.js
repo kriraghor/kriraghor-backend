@@ -15,6 +15,8 @@ const hireDirectory = require('../hire').directory;
 const rules = require('./gym.rules');
 const c = require('./gym.common');
 
+/** M17: the average shows once there are reviews.min_count_display published reviews (FR-35). */
+const shownRating = (x) => (x.ratingCount >= require('../settings').settings.get('reviews.min_count_display') ? (x.ratingAvg ?? null) : null);
 const named = (r) => ({ id: r.id, key: r.key, nameEn: r.nameEn, nameBn: r.nameBn });
 
 async function lookups(gyms) {
@@ -40,7 +42,7 @@ function card(g, { areas, facilities }, now = new Date()) {
     quarterPrice: price('quarter'),
     womenOnlyHours: s.hours.some((h) => h.womenOnly),
     openNow: Boolean(rules.openWindowAt(s.hours, now)),
-    ratingAvg: g.ratingAvg ?? null,
+    ratingAvg: shownRating(g),
     ratingCount: g.ratingCount,
     taking: g.status === 'live',
   };
@@ -57,6 +59,8 @@ async function list({ areaId, facility, q, sort = 'price', cursor, limit = 24 } 
   };
   const rows = await Gym.findAll({ where, order: [...SORTS[sort], ['id', 'ASC']] });
   const filtered = facility ? rows.filter((g) => (g.liveSnapshot.facilityIds ?? []).includes(facility)) : rows;
+  // The rating sort uses the shown rating, so a gym below reviews.min_count_display doesn't rank by a hidden average (M17-FR-35).
+  if (sort === 'rating') filtered.sort((a, b) => (shownRating(b) ?? -1) - (shownRating(a) ?? -1) || b.ratingCount - a.ratingCount || (a.id < b.id ? -1 : 1));
   const offset = cursor ? Number(cursor) : 0;
   const page = filtered.slice(offset, offset + limit);
   const maps = await lookups(page);

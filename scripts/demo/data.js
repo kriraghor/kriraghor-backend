@@ -362,4 +362,60 @@ const SPORTS_EVENTS = [
 // ---------------------------------------------------------------- the demo member (full profile)
 const MEMBER = { n: 90, name: 'Ayesha Siddiqua', username: 'ayesha.s' };
 
-module.exports = { OWNERS, VENUES, SHOPS, GYMS, PROS, TRAINERS, PLAYERS, ESPORTS, SHOWCASE, FINISHED, SPORTS_ORG, SPORTS_EVENTS, MEMBER };
+// ---------------------------------------------------------------- Round B1: availability calendars (M11)
+// Weekly repeats (weekdays: 0 = Sunday … 6 = Saturday, Dhaka) and one-off blocks `inDays` from today, Dhaka time.
+const AVAILABILITY = [
+  {
+    n: 21,
+    repeats: [{ weekdays: [5], from: '09:00', to: '13:00', reason: 'Jumu’ah and family' }],
+    blocks: [
+      { inDays: 4, from: '16:00', to: '23:00', reason: 'Cousin’s wedding in Narayanganj' },
+      { inDays: 10, from: '08:00', to: '18:00', reason: 'BFF referee refresher course' },
+    ],
+  },
+  {
+    n: 30,
+    repeats: [{ weekdays: [5], from: '09:00', to: '13:00', reason: 'Jumu’ah and family' }],
+    blocks: [
+      { inDays: 3, from: '06:00', to: '12:00', reason: 'Judging a powerlifting meet in Uttara' },
+      { inDays: 9, from: '14:00', to: '20:00', reason: 'Coaching certificate exam' },
+    ],
+  },
+];
+
+// ---------------------------------------------------------------- Round B1: reviews (full profile)
+// Past hire jobs (M11): `hirer` is a demo player (n) or the demo member (90); `review` is left out for
+// the one the member has not rated yet. `reply` is the pro's answer. Jobs start at 19:00 Dhaka.
+const HIRE_HISTORY = [
+  { pro: 21, hirer: 41, daysAgo: 25, replyMin: 18, result: 'Mirpur Strikers 3–2 Pallabi United', review: [5, 'Jahid bhai kept the game under control from the first minute. Fair calls for both sides and he came 20 minutes early.'], reply: 'Thank you bhai, it was a clean final. Best of luck next season.' },
+  { pro: 21, hirer: 44, daysAgo: 18, replyMin: 45, result: 'Office league final, 2–1', review: [4, 'Good referee for our office league final. Strict on rough tackles, which we needed. Started ten minutes late because of the traffic.'], reply: 'Thanks for the feedback. Mirpur 10 was jammed that day, I will leave earlier next time.' },
+  { pro: 21, hirer: 47, daysAgo: 11, replyMin: 120, result: '7-a-side friendly, 4–4', review: [5, 'Very professional. Explained the rules to both captains before kick-off and there were no arguments after the match.'] },
+  { pro: 21, hirer: 53, daysAgo: 6, replyMin: 35, result: 'Futsal semi-final, 5–3', review: [4, 'Solid referee for futsal. Friendly with the players but did not let anything slide.'] },
+  { pro: 21, hirer: 90, daysAgo: 2, replyMin: 60, result: 'Family cup, 2–2' },
+  { pro: 20, hirer: 42, daysAgo: 27, replyMin: 25, format: 'T20', result: 'Banani XI won by 18 runs', review: [5, 'Excellent umpiring in our corporate T20. Clear signals and he knew the playing conditions well.'], reply: 'Thank you, I enjoyed the match. Hope to see your team in the knockouts.' },
+  { pro: 20, hirer: 49, daysAgo: 16, replyMin: 90, format: 'T20', result: 'Uttara Tigers won by 4 wickets', review: [4, 'Good decisions overall. One tight LBW could have gone either way, but he was very punctual.'] },
+  { pro: 20, hirer: 56, daysAgo: 9, replyMin: 40, format: 'T10', result: 'Gulshan Gladiators won by 2 runs', review: [5, 'Second time we hired him. Calm, respectful and kept the over rate on track.'] },
+  { pro: 23, hirer: 45, daysAgo: 13, replyMin: 30, review: [5, 'Taped two of our bowlers before the match and handled a hamstring strain quickly. Highly recommended.'] },
+];
+// A request the demo referee declined (so the acceptance rate is a real figure).
+const HIRE_DECLINED = { pro: 21, hirer: 58, replyMin: 15, reason: 'not_available' };
+
+// Shop orders (M13), received by the buyer `daysAgo` days ago, then rated. `reply` is the shop's answer.
+const SHOP_REVIEWS = [
+  { buyer: 59, shop: 'Iron Supply Tejgaon', title: 'Resistance Band Set', daysAgo: 21, review: [5, 'Good quality bands and the door anchor is solid. Delivered to Dhanmondi in two days.'], reply: 'Thank you for buying from Iron Supply. Message us when you are ready for heavier dumbbells.' },
+  { buyer: 46, shop: 'Iron Supply Tejgaon', title: 'Chrome Dumbbells (Pair)', attr: '5', daysAgo: 12, review: [4, 'Nice shiny dumbbells, exactly as in the photos. Delivery took three days but the seller kept me updated.'] },
+  { buyer: 50, shop: 'Iron Supply Tejgaon', title: 'Lifting Belt, Leather', attr: 'L', daysAgo: 5, review: [5, 'Thick leather and a strong buckle. Fair price compared to the shops in Gulshan.'] },
+  { buyer: 48, shop: 'Mirpur Cricket Bazar', title: 'Leather Match Ball, 4 Piece', attr: 'red', daysAgo: 15, review: [5, 'Proper leather ball that keeps its shine. The shop even called to confirm the colour before sending.'] },
+  { buyer: 51, shop: 'Mirpur Cricket Bazar', title: 'Feather Shuttles, Tube of 12', attr: '77', daysAgo: 7, review: [4, 'Shuttles are good for club games. Packing could be better, one tube was a bit dented.'] },
+];
+// The demo member rates one shop of their received order and leaves the other waiting.
+const MEMBER_SHOP_REVIEW = { shop: 'Muscle Fuel BD', review: [5, 'Genuine whey with the batch number and expiry on the tub. The chocolate flavour mixes well with milk.'] };
+
+// Gym day passes (M20) used at the front desk today, then rated. `reply` is the owner's answer.
+const GYM_REVIEWS = [
+  { member: 54, gym: 'PowerHouse Gym Mirpur', review: [5, 'Good equipment for the price and the sauna is a nice bonus. It gets busy after 7 pm.'], reply: 'Thank you! Come before 6 pm on weekdays if you want the squat racks free.' },
+  { member: 57, gym: 'PowerHouse Gym Mirpur', review: [4, 'The day pass was easy, the front desk scanned my QR code in seconds. The AC in the cardio area could be stronger.'] },
+  { member: 60, gym: 'PowerHouse Gym Mirpur', review: [4, 'Friendly trainers and open late, perfect after office. The changing room needs more lockers.'] },
+];
+
+module.exports = { OWNERS, VENUES, SHOPS, GYMS, PROS, TRAINERS, PLAYERS, ESPORTS, SHOWCASE, FINISHED, SPORTS_ORG, SPORTS_EVENTS, MEMBER, AVAILABILITY, HIRE_HISTORY, HIRE_DECLINED, SHOP_REVIEWS, MEMBER_SHOP_REVIEW, GYM_REVIEWS };

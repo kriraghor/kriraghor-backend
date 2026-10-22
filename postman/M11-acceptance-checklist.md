@@ -84,3 +84,18 @@ Step 2 brings month and season contracts (Q71), conduct reports, the M10 officia
 | 5.5 | **Staff: the first request with its holds** | Two jobs with their escrow; no phone |
 | 5.6 | Platform cancel 🤖 | Master only, step-up `escrow.manage`; the job is cancelled and refunded in full |
 | 5.7 | **ledger still balanced** | Invariants hold; the pro's payable unchanged at ৳5,062.50 |
+
+## 6. Round B1: insights, calendar and photo (FR-05, FR-14, FR-52, M19 §6.3, M01)
+| # | Do | Expect |
+|---|---|---|
+| 6.1 | **Insights** (7 weeks, then by month) | Earned ৳5,062.50 this period (ledger, net of the 10% fee) in this week's bucket; 7 or 12 buckets; jobs done 1; acceptance in %; `period=month` 422 |
+| 6.2 | **My profile: stats and completeness** | `stats.jobsDone` 1 (the stats consumer); completeness steps photo, headline, bio (60+ characters), rate card, credential, availability, payout account |
+| 6.3 | **Block the evening of the day-8 match** | One block with its reason; audited `availability.updated`; not moderated |
+| 6.4 | **The public strip** | Busy times only, no reasons and no job details |
+| 6.5 | **A request over the block** | 409 `PRO_UNAVAILABLE` |
+| 6.6 | Block a pending request's time, then accept 🤖 | The `available` check fails on `/pro/requests`; accept 422 `CHECKS_FAILED` (`available`) |
+| 6.7 | Block over a booked job 🤖 | 409 `BLOCK_OVER_JOB` with the job codes |
+| 6.8 | **Beyond the horizon** | 422 (`hire.availability_horizon_days` 60) |
+| 6.9 | **My calendar**, **Clear the calendar** | The block in the range, weekly repeats expanded; then empty |
+| 6.10 | **A profile photo (PNG)**, **A PDF is not a photo** | Me shows `avatarUrl` (public bucket); the PDF 415 `FILE_TYPE_NOT_ALLOWED`; over `kyc.max_file_bytes` 413 🤖 |
+| 6.11 | **The directory card shows the photo**, **Remove the photo** | Card with `avatarUrl`, `availableToday`, jobs done and reply stats; removed → `avatarUrl` null |

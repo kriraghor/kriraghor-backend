@@ -1,13 +1,21 @@
 'use strict';
 
 /**
- * M17 reviews (§5.3, FR-20 to FR-26; Q98: one-sided). A member rates a ground once per played
- * booking (checked in or completed, ended, within reviews.window_days), and may edit it for
- * reviews.edit_days. A review waits ("held") while its booking has an open dispute, or when its text
- * has a link or a phone number, until staff publish it. The ground owner can reply once (and edit the
- * reply). review_aggregates is rebuilt from the published reviews on every change, and
- * review.aggregate_updated lets M09 show the rating on the ground (the average shows from
- * reviews.min_count_display reviews).
+ * M17 reviews (§5.3, FR-30 to FR-36; Q98: one-sided). A member rates what they paid for, once per
+ * source, through the review-sources port (review-sources.port.js):
+ *   booking   → ground        played (checked in or completed) and ended            (M10)
+ *   hire_job  → hire_profile  the job's money was released to the pro               (M11)
+ *   sub_order → shop          the sub-order is completed                             (M13)
+ *   gym_pass  → gym           the pass was used at the front desk; ONE review per gym: a newer pass
+ *                             updates the member's review instead of adding one     (M20-FR-10)
+ * within reviews.window_days of the source being done, and may edit it for reviews.edit_days. A
+ * review waits ("held") while its source has an open dispute (FR-33: bookings, sub-orders and hire
+ * jobs), or when its text has a link or a phone number (FR-32), until staff publish it. The subject's
+ * owner (subject_owner_id: the venue owner, the pro, the seller, the gym owner) can reply once and
+ * edit the reply; a reply with contact details is refused (FR-34, REPLY_HAS_CONTACT) and the author is
+ * told (review.replied). review_aggregates is rebuilt per (subject_type, subject_id) from the
+ * published reviews on every change, and review.aggregate_updated lets M09, M11, M12 and M20 show the
+ * rating (the average shows from reviews.min_count_display reviews, FR-35).
  */
 const { Op, UniqueConstraintError } = require('sequelize');
 const { E } = require('../../common/errors');
@@ -18,22 +26,26 @@ const events = require('../events').events;
 const directory = require('../users').directory;
 const { fail } = require('./trust.errors');
 const rules = require('./trust.rules');
+const port = require('./review-sources.port');
 
 const DAY = 24 * 3600 * 1000;
 const iso = (d) => (d ? new Date(d).toISOString() : null);
-const bookingReads = () => require('../bookings').reads;
-const groundReads = () => require('../grounds').reads;
 const disputes = () => require('./disputes.service');
+const NOUNS = { booking: 'Booking', hire_job: 'Job', sub_order: 'Order', gym_pass: 'Pass' };
 
 const payload = (r, extra = {}) => ({ reviewId: r.id, subjectType: r.subjectType, subjectId: r.subjectId, authorId: r.authorId, ...extra });
 const publish = (transaction, name, r, extra, actor = null) => events.publish(transaction, { name, aggregateType: 'review', aggregateId: r.id, payload: payload(r, extra), actor });
 
-function view(r, names = new Map(), { staff = false } = {}) {
+/** scope: 'public' (no source), 'member' (the author or the owner), 'staff'. */
+function view(r, names = new Map(), { staff = false, scope = staff ? 'staff' : 'member', subjects = null } = {}) {
+  const s = subjects?.get(`${r.subjectType}:${r.subjectId}`);
   return {
     id: r.id,
     subjectType: r.subjectType,
     subjectId: r.subjectId,
-    bookingId: r.sourceId,
+    ...(subjects ? { subjectName: s?.name ?? null, subjectSlug: s?.slug ?? null } : {}),
+    ...(scope === 'public' ? {} : { sourceType: r.sourceType, sourceId: r.sourceId }),
+    bookingId: r.sourceType === 'booking' ? r.sourceId : null,
     stars: r.stars,
     text: r.text ?? null,
     status: r.status,
@@ -43,11 +55,23 @@ function view(r, names = new Map(), { staff = false } = {}) {
     editUntil: iso(r.editUntil),
     createdAt: iso(r.createdAt),
     editedAt: iso(r.editedAt),
-    ...(staff ? { hiddenReason: r.hiddenReason ?? null, hiddenAt: iso(r.hiddenAt) } : {}),
+    ...(staff ? { hiddenReason: r.hiddenReason ?? null, hiddenAt: iso(r.hiddenAt), subjectOwnerId: r.subjectOwnerId ?? null } : {}),
   };
 }
 
-// ---------------------------------------------------------------- aggregates
+/** The display name and slug of each subject in the rows (one lookup per subject, through the port). */
+async function subjectsOf(rows) {
+  const keys = [...new Set(rows.map((r) => `${r.subjectType}:${r.subjectId}`))];
+  const found = await Promise.all(keys.map((k) => port.subjectOf(...k.split(':'))));
+  return new Map(keys.map((k, i) => [k, found[i]]));
+}
+
+const page = (rows, limit) => {
+  const items = rows.slice(0, limit);
+  return { items, nextCursor: rows.length > limit ? iso(items[items.length - 1].createdAt) : null };
+};
+
+// ---------------------------------------------------------------- aggregates (FR-35)
 
 async function recompute(subjectType, subjectId, { transaction }) {
   const rows = await Review.findAll({ where: { subjectType, subjectId, status: 'published' }, attributes: ['stars'], transaction });
@@ -59,6 +83,12 @@ async function recompute(subjectType, subjectId, { transaction }) {
   return agg;
 }
 
+/** Recompute each distinct subject of `rows` once. */
+async function recomputeAll(rows, { transaction }) {
+  const subjects = new Map(rows.map((r) => [`${r.subjectType}:${r.subjectId}`, r]));
+  for (const r of subjects.values()) await recompute(r.subjectType, r.subjectId, { transaction });
+}
+
 async function summary(subjectType, subjectId) {
   const a = await ReviewAggregate.findOne({ where: { subjectType, subjectId } });
   const hist = a?.starsHist ?? [0, 0, 0, 0, 0];
@@ -66,66 +96,139 @@ async function summary(subjectType, subjectId) {
   return { count: agg.count, avg: agg.display, histogram: hist };
 }
 
-/** The raw rating (M09 stores it; the public views apply reviews.min_count_display). */
+/** The raw rating (the subject's module stores it; the public views apply reviews.min_count_display). */
 async function ratingOf(subjectType, subjectId, { transaction } = {}) {
   const a = await ReviewAggregate.findOne({ where: { subjectType, subjectId }, transaction });
   const agg = rules.aggregate(a?.starsHist ?? [0, 0, 0, 0, 0], 0);
   return { count: agg.count, avg: agg.avg };
 }
 
-// ---------------------------------------------------------------- disputes hold reviews (FR-24)
+// ---------------------------------------------------------------- disputes hold reviews (FR-33)
+
+/** Dispute sources that are also review sources (booking, sub_order, hire_job) hold their reviews. */
+const reviewSource = (sourceType) => Boolean(port.get(sourceType));
 
 async function holdForSource(sourceType, sourceId, { transaction }) {
-  if (sourceType !== 'booking') return 0;
+  if (!reviewSource(sourceType)) return 0;
   const rows = await Review.findAll({ where: { sourceType, sourceId, status: 'published' }, transaction, lock: transaction.LOCK.UPDATE });
   for (const r of rows) await r.update({ status: 'held', heldReason: 'dispute' }, { transaction });
-  for (const subjectId of new Set(rows.map((r) => r.subjectId))) await recompute('ground', subjectId, { transaction });
+  await recomputeAll(rows, { transaction });
   return rows.length;
 }
 
 async function releaseForSource(sourceType, sourceId, { transaction }) {
-  if (sourceType !== 'booking') return 0;
+  if (!reviewSource(sourceType)) return 0;
   const rows = await Review.findAll({ where: { sourceType, sourceId, status: 'held', heldReason: 'dispute' }, transaction, lock: transaction.LOCK.UPDATE });
   for (const r of rows) {
     const next = rules.initialReview({ disputeActive: false, text: r.text });
     await r.update({ status: next.status, heldReason: next.heldReason }, { transaction });
   }
-  for (const subjectId of new Set(rows.map((r) => r.subjectId))) await recompute('ground', subjectId, { transaction });
+  await recomputeAll(rows, { transaction });
   return rows.length;
 }
 
-// ---------------------------------------------------------------- the member (FR-20 to FR-22)
+// ---------------------------------------------------------------- the member (FR-30 to FR-33)
 
-/** GET /me/reviewable: played bookings still waiting for a rating. */
+/**
+ * GET /me/reviewable: what is waiting for a rating, newest first: played bookings, released hire
+ * jobs, completed sub-orders and used gym passes (one per gym, until the gym is reviewed). Booking
+ * items keep their v1 fields (bookingId, code, groundId, groundName, groundSlug, end).
+ */
 async function reviewable(principal) {
-  const since = new Date(Date.now() - settings.get('reviews.window_days') * DAY);
-  const played = await bookingReads().playedBy(principal.id, since);
-  const done = new Set((await Review.findAll({ where: { authorId: principal.id, sourceType: 'booking', sourceId: played.map((b) => b.bookingId) }, attributes: ['sourceId'] })).map((r) => r.sourceId));
+  const windowDays = settings.get('reviews.window_days');
+  const since = new Date(Date.now() - windowDays * DAY);
   const items = [];
-  for (const b of played.filter((x) => !done.has(x.bookingId))) {
-    const f = await require('../grounds').grounds.facts(b.groundId).catch(() => null);
-    items.push({ bookingId: b.bookingId, code: b.code, groundId: b.groundId, groundName: f?.name ?? null, groundSlug: f?.slug ?? null, end: iso(b.end) });
+  for (const [sourceType, src] of port.all()) {
+    const rows = await src.reviewableBy(principal.id, since);
+    if (!rows.length) continue;
+    const done = new Set((await Review.findAll({ where: { authorId: principal.id, sourceType, sourceId: rows.map((x) => x.sourceId) }, attributes: ['sourceId'] })).map((r) => r.sourceId));
+    // One review per subject (gyms, M20-FR-10): after a later visit the item comes back to update that review.
+    const existing = src.oneReviewPerSubject
+      ? new Map((await Review.findAll({ where: { authorId: principal.id, subjectType: src.subjectType, subjectId: rows.map((x) => x.subjectId) }, attributes: ['id', 'subjectId', 'status', 'createdAt', 'editedAt'] })).map((r) => [r.subjectId, r]))
+      : new Map();
+    const open = (y) => {
+      const r = existing.get(y.subjectId);
+      return !r || (r.status !== 'hidden' && new Date(y.doneAt) > (r.editedAt ?? r.createdAt));
+    };
+    for (const x of rows.filter((y) => !done.has(y.sourceId) && open(y))) {
+      const s = await port.subjectOf(src.subjectType, x.subjectId);
+      const legacy = sourceType === 'booking' ? { ...x.extra, end: iso(x.extra.end), groundName: s?.name ?? null, groundSlug: s?.slug ?? null } : {};
+      items.push({
+        sourceType,
+        sourceId: x.sourceId,
+        ref: x.ref,
+        subjectType: src.subjectType,
+        subjectId: x.subjectId,
+        subjectName: s?.name ?? null,
+        subjectSlug: s?.slug ?? null,
+        doneAt: iso(x.doneAt),
+        closesAt: iso(new Date(new Date(x.doneAt).getTime() + windowDays * DAY)),
+        existingReviewId: existing.get(x.subjectId)?.id ?? null,
+        ...legacy,
+      });
+    }
   }
+  items.sort((a, b) => (a.doneAt < b.doneAt ? 1 : a.doneAt > b.doneAt ? -1 : 0));
   return { items };
 }
 
-/** POST /reviews { bookingId, stars, text } */
-async function post(principal, { bookingId, stars, text = null }, req) {
-  const b = await bookingReads().reviewSource(bookingId);
-  if (!b) throw E.notFound('Booking');
-  const block = rules.reviewBlock({ isBooker: b.bookerUserId === principal.id, status: b.status, endAt: b.end, now: new Date(), windowDays: settings.get('reviews.window_days') });
+/** The gym rule (M20-FR-10): a newer pass updates the member's one review of the gym. */
+async function repost(principal, existing, d, { stars, text }, { transaction, req }) {
+  const block = rules.repostBlock({ sameSource: existing.sourceId === d.sourceId, status: existing.status });
   if (block) throw fail(block);
+  const disputeActive = await disputes().activeFor(d.sourceType, d.sourceId, { transaction });
+  const next = rules.initialReview({ disputeActive, text });
+  const before = { stars: existing.stars, status: existing.status, sourceId: existing.sourceId };
+  await existing.update(
+    { sourceId: d.sourceId, subjectOwnerId: d.ownerId, stars, text, status: next.status, heldReason: next.heldReason, editUntil: new Date(Date.now() + settings.get('reviews.edit_days') * DAY), editedAt: new Date() },
+    { transaction }
+  );
+  await recompute(existing.subjectType, existing.subjectId, { transaction });
+  await publish(transaction, 'review.edited', existing, { stars, status: existing.status }, principal);
+  await audit.record({ action: 'review.edited', actor: principal, entityType: 'review', entityId: existing.id, before, after: { stars, status: existing.status, sourceId: d.sourceId }, reason: 'newer gym pass', req }, { transaction });
+  return { review: view(existing, await directory.publicNames([principal.id], { transaction })), updated: true };
+}
+
+/**
+ * POST /reviews { sourceType, sourceId, stars | rating, text } (v1: { bookingId, stars, text }).
+ * Returns { review } (201), or { review, updated: true } (200) when a gym review was updated.
+ */
+async function post(principal, body, req) {
+  const sourceType = body.sourceType ?? 'booking';
+  const sourceId = body.sourceId ?? body.bookingId;
+  const stars = body.stars ?? body.rating;
+  const text = body.text ?? null;
+  const d = await port.describe(sourceType, sourceId, principal.id);
+  if (!d) throw E.notFound(NOUNS[sourceType] ?? 'Source');
+  if (!d.eligible) throw fail(d.reason);
+  d.sourceId = sourceId;
   try {
     return await sequelize.transaction(async (transaction) => {
-      const disputeActive = await disputes().activeFor('booking', b.bookingId, { transaction });
+      if (d.oneReviewPerSubject) {
+        const existing = await Review.findOne({ where: { authorId: principal.id, subjectType: d.subjectType, subjectId: d.subjectId }, transaction, lock: transaction.LOCK.UPDATE });
+        if (existing) return repost(principal, existing, d, { stars, text }, { transaction, req });
+      }
+      const disputeActive = await disputes().activeFor(sourceType, sourceId, { transaction });
       const first = rules.initialReview({ disputeActive, text });
       const r = await Review.create(
-        { subjectType: 'ground', subjectId: b.groundId, sourceType: 'booking', sourceId: b.bookingId, authorId: principal.id, stars, text, status: first.status, heldReason: first.heldReason, editUntil: new Date(Date.now() + settings.get('reviews.edit_days') * DAY) },
+        {
+          subjectType: d.subjectType,
+          subjectId: d.subjectId,
+          subjectOwnerId: d.ownerId,
+          sourceType,
+          sourceId,
+          authorId: principal.id,
+          stars,
+          text,
+          status: first.status,
+          heldReason: first.heldReason,
+          editUntil: new Date(Date.now() + settings.get('reviews.edit_days') * DAY),
+        },
         { transaction }
       );
-      if (r.status === 'published') await recompute('ground', r.subjectId, { transaction });
-      await publish(transaction, 'review.posted', r, { ownerId: b.ownerId, stars, status: r.status }, principal);
-      await audit.record({ action: 'review.posted', actor: principal, entityType: 'review', entityId: r.id, after: { stars, status: r.status }, req }, { transaction });
+      if (r.status === 'published') await recompute(r.subjectType, r.subjectId, { transaction });
+      await publish(transaction, 'review.posted', r, { ownerId: d.ownerId, stars, status: r.status }, principal);
+      await audit.record({ action: 'review.posted', actor: principal, entityType: 'review', entityId: r.id, after: { stars, status: r.status, sourceType }, req }, { transaction });
       return { review: view(r, await directory.publicNames([principal.id], { transaction })) };
     });
   } catch (err) {
@@ -155,50 +258,65 @@ async function edit(principal, id, patch, req) {
 /** GET /me/reviews: the member's own reviews. */
 async function listMine(principal) {
   const rows = await Review.findAll({ where: { authorId: principal.id }, order: [['createdAt', 'DESC']], limit: 100 });
-  const names = await directory.publicNames([principal.id]);
-  return { items: rows.map((r) => view(r, names)) };
+  const [names, subjects] = await Promise.all([directory.publicNames([principal.id]), subjectsOf(rows)]);
+  return { items: rows.map((r) => view(r, names, { subjects })) };
 }
 
-// ---------------------------------------------------------------- public and the owner (FR-23, FR-25)
+// ---------------------------------------------------------------- public and the owner (FR-34, FR-35)
 
-/** GET /grounds/:id/reviews?cursor: published reviews, newest first, with the summary. */
-async function publicList(groundId, { cursor, limit = 20 } = {}) {
-  const where = { subjectType: 'ground', subjectId: groundId, status: 'published' };
+/** GET /reviews?subjectType&subjectId&cursor: published reviews, newest first, with the summary. */
+async function publicListFor(subjectType, subjectId, { cursor, limit = 20 } = {}) {
+  const where = { subjectType, subjectId, status: 'published' };
   if (cursor) where.createdAt = { [Op.lt]: new Date(cursor) };
   const rows = await Review.findAll({ where, order: [['createdAt', 'DESC']], limit: limit + 1 });
-  const page = rows.slice(0, limit);
-  const names = await directory.publicNames(page.map((r) => r.authorId));
-  return { summary: await summary('ground', groundId), items: page.map((r) => view(r, names)), nextCursor: rows.length > limit ? iso(page[page.length - 1].createdAt) : null };
+  const p = page(rows, limit);
+  const names = await directory.publicNames(p.items.map((r) => r.authorId));
+  return { summary: await summary(subjectType, subjectId), items: p.items.map((r) => view(r, names, { scope: 'public' })), nextCursor: p.nextCursor };
 }
 
-/** GET /me/ground-reviews?groundId: the owner's reviews (published), to reply to. */
-async function ownerList(principal, { groundId, cursor, limit = 50 } = {}) {
-  const mine = (await groundReads().groundsOf(principal.id)).map((g) => g.id);
-  const ids = groundId ? mine.filter((g) => g === groundId) : mine;
-  const where = { subjectType: 'ground', subjectId: ids, status: 'published' };
+/** GET /grounds/:id/reviews (v1). */
+const publicList = (groundId, query = {}) => publicListFor('ground', groundId, query);
+
+/**
+ * GET /me/reviews?role=owner&subjectType&subjectId&cursor: published reviews of what the caller owns
+ * (their venues, pro profiles, shops and gyms), to reply to. /me/ground-reviews is the ground alias.
+ */
+async function ownerList(principal, { subjectType, subjectId, groundId, cursor, limit = 50 } = {}) {
+  const where = { subjectOwnerId: principal.id, status: 'published' };
+  if (subjectType) where.subjectType = subjectType;
+  if (subjectId ?? groundId) where.subjectId = subjectId ?? groundId;
   if (cursor) where.createdAt = { [Op.lt]: new Date(cursor) };
   const rows = await Review.findAll({ where, order: [['createdAt', 'DESC']], limit: limit + 1 });
-  const page = rows.slice(0, limit);
-  const names = await directory.publicNames(page.map((r) => r.authorId));
-  return { items: page.map((r) => view(r, names)), nextCursor: rows.length > limit ? iso(page[page.length - 1].createdAt) : null };
+  const p = page(rows, limit);
+  const [names, subjects] = await Promise.all([directory.publicNames(p.items.map((r) => r.authorId)), subjectsOf(p.items)]);
+  return { items: p.items.map((r) => view(r, names, { subjects })), nextCursor: p.nextCursor };
 }
 
-/** POST /me/reviews/:id/reply { text } (the ground's owner). */
+/** The owner of a review's subject: stored at posting; asked of the source for a row without it. */
+async function ownerOf(r, { transaction }) {
+  if (r.subjectOwnerId) return r.subjectOwnerId;
+  const src = await port.get(r.sourceType)?.source(r.sourceId, { transaction });
+  return src?.ownerId ?? null;
+}
+
+/** POST /me/reviews/:id/reply { text } (the subject's owner; FR-34). */
 async function reply(principal, id, { text }, req) {
   return sequelize.transaction(async (transaction) => {
     const r = await Review.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
     if (!r) throw E.notFound('Review');
-    const g = await groundReads().ground(r.subjectId, { transaction });
-    if (!g || g.ownerId !== principal.id) throw fail('NOT_OWNER');
+    if ((await ownerOf(r, { transaction })) !== principal.id) throw fail('NOT_OWNER');
     if (r.status !== 'published') throw fail('REVIEW_STATE', { status: r.status });
+    const block = rules.replyBlock(text);
+    if (block) throw fail(block);
+    const firstReply = !r.replyText;
     await r.update({ replyText: text, repliedBy: principal.id, repliedAt: new Date() }, { transaction });
-    await publish(transaction, 'review.replied', r, {}, principal);
-    await audit.record({ action: 'review.replied', actor: principal, entityType: 'review', entityId: r.id, req }, { transaction });
+    await publish(transaction, 'review.replied', r, { firstReply }, principal);
+    await audit.record({ action: 'review.replied', actor: principal, entityType: 'review', entityId: r.id, after: { firstReply }, req }, { transaction });
     return { review: view(r, await directory.publicNames([r.authorId], { transaction })) };
   });
 }
 
-// ---------------------------------------------------------------- staff (FR-26) and reports
+// ---------------------------------------------------------------- staff (FR-36) and reports
 
 async function hideInTx(r, { reason, actor, transaction }) {
   if (r.status === 'hidden') return r;
@@ -224,15 +342,16 @@ const lockReview = async (id, transaction) => {
   return r;
 };
 
-/** GET /admin/reviews?status=held|hidden|published */
-async function adminList({ status = 'held', groundId, cursor, limit = 50 } = {}) {
+/** GET /admin/reviews?status=held|hidden|published&subjectType&subjectId (groundId: v1) */
+async function adminList({ status = 'held', subjectType, subjectId, groundId, cursor, limit = 50 } = {}) {
   const where = { status };
-  if (groundId) where.subjectId = groundId;
+  if (subjectType) where.subjectType = subjectType;
+  if (subjectId ?? groundId) where.subjectId = subjectId ?? groundId;
   if (cursor) where.createdAt = { [Op.lt]: new Date(cursor) };
   const rows = await Review.findAll({ where, order: [['createdAt', 'ASC']], limit: limit + 1 });
-  const page = rows.slice(0, limit);
-  const names = await directory.publicNames(page.map((r) => r.authorId));
-  return { items: page.map((r) => view(r, names, { staff: true })), nextCursor: rows.length > limit ? iso(page[page.length - 1].createdAt) : null };
+  const p = page(rows, limit);
+  const names = await directory.publicNames(p.items.map((r) => r.authorId));
+  return { items: p.items.map((r) => view(r, names, { staff: true })), nextCursor: p.nextCursor };
 }
 
 async function staffAction(actor, id, action, { reason = null } = {}, req) {
@@ -251,15 +370,17 @@ async function staffAction(actor, id, action, { reason = null } = {}, req) {
   });
 }
 
-/** Reports: the subject behind a review (its author and ground) and a locked row. */
+/** Reports: the subject behind a review (its author and subject) and a locked row. */
 const get = (id, { transaction } = {}) => Review.findByPk(id, { transaction });
 
-/** Display facts for notifications. */
+/** Display facts for notifications (groundName/groundSlug: the v1 names, now any subject's name). */
 async function facts(id) {
   const r = await Review.findByPk(id);
   if (!r) throw E.notFound('Review');
-  const g = await require('../grounds').grounds.facts(r.subjectId).catch(() => null);
-  return { stars: r.stars, groundName: g?.name ?? '', groundSlug: g?.slug ?? null, hiddenReason: r.hiddenReason ?? null };
+  const s = await port.subjectOf(r.subjectType, r.subjectId);
+  const name = s?.name ?? '';
+  const slug = s?.slug ?? null;
+  return { stars: r.stars, subjectType: r.subjectType, subjectName: name, subjectSlug: slug, groundName: name, groundSlug: slug, hiddenReason: r.hiddenReason ?? null };
 }
 
-module.exports = { recompute, summary, ratingOf, holdForSource, releaseForSource, reviewable, post, edit, listMine, publicList, ownerList, reply, hideInTx, restoreInTx, lockReview, adminList, staffAction, get, facts, view };
+module.exports = { recompute, summary, ratingOf, holdForSource, releaseForSource, reviewable, post, edit, listMine, publicListFor, publicList, ownerList, reply, hideInTx, restoreInTx, lockReview, adminList, staffAction, get, facts, view };

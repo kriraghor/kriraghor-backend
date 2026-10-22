@@ -196,6 +196,31 @@ describe('M17 reviews (Q98)', () => {
     expect(r.reviewBlock({ ...played, now: at(30 * 24 + 1) })).toBe('REVIEW_WINDOW_CLOSED');
   });
 
+  it('any source: the payer, once done, inside the window (M17-FR-30, FR-31)', () => {
+    const job = { isPayer: true, doneAt: T0, windowDays: 30, notPayer: 'NOT_YOUR_JOB', notDone: 'JOB_NOT_RELEASED' };
+    expect(r.sourceReviewBlock({ ...job, now: at(1) })).toBeNull();
+    expect(r.sourceReviewBlock({ ...job, now: T0 })).toBeNull();
+    expect(r.sourceReviewBlock({ ...job, isPayer: false, now: at(1) })).toBe('NOT_YOUR_JOB');
+    expect(r.sourceReviewBlock({ ...job, doneAt: null, now: at(1) })).toBe('JOB_NOT_RELEASED');
+    expect(r.sourceReviewBlock({ ...job, now: at(-1) })).toBe('JOB_NOT_RELEASED');
+    expect(r.sourceReviewBlock({ ...job, now: at(30 * 24) })).toBeNull();
+    expect(r.sourceReviewBlock({ ...job, now: at(30 * 24 + 1) })).toBe('REVIEW_WINDOW_CLOSED');
+  });
+
+  it('one review per gym: a newer pass updates it; the same pass or a hidden review is refused (M20-FR-10)', () => {
+    expect(r.repostBlock({ sameSource: false, status: 'published' })).toBeNull();
+    expect(r.repostBlock({ sameSource: false, status: 'held' })).toBeNull();
+    expect(r.repostBlock({ sameSource: true, status: 'published' })).toBe('REVIEW_EXISTS');
+    expect(r.repostBlock({ sameSource: true, status: 'hidden' })).toBe('REVIEW_EXISTS');
+    expect(r.repostBlock({ sameSource: false, status: 'hidden' })).toBe('REVIEW_HIDDEN');
+  });
+
+  it('refuses an owner reply with a phone number or a link (FR-34)', () => {
+    expect(r.replyBlock('Thank you, see you again')).toBeNull();
+    expect(r.replyBlock('Call us on 01711223344')).toBe('REPLY_HAS_CONTACT');
+    expect(r.replyBlock('Book at www.irongym.com')).toBe('REPLY_HAS_CONTACT');
+  });
+
   it('allows edits until the edit window ends, never on a hidden review', () => {
     expect(r.editBlock({ status: 'published', editUntil: at(1), now: T0 })).toBeNull();
     expect(r.editBlock({ status: 'published', editUntil: at(1), now: at(2) })).toBe('REVIEW_EDIT_CLOSED');

@@ -9,7 +9,10 @@
  * refund_small, desk only, desk with manage_users), three eligible reporters (NID-verified, accounts
  * ten days old) and a member to report. It prepares a no-show booking (b1, ৳500 retained) and two
  * played bookings (b2, b3), lowers refunds.staff_limit_poisha to ৳300 (so ৳500 needs a master), and
- * serves {{controlUrl}}, a local test-only control (never part of the API):
+ * serves {{controlUrl}}, a local test-only control (never part of the API). Round B1 review sources:
+ * a live pro profile whose job for member was paid out, a live shop whose sub-order for member was
+ * received, and a live gym where member2's day pass was admitted.
+ *   POST /gympass                      a newer gym pass for member2, used (returns passId)
  *   POST /settle                       drain events
  *   POST /noshow?who=member|member2    a new booking marked a no-show (returns bookingId)
  *   POST /tick?plusHours=              bookings.tick as if plusHours later (no-show settlement)
@@ -106,6 +109,49 @@ async function main() {
   const b2 = await played(member);
   const b3 = await played(member2);
 
+  // Round B1 review sources: member hires a pro (a released job) and buys from a shop (a completed
+  // sub-order); member2 uses a gym day pass at the front desk.
+  const hx = require('../tests/fixtures/hire');
+  const mx = require('../tests/fixtures/market');
+  const gx = require('../tests/fixtures/gym');
+  const lister = await staffWith(['approve_listings'], 'Listing Reviewer');
+  const docs = await staffWith(['approve_documents'], 'Documents Reviewer');
+  const { pro, profile } = await hx.liveProfile({ docsReviewer: docs, reviewer: lister });
+  const hr = await api().post(`${P}/hire/requests`).set(h.bearer(member)).set('Idempotency-Key', `pm-hr-${Date.now()}`).send(await hx.matchRequest(profile.id, [hx.at1930(4)])).expect(201);
+  await api().post(`${P}/pro/requests/${hr.body.request.id}/accept`).set(h.bearer(pro)).expect(200);
+  await h.payWithSimulator(member, (await models.HireRequest.findByPk(hr.body.request.id)).paymentId);
+  await h.drainEvents();
+  const job = await models.HireJob.findOne({ where: { requestId: hr.body.request.id } });
+  await hx.moveJob(job.id, 5);
+  await api().post(`${P}/pro/jobs/${job.id}/check-in`).set(h.bearer(pro)).expect(200);
+  await api().post(`${P}/pro/jobs/${job.id}/complete`).set(h.bearer(pro)).send({ note: 'Umpired the full match' }).expect(200);
+  await api().post(`${P}/me/hire-jobs/${job.id}/confirm`).set(h.bearer(member)).send({}).expect(200);
+  const seller = await mx.shopOwner(docs, 'Nayeem Sports');
+  const shop = await mx.liveShop(seller, lister, { name: 'Nayeem Sports' });
+  const boots = await mx.liveProduct(seller, lister, await mx.readyBoots(seller, { sizes: ['42'], stock: 2 }));
+  await api().put(`${P}/me/cart/items/${boots.variants[0].id}`).set(h.bearer(member)).send({ qty: 1 }).expect(200);
+  const ship = { name: 'Rafi Ahmed', phone: '01711000111', areaId: await mx.areaId('dhanmondi'), line: 'House 12, Road 5, Dhanmondi' };
+  const quote = (await api().post(`${P}/checkout/quote`).set(h.bearer(member)).send({ areaId: ship.areaId }).expect(200)).body.total;
+  const placed = await api().post(`${P}/checkout`).set(h.bearer(member)).set('Idempotency-Key', `pm-co-${Date.now()}`).send({ ship, expectedTotal: quote }).expect(201);
+  await h.payWithSimulator(member, placed.body.payment.id);
+  await h.drainEvents();
+  const sub = await models.SubOrder.findOne({ where: { orderId: placed.body.order.id } });
+  for (const [action, body] of [['accept'], ['ship', { courierName: 'Pathao', trackingNo: 'PTH-1001' }], ['delivered']]) await api().post(`${P}/shop/sub-orders/${sub.id}/${action}`).set(h.bearer(seller)).send(body ?? {}).expect(200);
+  await api().post(`${P}/me/sub-orders/${sub.id}/received`).set(h.bearer(member)).send({}).expect(200);
+  const gymOwner = await gx.gymOwner(docs);
+  const gym = await gx.liveGym(gymOwner, lister);
+  const dayPass = gym.packages.find((p) => p.kind === 'day').id;
+  async function gymPass(validFrom) {
+    const r = await api().post(`${P}/gym/passes`).set(h.bearer(member2)).set('Idempotency-Key', `pm-gp-${Date.now()}-${(hour += 1)}`).send({ packageId: dayPass, validFrom }).expect(201);
+    await h.payWithSimulator(member2, r.body.payment.id);
+    await h.drainEvents();
+    return models.GymPass.findOne({ where: { code: r.body.pass.code } });
+  }
+  const pass1 = await gymPass(gx.today());
+  const token = (await api().get(`${P}/me/passes/${pass1.code}`).set(h.bearer(member2)).expect(200)).body.pass.token;
+  await api().post(`${P}/me/gyms/${gym.id}/redemptions`).set(h.bearer(gymOwner)).send({ token }).expect(201);
+  await h.drainEvents();
+
   let queue = Promise.resolve();
   const serial = (fn) => {
     const next = queue.then(fn, fn);
@@ -121,6 +167,12 @@ async function main() {
     noshow: async (q) => ({ bookingId: await noShow(people[q.get('who') ?? 'member']) }),
     tick: async (q) => ({ tick: await bookings.tick(later(q)) }),
     dtick: async (q) => ({ tick: await disputes.tick(later(q)) }),
+    // A newer gym pass for member2, used (as if admitted at the desk tomorrow).
+    gympass: async () => {
+      const p = await gymPass(gx.inDays(1));
+      await p.update({ status: 'redeemed', firstRedeemedAt: new Date(), lastRedeemedAt: new Date() });
+      return { passId: p.id };
+    },
     check: async () => ({ invariantsOk: (await invariants.check({ publish: false })).ok, ownerPayable: await ledger.balance(`payable:user:${owner.user.id}`) }),
   };
   const control = http.createServer((rq, rs) => {
@@ -153,6 +205,15 @@ async function main() {
     b1,
     b2,
     b3,
+    proToken: pro.accessToken,
+    sellerToken: seller.accessToken,
+    gymOwnerToken: gymOwner.accessToken,
+    hireJobId: job.id,
+    hireProfileId: profile.id,
+    subOrderId: sub.id,
+    shopId: shop.id,
+    gymPassId: pass1.id,
+    gymId: gym.id,
     stepUpQueueA: await h.stepUp(a, 'refund.large'),
     controlUrl: `http://127.0.0.1:${controlPort}`,
   };

@@ -40,6 +40,9 @@ const ERRORS = {
   CONTACT_NOT_ALLOWED: [422, 'Keep contact details out of messages until the request is paid; phone numbers show then'],
   MESSAGES_RATE_LIMITED: [429, 'Too many messages. Try again later'],
   SHORTLIST_LIMIT: [409, 'Your shortlist is full'],
+  // Round B1 (FR-05): the pro's calendar.
+  PRO_UNAVAILABLE: [409, 'This person is not available at that time'],
+  BLOCK_OVER_JOB: [409, 'You have a booked job in that time'],
 };
 /** The automatic checks' failure texts (§6.5). */
 const CHECK_TEXT = {
@@ -48,6 +51,7 @@ const CHECK_TEXT = {
   free: 'Clashes with another job, travel included',
   daily_limit: 'Over your daily limit',
   in_future: 'Starts too soon to accept',
+  available: 'You marked this time as not available',
 };
 const fail = (code, meta) => new AppError(ERRORS[code][0], code, ERRORS[code][1], meta ? { meta } : undefined);
 
@@ -79,6 +83,9 @@ const config = () => ({
   engagementsMax: settings.get('hire.engagements_max'),
   messagesPerHour: settings.get('hire.messages_per_hour'),
   shortlistMax: settings.get('hire.shortlist_max'),
+  acceptanceWindowDays: settings.get('hire.acceptance_window_days'),
+  bioMinChars: settings.get('hire.profile_bio_min_chars'),
+  horizonDays: settings.get('hire.availability_horizon_days'),
 });
 
 /** A savepoint around a write the exclusion constraint may refuse (Postgres aborts the whole transaction otherwise). */

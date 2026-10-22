@@ -960,9 +960,10 @@ const CATALOGUE = [
     recipients: (e) => (e.payload.status === 'published' ? [e.payload.ownerId] : []),
     values: async (e) => {
       const f = await reviewFacts(e.payload.reviewId);
-      return { stars: f.stars, ground: f.groundName };
+      return { stars: f.stars, ground: f.subjectName };
     },
-    link: () => vendorUrl('/reviews'),
+    // Venue owners, shops and gyms reply on vendor.kriraghor.com; pros on their kriraghor.com desk.
+    link: (e) => (e.payload.subjectType === 'hire_profile' ? '/pro/reviews' : vendorUrl('/reviews')),
   },
   {
     code: 'REVIEW_HIDDEN',
@@ -970,7 +971,17 @@ const CATALOGUE = [
     category: 'reviews',
     channels: ['in_app'],
     recipients: (e) => [e.payload.authorId],
-    values: async (e) => ({ ground: (await reviewFacts(e.payload.reviewId)).groundName }),
+    values: async (e) => ({ ground: (await reviewFacts(e.payload.reviewId)).subjectName }),
+    link: () => '/me/reviews',
+  },
+  {
+    code: 'REVIEW_REPLIED',
+    events: ['review.replied'],
+    category: 'reviews',
+    channels: ['in_app'],
+    // The author hears about the first reply only (an edited reply is not news).
+    recipients: (e) => (e.payload.firstReply === false ? [] : [e.payload.authorId]),
+    values: async (e) => ({ subject: (await reviewFacts(e.payload.reviewId)).subjectName }),
     link: () => '/me/reviews',
   },
   // ---------------- M12 market: shop and product reviews, stock (the shop owner), saved items (members)

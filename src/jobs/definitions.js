@@ -325,6 +325,15 @@ const JOBS = [
     every: 60 * 1000,
     run: async () => hire.tick(),
   },
+  {
+    // FR-52 (Round B1): acceptance rate and reply time over the trailing hire.acceptance_window_days, so a
+    // quiet profile's old requests age out. Events keep them fresh in between. Idempotent: a recompute.
+    name: 'hire.stats-recompute',
+    queue: QUEUES.HIRE,
+    pattern: '15 3 * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => hire.recomputeStats(),
+  },
   // ---------------- M20 gym (§10). Idempotent: every step locks the row and re-checks its status.
   {
     // Unpaid passes void; passes past closing on their last day expire and pay the gym (Q110); trainer

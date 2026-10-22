@@ -1,6 +1,7 @@
 'use strict';
 
 const { maskPhone, maskEmail } = require('../../common/identifiers');
+const storage = require('../../common/storage');
 
 /** The signed-in user's own view (full own identifiers, never hashes/NID). */
 function serializePrincipal(principal) {
@@ -13,6 +14,7 @@ function serializePrincipal(principal) {
         .sort((a, b) => a.role.localeCompare(b.role)),
       permissions: [...principal.permissions].sort(),
     }),
+    avatarUrl: user.avatarKey ? storage.publicUrl(user.avatarKey) : null,
     signInMethods: {
       phoneOtp: Boolean(user.phone),
       emailOtp: Boolean(user.email && user.emailVerifiedAt),

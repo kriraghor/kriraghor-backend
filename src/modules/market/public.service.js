@@ -22,6 +22,9 @@ const catalog = require('../catalog').catalog;
 const rules = require('./market.rules');
 const c = require('./market.common');
 
+/** M17: the average shows once there are reviews.min_count_display published reviews (FR-35). */
+const shownRating = (x) => (x.ratingCount >= require('../settings').settings.get('reviews.min_count_display') ? (x.ratingAvg ?? null) : null);
+
 /** The WHERE parts of a browse query, by filter, so a facet can drop its own filter. */
 function filterParts(q, typeIds) {
   const parts = {
@@ -169,7 +172,7 @@ async function product(slug) {
     variants,
     specs,
     supplement: t.category?.isSupplement ? { importer: s.importer, bstiRegNo: s.bstiRegNo } : null,
-    shop: { name: shop.liveSnapshot.name, slug: shop.slug, shopType: shop.shopType, area: areas.get(shop.liveSnapshot.areaId) ?? null, verifiedSince: c.iso(shop.firstLiveAt), ratingAvg: shop.ratingAvg ?? null, ratingCount: shop.ratingCount },
+    shop: { name: shop.liveSnapshot.name, slug: shop.slug, shopType: shop.shopType, area: areas.get(shop.liveSnapshot.areaId) ?? null, verifiedSince: c.iso(shop.firstLiveAt), ratingAvg: shownRating(shop), ratingCount: shop.ratingCount },
     available,
     // M13: the cart and checkout are open while the product and its shop are live.
     checkoutOpen: available,
@@ -193,7 +196,7 @@ async function shop(slug, { cursor, limit = 24 } = {}) {
     area: areas.get(s.liveSnapshot.areaId) ?? null,
     addressLine: s.liveSnapshot.addressLine,
     verifiedSince: c.iso(s.firstLiveAt),
-    ratingAvg: s.ratingAvg ?? null,
+    ratingAvg: shownRating(s),
     ratingCount: s.ratingCount,
     items: await cardsFor(rows),
     total: count,

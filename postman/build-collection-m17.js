@@ -8,7 +8,9 @@
  * 25% advance), memberToken / member2Token, staffToken (resolve_reports + refund_small), staff2Token
  * (resolve_reports), opsToken (resolve_reports + manage_users), r1Token…r3Token (eligible reporters),
  * targetUserId, the bookings b1 (a no-show, ৳500 retained), b2 and b3 (played), stepUpQueueA
- * (refund.large) and controlUrl (the runner: /noshow, /tick, /dtick, /check, /settle).
+ * (refund.large) and controlUrl (the runner: /noshow, /tick, /dtick, /check, /settle, /gympass). Round B1:
+ * proToken, sellerToken, gymOwnerToken, hireJobId and hireProfileId (a paid-out job for member),
+ * subOrderId and shopId (a received sub-order for member), gymPassId and gymId (member2's used pass).
  * Unattended: `node postman/run-m17.js` (kriraghor_test database; fixtures in postman/fixtures).
  */
 const fs = require('fs');
@@ -29,6 +31,9 @@ const staff = as('staffToken');
 const staff2 = as('staff2Token');
 const ops = as('opsToken');
 const reporter = (n) => as(`r${n}Token`);
+const pro = as('proToken');
+const seller = as('sellerToken');
+const gymOwner = as('gymOwnerToken');
 const idem = (item) => {
   item.request.header.push({ key: 'Idempotency-Key', value: 'pm-{{$guid}}' });
   return item;
@@ -56,6 +61,7 @@ const collection = {
       'A ৳2,000 booking with a 25% advance is marked a no-show: the ৳500 advance waits in escrow for the dispute window. The member contests it with a photo; the hold is frozen, so the tick cannot release it. The owner answers; staff claim the case (one reviewer at a time), see what each outcome moves, and decide half: ৳250 back to the member, ৳237.50 to the owner, ৳12.50 fee.',
       'A second no-show goes unanswered (the respondent window ends). The staff refund limit is ৳300, so a full refund is escalated with a recommendation and a master decides it with step-up. A third case is withdrawn and the tick then releases ৳475 / ৳25.',
       'Played bookings are rated; links send a review to staff; the owner replies. Three eligible reporters hide a review at once and staff restore it; suspending a reported member needs manage_users and goes through M01.',
+      'Round B1: the manager rates the pro after the job is paid out, the buyer rates the shop after a completed sub-order, and the member rates the gym after using a pass (a newer pass updates the one gym review). Each owner replies (no phone numbers or links); GET /reviews lists any subject.',
       'Requests named "Runner" go to the local test runner (a new no-show, the minute ticks as if hours later, ledger balances).',
       'Unattended: `node postman/run-m17.js` (kriraghor_test database).',
       'Rebuild this file with: node postman/build-collection-m17.js',
@@ -65,6 +71,7 @@ const collection = {
   variable: [
     'baseUrl', 'controlUrl', 'adminAccessToken', 'ownerToken', 'memberToken', 'member2Token', 'staffToken', 'staff2Token', 'opsToken', 'r1Token', 'r2Token', 'r3Token',
     'targetUserId', 'groundId', 'groundSlug', 'b1', 'b2', 'b3', 'b4', 'b5', 'code1', 'code2', 'code3', 'ev1', 'version1', 'review1', 'review2',
+    'proToken', 'sellerToken', 'gymOwnerToken', 'hireJobId', 'hireProfileId', 'subOrderId', 'shopId', 'gymPassId', 'gymId', 'gymPass2', 'hireReview', 'shopReview', 'gymReview',
   ].map((key) => ({ key, value: key === 'baseUrl' ? 'http://localhost:4000/api/v1' : '' })),
   item: [
     {
@@ -166,6 +173,32 @@ const collection = {
         staff('Suspend without manage_users (expect 403)', 'POST', '/admin/reports/resolve', { body: { subjectType: 'user', subjectId: '{{targetUserId}}', action: 'user_suspended', note: 'Off-platform payments' }, expect: { status: 403, code: 'PERMISSION_REQUIRED' } }),
         ops('Suspend through M01', 'POST', '/admin/reports/resolve', { body: { subjectType: 'user', subjectId: '{{targetUserId}}', action: 'user_suspended', note: 'Off-platform payments' }, expect: { status: 200 }, checks: [['one', "j.resolved === 1 && j.action === 'user_suspended'"]] }),
         reporter(1)('My reports and their outcomes', 'GET', '/me/reports', { expect: { status: 200 }, checks: [['both resolved', "j.items.length === 2 && j.items.every((x) => x.status === 'resolved')"]] }),
+      ],
+    },
+    {
+      name: '6. Reviews of pros, shops and gyms (FR-30 to FR-35, M11-FR-06, M20-FR-10)',
+      item: [
+        member('Waiting: the pro and the shop', 'GET', '/me/reviewable', { expect: { status: 200 }, checks: [['hire job and sub-order', "j.items.some((x) => x.sourceType === 'hire_job' && x.subjectType === 'hire_profile') && j.items.some((x) => x.sourceType === 'sub_order' && x.subjectType === 'shop')"]] }),
+        pro('Rate my own job (expect 403)', 'POST', '/reviews', { body: { sourceType: 'hire_job', sourceId: '{{hireJobId}}', stars: 5 }, expect: { status: 403, code: 'NOT_YOUR_JOB' } }),
+        member('Rate the pro: 5 stars', 'POST', '/reviews', { body: { sourceType: 'hire_job', sourceId: '{{hireJobId}}', stars: 5, text: 'On time and fair calls' }, expect: { status: 201 }, checks: [setVar('hireReview', 'j.review.id'), ['the profile', "j.review.subjectType === 'hire_profile' && j.review.status === 'published'"]] }),
+        member('Twice (expect 409)', 'POST', '/reviews', { body: { sourceType: 'hire_job', sourceId: '{{hireJobId}}', stars: 4 }, expect: { status: 409, code: 'REVIEW_EXISTS' } }),
+        member('Rate the shop (rating = stars)', 'POST', '/reviews', { body: { sourceType: 'sub_order', sourceId: '{{subOrderId}}', rating: 4, text: 'Genuine boots, fast delivery' }, expect: { status: 201 }, checks: [setVar('shopReview', 'j.review.id'), ['the shop', "j.review.subjectType === 'shop' && j.review.stars === 4"]] }),
+        member2('Rate the gym: 3 stars', 'POST', '/reviews', { body: { sourceType: 'gym_pass', sourceId: '{{gymPassId}}', stars: 3, text: 'Good racks, crowded at 7' }, expect: { status: 201 }, checks: [setVar('gymReview', 'j.review.id'), ['the gym', "j.review.subjectType === 'gym'"]] }),
+        member2('The same pass again (expect 409)', 'POST', '/reviews', { body: { sourceType: 'gym_pass', sourceId: '{{gymPassId}}', stars: 5 }, expect: { status: 409, code: 'REVIEW_EXISTS' } }),
+        control('a newer gym pass, used', 'gympass', { checks: [setVar('gymPass2', 'j.passId')] }),
+        member2('A newer pass updates the one gym review', 'POST', '/reviews', { body: { sourceType: 'gym_pass', sourceId: '{{gymPass2}}', stars: 5, text: 'Even better on a quiet morning' }, expect: { status: 200 }, checks: [['same review, 5 stars', "j.updated === true && j.review.id === pm.collectionVariables.get('gymReview') && j.review.stars === 5"]] }),
+        control('deliver events', 'settle'),
+        pro('Reviews of my profile', 'GET', '/me/reviews?role=owner', { expect: { status: 200 }, checks: [['one', "j.items.length === 1 && j.items[0].id === pm.collectionVariables.get('hireReview')"]] }),
+        pro('Reply with a phone number (expect 422)', 'POST', '/me/reviews/{{hireReview}}/reply', { body: { text: 'Call me direct on 01711223344' }, expect: { status: 422, code: 'REPLY_HAS_CONTACT' } }),
+        seller('Reply to the pro review (expect 403)', 'POST', '/me/reviews/{{hireReview}}/reply', { body: { text: 'Not my review' }, expect: { status: 403, code: 'NOT_OWNER' } }),
+        pro('Reply', 'POST', '/me/reviews/{{hireReview}}/reply', { body: { text: 'Thank you, good luck in the league' }, expect: { status: 200 }, checks: [['reply', "j.review.reply.text === 'Thank you, good luck in the league'"]] }),
+        seller('Reply to the shop review', 'POST', '/me/reviews/{{shopReview}}/reply', { body: { text: 'Thank you for shopping with us' }, expect: { status: 200 } }),
+        gymOwner('Reply to the gym review', 'POST', '/me/reviews/{{gymReview}}/reply', { body: { text: 'Thanks, the new racks are in' }, expect: { status: 200 } }),
+        control('deliver events', 'settle'),
+        req('Public reviews of the pro', 'GET', '/reviews?subjectType=hire_profile&subjectId={{hireProfileId}}', { as: false, expect: { status: 200 }, checks: [['one with the reply, no average yet', 'j.summary.count === 1 && j.summary.avg === null && j.items[0].reply !== null && j.items[0].sourceId === undefined']] }),
+        req('Public reviews of the shop', 'GET', '/reviews?subjectType=shop&subjectId={{shopId}}', { as: false, expect: { status: 200 }, checks: [['one', 'j.summary.count === 1 && j.items.length === 1']] }),
+        req('Public reviews of the gym', 'GET', '/reviews?subjectType=gym&subjectId={{gymId}}', { as: false, expect: { status: 200 }, checks: [['one review, 5 stars', 'j.summary.count === 1 && j.items[0].stars === 5']] }),
+        req('An unknown subject type (expect 422)', 'GET', '/reviews?subjectType=planet&subjectId={{gymId}}', { as: false, expect: { status: 422, code: 'VALIDATION_FAILED' } }),
       ],
     },
   ],

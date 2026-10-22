@@ -57,10 +57,17 @@ describe('demo data', () => {
     await run('demo-seed.js', ['--profile=listings']);
     expect(await records()).toBe(before);
 
-    await run('demo-seed.js', ['--profile=full']);
+    const full = await run('demo-seed.js', ['--profile=full']);
     expect(await count('/esports/top-players')).toBeGreaterThan(0);
     expect(await models.Booking.count({ where: { status: 'completed' } })).toBe(24);
-    expect(await models.Review.count({ where: { status: 'published' } })).toBe(24);
+    expect(await models.Review.count({ where: { status: 'published', subjectType: 'ground' } })).toBe(24);
+    // Round B1: reviews of pros, shops and gyms, owner replies, and one item of each kind left to rate.
+    const bySubject = Object.fromEntries((await models.Review.findAll({ where: { status: 'published' }, attributes: ['subjectType', [models.sequelize.fn('COUNT', '*'), 'n']], group: ['subjectType'], raw: true })).map((r) => [r.subjectType, Number(r.n)]));
+    expect(bySubject).toMatchObject({ hire_profile: expect.any(Number), shop: expect.any(Number) });
+    // Gym visits need the front desk open now (Dhaka hours); outside them the seeder says to re-run.
+    if (!bySubject.gym) expect(full).toContain('re-run when the gym is open');
+    expect(await models.Review.count({ where: { replyText: { [require('sequelize').Op.ne]: null }, subjectType: ['hire_profile', 'shop', 'gym'] } })).toBeGreaterThan(0);
+    expect(await models.AvailabilityBlock.count({ where: { status: 'active' } })).toBeGreaterThan(0);
 
     const dry = await run('demo-hide.js', ['--dry-run']);
     expect(dry).toContain('Dry run: nothing changed.');

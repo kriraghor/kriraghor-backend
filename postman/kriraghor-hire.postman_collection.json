@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Kriraghor API: M11 Hire (step 1)",
-    "description": "A pro (an active member who applied as a pro) sends a BCB Level 2 umpire credential (M02, kept per hire role); the documents desk approves it and the pro role turns active. The pro lists as a semi-pro cricket umpire based in Dhanmondi with the design rate card (T20 ৳3,500, night 20%, short notice 15%, travel north ৳300); the listings desk approves it (M05 kind hire_profile).\n\nManager 1 asks for two T20 night matches in Mirpur; the server quotes ৳4,500 each. Manager 2 asks for the first evening too; once the pro accepts manager 1, manager 2 fails the clash check. Messages refuse phone numbers before payment. Manager 1 pays (one payment, a hold per job) and both phones show.\n\nMatch day: check in (late), start, mark complete; the manager confirms and the pro gets ৳4,050 (10% fee). The second match is cancelled 30 h before: 25% to the pro less 10% (৳1,012.50), 75% back. Manager 2 hires again and the pro withdraws (100% back). A third hire is a no-show: an M17 dispute, the hold frozen, decided all back.\n\nRequests named \"Runner\" go to the local test runner (pay, move a job in time, refresh the pro token, read the ledger).\n\nUnattended: `node postman/run-m11.js` (kriraghor_test database).\n\nRebuild this file with: node postman/build-collection-m11.js",
+    "name": "Kriraghor API: M11 Hire (step 1 and Round B1)",
+    "description": "A pro (an active member who applied as a pro) sends a BCB Level 2 umpire credential (M02, kept per hire role); the documents desk approves it and the pro role turns active. The pro lists as a semi-pro cricket umpire based in Dhanmondi with the design rate card (T20 ৳3,500, night 20%, short notice 15%, travel north ৳300); the listings desk approves it (M05 kind hire_profile).\n\nManager 1 asks for two T20 night matches in Mirpur; the server quotes ৳4,500 each. Manager 2 asks for the first evening too; once the pro accepts manager 1, manager 2 fails the clash check. Messages refuse phone numbers before payment. Manager 1 pays (one payment, a hold per job) and both phones show.\n\nMatch day: check in (late), start, mark complete; the manager confirms and the pro gets ৳4,050 (10% fee). The second match is cancelled 30 h before: 25% to the pro less 10% (৳1,012.50), 75% back. Manager 2 hires again and the pro withdraws (100% back). A third hire is a no-show: an M17 dispute, the hold frozen, decided all back.\n\nRound B1: the pro reads their insights (earned from the ledger, net), stats and completeness, blocks an evening in the calendar (the public strip shows times only, a request over it is refused with PRO_UNAVAILABLE, the horizon is enforced), and sets and removes a profile photo (M01 avatar).\n\nRequests named \"Runner\" go to the local test runner (pay, move a job in time, refresh the pro token, read the ledger).\n\nUnattended: `node postman/run-m11.js` (kriraghor_test database).\n\nRebuild this file with: node postman/build-collection-m11.js",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -2927,6 +2927,677 @@
               ],
               "path": [
                 "check"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Round B1: insights, calendar and photo (FR-05, FR-14, FR-52, M19 §6.3, M01)",
+      "item": [
+        {
+          "name": "Insights: earned this period from the ledger (net)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"৳5,062.50 earned\", () => { pm.expect(j.earned.total === 506250 && j.buckets.length === 7).to.eql(true); });",
+                  "pm.test(\"one job done\", () => { pm.expect(j.jobs.done === 1).to.eql(true); });",
+                  "pm.test(\"acceptance\", () => { pm.expect(typeof j.acceptanceRate === 'number').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pro/insights?period=7w",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pro",
+                "insights"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "7w"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Insights by month",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"12 months\", () => { pm.expect(j.buckets.length === 12 && j.earned.total === 506250).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pro/insights?period=yr",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pro",
+                "insights"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "yr"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "A period that does not exist (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pro/insights?period=month",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pro",
+                "insights"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "month"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "My profile: stats and completeness",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"jobs done 1\", () => { pm.expect(j.stats.jobsDone === 1).to.eql(true); });",
+                  "pm.test(\"steps\", () => { pm.expect(j.completeness.steps.some((s) => s.key === 'availability' && s.done === false)).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pro/profiles/{{profileId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pro",
+                "profiles",
+                "{{profileId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Block the evening of the day-8 match",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"one block\", () => { pm.expect(j.blocks.length === 1 && j.blocks[0].reason === 'Family wedding').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from\": \"{{day0}}\",\n  \"to\": \"{{day14}}\",\n  \"blocks\": [\n    {\n      \"start\": \"{{block8Start}}\",\n      \"end\": \"{{block8End}}\",\n      \"reason\": \"Family wedding\"\n    }\n  ],\n  \"repeats\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pro/availability/blocks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pro",
+                "availability",
+                "blocks"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The public strip: times only",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"busy\", () => { pm.expect(j.busy.length >= 1).to.eql(true); });",
+                  "pm.test(\"no reason\", () => { pm.expect(!JSON.stringify(j).includes('wedding')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/hire/profiles/{{profileId}}/availability?from={{day0}}&to={{day14}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hire",
+                "profiles",
+                "{{profileId}}",
+                "availability"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{day0}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{day14}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "A request over the block (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 PRO_UNAVAILABLE', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('PRO_UNAVAILABLE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{m2Token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profileId\": \"{{profileId}}\",\n  \"unit\": \"match\",\n  \"engagements\": [\n    {\n      \"start\": \"{{start8}}\",\n      \"format\": \"T20\",\n      \"venueText\": \"Mirpur Turf 10\",\n      \"venueAreaId\": \"{{areaMirpur}}\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/hire/requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hire",
+                "requests"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Beyond the horizon (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from\": \"{{day0}}\",\n  \"to\": \"{{day70}}\",\n  \"blocks\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pro/availability/blocks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pro",
+                "availability",
+                "blocks"
+              ]
+            }
+          }
+        },
+        {
+          "name": "My calendar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"the block, 60-day horizon\", () => { pm.expect(j.spans.length === 1 && j.horizonDays === 60).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pro/availability?from={{day0}}&to={{day14}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pro",
+                "availability"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{day0}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{day14}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Clear the calendar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"empty\", () => { pm.expect(j.blocks.length === 0).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from\": \"{{day0}}\",\n  \"to\": \"{{day14}}\",\n  \"blocks\": [],\n  \"repeats\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pro/availability/blocks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pro",
+                "availability",
+                "blocks"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A profile photo (PNG)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"avatar url\", () => { pm.expect(typeof j.avatarUrl === 'string' && j.avatarUrl.includes('/avatars/')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "image/png"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/avatar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "avatar"
+              ]
+            },
+            "body": {
+              "mode": "file",
+              "file": {
+                "src": "nid-back.png"
+              }
+            }
+          }
+        },
+        {
+          "name": "A PDF is not a photo (expect 415)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 415 FILE_TYPE_NOT_ALLOWED', () => {",
+                  "  pm.response.to.have.status(415);",
+                  "  pm.expect(j && j.code).to.eql('FILE_TYPE_NOT_ALLOWED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/pdf"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/avatar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "avatar"
+              ]
+            },
+            "body": {
+              "mode": "file",
+              "file": {
+                "src": "nid-selfie.pdf"
+              }
+            }
+          }
+        },
+        {
+          "name": "The directory card shows the photo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"photo\", () => { pm.expect(typeof j.items[0].avatarUrl === 'string').to.eql(true); });",
+                  "pm.test(\"available today\", () => { pm.expect(typeof j.items[0].availableToday === 'boolean').to.eql(true); });",
+                  "pm.test(\"stats\", () => { pm.expect(j.items[0].jobsDone === 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/hire/profiles?category=officials",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hire",
+                "profiles"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "officials"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Remove the photo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"gone\", () => { pm.expect(j.avatarUrl === null).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{proToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/avatar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "avatar"
               ]
             }
           }

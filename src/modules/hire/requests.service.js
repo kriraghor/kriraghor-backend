@@ -26,6 +26,7 @@ const kyc = require('../kyc').kyc;
 const taxonomy = require('../catalog').hireReads;
 const { payUrl } = require('../payments').intents;
 const dir = require('./directory.service');
+const availability = require('./availability.service');
 const rules = require('./hire.rules');
 const c = require('./hire.common');
 
@@ -81,6 +82,9 @@ async function create(principal, body, idempotencyKey, req) {
     const spans = [...theirs.map((j) => [new Date(j.startAt).getTime(), new Date(j.endAt).getTime()]), ...pending.flatMap((x) => x.quoteSnapshot.lines.map((l) => [Date.parse(l.start), Date.parse(l.end)]))];
     if (q.lines.some((l) => spans.some(([s, e]) => Date.parse(l.start) < e && Date.parse(l.end) > s))) throw fail('DUPLICATE_REQUEST');
   }
+  // Round B1 (FR-05): not over time the pro marked as not available.
+  const blocked = await availability.blockedFor(p.userId, q.lines);
+  if (blocked.length) throw fail('PRO_UNAVAILABLE', { starts: blocked.map((l) => l.start) });
   const feeBps = fees.snapshot('hire').feeBps;
   const jobMoney = q.lines.map((l) => rules.money([l.total], feeBps));
   const fee = jobMoney.reduce((n, m) => n + m.fee, 0);
@@ -152,6 +156,7 @@ async function checksOf(r, { transaction } = {}) {
   const clashes = [];
   const perDay = {};
   const mine = await HireJob.findAll({ where: { proUserId: r.proUserId, status: rules.ACTIVE_JOB, requestId: { [Op.ne]: r.id } }, attributes: ['code', 'startAt', 'endAt'], transaction });
+  const blocked = await availability.blockedFor(r.proUserId, lines, { transaction });
   for (const j of mine) {
     const d = rules.dhakaDay(j.startAt);
     if (days.includes(d)) perDay[d] = (perDay[d] ?? 0) + 1;
@@ -169,6 +174,7 @@ async function checksOf(r, { transaction } = {}) {
     maxPerDay: r.quoteSnapshot.maxJobsPerDay,
     now: new Date(),
     leadMin: cfg.replyBeforeStartMin,
+    blocked,
   });
 }
 

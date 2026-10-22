@@ -1,6 +1,6 @@
 {
-  "seedVersion": 20,
-  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code. v9: the M17 DISPUTE_*, REPORT_* and REVIEW_* codes. v10: the M18 RISK_*, PAYOUTS_*, DOCUMENTS_* and TRUST_LOW codes. v11: the M12 SHOP_*, PRODUCT_*, STOCK_*, SUPPLEMENT_EXPIRING and SAVED_* codes. v12: the M13 ORDER_* and SHOP_*ORDER* codes. v13: the M11 HIRE_* and JOB_* codes. v14 (M20): gyms (live, changes, rejected), passes (ready, cancelled) and trainer subscriptions (started, new subscriber, renewal due, lapsed, cancelled, paid). v15 (M14 lite, M22): organisations (verified, changes) and the organiser SaaS (contract active, suspended, ending; invoices issued, overdue, paid; prize fund received, returned). v18 adds the M14 tournament notices (approval, registrations, reserve offers, fixtures, reschedules, cancellation, too few teams, lots). v19 adds the M01 password-changed security alert. v20: user-facing words Grounds → Venues, Tournaments → Events, big events → Showcases (19 Oct 2026).",
+  "seedVersion": 21,
+  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code. v9: the M17 DISPUTE_*, REPORT_* and REVIEW_* codes. v10: the M18 RISK_*, PAYOUTS_*, DOCUMENTS_* and TRUST_LOW codes. v11: the M12 SHOP_*, PRODUCT_*, STOCK_*, SUPPLEMENT_EXPIRING and SAVED_* codes. v12: the M13 ORDER_* and SHOP_*ORDER* codes. v13: the M11 HIRE_* and JOB_* codes. v14 (M20): gyms (live, changes, rejected), passes (ready, cancelled) and trainer subscriptions (started, new subscriber, renewal due, lapsed, cancelled, paid). v15 (M14 lite, M22): organisations (verified, changes) and the organiser SaaS (contract active, suspended, ending; invoices issued, overdue, paid; prize fund received, returned). v18 adds the M14 tournament notices (approval, registrations, reserve offers, fixtures, reschedules, cancellation, too few teams, lots). v19 adds the M01 password-changed security alert. v20: user-facing words Grounds → Venues, Tournaments → Events, big events → Showcases (19 Oct 2026). v21 adds REVIEW_REPLIED (the author hears that the venue, pro, shop or gym replied; Round B1).",
   "templates": [
     {
       "code": "AUDIT_CRITICAL",
@@ -4755,7 +4755,7 @@
       "channel": "in_app",
       "locale": "en",
       "subject": "New {{stars}}-star review",
-      "body": "A member rated {{ground}} {{stars}} stars. You can reply on vendor.kriraghor.com.",
+      "body": "A member rated {{ground}} {{stars}} stars. Open this to read it and reply.",
       "variables": [
         {
           "name": "stars",
@@ -4773,7 +4773,7 @@
       "channel": "in_app",
       "locale": "bn",
       "subject": "নতুন {{stars}} তারা রিভিউ",
-      "body": "একজন সদস্য {{ground}}-কে {{stars}} তারা দিয়েছেন। vendor.kriraghor.com থেকে উত্তর দিতে পারেন।",
+      "body": "একজন সদস্য {{ground}}-কে {{stars}} তারা দিয়েছেন। পড়তে ও উত্তর দিতে এটি খুলুন।",
       "variables": [
         {
           "name": "stars",
@@ -4809,6 +4809,34 @@
       "variables": [
         {
           "name": "ground",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "REVIEW_REPLIED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "{{subject}} replied to your review",
+      "body": "{{subject}} replied to your review. Read it in your reviews.",
+      "variables": [
+        {
+          "name": "subject",
+          "type": "text",
+          "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "REVIEW_REPLIED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "{{subject}} আপনার রিভিউয়ের উত্তর দিয়েছে",
+      "body": "{{subject}} আপনার রিভিউয়ের উত্তর দিয়েছে। আপনার রিভিউ থেকে পড়ুন।",
+      "variables": [
+        {
+          "name": "subject",
           "type": "text",
           "maxLen": 80
         }

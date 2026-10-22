@@ -48,6 +48,7 @@ const Me = z
     emailVerified: z.boolean(),
     gender: z.enum(['male', 'female', 'third']).nullable().meta({ description: 'M16: self-declared, private (only the member and staff see it)' }),
     username: z.string().nullable(),
+    avatarUrl: z.string().nullable().meta({ description: 'M01 avatar (public bucket); null without a photo' }),
     locale: z.enum(LOCALES),
     status: z.enum(['active', 'suspended', 'banned', 'closed']),
     kycStatus: z.string(),

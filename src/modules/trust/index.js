@@ -17,5 +17,6 @@ module.exports = {
   disputes: lazy('./disputes.service', ['decideForSource', 'facts', 'open', 'openFromSource', 'statsFor']),
   reviews: lazy('./reviews.service', ['facts', 'ratingOf']),
   targetsPort: lazy('./targets.port', ['register']),
+  reviewSources: lazy('./review-sources.port', ['register']),
   errors: lazy('./trust.errors', ['fail']),
 };

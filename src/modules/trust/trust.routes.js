@@ -10,10 +10,11 @@
  *   reportsRouter    /reports                  report a ground, booking, member, review or tournament
  *   meReports        /me/reports               what I reported and how it ended
  *   adminReports     /admin/reports            grouped queue, subject detail, resolve, escalate, dismiss (resolve_reports)
- *   groundsReviews   /grounds/:id/reviews      public reviews with the summary
- *   reviewsRouter    /reviews                  post and edit a review
- *   meReviews        /me/reviewable, /me/reviews
- *   meGroundReviews  /me/ground-reviews        the owner's reviews and replies (gate list_ground)
+ *   groundsReviews   /grounds/:id/reviews      public reviews of a venue with the summary (v1 alias of GET /reviews)
+ *   reviewsRouter    /reviews                  public reviews of any subject (venue, pro, shop, gym); post and edit a review
+ *   meReviews        /me/reviewable, /me/reviews  waiting to review; my reviews, or (role=owner) the reviews of what I
+ *                                              own, and the owner's reply (any subject; FR-34)
+ *   meGroundReviews  /me/ground-reviews        the venue owner's reviews and replies (gate list_ground; v1 alias)
  *   adminReviews     /admin/reviews            held and hidden reviews; hide, restore, publish (resolve_reports)
  */
 const express = require('express');
@@ -98,18 +99,31 @@ const groundsReviews = Router();
 groundsReviews.get('/:id/reviews', id, validate(s.publicReviewsQuery, 'query'), async (req, res) => res.json(await reviews.publicList(req.params.id, req.validQuery)));
 
 const reviewsRouter = Router();
+reviewsRouter.get('/', validate(s.subjectReviewsQuery, 'query'), async (req, res) => {
+  const { subjectType, subjectId, ...q } = req.validQuery;
+  res.json(await reviews.publicListFor(subjectType, subjectId, q));
+});
 reviewsRouter.use(authenticate);
-reviewsRouter.post('/', validate(s.reviewBody), async (req, res) => res.status(201).json(await reviews.post(req.user, req.body, req)));
+reviewsRouter.post('/', validate(s.reviewBody), async (req, res) => {
+  const out = await reviews.post(req.user, req.body, req);
+  res.status(out.updated ? 200 : 201).json(out);
+});
 reviewsRouter.patch('/:id', id, validate(s.reviewPatch), async (req, res) => res.json(await reviews.edit(req.user, req.params.id, req.body, req)));
 
 const meReviewable = Router();
 meReviewable.get('/', authenticate, async (req, res) => res.json(await reviews.reviewable(req.user)));
 const meReviews = Router();
-meReviews.get('/', authenticate, async (req, res) => res.json(await reviews.listMine(req.user)));
+meReviews.use(authenticate);
+meReviews.get('/', validate(s.myReviewsQuery, 'query'), async (req, res) => {
+  const q = req.validQuery;
+  const owner = q.role === 'owner' || (q.role === undefined && (q.subjectType !== undefined || q.subjectId !== undefined));
+  res.json(owner ? await reviews.ownerList(req.user, q) : await reviews.listMine(req.user));
+});
+meReviews.post('/:id/reply', id, validate(s.replyBody), async (req, res) => res.json(await reviews.reply(req.user, req.params.id, req.body, req)));
 
 const meGroundReviews = Router();
 meGroundReviews.use(authenticate, requireGate('list_ground'));
-meGroundReviews.get('/', validate(s.ownerReviewsQuery, 'query'), async (req, res) => res.json(await reviews.ownerList(req.user, req.validQuery)));
+meGroundReviews.get('/', validate(s.ownerReviewsQuery, 'query'), async (req, res) => res.json(await reviews.ownerList(req.user, { ...req.validQuery, subjectType: 'ground' })));
 meGroundReviews.post('/:id/reply', id, validate(s.replyBody), async (req, res) => res.json(await reviews.reply(req.user, req.params.id, req.body, req)));
 
 const adminReviews = Router();

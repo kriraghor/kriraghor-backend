@@ -106,12 +106,16 @@ const Profile = z
     visibility: z.enum(['public', 'members']),
     updatedAt: dateTime.nullable(),
     username: z.string().nullable(),
+    completeness: z
+      .object({ score: z.number().int().min(0).max(100), steps: z.array(z.object({ key: z.enum(['sports', 'bio', 'team', 'esportsUid', 'nid']), done: z.boolean() })) })
+      .meta({ description: 'Round B1: steps left to a complete player profile' }),
   })
   .meta({ id: 'PlayerProfile' });
 const PublicPlayer = z
   .object({
     handle: z.string(),
     displayName: z.string(),
+    avatarUrl: z.string().nullable(),
     bio: z.string().nullable(),
     sports: z.array(z.object({ sportKey: z.string(), nameEn: z.string(), nameBn: z.string(), positions: z.array(z.object({ key: z.string(), en: z.string(), bn: z.string() })) })),
     teams: z.array(z.object({ id, name: z.string(), role: z.string(), sport: Named.nullable() })),

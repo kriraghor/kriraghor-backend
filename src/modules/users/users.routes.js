@@ -1,11 +1,13 @@
 'use strict';
 
-const { Router } = require('express');
+const express = require('express');
+const { Router } = express;
 const { validate } = require('../../common/validate');
 const { authenticate } = require('../../middlewares/auth');
 const authz = require('../auth').authz;
 const service = require('./users.service');
 const identity = require('./identity.service');
+const avatar = require('./avatar.service');
 const limits = require('../../middlewares/rateLimit');
 const { serializePrincipal } = require('./users.serializer');
 const s = require('./users.schemas');
@@ -16,6 +18,18 @@ r.use(authenticate);
 const reloadMe = async (req) => serializePrincipal(await authz.loadPrincipal(req.user.id));
 
 r.get('/', (req, res) => res.json(serializePrincipal(req.user)));
+
+// M01 avatar (Round B1): the raw image body; the hard ceiling is the top of users.avatar_max_bytes (20 MB),
+// the setting itself is checked per upload.
+const raw = express.raw({ type: () => true, limit: '20mb' });
+r.post('/avatar', raw, async (req, res) => {
+  await avatar.upload(req.user, { contentType: req.get('content-type'), body: req.body }, req);
+  res.json(await reloadMe(req));
+});
+r.delete('/avatar', async (req, res) => {
+  await avatar.remove(req.user, req);
+  res.json(await reloadMe(req));
+});
 
 r.patch('/', validate(s.updateProfile), async (req, res) => {
   await service.updateProfile(req.user, req.body, req);

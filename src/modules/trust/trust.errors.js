@@ -34,12 +34,17 @@ const ERRORS = {
   RESOLUTION_NOT_ALLOWED: [422, 'That action does not apply to this kind of report'],
   NOTHING_OPEN: [409, 'There are no open reports about this'],
   NOT_PLAYED: [409, 'You can rate a venue after you have played there'],
-  REVIEW_WINDOW_CLOSED: [409, 'The time to rate this booking has passed'],
-  REVIEW_EXISTS: [409, 'You have already rated this booking'],
+  NOT_YOUR_PASS: [403, 'Only the member who bought this pass can rate the gym'],
+  JOB_NOT_RELEASED: [409, 'You can rate a pro once the job is done and paid out'],
+  ORDER_NOT_COMPLETED: [409, 'You can rate a shop once you have received the order'],
+  PASS_NOT_REDEEMED: [409, 'You can rate a gym after you have used your pass there'],
+  REVIEW_WINDOW_CLOSED: [409, 'The time to rate this has passed'],
+  REVIEW_EXISTS: [409, 'You have already rated this'],
   REVIEW_EDIT_CLOSED: [409, 'This review can no longer be changed'],
   REVIEW_HIDDEN: [409, 'This review was hidden by our team'],
   REVIEW_STATE: [409, 'The review cannot do that in its current state'],
-  NOT_OWNER: [403, 'Only the venue owner can reply'],
+  NOT_OWNER: [403, 'Only the owner can reply to this review'],
+  REPLY_HAS_CONTACT: [422, 'Replies cannot include phone numbers or links; keep the conversation on Kriraghor'],
 };
 
 const fail = (code, meta) => new AppError(ERRORS[code][0], code, ERRORS[code][1], meta ? { meta } : undefined);

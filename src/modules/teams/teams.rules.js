@@ -116,4 +116,19 @@ function sportsBlock(list, positionsBySport) {
   return null;
 }
 
-module.exports = { nameBlock, shortCode, canManage, isCaptain, inviteBlock, resendBlock, acceptBlock, successor, ageOnDate, evaluate, sportsBlock };
+/**
+ * Round B1: a player profile's completeness for its owner: sports with positions, a bio, a team, a
+ * verified esports game UID (M21) and the NID (M02 member role). facts: { team, esportsUid, nid }.
+ */
+function playerCompleteness({ sports, bio }, f) {
+  const steps = [
+    { key: 'sports', done: sports.length > 0 && sports.every((s) => (s.positions ?? []).length > 0) },
+    { key: 'bio', done: Boolean(bio?.trim()) },
+    { key: 'team', done: Boolean(f.team) },
+    { key: 'esportsUid', done: Boolean(f.esportsUid) },
+    { key: 'nid', done: Boolean(f.nid) },
+  ];
+  return { score: Math.round((steps.filter((s) => s.done).length / steps.length) * 100), steps };
+}
+
+module.exports = { nameBlock, shortCode, canManage, isCaptain, inviteBlock, resendBlock, acceptBlock, successor, ageOnDate, evaluate, sportsBlock, playerCompleteness };

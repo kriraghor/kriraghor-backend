@@ -43,7 +43,7 @@ const OWNERS = {
   'bookings': ['Booking', 'BookingSlot', 'CheckIn'],
   'market': ['Shop', 'Product', 'ProductVariant', 'ProductPhoto', 'InventoryMovement', 'SavedItem'],
   'orders': ['Cart', 'CartItem', 'Order', 'SubOrder', 'OrderItem'],
-  'hire': ['HireProfile', 'RateCard', 'RateCardItem', 'HireRequest', 'HireJob', 'HireMessage', 'HireShortlist'],
+  'hire': ['HireProfile', 'RateCard', 'RateCardItem', 'HireRequest', 'HireJob', 'HireMessage', 'HireShortlist', 'AvailabilityBlock'],
   'gym': ['Gym', 'GymHours', 'GymPhoto', 'GymPackage', 'GymPass', 'PassRedemption', 'TrainerPlan', 'TrainerSubscription', 'TrainerSubscriptionPeriod'],
   'organisations': ['Organisation', 'OrganisationMember'],
   'organiser-saas': ['OrganiserContract', 'OrganiserInvoice', 'OrganiserInvoiceLine', 'OrganiserPrizeFund', 'OrganisationBranding'],
