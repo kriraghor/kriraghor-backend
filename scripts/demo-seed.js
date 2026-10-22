@@ -7,7 +7,7 @@
  *
  *   node scripts/demo-seed.js --profile=listings [--confirm-live]   venues, shops, gyms, hire, events (no payments)
  *   node scripts/demo-seed.js --profile=full                         everything, payments through the simulator (never production)
- *   node scripts/demo-seed.js --access-only [--confirm-live]         only the demo sign-in accounts (needs DEMO_PASSWORD)
+ *   node scripts/demo-seed.js --access-only [--confirm-live]         the demo business staff (B3) and the demo sign-in accounts (needs DEMO_PASSWORD)
  *
  * Every record is created through the real API and approved on the Moderation desk, and is listed in
  * demo_records so `npm run demo:hide` can hide it all later. Re-running skips what already exists.
@@ -38,6 +38,7 @@ const rt = require('./demo/runtime');
 const L = require('./demo/steps/listings');
 const people = require('./demo/steps/people');
 const access = require('./demo/steps/access');
+const team = require('./demo/steps/team');
 
 async function step(name, fn) {
   const t = Date.now();
@@ -55,7 +56,13 @@ async function signIns(master) {
     return;
   }
   console.log('\nDemo sign-in (phone number + the DEMO_PASSWORD you set; staff then set up an authenticator):');
-  for (const r of rows) console.log(`  ${r.phone.replace('+880', '0')}  ${r.name.padEnd(22)} ${r.kind.padEnd(34)} ${r.where}  [${r.result}]`);
+  for (const r of rows) console.log(`  ${r.phone.replace('+880', '0')}  ${r.name.padEnd(22)} ${r.kind.padEnd(35)} ${r.where}  [${r.result}]`);
+}
+
+/** Round B3 business staff (steps/team.js): added by their owners through POST /me/team. */
+async function businessStaff() {
+  const rows = await step('business staff (venue and gym front desks, shop packer)', () => team.run());
+  for (const r of rows) console.log(`  ${r.phone.replace('+880', '0')}  ${r.name.padEnd(16)} ${r.business.padEnd(22)} ${r.permissions.join(', ')}  [${r.result}]`);
 }
 
 async function main() {
@@ -73,6 +80,7 @@ async function main() {
 
   const { master, reviewer } = await step('staff (no sign-in possible)', () => people.staff());
   if (args['access-only']) {
+    await businessStaff();
     await signIns(master);
     return;
   }
@@ -80,6 +88,7 @@ async function main() {
   await step('venues', () => L.venues(owner, reviewer));
   await step('shops and products', () => L.shops(owner, reviewer));
   const gymRows = await step('gyms', () => L.gyms(owner, reviewer));
+  await businessStaff();
   const pros = await step('hire profiles and trainers', () => L.pros(reviewer, gymRows));
   const calendars = await step('availability calendars (referee, trainer)', () => require('./demo/steps/availability').run(pros));
   console.log(`  ${calendars.join('; ')}`);

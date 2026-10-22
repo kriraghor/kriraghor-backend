@@ -26,6 +26,9 @@ async function loadPrincipal(userId) {
   const permissions = isMaster
     ? new Set(PERMISSION_LIST)
     : new Set(isStaff ? user.staffPermissions.map((p) => p.permission) : []);
+  // Round B3: the venues, gyms and shops this member works at for a live owner (business-members).
+  // Kriraghor staff accounts never hold customer workplaces (M01: separate accounts).
+  const workplaces = isStaff ? [] : await require('../business-members').members.workplacesOf(user.id);
 
   return {
     id: user.id,
@@ -36,6 +39,7 @@ async function loadPrincipal(userId) {
     isStaff,
     isMaster,
     staff,
+    workplaces, // [{ id, businessType, businessId, ownerId, permissions, since }]
   };
 }
 

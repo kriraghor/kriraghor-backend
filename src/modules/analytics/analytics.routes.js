@@ -35,8 +35,9 @@ meRouter.use(authenticate);
 meRouter.get('/', validate(s.dashboardQuery, 'query'), async (req, res) => res.json(await DASHBOARDS[req.validQuery.role](req.user, req.validQuery)));
 meRouter.get('/actions', validate(s.actionsQuery, 'query'), async (req, res) => {
   const { role } = req.validQuery;
-  // Organisers' items come from their organisation memberships (staff need no organiser role).
-  if (!['member', 'organiser'].includes(role) && req.user.roles?.[role] !== 'active') throw E.forbidden('ROLE_REQUIRED', 'This list is for active business owners', undefined, { role });
+  // Organisers' items come from their organisation memberships (staff need no organiser role); a
+  // business's staff get the items of their workplaces (Round B3), none when they work nowhere.
+  if (!['member', 'organiser', 'business_staff'].includes(role) && req.user.roles?.[role] !== 'active') throw E.forbidden('ROLE_REQUIRED', 'This list is for active business owners', undefined, { role });
   res.json(await actions.list(req.user, req.validQuery.role));
 });
 meRouter.get('/export', validate(s.exportQuery, 'query'), async (req, res) => sendCsv(res, await exportsSvc.exportCsv(req.user, req.validQuery, exportsSvc.DATASETS[req.validQuery.dataset].role, req)));

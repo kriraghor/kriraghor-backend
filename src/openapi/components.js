@@ -61,6 +61,7 @@ const Me = z
     isStaff: z.boolean(),
     isMaster: z.boolean(),
     twoFactor: z.object({ required: z.boolean(), enabled: z.boolean() }),
+    workplaces: z.array(z.object({ id: z.uuid(), businessType: z.enum(['venue', 'gym', 'shop']), businessId: z.uuid(), permissions: z.array(z.string()) })).meta({ description: 'Round B3: the venues, gyms and shops this member works at as staff (live owners only)' }),
   })
   .meta({ id: 'Me', description: "The signed-in user's own view" });
 

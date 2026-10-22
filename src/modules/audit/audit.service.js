@@ -63,7 +63,9 @@ async function record(entry, { transaction } = {}) {
       after: redact(after ?? null),
       reason: reason ?? null,
       stepUp: Boolean(entry.stepUp ?? meta?.stepUp ?? req?.stepUp),
-      meta: redact(meta ?? null),
+      // Round B3: a business's staff member acts for its owner; the row names the staff member as
+      // the actor (actorRole business_staff) and the owner in meta.onBehalfOf.
+      meta: redact(actor?.onBehalfOf ? { ...(meta ?? {}), onBehalfOf: actor.onBehalfOf } : meta ?? null),
       ip: req?.ip ?? null,
       userAgent: req?.get?.('user-agent')?.slice(0, 512) ?? null,
       requestId: req?.id ?? null,

@@ -53,9 +53,24 @@ describe('demo data', () => {
       expect(await models.User.findByPk(row.entityId)).toMatchObject({ phone: null, email: null, passwordHash: null });
     }
 
+    // Round B3: three business staff (venue and gym front desks, a shop packer), added by their owners
+    // with the default permissions; members with a verified phone, never Kriraghor staff.
+    const D = require('../../scripts/demo/data');
+    const staffPhones = D.BUSINESS_STAFF.map((s) => `+8801300${String(s.n).padStart(6, '0')}`);
+    const staffUsers = await models.User.findAll({ where: { phone: staffPhones } });
+    expect(staffUsers).toHaveLength(3);
+    expect(staffUsers.every((u) => u.phoneVerifiedAt)).toBe(true);
+    expect(await models.StaffMember.count({ where: { userId: staffUsers.map((u) => u.id) } })).toBe(0);
+    const team = await models.BusinessMember.findAll({ where: { memberId: staffUsers.map((u) => u.id), status: 'active' } });
+    expect(team.map((m) => m.businessType).sort()).toEqual(['gym', 'shop', 'venue']);
+    expect(team.find((m) => m.businessType === 'shop').permissions).toContain('orders.ship');
+
     const before = await records();
     await run('demo-seed.js', ['--profile=listings']);
     expect(await records()).toBe(before);
+    expect(await models.BusinessMember.count()).toBe(3);
+    await run('demo-seed.js', ['--access-only']);
+    expect(await models.BusinessMember.count()).toBe(3);
 
     const full = await run('demo-seed.js', ['--profile=full']);
     expect(await count('/esports/top-players')).toBeGreaterThan(0);
@@ -77,5 +92,8 @@ describe('demo data', () => {
     for (const p of ['/grounds?limit=12', '/market/items?limit=24', '/gym/gyms?limit=24', '/hire/profiles?limit=24', '/esports/tournaments?status=registration_open&limit=12', '/esports/events', '/tournaments?status=open&limit=24']) {
       expect({ p, n: await count(p) }).toEqual({ p, n: 0 });
     }
+    // The business staff are suspended with the other demo accounts; nothing is deleted.
+    expect(await models.User.count({ where: { id: staffUsers.map((u) => u.id), status: 'suspended' } })).toBe(3);
+    expect(await models.BusinessMember.count()).toBe(3);
   }, 20 * 60000);
 });

@@ -31,6 +31,8 @@ const port = require('./review-sources.port');
 const DAY = 24 * 3600 * 1000;
 const iso = (d) => (d ? new Date(d).toISOString() : null);
 const disputes = () => require('./disputes.service');
+// Round B3: venue staff may reply to reviews with the optional reviews.reply permission (Q170).
+const access = () => require('../business-members').access;
 const NOUNS = { booking: 'Booking', hire_job: 'Job', sub_order: 'Order', gym_pass: 'Pass' };
 
 const payload = (r, extra = {}) => ({ reviewId: r.id, subjectType: r.subjectType, subjectId: r.subjectId, authorId: r.authorId, ...extra });
@@ -283,6 +285,11 @@ const publicList = (groundId, query = {}) => publicListFor('ground', groundId, q
  */
 async function ownerList(principal, { subjectType, subjectId, groundId, cursor, limit = 50 } = {}) {
   const where = { subjectOwnerId: principal.id, status: 'published' };
+  // Round B3 (Q170): venue staff with the optional reviews.reply permission see that venue's reviews,
+  // under actFor's staff rule (a verified phone and an active account, else 403 PHONE_REQUIRED).
+  const venueId = (subjectType === 'ground' || subjectType === undefined) ? subjectId ?? groundId : null;
+  const w = venueId ? access().workplaceAt(principal, 'venue', venueId) : null;
+  if (w && w.permissions.includes('reviews.reply')) where.subjectOwnerId = access().actFor(principal, 'venue', venueId, 'reviews.reply', { ownerId: w.ownerId, notFound: 'Venue' }).ownerId;
   if (subjectType) where.subjectType = subjectType;
   if (subjectId ?? groundId) where.subjectId = subjectId ?? groundId;
   if (cursor) where.createdAt = { [Op.lt]: new Date(cursor) };
@@ -299,19 +306,30 @@ async function ownerOf(r, { transaction }) {
   return src?.ownerId ?? null;
 }
 
-/** POST /me/reviews/:id/reply { text } (the subject's owner; FR-34). */
+/**
+ * Who may reply: the subject's owner (FR-34), or for a venue its staff with the optional
+ * reviews.reply permission (Round B3, Q170; off by default). Staff of another venue get a 404.
+ */
+async function replier(principal, r, { transaction }) {
+  const ownerId = await ownerOf(r, { transaction });
+  if (ownerId === principal.id) return { actor: principal };
+  if (r.subjectType !== 'ground') throw fail('NOT_OWNER');
+  return access().actFor(principal, 'venue', r.subjectId, 'reviews.reply', { ownerId, notFound: 'Review', foreign: () => fail('NOT_OWNER') });
+}
+
+/** POST /me/reviews/:id/reply { text } (the subject's owner, or venue staff with reviews.reply; FR-34). */
 async function reply(principal, id, { text }, req) {
   return sequelize.transaction(async (transaction) => {
     const r = await Review.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
     if (!r) throw E.notFound('Review');
-    if ((await ownerOf(r, { transaction })) !== principal.id) throw fail('NOT_OWNER');
+    const { actor } = await replier(principal, r, { transaction });
     if (r.status !== 'published') throw fail('REVIEW_STATE', { status: r.status });
     const block = rules.replyBlock(text);
     if (block) throw fail(block);
     const firstReply = !r.replyText;
     await r.update({ replyText: text, repliedBy: principal.id, repliedAt: new Date() }, { transaction });
-    await publish(transaction, 'review.replied', r, { firstReply }, principal);
-    await audit.record({ action: 'review.replied', actor: principal, entityType: 'review', entityId: r.id, after: { firstReply }, req }, { transaction });
+    await publish(transaction, 'review.replied', r, { firstReply }, actor);
+    await audit.record({ action: 'review.replied', actor, entityType: 'review', entityId: r.id, after: { firstReply }, req }, { transaction });
     return { review: view(r, await directory.publicNames([r.authorId], { transaction })) };
   });
 }

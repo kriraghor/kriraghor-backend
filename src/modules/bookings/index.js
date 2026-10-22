@@ -15,5 +15,5 @@ const lazy = (file, names, values = []) => {
 module.exports = {
   disputes: lazy('./bookings.disputes', ['register']),
   reviewSource: lazy('./bookings.reviews', ['register']),
-  reads: lazy('./bookings.reads', ['bookingFact', 'courtDays', 'courtsOfBooking', 'exportFacts', 'facts', 'pendingActions', 'playedBy', 'reliabilityFacts', 'reviewSource', 'seriesBookingIds']),
+  reads: lazy('./bookings.reads', ['bookingFact', 'courtDays', 'courtsOfBooking', 'exportFacts', 'facts', 'pendingActions', 'playedBy', 'staffActions', 'reliabilityFacts', 'reviewSource', 'seriesBookingIds']),
 };

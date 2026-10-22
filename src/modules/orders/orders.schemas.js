@@ -5,6 +5,7 @@
  */
 const { z } = require('zod');
 const { normalizePhone } = require('../../common/identifiers');
+const { staffHidden } = require('../business-members').schemas;
 
 const id = z.uuid();
 const poisha = z.number().int().nonnegative();
@@ -39,7 +40,12 @@ const checkoutBody = z.object({ ship, expectedTotal: poisha.meta({ description: 
 const myOrdersQuery = z.object({ status: z.enum(ORDER_STATUSES).optional(), cursor: dateTime.optional(), limit: limit(50, 20) });
 const cancelBody = z.object({ reason: z.enum(['changed_mind', 'ordered_by_mistake', 'found_cheaper', 'buyer_cancelled', 'other']).optional() });
 const notReceivedBody = z.object({ statement: text(10, 2000) });
-const shopListQuery = z.object({ tab: z.enum(['to_accept', 'to_ship', 'shipped', 'done', 'cancelled']).default('to_accept'), cursor: dateTime.optional(), limit: limit(50, 20) });
+const shopListQuery = z.object({
+  tab: z.enum(['to_accept', 'to_ship', 'shipped', 'done', 'cancelled']).default('to_accept'),
+  cursor: dateTime.optional(),
+  limit: limit(50, 20),
+  shopId: z.uuid().optional().meta({ description: 'Round B3: the shop (staff working at several shops name one; the owner may leave it out)' }),
+});
 const rejectBody = z.object({ reason: z.enum(REJECT_REASONS), note: text(2, 300).optional() });
 const shipBody = z.object({ courierName: text(2, 60), trackingNo: z.string().trim().regex(/^[A-Za-z0-9/-]{4,40}$/, '4 to 40 letters, digits, - or /') });
 const adminListQuery = z.object({ code: z.string().trim().max(24).optional(), status: z.enum(ORDER_STATUSES).optional(), cursor: dateTime.optional(), limit: limit(100, 50) });
@@ -167,7 +173,25 @@ const shopSubFields = {
   area: AreaRef,
 };
 const ShopSub = z
-  .object({ ...shopSubFields, shipTo: z.object({ name: z.string(), phone: z.string(), line: z.string(), note: z.string().nullable() }).nullable().meta({ description: 'Shown once the shop accepts (FR-10)' }) })
+  .object({
+    ...shopSubFields,
+    // Round B3: the shop's staff never receive the commission, net or released amounts (forStaff).
+    money: z.object({
+      items: poisha,
+      delivery: poisha,
+      total: poisha,
+      refunded: poisha,
+      commissionBps: staffHidden(z.number().int()),
+      commission: staffHidden(poisha),
+      net: staffHidden(poisha),
+      released: staffHidden(poisha),
+    }),
+    shipTo: z
+      .object({ name: z.string(), phone: z.string(), line: z.string(), note: z.string().nullable() })
+      .nullable()
+      .meta({ description: 'Shown once the shop accepts (FR-10). Round B3: null for business staff in lists, in action answers and without orders.ship (then contactHidden is true)' }),
+    contactHidden: z.boolean().optional().meta({ description: 'Round B3, business staff only: true when the order has a shipping contact that is withheld from this staff member; absent for the owner' }),
+  })
   .meta({ id: 'ShopSubOrder' });
 const ShopSubList = z.object({ items: z.array(ShopSub), counts: z.record(z.string(), z.number().int()), nextCursor: z.string().nullable() }).meta({ id: 'ShopSubOrderList' });
 const Settlement = z

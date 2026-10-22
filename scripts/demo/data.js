@@ -362,6 +362,16 @@ const SPORTS_EVENTS = [
 // ---------------------------------------------------------------- the demo member (full profile)
 const MEMBER = { n: 90, name: 'Ayesha Siddiqua', username: 'ayesha.s' };
 
+// ---------------------------------------------------------------- Round B3: business staff
+// Ordinary members with a verified phone (no NID, Q169), added by the owner through POST /me/team with
+// the business type's default permissions. Never Kriraghor staff. `owner` is the owner's place in the
+// phone block; `business` the listing's name in VENUES, GYMS or SHOPS.
+const BUSINESS_STAFF = [
+  { n: 194, name: 'Mithun Barua', owner: 1, businessType: 'venue', business: 'Kick Off Arena Mirpur', kind: 'Venue staff, Kick Off Arena Mirpur' },
+  { n: 195, name: 'Moushumi Khatun', owner: 10, businessType: 'gym', business: 'PowerHouse Gym Mirpur', kind: 'Gym staff, PowerHouse Gym Mirpur' },
+  { n: 196, name: 'Shohel Rana', owner: 8, businessType: 'shop', business: 'Iron Supply Tejgaon', kind: 'Shop staff, Iron Supply Tejgaon' },
+];
+
 // ---------------------------------------------------------------- Round B1: availability calendars (M11)
 // Weekly repeats (weekdays: 0 = Sunday … 6 = Saturday, Dhaka) and one-off blocks `inDays` from today, Dhaka time.
 const AVAILABILITY = [
@@ -418,4 +428,4 @@ const GYM_REVIEWS = [
   { member: 60, gym: 'PowerHouse Gym Mirpur', review: [4, 'Friendly trainers and open late, perfect after office. The changing room needs more lockers.'] },
 ];
 
-module.exports = { OWNERS, VENUES, SHOPS, GYMS, PROS, TRAINERS, PLAYERS, ESPORTS, SHOWCASE, FINISHED, SPORTS_ORG, SPORTS_EVENTS, MEMBER, AVAILABILITY, HIRE_HISTORY, HIRE_DECLINED, SHOP_REVIEWS, MEMBER_SHOP_REVIEW, GYM_REVIEWS };
+module.exports = { OWNERS, VENUES, SHOPS, GYMS, PROS, TRAINERS, PLAYERS, ESPORTS, SHOWCASE, FINISHED, SPORTS_ORG, SPORTS_EVENTS, MEMBER, BUSINESS_STAFF, AVAILABILITY, HIRE_HISTORY, HIRE_DECLINED, SHOP_REVIEWS, MEMBER_SHOP_REVIEW, GYM_REVIEWS };

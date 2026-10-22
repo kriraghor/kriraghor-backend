@@ -41,6 +41,7 @@ const saasRoutes = require('./modules/organiser-saas/saas.routes');
 const eventRoutes = require('./modules/esports-events/events.routes');
 const teamRoutes = require('./modules/teams/teams.routes');
 const tournamentRoutes = require('./modules/tournaments/tournaments.routes');
+const businessMemberRoutes = require('./modules/business-members/business-members.routes');
 
 // ADR-004: customer and admin origins (exact or one-label wildcard). Unknown origins get no CORS headers.
 const allowedOrigin = compile([...config.corsOrigins, ...config.adminOrigins]);
@@ -102,6 +103,9 @@ function createApp() {
   // M14 tournaments: my teams' registrations.
   api.use('/me/registrations', tournamentRoutes.meRouter);
   // M16 teams and players.
+  // Round B3: staff accounts for businesses (before the /me routers that match any path).
+  api.use('/me/workplaces', businessMemberRoutes.meWorkplaces);
+  api.use('/me/team', businessMemberRoutes.meTeam);
   api.use('/me', teamRoutes.meRouter);
   api.use('/teams', teamRoutes.teamsRouter);
   api.use('/', teamRoutes.publicRouter);
@@ -112,8 +116,9 @@ function createApp() {
   // M23 big events (before /esports, like the organiser pages).
   api.use('/esports/events', eventRoutes.publicRouter);
   api.use('/esports', esportsRoutes.publicRouter);
-  api.use('/me/grounds', groundsRoutes.meGrounds);
+  // Round B3: walk-ins are a staff desk (gate work_ground), so they come before the owner-only grounds router.
   api.use('/me/grounds', bookingsRoutes.meWalkIns);
+  api.use('/me/grounds', groundsRoutes.meGrounds);
   api.use('/me/courts', groundsRoutes.meCourts);
   api.use('/me/closures', groundsRoutes.meClosures);
   api.use('/me/series', groundsRoutes.meSeries);
@@ -123,8 +128,10 @@ function createApp() {
   api.use('/me/ground-bookings', bookingsRoutes.meOwner);
   api.use('/me/saved', marketRoutes.meSaved);
   api.use('/market', marketRoutes.publicRouter);
-  api.use('/shop', marketRoutes.shopRouter);
+  // Round B3: the order and stock desks (gate work_shop, per route) come before the owner-only shop router.
   api.use('/shop', orderRoutes.shopOrders);
+  api.use('/shop', marketRoutes.shopDesk);
+  api.use('/shop', marketRoutes.shopRouter);
   api.use('/me/cart', orderRoutes.meCart);
   api.use('/me/orders', orderRoutes.meOrders);
   api.use('/me/sub-orders', orderRoutes.meSubOrders);

@@ -32,6 +32,9 @@ const PROVIDERS = {
   // M14 (Round B2): per sports organisation the caller belongs to, registrations waiting for approval
   // (owners and admins) and entry fees not paid yet.
   organiser: [(p) => require('../tournaments').reads.pendingActions(p)],
+  // Round B3: a business's staff, per workplace and by their permissions (check-ins and balances at a
+  // venue; orders to accept or ship and stock at a shop). Counts only, never money.
+  business_staff: [(p) => require('../business-members').members.pendingActions(p)],
   staff: [
     async (p) => {
       const s = await require('../moderation').moderation.stats(p);

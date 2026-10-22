@@ -36,6 +36,7 @@ function buildOpenApi() {
       { name: 'auth', description: 'Customer sign-in and sessions' },
       { name: 'auth-admin', description: 'Admin portal sign-in, two-factor and step-up (ADR-004)' },
       { name: 'me', description: "The signed-in user's account" },
+      { name: 'business-members', description: 'Staff accounts for businesses: an owner’s team at each venue, gym or shop, and where a member works (Round B3)' },
       { name: 'admin', description: 'Staff desks' },
       { name: 'settings', description: 'Platform settings, history and four-eyes change requests (M03)' },
       { name: 'catalog', description: 'Reference catalogues: sports, places, facilities, surfaces, esports games, modes, maps and points presets (M03)' },

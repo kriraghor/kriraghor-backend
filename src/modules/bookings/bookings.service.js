@@ -15,6 +15,7 @@ const { sequelize, Booking, CheckIn } = require('../../models');
 const settings = require('../settings').settings;
 const audit = require('../audit').audit;
 const fees = require('../payments').fees;
+const access = require('../business-members').access;
 const reads = require('../grounds').reads;
 const pricing = require('../grounds').pricing;
 const pr = require('../grounds').pricingRules;
@@ -94,38 +95,45 @@ async function cancel(principal, id, { expectedRefund }, req) {
   });
 }
 
-// ---------------------------------------------------------------- owner (FR-13 to FR-21)
+// ---------------------------------------------------------------- owner and venue staff (FR-13 to FR-21, Round B3)
 
-async function owned(principal, id, transaction) {
+/**
+ * Round B3: who acts at a venue. The owner as before (another owner's booking stays NOT_OWNER); venue
+ * staff with the permission (business-members actFor: 404 for other venues, 403 PERMISSION_REQUIRED
+ * without it). Money still settles to the booking's owner (b.ownerId), whoever presses the button.
+ */
+const actAt = (principal, groundId, ownerId, permission, notFound) => access.actFor(principal, 'venue', groundId, permission, { ownerId, notFound, foreign: () => c.fail('NOT_OWNER') });
+/** Staff never see the fee, released or retained amounts (B3); the owner's view is unchanged. */
+const shown = (ctx, body) => (ctx.staff ? access.forStaff(body) : body);
+
+async function owned(principal, id, transaction, permission) {
   const b = await c.lock(id, transaction);
   if (!b) throw E.notFound('Booking');
-  if (b.ownerId !== principal.id) throw c.fail('NOT_OWNER');
-  return b;
+  return { b, ctx: actAt(principal, b.groundId, b.ownerId, permission, 'Booking') };
 }
 
-async function ownedGround(principal, groundId) {
+async function ownedGround(principal, groundId, permission) {
   const g = await reads.ground(groundId);
   if (!g || g.status === 'removed') throw E.notFound('Ground');
-  if (g.ownerId !== principal.id) throw c.fail('NOT_OWNER');
-  return g;
+  return { g, ctx: actAt(principal, g.id, g.ownerId, permission, 'Ground') };
 }
 
 /** GET /me/ground-bookings?groundId=&date= : the owner's day (FR-35, reads booking_slots). */
 async function timeline(principal, { groundId, date }) {
-  const g = await ownedGround(principal, groundId);
+  const { g, ctx } = await ownedGround(principal, groundId, 'bookings.view');
   const day = date ?? pr.dhakaParts(new Date()).date;
   const from = pr.dhakaInstant(day, 0);
   const to = new Date(from.getTime() + DAY);
   const rows = await Booking.findAll({ where: { groundId: g.id, startAt: { [Op.lt]: to }, endAt: { [Op.gt]: from }, status: { [Op.notIn]: ['expired'] } }, order: [['startAt', 'ASC']] });
   const slots = await c.overlapping({ courtIds: g.courts.map((k) => k.id), from, to });
   const hours = await reads.hoursFor(g.courts.map((k) => k.id));
-  return {
+  return shown(ctx, {
     groundId: g.id,
     date: day,
     courts: g.courts.map((k) => ({ id: k.id, name: k.name, hours: hours.filter((h) => h.courtId === k.id) })),
     bookings: rows.map((b) => c.ownerView(b)),
     closures: slots.filter((s) => s.source === 'closure').map((s) => ({ closureId: s.closureId, courtId: s.courtId, start: c.iso(s.start), end: c.iso(s.end) })),
-  };
+  });
 }
 
 /** The search text as an ILIKE pattern, with % and _ taken literally. */
@@ -137,13 +145,23 @@ const like = (q) => `%${q.replace(/[\\%_]/g, (ch) => `\\${ch}`)}%`;
  * (M10 owner desk, Round A). Only the owner's own bookings; phones stay masked to the last four.
  */
 async function ownerSearch(principal, { q, groundId, cursor, limit = 20 }) {
-  if (groundId) await ownedGround(principal, groundId);
+  // Round B3: with a venue named, its owner or its staff (bookings.view); without one, the owner's
+  // venues, or for staff every venue where they hold bookings.view.
+  let staff = false;
+  let staffGrounds = null;
+  if (groundId) staff = (await ownedGround(principal, groundId, 'bookings.view')).ctx.staff;
+  else if (!access.ownerLive(principal, 'venue')) {
+    staff = true;
+    staffGrounds = access.businessesWith(principal, 'venue', 'bookings.view');
+    if (!staffGrounds.length) throw E.forbidden('PERMISSION_REQUIRED', 'The owner has not given you this permission', undefined, { permission: 'bookings.view' });
+  }
   const text = q.trim();
   const digits = text.replace(/\D/g, '');
   const match = [{ code: { [Op.iLike]: like(text) } }, { teamName: { [Op.iLike]: like(text) } }, { contactName: { [Op.iLike]: like(text) } }];
   if (digits.length >= 4) match.push({ contactPhoneLast4: digits.slice(-4) });
-  const where = { ownerId: principal.id, status: { [Op.notIn]: ['expired'] }, [Op.or]: match };
+  const where = { ...(staff ? {} : { ownerId: principal.id }), status: { [Op.notIn]: ['expired'] }, [Op.or]: match };
   if (groundId) where.groundId = groundId;
+  else if (staffGrounds) where.groundId = staffGrounds;
   const [at, after] = (cursor ?? '').split('|');
   if (at && after && !Number.isNaN(Date.parse(at))) {
     where[Op.and] = [{ [Op.or]: [{ startAt: { [Op.lt]: new Date(at) } }, { startAt: new Date(at), id: { [Op.lt]: after } }] }];
@@ -151,16 +169,17 @@ async function ownerSearch(principal, { q, groundId, cursor, limit = 20 }) {
   const rows = await Booking.findAll({ where, order: [['startAt', 'DESC'], ['id', 'DESC']], limit: limit + 1 });
   const page = rows.slice(0, limit);
   const last = page[page.length - 1];
-  return { items: page.map((b) => c.ownerView(b)), nextCursor: rows.length > limit ? `${c.iso(last.startAt)}|${last.id}` : null };
+  const body = { items: page.map((b) => c.ownerView(b)), nextCursor: rows.length > limit ? `${c.iso(last.startAt)}|${last.id}` : null };
+  return staff ? access.forStaff(body) : body;
 }
 
 /** GET /me/ground-bookings/:id */
 async function ownerGet(principal, id) {
   const b = await Booking.findByPk(id);
   if (!b) throw E.notFound('Booking');
-  if (b.ownerId !== principal.id) throw c.fail('NOT_OWNER');
+  const ctx = actAt(principal, b.groundId, b.ownerId, 'bookings.view', 'Booking');
   const { courts } = await courtNames(b);
-  return { booking: c.ownerView(b, { courts }), checkIn: (await CheckIn.findOne({ where: { bookingId: b.id } }))?.toJSON() ?? null };
+  return shown(ctx, { booking: c.ownerView(b, { courts }), checkIn: (await CheckIn.findOne({ where: { bookingId: b.id } }))?.toJSON() ?? null });
 }
 
 /** Check-in releases the online money to the owner, fee on the full value (FR-13, v3). */
@@ -176,13 +195,13 @@ async function checkInInTx(b, { actor, method = 'owner_desk', at = new Date(), t
 
 async function checkIn(principal, id, req) {
   return sequelize.transaction(async (transaction) => {
-    const b = await owned(principal, id, transaction);
+    const { b, ctx } = await owned(principal, id, transaction, 'bookings.check_in');
     transition(b, 'check_in');
     const block = rules.checkInBlock({ start: b.startAt, end: b.endAt, now: new Date(), openBeforeMin: settings.get('booking.checkin_open_before_min') });
     if (block) throw c.fail(block);
-    const moved = await checkInInTx(b, { actor: principal, transaction });
-    await audit.record({ action: 'booking.check_in_recorded', actor: principal, entityType: 'booking', entityId: b.id, entityCode: b.code, after: { status: b.status, released: moved.released, fee: moved.fee }, req }, { transaction });
-    return { booking: c.ownerView(b), released: moved };
+    const moved = await checkInInTx(b, { actor: ctx.actor, transaction });
+    await audit.record({ action: 'booking.check_in_recorded', actor: ctx.actor, entityType: 'booking', entityId: b.id, entityCode: b.code, after: { status: b.status, released: moved.released, fee: moved.fee }, req }, { transaction });
+    return shown(ctx, { booking: c.ownerView(b), released: moved });
   });
 }
 
@@ -194,28 +213,28 @@ async function checkIn(principal, id, req) {
  */
 async function noShow(principal, id, req) {
   return sequelize.transaction(async (transaction) => {
-    const b = await owned(principal, id, transaction);
+    const { b, ctx } = await owned(principal, id, transaction, 'bookings.no_show');
     const to = transition(b, 'no_show');
     const now = new Date();
     const block = rules.noShowBlock({ start: b.startAt, end: b.endAt, graceMin: b.graceMin, now, autoCompleteHours: settings.get('booking.auto_complete_after_hours') });
     if (block) throw c.fail(block);
     const plan = rules.retainPlan({ online: b.onlinePoisha, advance: b.advancePoisha, feeBps: b.feeBps, ...c.policy() });
-    const moved = await settlement.apply(b, { ...plan, release: 0 }, { step: 'no_show', reasonCode: 'booking.no_show_marked', actor: principal, transaction });
+    const moved = await settlement.apply(b, { ...plan, release: 0 }, { step: 'no_show', reasonCode: 'booking.no_show_marked', actor: ctx.actor, transaction });
     const tail = rules.noShowTailEnd({ start: b.startAt, end: b.endAt, now });
     if (tail) await c.setPeriod(b.id, b.groundId, b.startAt, tail, { transaction });
     else if (now < b.endAt) c.touch(b.groundId, transaction);
     const settleDueAt = plan.release > 0 ? new Date(now.getTime() + settings.get('disputes.window_booking_hours') * 3600000) : null;
     await b.update({ status: to, noShowAt: now, retainedPoisha: plan.release, settleDueAt, updatedBy: principal.id }, { transaction });
-    await c.publish(transaction, 'booking.no_show_marked', b, { refund: moved.refunded, retained: plan.release }, principal);
-    await audit.record({ action: 'booking.no_show_marked', actor: principal, entityType: 'booking', entityId: b.id, entityCode: b.code, after: { status: to, retained: plan.release, refund: moved.refunded, settleDueAt }, req }, { transaction });
-    return { booking: c.ownerView(b), settled: { refunded: moved.refunded, retained: plan.release, settleDueAt: c.iso(settleDueAt) } };
+    await c.publish(transaction, 'booking.no_show_marked', b, { refund: moved.refunded, retained: plan.release }, ctx.actor);
+    await audit.record({ action: 'booking.no_show_marked', actor: ctx.actor, entityType: 'booking', entityId: b.id, entityCode: b.code, after: { status: to, retained: plan.release, refund: moved.refunded, settleDueAt }, req }, { transaction });
+    return shown(ctx, { booking: c.ownerView(b), settled: { refunded: moved.refunded, retained: plan.release, settleDueAt: c.iso(settleDueAt) } });
   });
 }
 
 /** FR-16: +30 minutes while checked in, priced on the booking's snapshot version, paid at the venue. */
 async function extend(principal, id, req) {
   return sequelize.transaction(async (transaction) => {
-    const b = await owned(principal, id, transaction);
+    const { b, ctx } = await owned(principal, id, transaction, 'bookings.extend');
     if (b.status !== 'checked_in') throw c.fail('BOOKING_STATE', { status: b.status });
     const block = rules.extendBlock({ end: b.endAt, now: new Date() });
     if (block) throw c.fail(block);
@@ -225,26 +244,26 @@ async function extend(principal, id, req) {
     const newEnd = new Date(b.endAt.getTime() + rules.HALF_HOUR);
     await c.setPeriod(b.id, b.groundId, b.startAt, newEnd, { transaction, code: 'NEXT_SLOT_TAKEN' });
     const n = Math.round((newEnd.getTime() - b.startAt.getTime()) / rules.HALF_HOUR);
-    await settlement.accrueVenueFee(b, rules.venueFee(amount, b.feeBps), `extension:${n}`, { actor: principal, transaction });
+    await settlement.accrueVenueFee(b, rules.venueFee(amount, b.feeBps), `extension:${n}`, { actor: ctx.actor, transaction });
     await b.update({ endAt: newEnd, extensionsPoisha: b.extensionsPoisha + amount, totalPoisha: b.totalPoisha + amount, balanceStatus: 'due', updatedBy: principal.id }, { transaction });
-    await c.publish(transaction, 'booking.extended', b, { amount, end: newEnd.toISOString() }, principal);
-    await audit.record({ action: 'booking.extended', actor: principal, entityType: 'booking', entityId: b.id, entityCode: b.code, after: { end: newEnd.toISOString(), amount }, req }, { transaction });
-    return { booking: c.ownerView(b), amount };
+    await c.publish(transaction, 'booking.extended', b, { amount, end: newEnd.toISOString() }, ctx.actor);
+    await audit.record({ action: 'booking.extended', actor: ctx.actor, entityType: 'booking', entityId: b.id, entityCode: b.code, after: { end: newEnd.toISOString(), amount }, req }, { transaction });
+    return shown(ctx, { booking: c.ownerView(b), amount });
   });
 }
 
 /** FR-17: the owner records the venue balance (cash or bKash at the venue), the full amount due. */
 async function collectBalance(principal, id, { method, amount }, req) {
   return sequelize.transaction(async (transaction) => {
-    const b = await owned(principal, id, transaction);
+    const { b, ctx } = await owned(principal, id, transaction, 'bookings.collect_balance');
     if (!['checked_in', 'completed'].includes(b.status)) throw c.fail('BOOKING_STATE', { status: b.status });
     const due = rules.balanceDue({ total: b.totalPoisha, online: b.onlinePoisha }) - (b.balanceCollectedPoisha ?? 0);
     if (due <= 0 || b.balanceStatus === 'collected') throw c.fail('NO_BALANCE_DUE');
     if (amount !== due) throw c.fail('BALANCE_MISMATCH', { due });
     await b.update({ balanceStatus: 'collected', balanceMethod: method, balanceCollectedPoisha: (b.balanceCollectedPoisha ?? 0) + amount, balanceCollectedAt: new Date(), balanceCollectedBy: principal.id, updatedBy: principal.id }, { transaction });
-    await c.publish(transaction, 'booking.balance_collected', b, { amount, method }, principal);
-    await audit.record({ action: 'booking.balance_collected', actor: principal, entityType: 'booking', entityId: b.id, entityCode: b.code, after: { amount, method }, req }, { transaction });
-    return { booking: c.ownerView(b) };
+    await c.publish(transaction, 'booking.balance_collected', b, { amount, method }, ctx.actor);
+    await audit.record({ action: 'booking.balance_collected', actor: ctx.actor, entityType: 'booking', entityId: b.id, entityCode: b.code, after: { amount, method }, req }, { transaction });
+    return shown(ctx, { booking: c.ownerView(b) });
   });
 }
 
@@ -254,9 +273,10 @@ async function collectBalance(principal, id, { method, amount }, req) {
  * checked in at once.
  */
 async function walkIn(principal, groundId, { courtIds, start, minutes, name, phone = null }, idempotencyKey, req) {
+  // Round B3: the venue's owner, or its staff with bookings.walk_in (checked before a replay is answered).
+  const { g, ctx } = await ownedGround(principal, groundId, 'bookings.walk_in');
   const existing = await Booking.findOne({ where: { createdBy: principal.id, idempotencyKey, source: 'walk_in' } });
-  if (existing) return { booking: c.ownerView(existing) };
-  const g = await ownedGround(principal, groundId);
+  if (existing) return shown(ctx, { booking: c.ownerView(existing) });
   if (!['live', 'paused'].includes(g.status)) throw c.fail('GROUND_NOT_BOOKABLE');
   const ids = [...new Set(courtIds)];
   const startAt = new Date(start);
@@ -308,17 +328,17 @@ async function walkIn(principal, groundId, { courtIds, start, minutes, name, pho
         { transaction }
       );
       await c.reserve({ groundId: g.id, courtIds: ids, start: startAt, end: endAt, source: 'walk_in', bookingId: row.id }, { transaction });
-      await settlement.accrueVenueFee(row, row.feePoisha, 'walk_in', { actor: principal, transaction });
-      await c.publish(transaction, 'booking.walk_in_recorded', row, { start: startAt.toISOString(), price: quote.price }, principal);
-      if (checkInNow) await checkInInTx(row, { actor: principal, method: 'walk_in', at: now, transaction });
-      await audit.record({ action: 'booking.walk_in_recorded', actor: principal, entityType: 'booking', entityId: row.id, entityCode: row.code, after: { status: row.status, price: quote.price }, req }, { transaction });
+      await settlement.accrueVenueFee(row, row.feePoisha, 'walk_in', { actor: ctx.actor, transaction });
+      await c.publish(transaction, 'booking.walk_in_recorded', row, { start: startAt.toISOString(), price: quote.price }, ctx.actor);
+      if (checkInNow) await checkInInTx(row, { actor: ctx.actor, method: 'walk_in', at: now, transaction });
+      await audit.record({ action: 'booking.walk_in_recorded', actor: ctx.actor, entityType: 'booking', entityId: row.id, entityCode: row.code, after: { status: row.status, price: quote.price }, req }, { transaction });
       return row;
     });
-    return { booking: c.ownerView(b) };
+    return shown(ctx, { booking: c.ownerView(b) });
   } catch (err) {
     if (err instanceof UniqueConstraintError) {
       const again = await Booking.findOne({ where: { createdBy: principal.id, idempotencyKey, source: 'walk_in' } });
-      if (again) return { booking: c.ownerView(again) };
+      if (again) return shown(ctx, { booking: c.ownerView(again) });
     }
     throw err;
   }
@@ -337,30 +357,32 @@ async function refundAllInTx(b, { to, actor, cancelActor, reason, note = null, t
 /** FR-19 (v3): before the start, with a reason; 100% back to the member. Weather is not penalised (Q22). */
 async function ownerCancel(principal, id, { reason, note = null }, req) {
   return sequelize.transaction(async (transaction) => {
-    const b = await owned(principal, id, transaction);
+    const { b, ctx } = await owned(principal, id, transaction, 'bookings.cancel');
     const to = transition(b, 'owner_cancel');
     const block = rules.cancelBlock({ start: b.startAt, now: new Date() });
     if (block) throw c.fail(block);
-    const moved = await refundAllInTx(b, { to, actor: principal, cancelActor: 'owner', reason, note, transaction });
-    await c.publish(transaction, 'booking.owner_cancelled', b, { refund: moved.refunded, reason, penalised: !PENALTY_FREE.has(reason) }, principal);
-    await audit.record({ action: 'booking.owner_cancelled', actor: principal, entityType: 'booking', entityId: b.id, entityCode: b.code, after: { status: to, refund: moved.refunded }, reason, req }, { transaction });
-    return { booking: c.ownerView(b), refund: moved.refunded };
+    const moved = await refundAllInTx(b, { to, actor: ctx.actor, cancelActor: 'owner', reason, note, transaction });
+    await c.publish(transaction, 'booking.owner_cancelled', b, { refund: moved.refunded, reason, penalised: !PENALTY_FREE.has(reason) }, ctx.actor);
+    await audit.record({ action: 'booking.owner_cancelled', actor: ctx.actor, entityType: 'booking', entityId: b.id, entityCode: b.code, after: { status: to, refund: moved.refunded }, reason, req }, { transaction });
+    return shown(ctx, { booking: c.ownerView(b), refund: moved.refunded });
   });
 }
 
 /**
  * Move targets (M09 §6.4): a free court of the same length at one of the owner's live grounds,
  * open for the whole period and sharing a sport. Same ground first, then the same area, then others.
+ * Round B3: staff scope is one venue (Q170), so staff (bookings.move) see that venue's courts only.
  */
 async function moveTargets(principal, id) {
   const b = await Booking.findByPk(id);
   if (!b) throw E.notFound('Booking');
-  if (b.ownerId !== principal.id) throw c.fail('NOT_OWNER');
+  const ctx = actAt(principal, b.groundId, b.ownerId, 'bookings.move', 'Booking');
   const current = await reads.courts(b.courtIds);
   const sports = new Set(current.flatMap((k) => k.sportIds));
   const home = await reads.ground(b.groundId);
   const out = [];
-  for (const g of await reads.liveGroundsOf(principal.id)) {
+  for (const g of await reads.liveGroundsOf(ctx.ownerId)) {
+    if (ctx.staff && g.id !== b.groundId) continue;
     for (const k of g.courts) {
       if (b.courtIds.includes(k.id) || !k.sportIds.some((s) => sports.has(s))) continue;
       if (!(await reads.isOpen([k.id], b.startAt, (b.endAt - b.startAt) / 60000))) continue;
@@ -374,13 +396,13 @@ async function moveTargets(principal, id) {
 /** POST /me/ground-bookings/:id/move { courtId } (FR-20): price unchanged; a new address lets the member cancel free. */
 async function move(principal, id, { courtId }, req) {
   return sequelize.transaction(async (transaction) => {
-    const b = await owned(principal, id, transaction);
+    const { b, ctx } = await owned(principal, id, transaction, 'bookings.move');
     if (b.status !== 'confirmed' || b.courtIds.length !== 1) throw c.fail('BOOKING_STATE', { status: b.status });
     if (rules.cancelBlock({ start: b.startAt, now: new Date() })) throw c.fail('ALREADY_STARTED');
     const [target] = await reads.courts([courtId], { transaction });
     const g = target ? await reads.ground(target.groundId, { transaction }) : null;
     const [from] = await reads.courts(b.courtIds, { transaction });
-    if (!target || !g || g.ownerId !== principal.id || !g.bookable || target.status !== 'active' || courtId === b.courtIds[0] || !target.sportIds.some((s) => from.sportIds.includes(s))) {
+    if (!target || !g || g.ownerId !== ctx.ownerId || (ctx.staff && g.id !== b.groundId) || !g.bookable || target.status !== 'active' || courtId === b.courtIds[0] || !target.sportIds.some((s) => from.sportIds.includes(s))) {
       throw c.fail('MOVE_TARGET_INVALID');
     }
     if (!(await reads.isOpen([courtId], b.startAt, (b.endAt - b.startAt) / 60000, { transaction }))) throw c.fail('OUTSIDE_HOURS');
@@ -389,9 +411,9 @@ async function move(principal, id, { courtId }, req) {
     await c.reserve({ groundId: g.id, courtIds: [courtId], start: b.startAt, end: b.endAt, source: b.source, bookingId: b.id }, { transaction });
     const newGround = g.id !== b.groundId;
     await b.update({ groundId: g.id, courtIds: [courtId], moveCount: b.moveCount + 1, freeCancelUntil: newGround ? b.startAt : b.freeCancelUntil, updatedBy: principal.id }, { transaction });
-    await c.publish(transaction, 'booking.moved', b, { fromGroundId: before.groundId, newGround }, principal);
-    await audit.record({ action: 'booking.moved', actor: principal, entityType: 'booking', entityId: b.id, entityCode: b.code, before, after: { groundId: g.id, courtIds: [courtId] }, req }, { transaction });
-    return { booking: c.ownerView(b) };
+    await c.publish(transaction, 'booking.moved', b, { fromGroundId: before.groundId, newGround }, ctx.actor);
+    await audit.record({ action: 'booking.moved', actor: ctx.actor, entityType: 'booking', entityId: b.id, entityCode: b.code, before, after: { groundId: g.id, courtIds: [courtId] }, req }, { transaction });
+    return shown(ctx, { booking: c.ownerView(b) });
   });
 }
 

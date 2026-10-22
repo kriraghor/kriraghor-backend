@@ -13,6 +13,8 @@ const lazy = (file, names, values = []) => {
 };
 
 module.exports = {
+  // Round B3: the venue adapter of the business-members port (registered by registry.registerAll).
+  businessPort: lazy('./grounds.business', ['register']),
   reads: lazy('./grounds.reads', ['courts', 'ground', 'groundsOf', 'hoursFor', 'isOpen', 'liveGroundsOf', 'pendingActions', 'publishedVersionAt', 'versionById']),
   rules: lazy('./grounds.rules', ['isOpenAt', 'toHHMM', 'toMin']),
   grounds: lazy('./grounds.service', ['facts', 'staffActionInTx']),

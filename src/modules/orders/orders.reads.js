@@ -26,6 +26,21 @@ async function pendingActions(principal, role) {
   return items;
 }
 
+/** Round B3 staff to-do of one shop: orders to accept (orders.accept) and to ship (orders.ship). */
+async function staffActions(shopId, permissions) {
+  const items = [];
+  const q = `&shopId=${shopId}`;
+  if (permissions.includes('orders.accept')) {
+    const toAccept = await SubOrder.findAll({ where: { shopId, status: 'placed' }, attributes: ['acceptBy'] });
+    if (toAccept.length) items.push({ key: 'orders_to_accept', count: toAccept.length, severity: 'high', dueAt: c.iso(earliest(toAccept, 'acceptBy')), href: `/vendor/orders?tab=to_accept${q}` });
+  }
+  if (permissions.includes('orders.ship')) {
+    const toShip = await SubOrder.findAll({ where: { shopId, status: 'accepted' }, attributes: ['shipBy'] });
+    if (toShip.length) items.push({ key: 'orders_to_ship', count: toShip.length, severity: 'high', dueAt: c.iso(earliest(toShip, 'shipBy')), href: `/vendor/orders?tab=to_ship${q}` });
+  }
+  return items;
+}
+
 /** What a notification needs about a sub-order. */
 async function facts(subOrderId) {
   const s = await SubOrder.findByPk(subOrderId);
@@ -97,4 +112,4 @@ async function exportSubOrderKpiFacts({ since = null, until = new Date() } = {})
   return rows.map((s) => kpiFact(s, items.filter((i) => i.subOrderId === s.id), cats));
 }
 
-module.exports = { pendingActions, facts, subOrderKpiFact, exportSubOrderKpiFacts };
+module.exports = { pendingActions, staffActions, facts, subOrderKpiFact, exportSubOrderKpiFacts };

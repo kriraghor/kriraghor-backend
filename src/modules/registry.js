@@ -61,6 +61,13 @@ function registerAll() {
   // M18: events schedule risk evaluations and reliability; overdue document requests raise their flag.
   require('./risk/risk.consumers').registerRiskConsumers();
 
+  // Round B3: venues, gyms and shops register their business adapter (business-members never imports
+  // them); an owner's account or role change makes their staff's access tokens stale.
+  require('./grounds').businessPort.register();
+  require('./gym').businessPort.register();
+  require('./market').businessPort.register();
+  require('./business-members').consumers.registerBusinessMemberConsumers();
+
   // M01 ← M02: the member role follows the NID review.
   require('./users/kyc.consumers').registerKycConsumers();
 

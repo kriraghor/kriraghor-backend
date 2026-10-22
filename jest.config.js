@@ -67,5 +67,7 @@ module.exports = {
     './src/modules/tournaments/tournaments.rules.js': FULL,
     './src/modules/catalog/sport-rules.rules.js': FULL,
     './src/modules/scoring/standings.rules.js': FULL,
+    // Round B3 staff accounts: allow-lists, defaults, actFor, permission diffing and the staff redaction.
+    './src/modules/business-members/business-members.rules.js': FULL,
   },
 };

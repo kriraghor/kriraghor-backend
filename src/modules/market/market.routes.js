@@ -3,7 +3,9 @@
 /**
  * M12 routes (§9), step 1.
  *   publicRouter  /market         browse, product page, shop page, categories (no sign-in)
- *   shopRouter    /shop           the owner's shop, products, variants, photos and stock; gate list_product
+ *   shopDesk      /shop           the stock desk: adjust, movements, inventory (gate work_shop per route,
+ *                                 Round B3: the owner or the shop's staff by permission; mounted first)
+ *   shopRouter    /shop           the owner's shop, products, variants and photos; gate list_product
  *   meSaved       /me/saved       saved items (signed-in members)
  *   adminRouter   /admin/market   shops and products for staff: suspend (manage_users), restore and remove (masters)
  * Decisions on shops and products are M05's (/admin/submissions, kinds `shop` and `product`).
@@ -69,9 +71,13 @@ shopRouter.post('/products/:id/photos', id, limits.productPhoto, raw, async (req
 shopRouter.put('/products/:id/photos/order', id, validate(s.photoOrder), async (req, res) => res.json(await photos.reorder(req.user, req.params.id, req.body.ids, req)));
 shopRouter.post('/products/:id/photos/:photoId/remove', validate(s.photoParams, 'params'), async (req, res) => res.json(await photos.remove(req.user, req.params.id, req.params.photoId, req)));
 
-shopRouter.post('/variants/:id/adjust', id, validate(s.adjustBody), async (req, res) => res.json(await inventory.adjust(req.user, req.params.id, req.body, req)));
-shopRouter.get('/variants/:id/movements', id, validate(s.cursorQuery, 'query'), async (req, res) => res.json(await inventory.movements(req.user, req.params.id, req.validQuery)));
-shopRouter.get('/inventory', validate(s.inventoryQuery, 'query'), async (req, res) => res.json(await inventory.overview(req.user, req.validQuery)));
+// ---------------- the stock desk (Round B3: owner or shop staff; per-route middleware, so paths it
+// does not match fall through to the owner-only router untouched)
+const shopDesk = Router();
+const work = [authenticate, requireGate('work_shop')];
+shopDesk.post('/variants/:id/adjust', ...work, id, validate(s.adjustBody), async (req, res) => res.json(await inventory.adjust(req.user, req.params.id, req.body, req)));
+shopDesk.get('/variants/:id/movements', ...work, id, validate(s.cursorQuery, 'query'), async (req, res) => res.json(await inventory.movements(req.user, req.params.id, req.validQuery)));
+shopDesk.get('/inventory', ...work, validate(s.inventoryQuery, 'query'), async (req, res) => res.json(await inventory.overview(req.user, req.validQuery)));
 
 // ---------------- member: saved items (FR-33)
 const meSaved = Router();
@@ -95,4 +101,4 @@ for (const [path, svc] of [['shops', shops], ['products', products]]) {
   adminRouter.post(`/${path}/:id/remove`, requireMaster, id, validate(s.reasonBody), async (req, res) => res.json(await svc.staffAction(req.user, req.params.id, 'remove', req.body, req)));
 }
 
-module.exports = { publicRouter, shopRouter, meSaved, adminRouter };
+module.exports = { publicRouter, shopDesk, shopRouter, meSaved, adminRouter };

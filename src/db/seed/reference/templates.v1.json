@@ -1,6 +1,6 @@
 {
-  "seedVersion": 21,
-  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code. v9: the M17 DISPUTE_*, REPORT_* and REVIEW_* codes. v10: the M18 RISK_*, PAYOUTS_*, DOCUMENTS_* and TRUST_LOW codes. v11: the M12 SHOP_*, PRODUCT_*, STOCK_*, SUPPLEMENT_EXPIRING and SAVED_* codes. v12: the M13 ORDER_* and SHOP_*ORDER* codes. v13: the M11 HIRE_* and JOB_* codes. v14 (M20): gyms (live, changes, rejected), passes (ready, cancelled) and trainer subscriptions (started, new subscriber, renewal due, lapsed, cancelled, paid). v15 (M14 lite, M22): organisations (verified, changes) and the organiser SaaS (contract active, suspended, ending; invoices issued, overdue, paid; prize fund received, returned). v18 adds the M14 tournament notices (approval, registrations, reserve offers, fixtures, reschedules, cancellation, too few teams, lots). v19 adds the M01 password-changed security alert. v20: user-facing words Grounds → Venues, Tournaments → Events, big events → Showcases (19 Oct 2026). v21 adds REVIEW_REPLIED (the author hears that the venue, pro, shop or gym replied; Round B1).",
+  "seedVersion": 22,
+  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code. v9: the M17 DISPUTE_*, REPORT_* and REVIEW_* codes. v10: the M18 RISK_*, PAYOUTS_*, DOCUMENTS_* and TRUST_LOW codes. v11: the M12 SHOP_*, PRODUCT_*, STOCK_*, SUPPLEMENT_EXPIRING and SAVED_* codes. v12: the M13 ORDER_* and SHOP_*ORDER* codes. v13: the M11 HIRE_* and JOB_* codes. v14 (M20): gyms (live, changes, rejected), passes (ready, cancelled) and trainer subscriptions (started, new subscriber, renewal due, lapsed, cancelled, paid). v15 (M14 lite, M22): organisations (verified, changes) and the organiser SaaS (contract active, suspended, ending; invoices issued, overdue, paid; prize fund received, returned). v18 adds the M14 tournament notices (approval, registrations, reserve offers, fixtures, reschedules, cancellation, too few teams, lots). v19 adds the M01 password-changed security alert. v20: user-facing words Grounds → Venues, Tournaments → Events, big events → Showcases (19 Oct 2026). v21 adds REVIEW_REPLIED (the author hears that the venue, pro, shop or gym replied; Round B1). v22 adds the Round B3 staff notices: TEAM_ADDED and TEAM_REMOVED (the staff member hears when an owner adds or removes them), and TEAM_BOOKING_NEW, TEAM_BOOKING_CANCELLED and TEAM_CHECKIN_SOON for venue staff (no fee, released or retained amounts).",
   "templates": [
     {
       "code": "AUDIT_CRITICAL",
@@ -9383,6 +9383,340 @@
           "name": "tournament",
           "type": "text",
           "maxLen": 80
+        }
+      ]
+    },
+    {
+      "code": "TEAM_ADDED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "You joined the team at {{business}}",
+      "body": "{{owner}} added you to the team at the {{kind}} {{business}}. Open the business panel to start.",
+      "variables": [
+        {
+          "name": "owner",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "business",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "maxLen": 10
+        }
+      ]
+    },
+    {
+      "code": "TEAM_ADDED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "{{business}}-এর টিমে যুক্ত হয়েছেন",
+      "body": "{{owner}} আপনাকে {{kind}} {{business}}-এর টিমে যুক্ত করেছেন। শুরু করতে বিজনেস প্যানেল খুলুন।",
+      "variables": [
+        {
+          "name": "owner",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "business",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "maxLen": 10
+        }
+      ]
+    },
+    {
+      "code": "TEAM_ADDED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{owner}} added you to the team at {{business}}. Sign in to the business panel.",
+      "variables": [
+        {
+          "name": "owner",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "business",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "maxLen": 10
+        }
+      ]
+    },
+    {
+      "code": "TEAM_ADDED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{owner}} আপনাকে {{business}}-এর টিমে যুক্ত করেছেন।",
+      "variables": [
+        {
+          "name": "owner",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "business",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "maxLen": 10
+        }
+      ]
+    },
+    {
+      "code": "TEAM_REMOVED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "You left the team at {{business}}",
+      "body": "{{owner}} removed you from the team at the {{kind}} {{business}}. You no longer have access to its desk.",
+      "variables": [
+        {
+          "name": "owner",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "business",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "maxLen": 10
+        }
+      ]
+    },
+    {
+      "code": "TEAM_REMOVED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "{{business}}-এর টিম থেকে সরানো হয়েছে",
+      "body": "{{owner}} আপনাকে {{kind}} {{business}}-এর টিম থেকে সরিয়েছেন। এর ডেস্কে আর প্রবেশ নেই।",
+      "variables": [
+        {
+          "name": "owner",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "business",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "maxLen": 10
+        }
+      ]
+    },
+    {
+      "code": "TEAM_REMOVED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: {{owner}} removed you from the team at {{business}}.",
+      "variables": [
+        {
+          "name": "owner",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "business",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "maxLen": 10
+        }
+      ]
+    },
+    {
+      "code": "TEAM_REMOVED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: {{owner}} আপনাকে {{business}}-এর টিম থেকে সরিয়েছেন।",
+      "variables": [
+        {
+          "name": "owner",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "business",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "kind",
+          "type": "text",
+          "maxLen": 10
+        }
+      ]
+    },
+    {
+      "code": "TEAM_BOOKING_NEW",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "New booking at {{ground}}",
+      "body": "{{code}} at {{ground}}, {{start}}. {{due}} is due at the venue.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "due",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "TEAM_BOOKING_NEW",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "{{ground}}-এ নতুন বুকিং",
+      "body": "{{ground}}-এ {{code}}, {{start}}। ভেন্যুতে {{due}} বাকি।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        },
+        {
+          "name": "due",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "TEAM_BOOKING_CANCELLED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Booking cancelled at {{ground}}",
+      "body": "{{code}} at {{ground}}, {{start}}, was cancelled by the player. The court is free again.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "TEAM_BOOKING_CANCELLED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "{{ground}}-এ বুকিং বাতিল",
+      "body": "{{ground}}-এ {{code}}, {{start}}, খেলোয়াড় বাতিল করেছেন। কোর্ট আবার খালি।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "TEAM_CHECKIN_SOON",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Check-in soon: {{code}}",
+      "body": "{{code}} at {{ground}} starts {{start}}. Check the team in when they arrive.",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
+        }
+      ]
+    },
+    {
+      "code": "TEAM_CHECKIN_SOON",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "শিগগিরই চেক-ইন: {{code}}",
+      "body": "{{ground}}-এ {{code}} শুরু {{start}}। দল এলে চেক-ইন করুন।",
+      "variables": [
+        {
+          "name": "code",
+          "type": "text",
+          "maxLen": 16
+        },
+        {
+          "name": "ground",
+          "type": "text",
+          "maxLen": 60
+        },
+        {
+          "name": "start",
+          "type": "datetime"
         }
       ]
     }

@@ -88,10 +88,30 @@ function evaluate(principal, need) {
   return deny('ROLE_REQUIRED', { role: needed[0] });
 }
 
+/**
+ * Round B3 (Q169): the desks staff can use. The owner passes exactly as before (their list_* gate);
+ * otherwise a member who works at a business of that type for a live owner passes with a verified
+ * phone (no NID). Anyone else gets the owner gate's answer, unchanged. Which business and which
+ * permission is checked by the owning module (business-members actFor: 404 for other businesses).
+ */
+const WORK = Object.freeze({
+  work_ground: { owner: 'list_ground', type: 'venue' },
+  work_gym: { owner: 'list_gym', type: 'gym' },
+  work_shop: { owner: 'list_product', type: 'shop' },
+});
+
+function evaluateWork(principal, { owner, type }) {
+  const asOwner = evaluate(principal, ACTIONS[owner]);
+  if (asOwner.allowed) return asOwner;
+  if (!(principal?.workplaces ?? []).some((w) => w.businessType === type)) return asOwner;
+  return evaluate(principal, PHONE_VERIFIED);
+}
+
 function evaluateAction(principal, action) {
+  if (WORK[action]) return evaluateWork(principal, WORK[action]);
   const need = ACTIONS[action];
   if (!need) return null;
   return evaluate(principal, need);
 }
 
-module.exports = { ACTIONS, PHONE_VERIFIED, evaluate, evaluateAction };
+module.exports = { ACTIONS, WORK, PHONE_VERIFIED, evaluate, evaluateAction };

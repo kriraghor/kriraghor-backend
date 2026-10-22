@@ -25,6 +25,8 @@ function serializePrincipal(principal) {
     isStaff: principal.isStaff,
     isMaster: principal.isMaster,
     twoFactor: principal.staff ? { required: true, enabled: Boolean(principal.staff.totpEnabledAt) } : { required: false, enabled: false },
+    // Round B3: where this member works as staff (names come from GET /me/workplaces).
+    workplaces: (principal.workplaces ?? []).map((w) => ({ id: w.id, businessType: w.businessType, businessId: w.businessId, permissions: [...w.permissions].sort() })),
   };
 }
 

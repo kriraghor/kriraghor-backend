@@ -76,7 +76,8 @@ async function main() {
  * background and with its own environment:
  *   DEMO_SEED=listings  the seeder, listings profile only (no payments); it skips what exists, so a
  *                       restart resumes it
- *   DEMO_SEED=access    only the demo sign-in accounts (needs DEMO_PASSWORD; listings must exist)
+ *   DEMO_SEED=access    only the demo business staff (B3) and the demo sign-in accounts (needs
+ *                       DEMO_PASSWORD; listings must exist)
  *   DEMO_SEED=hide      the hide command (cancels demo events, suspends demo accounts; deletes nothing)
  * Remove the variable when the log shows the run finished.
  */

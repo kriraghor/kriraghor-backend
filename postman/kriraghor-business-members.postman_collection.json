@@ -1,0 +1,3857 @@
+{
+  "info": {
+    "name": "Kriraghor API: Business members (Round B3)",
+    "description": "Staff accounts for businesses (Q69, Q169, Q170). A venue owner adds counter staff by their verified phone (no NID), with the default permissions; every refusal (unknown number, the owner, Kriraghor staff, an unverified phone, someone already on the team, bad permissions, another owner’s venue) answers with a stable code and never echoes the person’s name or number; adds are limited per owner per hour (business.team_adds_per_hour, 429 RATE_LIMITED; Q180). Staff work the venue desk (bookings, check-in, walk-ins) without ever seeing the fee, released or retained amounts; optional permissions (cancel, move, reply to reviews) are off until the owner turns them on, and the staff member’s token goes stale at once. Staff of another venue get 404; staff without a permission get 403 PERMISSION_REQUIRED.\n\nA shop packer accepts and ships orders and adjusts stock; the buyer’s phone and address show on the order page only with the shipping permission once accepted, and every view is audited (Q168); the settlement stays the owner’s. A gym front-desk member admits a pass without seeing the money. When the owner’s role is suspended, staff lose access on their next request; removed staff lose it at once.\n\nRequests named \"Runner\" go to the local test runner (refreshing a staff session after their access changed, paying through the simulator, moving a booking in time, draining events, using up an owner’s staff adds for the hour).\n\nUnattended: `node postman/run-b3.js`. Rebuild this file with: node postman/build-collection-b3.js",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000/api/v1"
+    },
+    {
+      "key": "controlUrl",
+      "value": ""
+    },
+    {
+      "key": "adminAccessToken",
+      "value": ""
+    },
+    {
+      "key": "masterPhone",
+      "value": ""
+    },
+    {
+      "key": "ownerToken",
+      "value": ""
+    },
+    {
+      "key": "ownerId",
+      "value": ""
+    },
+    {
+      "key": "ownerPhone",
+      "value": ""
+    },
+    {
+      "key": "owner2Token",
+      "value": ""
+    },
+    {
+      "key": "memberToken",
+      "value": ""
+    },
+    {
+      "key": "groundId",
+      "value": ""
+    },
+    {
+      "key": "ground2Id",
+      "value": ""
+    },
+    {
+      "key": "courtId",
+      "value": ""
+    },
+    {
+      "key": "court2Id",
+      "value": ""
+    },
+    {
+      "key": "s1",
+      "value": ""
+    },
+    {
+      "key": "s2",
+      "value": ""
+    },
+    {
+      "key": "deskPhone",
+      "value": ""
+    },
+    {
+      "key": "nonePhone",
+      "value": ""
+    },
+    {
+      "key": "otherPhone",
+      "value": ""
+    },
+    {
+      "key": "packerPhone",
+      "value": ""
+    },
+    {
+      "key": "frontdeskPhone",
+      "value": ""
+    },
+    {
+      "key": "unverifiedPhone",
+      "value": ""
+    },
+    {
+      "key": "deskToken",
+      "value": ""
+    },
+    {
+      "key": "noneToken",
+      "value": ""
+    },
+    {
+      "key": "otherToken",
+      "value": ""
+    },
+    {
+      "key": "packerToken",
+      "value": ""
+    },
+    {
+      "key": "frontdeskToken",
+      "value": ""
+    },
+    {
+      "key": "shopOwnerToken",
+      "value": ""
+    },
+    {
+      "key": "shopId",
+      "value": ""
+    },
+    {
+      "key": "subOrderId",
+      "value": ""
+    },
+    {
+      "key": "subOrder2Id",
+      "value": ""
+    },
+    {
+      "key": "variantId",
+      "value": ""
+    },
+    {
+      "key": "gymOwnerToken",
+      "value": ""
+    },
+    {
+      "key": "gymId",
+      "value": ""
+    },
+    {
+      "key": "passToken",
+      "value": ""
+    },
+    {
+      "key": "deskMemberId",
+      "value": ""
+    },
+    {
+      "key": "ownerFreshToken",
+      "value": ""
+    },
+    {
+      "key": "b1",
+      "value": ""
+    },
+    {
+      "key": "b1Payment",
+      "value": ""
+    },
+    {
+      "key": "b2",
+      "value": ""
+    },
+    {
+      "key": "b2Payment",
+      "value": ""
+    },
+    {
+      "key": "reviewId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. The owner’s team (add, refuse, list)",
+      "item": [
+        {
+          "name": "My team (empty), the permission catalogue and the cap",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"no members yet, my venue listed\", () => { pm.expect(j.items.length === 0 && j.businesses.some((b) => b.businessType === 'venue' && b.id === pm.variables.get('groundId'))).to.eql(true); });",
+                  "pm.test(\"cancel, move and reply are optional (off by default, Q170)\", () => { pm.expect(['bookings.cancel', 'bookings.move', 'reviews.reply'].every((k) => j.permissionCatalogue.venue.find((p) => p.key === k).default === false)).to.eql(true); });",
+                  "pm.test(\"the cap is business.team_max_members (10)\", () => { pm.expect(j.maxMembers === 10).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/team",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "team"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Unknown number (expect 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 404 MEMBER_NOT_FOUND', () => {",
+                  "  pm.response.to.have.status(404);",
+                  "  pm.expect(j && j.code).to.eql('MEMBER_NOT_FOUND');",
+                  "});",
+                  "pm.test(\"never echoes the number (Q180)\", () => { pm.expect(!pm.response.text().includes('1799999998')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"businessType\": \"venue\",\n  \"businessId\": \"{{groundId}}\",\n  \"phone\": \"01799999998\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/team",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "team"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Myself (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 MEMBER_IS_OWNER', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('MEMBER_IS_OWNER');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"businessType\": \"venue\",\n  \"businessId\": \"{{groundId}}\",\n  \"phone\": \"{{ownerPhone}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/team",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "team"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A Kriraghor staff account (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 MEMBER_IS_STAFF', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('MEMBER_IS_STAFF');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"businessType\": \"venue\",\n  \"businessId\": \"{{groundId}}\",\n  \"phone\": \"{{masterPhone}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/team",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "team"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A phone that is not verified (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 PHONE_NOT_VERIFIED', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('PHONE_NOT_VERIFIED');",
+                  "});",
+                  "pm.test(\"never echoes the person’s name or number (Q180)\", () => { pm.expect(!pm.response.text().includes('Unverified Phone') && !pm.response.text().includes(pm.variables.get('unverifiedPhone').slice(1))).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"businessType\": \"venue\",\n  \"businessId\": \"{{groundId}}\",\n  \"phone\": \"{{unverifiedPhone}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/team",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "team"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A permission staff never get: pricing (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 PERMISSIONS_INVALID', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('PERMISSIONS_INVALID');",
+                  "});",
+                  "pm.test(\"names it\", () => { pm.expect(j.unknown[0] === 'pricing.publish').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"businessType\": \"venue\",\n  \"businessId\": \"{{groundId}}\",\n  \"phone\": \"{{deskPhone}}\",\n  \"permissions\": [\n    \"bookings.view\",\n    \"pricing.publish\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/team",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "team"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Check-in without the bookings list (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 PERMISSIONS_INVALID', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('PERMISSIONS_INVALID');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"businessType\": \"venue\",\n  \"businessId\": \"{{groundId}}\",\n  \"phone\": \"{{deskPhone}}\",\n  \"permissions\": [\n    \"bookings.check_in\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/team",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "team"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Another owner’s venue (expect 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 404 NOT_FOUND', () => {",
+                  "  pm.response.to.have.status(404);",
+                  "  pm.expect(j && j.code).to.eql('NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"businessType\": \"venue\",\n  \"businessId\": \"{{ground2Id}}\",\n  \"phone\": \"{{deskPhone}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/team",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "team"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add the counter staff by phone (defaults)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'member.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('deskMemberId', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"the six default permissions\", () => { pm.expect(JSON.stringify(j.member.permissions) === \"[\\\"bookings.check_in\\\",\\\"bookings.collect_balance\\\",\\\"bookings.extend\\\",\\\"bookings.no_show\\\",\\\"bookings.view\\\",\\\"bookings.walk_in\\\"]\").to.eql(true); });",
+                  "pm.test(\"last 4 digits only\", () => { pm.expect(j.member.member.phoneLast4.length === 4 && !pm.response.text().includes(pm.variables.get('deskPhone').slice(1))).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"businessType\": \"venue\",\n  \"businessId\": \"{{groundId}}\",\n  \"phone\": \"{{deskPhone}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/team",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "team"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The same person again (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 ALREADY_MEMBER', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('ALREADY_MEMBER');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"businessType\": \"venue\",\n  \"businessId\": \"{{groundId}}\",\n  \"phone\": \"{{deskPhone}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/team",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "team"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add a member with no permissions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"businessType\": \"venue\",\n  \"businessId\": \"{{groundId}}\",\n  \"phone\": \"{{nonePhone}}\",\n  \"permissions\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/team",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "team"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Another owner adds staff at their venue",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{owner2Token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"businessType\": \"venue\",\n  \"businessId\": \"{{ground2Id}}\",\n  \"phone\": \"{{otherPhone}}\",\n  \"permissions\": [\n    \"bookings.check_in\",\n    \"bookings.collect_balance\",\n    \"bookings.extend\",\n    \"bookings.no_show\",\n    \"bookings.view\",\n    \"bookings.walk_in\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/team",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "team"
+              ]
+            }
+          }
+        },
+        {
+          "name": "My team now",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"two members\", () => { pm.expect(j.items.length === 2).to.eql(true); });",
+                  "pm.test(\"no full phone numbers\", () => { pm.expect(!/(\\+?880|\"0)1[3-9]\\d{8}/.test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/team?businessType=venue&businessId={{groundId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "team"
+              ],
+              "query": [
+                {
+                  "key": "businessType",
+                  "value": "venue"
+                },
+                {
+                  "key": "businessId",
+                  "value": "{{groundId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: refresh desk's session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('deskToken', v); }",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/refresh?who=desk",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "refresh"
+              ],
+              "query": [
+                {
+                  "key": "who",
+                  "value": "desk"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: refresh none's session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('noneToken', v); }",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/refresh?who=none",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "refresh"
+              ],
+              "query": [
+                {
+                  "key": "who",
+                  "value": "none"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: refresh other's session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('otherToken', v); }",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/refresh?who=other",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "refresh"
+              ],
+              "query": [
+                {
+                  "key": "who",
+                  "value": "other"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Where I work",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"the venue, its owner, my permissions\", () => { pm.expect(j.items.length === 1 && j.items[0].businessId === pm.variables.get('groundId') && j.items[0].owner.displayName === 'Kamal Hossain' && j.items[0].permissions.includes('bookings.check_in')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/workplaces",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "workplaces"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Me: workplaces in the principal",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"one workplace\", () => { pm.expect(j.workplaces.length === 1 && j.workplaces[0].businessType === 'venue').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: use up all but one of owner 2’s staff adds this hour",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/fill-team-adds?who=owner2",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "fill-team-adds"
+              ],
+              "query": [
+                {
+                  "key": "who",
+                  "value": "owner2"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "The last add this hour: an unknown number still counts (expect 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 404 MEMBER_NOT_FOUND', () => {",
+                  "  pm.response.to.have.status(404);",
+                  "  pm.expect(j && j.code).to.eql('MEMBER_NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{owner2Token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"businessType\": \"venue\",\n  \"businessId\": \"{{ground2Id}}\",\n  \"phone\": \"01799999997\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/team",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "team"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Over business.team_adds_per_hour (expect 429)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 429 RATE_LIMITED', () => {",
+                  "  pm.response.to.have.status(429);",
+                  "  pm.expect(j && j.code).to.eql('RATE_LIMITED');",
+                  "});",
+                  "pm.test(\"says when to try again\", () => { pm.expect(j.retryAfter > 0).to.eql(true); });",
+                  "pm.test(\"nothing about the person\", () => { pm.expect(!pm.response.text().includes('Mitu Akter') && !pm.response.text().includes(pm.variables.get('nonePhone').slice(1))).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{owner2Token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"businessType\": \"venue\",\n  \"businessId\": \"{{ground2Id}}\",\n  \"phone\": \"{{nonePhone}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/team",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "team"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reading my team is not limited",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"still one member (the other venue’s staff)\", () => { pm.expect(j.items.length === 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{owner2Token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/team",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "team"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. The venue desk (route by route)",
+      "item": [
+        {
+          "name": "A member holds a booking",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"saves b1\", () => { pm.expect((pm.collectionVariables.set('b1', j.booking.id), true)).to.eql(true); });",
+                  "pm.test(\"saves b1Payment\", () => { pm.expect((pm.collectionVariables.set('b1Payment', j.payment.id), true)).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"groundId\": \"{{groundId}}\",\n  \"courtIds\": [\n    \"{{courtId}}\"\n  ],\n  \"start\": \"{{s1}}\",\n  \"minutes\": 60,\n  \"payment\": \"advance\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings/holds",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings",
+                "holds"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: pay b1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/pay?paymentId={{b1Payment}}",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "pay"
+              ],
+              "query": [
+                {
+                  "key": "paymentId",
+                  "value": "{{b1Payment}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: b1 starts now",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/shift?bookingId={{b1}}",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "shift"
+              ],
+              "query": [
+                {
+                  "key": "bookingId",
+                  "value": "{{b1}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff: the day at the venue",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"the booking\", () => { pm.expect(j.bookings.length === 1).to.eql(true); });",
+                  "pm.test(\"due at the venue shows\", () => { pm.expect(j.bookings[0].money.dueAtVenue === 150000).to.eql(true); });",
+                  "pm.test(\"no fee, net, released or retained amounts\", () => { pm.expect(!new RegExp(\"\\\"(fee|feeBps|commission|commissionBps|net|released|retained|stockValuePoisha|settlement|payoutsHref)\\\"\\\\s*:\").test(pm.response.text())).to.eql(true); });",
+                  "pm.test(\"no full phone numbers\", () => { pm.expect(!/(\\+?880|\"0)1[3-9]\\d{8}/.test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/ground-bookings?groundId={{groundId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "ground-bookings"
+              ],
+              "query": [
+                {
+                  "key": "groundId",
+                  "value": "{{groundId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Owner: the same day, with the fee",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"the fee shows for the owner\", () => { pm.expect(j.bookings[0].money.fee === 10000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/ground-bookings?groundId={{groundId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "ground-bookings"
+              ],
+              "query": [
+                {
+                  "key": "groundId",
+                  "value": "{{groundId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "No permission: the day (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 PERMISSION_REQUIRED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('PERMISSION_REQUIRED');",
+                  "});",
+                  "pm.test(\"names it\", () => { pm.expect(j.permission === 'bookings.view').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{noneToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/ground-bookings?groundId={{groundId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "ground-bookings"
+              ],
+              "query": [
+                {
+                  "key": "groundId",
+                  "value": "{{groundId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Another venue’s staff: this booking (expect 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 404 NOT_FOUND', () => {",
+                  "  pm.response.to.have.status(404);",
+                  "  pm.expect(j && j.code).to.eql('NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{otherToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/ground-bookings/{{b1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "ground-bookings",
+                "{{b1}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff: the booking",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"no fee, net, released or retained amounts\", () => { pm.expect(!new RegExp(\"\\\"(fee|feeBps|commission|commissionBps|net|released|retained|stockValuePoisha|settlement|payoutsHref)\\\"\\\\s*:\").test(pm.response.text())).to.eql(true); });",
+                  "pm.test(\"no full phone numbers\", () => { pm.expect(!/(\\+?880|\"0)1[3-9]\\d{8}/.test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/ground-bookings/{{b1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "ground-bookings",
+                "{{b1}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "No permission: check in (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 PERMISSION_REQUIRED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('PERMISSION_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{noneToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/ground-bookings/{{b1}}/check-in",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "ground-bookings",
+                "{{b1}}",
+                "check-in"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff: check in (the money goes to the owner, unseen)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"checked in\", () => { pm.expect(j.booking.status === 'checked_in').to.eql(true); });",
+                  "pm.test(\"no released block\", () => { pm.expect(j.released === undefined).to.eql(true); });",
+                  "pm.test(\"no fee, net, released or retained amounts\", () => { pm.expect(!new RegExp(\"\\\"(fee|feeBps|commission|commissionBps|net|released|retained|stockValuePoisha|settlement|payoutsHref)\\\"\\\\s*:\").test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/ground-bookings/{{b1}}/check-in",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "ground-bookings",
+                "{{b1}}",
+                "check-in"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff: collect the balance at the venue",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"no fee, net, released or retained amounts\", () => { pm.expect(!new RegExp(\"\\\"(fee|feeBps|commission|commissionBps|net|released|retained|stockValuePoisha|settlement|payoutsHref)\\\"\\\\s*:\").test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"cash\",\n  \"amount\": 150000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/ground-bookings/{{b1}}/collect-balance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "ground-bookings",
+                "{{b1}}",
+                "collect-balance"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A second booking tomorrow",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"saves b2\", () => { pm.expect((pm.collectionVariables.set('b2', j.booking.id), true)).to.eql(true); });",
+                  "pm.test(\"saves b2Payment\", () => { pm.expect((pm.collectionVariables.set('b2Payment', j.payment.id), true)).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"groundId\": \"{{groundId}}\",\n  \"courtIds\": [\n    \"{{courtId}}\"\n  ],\n  \"start\": \"{{s2}}\",\n  \"minutes\": 60,\n  \"payment\": \"advance\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings/holds",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings",
+                "holds"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: pay b2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/pay?paymentId={{b2Payment}}",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "pay"
+              ],
+              "query": [
+                {
+                  "key": "paymentId",
+                  "value": "{{b2Payment}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff: cancel is optional and off (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 PERMISSION_REQUIRED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('PERMISSION_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"weather\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/ground-bookings/{{b2}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "ground-bookings",
+                "{{b2}}",
+                "cancel"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff: move is optional and off (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 PERMISSION_REQUIRED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('PERMISSION_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courtId\": \"{{court2Id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/ground-bookings/{{b2}}/move",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "ground-bookings",
+                "{{b2}}",
+                "move"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The owner turns move on",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"move is on\", () => { pm.expect(j.member.permissions.includes('bookings.move')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permissions\": [\n    \"bookings.check_in\",\n    \"bookings.collect_balance\",\n    \"bookings.extend\",\n    \"bookings.no_show\",\n    \"bookings.view\",\n    \"bookings.walk_in\",\n    \"bookings.move\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/team/{{deskMemberId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "team",
+                "{{deskMemberId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff: the old token is stale (expect 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 401 AUTHZ_STALE', () => {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(j && j.code).to.eql('AUTHZ_STALE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/ground-bookings/{{b2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "ground-bookings",
+                "{{b2}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: refresh desk's session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('deskToken', v); }",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/refresh?who=desk",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "refresh"
+              ],
+              "query": [
+                {
+                  "key": "who",
+                  "value": "desk"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff: move to court 2 (same venue)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"moved\", () => { pm.expect(j.booking.courtIds[0] === pm.variables.get('court2Id')).to.eql(true); });",
+                  "pm.test(\"no fee, net, released or retained amounts\", () => { pm.expect(!new RegExp(\"\\\"(fee|feeBps|commission|commissionBps|net|released|retained|stockValuePoisha|settlement|payoutsHref)\\\"\\\\s*:\").test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courtId\": \"{{court2Id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/ground-bookings/{{b2}}/move",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "ground-bookings",
+                "{{b2}}",
+                "move"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff: a walk-in at the counter",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"last 4 digits\", () => { pm.expect(j.booking.phoneLast4 === '2333').to.eql(true); });",
+                  "pm.test(\"no fee, net, released or retained amounts\", () => { pm.expect(!new RegExp(\"\\\"(fee|feeBps|commission|commissionBps|net|released|retained|stockValuePoisha|settlement|payoutsHref)\\\"\\\\s*:\").test(pm.response.text())).to.eql(true); });",
+                  "pm.test(\"no full phone numbers\", () => { pm.expect(!/(\\+?880|\"0)1[3-9]\\d{8}/.test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courtIds\": [\n    \"{{courtId}}\"\n  ],\n  \"start\": \"{{s2}}\",\n  \"minutes\": 60,\n  \"name\": \"Walk-in Team\",\n  \"phone\": \"01711222333\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/grounds/{{groundId}}/walk-ins",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "grounds",
+                "{{groundId}}",
+                "walk-ins"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Another venue’s staff: a walk-in here (expect 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 404 NOT_FOUND', () => {",
+                  "  pm.response.to.have.status(404);",
+                  "  pm.expect(j && j.code).to.eql('NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{otherToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courtIds\": [\n    \"{{courtId}}\"\n  ],\n  \"start\": \"{{s2}}\",\n  \"minutes\": 60,\n  \"name\": \"Team\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/grounds/{{groundId}}/walk-ins",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "grounds",
+                "{{groundId}}",
+                "walk-ins"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Owner-only: pricing (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/grounds/{{groundId}}/pricing",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "grounds",
+                "{{groundId}}",
+                "pricing"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Owner-only: the owner’s dashboard (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 ROLE_REQUIRED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('ROLE_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard?role=ground_owner",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "ground_owner"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff to-do",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"no fee, net, released or retained amounts\", () => { pm.expect(!new RegExp(\"\\\"(fee|feeBps|commission|commissionBps|net|released|retained|stockValuePoisha|settlement|payoutsHref)\\\"\\\\s*:\").test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/dashboard/actions?role=business_staff",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "dashboard",
+                "actions"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "business_staff"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. The shop desk (orders, contact view, stock)",
+      "item": [
+        {
+          "name": "Add a packer (defaults: orders and stock, no reject)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"no reject by default\", () => { pm.expect(!j.member.permissions.includes('orders.reject')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{shopOwnerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"businessType\": \"shop\",\n  \"businessId\": \"{{shopId}}\",\n  \"phone\": \"{{packerPhone}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/team",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "team"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: refresh packer's session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('packerToken', v); }",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/refresh?who=packer",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "refresh"
+              ],
+              "query": [
+                {
+                  "key": "who",
+                  "value": "packer"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff: orders to accept",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"two orders\", () => { pm.expect(j.items.length === 2).to.eql(true); });",
+                  "pm.test(\"no fee, net, released or retained amounts\", () => { pm.expect(!new RegExp(\"\\\"(fee|feeBps|commission|commissionBps|net|released|retained|stockValuePoisha|settlement|payoutsHref)\\\"\\\\s*:\").test(pm.response.text())).to.eql(true); });",
+                  "pm.test(\"no full phone numbers\", () => { pm.expect(!/(\\+?880|\"0)1[3-9]\\d{8}/.test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{packerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/shop/sub-orders?tab=to_accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shop",
+                "sub-orders"
+              ],
+              "query": [
+                {
+                  "key": "tab",
+                  "value": "to_accept"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff: accept (no contact in the answer)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"accepted, contact hidden\", () => { pm.expect(j.status === 'accepted' && j.shipTo === null && j.contactHidden === true).to.eql(true); });",
+                  "pm.test(\"no fee, net, released or retained amounts\", () => { pm.expect(!new RegExp(\"\\\"(fee|feeBps|commission|commissionBps|net|released|retained|stockValuePoisha|settlement|payoutsHref)\\\"\\\\s*:\").test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{packerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/shop/sub-orders/{{subOrderId}}/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shop",
+                "sub-orders",
+                "{{subOrderId}}",
+                "accept"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff with shipping: the order page shows the contact (audited, Q168)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"the buyer’s phone and address\", () => { pm.expect(j.shipTo && j.shipTo.phone === '+8801711000111').to.eql(true); });",
+                  "pm.test(\"no fee, net, released or retained amounts\", () => { pm.expect(!new RegExp(\"\\\"(fee|feeBps|commission|commissionBps|net|released|retained|stockValuePoisha|settlement|payoutsHref)\\\"\\\\s*:\").test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{packerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/shop/sub-orders/{{subOrderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shop",
+                "sub-orders",
+                "{{subOrderId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The view is in the audit log",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"one view by the packer\", () => { pm.expect(j.items.length === 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/audit-logs?action=sub_order.contact_viewed",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "audit-logs"
+              ],
+              "query": [
+                {
+                  "key": "action",
+                  "value": "sub_order.contact_viewed"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff: reject is optional and off (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 PERMISSION_REQUIRED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('PERMISSION_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{packerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"out_of_stock\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shop/sub-orders/{{subOrder2Id}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shop",
+                "sub-orders",
+                "{{subOrder2Id}}",
+                "reject"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff: ship",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"no fee, net, released or retained amounts\", () => { pm.expect(!new RegExp(\"\\\"(fee|feeBps|commission|commissionBps|net|released|retained|stockValuePoisha|settlement|payoutsHref)\\\"\\\\s*:\").test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{packerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courierName\": \"Pathao\",\n  \"trackingNo\": \"PTH-123456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shop/sub-orders/{{subOrderId}}/ship",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shop",
+                "sub-orders",
+                "{{subOrderId}}",
+                "ship"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff: received stock",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{packerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"delta\": 2,\n  \"reasonCode\": \"received\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shop/variants/{{variantId}}/adjust",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shop",
+                "variants",
+                "{{variantId}}",
+                "adjust"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff: the inventory, without the stock value",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"no stock value\", () => { pm.expect(j.kpis.stockValuePoisha === undefined).to.eql(true); });",
+                  "pm.test(\"no fee, net, released or retained amounts\", () => { pm.expect(!new RegExp(\"\\\"(fee|feeBps|commission|commissionBps|net|released|retained|stockValuePoisha|settlement|payoutsHref)\\\"\\\\s*:\").test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{packerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/shop/inventory",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shop",
+                "inventory"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Owner-only: the settlement (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{packerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/shop/settlement",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shop",
+                "settlement"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Owner-only: products and prices (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{packerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/shop/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shop",
+                "products"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A venue’s staff at the shop desk (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/shop/sub-orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shop",
+                "sub-orders"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. The gym front desk",
+      "item": [
+        {
+          "name": "Add a front-desk member (defaults)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{gymOwnerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"businessType\": \"gym\",\n  \"businessId\": \"{{gymId}}\",\n  \"phone\": \"{{frontdeskPhone}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/team",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "team"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: refresh frontdesk's session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('frontdeskToken', v); }",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/refresh?who=frontdesk",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "refresh"
+              ],
+              "query": [
+                {
+                  "key": "who",
+                  "value": "frontdesk"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff: admit a pass (no money in the answer)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"redeemed\", () => { pm.expect(j.status === 'redeemed').to.eql(true); });",
+                  "pm.test(\"no fee, net, released or retained amounts\", () => { pm.expect(!new RegExp(\"\\\"(fee|feeBps|commission|commissionBps|net|released|retained|stockValuePoisha|settlement|payoutsHref)\\\"\\\\s*:\").test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{frontdeskToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{passToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/redemptions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "redemptions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff: today’s admissions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"one\", () => { pm.expect(j.items.length === 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{frontdeskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/redemptions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "redemptions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff: passes sold is optional and off (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 PERMISSION_REQUIRED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('PERMISSION_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{frontdeskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/passes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "passes"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Owner-only: the gym’s hours (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{frontdeskToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hours\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/hours",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "hours"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A venue’s staff at this gym (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/redemptions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "redemptions"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Access follows the owner; removal",
+      "item": [
+        {
+          "name": "Suspend the venue owner’s role",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"suspended\",\n  \"reasonCode\": \"other\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/{{ownerId}}/roles/ground_owner/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                "{{ownerId}}",
+                "roles",
+                "ground_owner",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff of a suspended owner: no access at once (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/ground-bookings?groundId={{groundId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "ground-bookings"
+              ],
+              "query": [
+                {
+                  "key": "groundId",
+                  "value": "{{groundId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "No workplaces while the owner is suspended",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"empty\", () => { pm.expect(j.items.length === 0).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/workplaces",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "workplaces"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reinstate the role",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"active\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/{{ownerId}}/roles/ground_owner/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                "{{ownerId}}",
+                "roles",
+                "ground_owner",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: drain events",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/drain",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "drain"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: refresh desk's session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('deskToken', v); }",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/refresh?who=desk",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "refresh"
+              ],
+              "query": [
+                {
+                  "key": "who",
+                  "value": "desk"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Access is back",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/ground-bookings?groundId={{groundId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "ground-bookings"
+              ],
+              "query": [
+                {
+                  "key": "groundId",
+                  "value": "{{groundId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: refresh owner's session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('ownerFreshToken', v); }",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/refresh?who=owner",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "refresh"
+              ],
+              "query": [
+                {
+                  "key": "who",
+                  "value": "owner"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Remove the counter staff",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"removed\", () => { pm.expect(j.member.status === 'removed').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerFreshToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/team/{{deskMemberId}}/remove",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "team",
+                "{{deskMemberId}}",
+                "remove"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Remove again (expect 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 404 NOT_FOUND', () => {",
+                  "  pm.response.to.have.status(404);",
+                  "  pm.expect(j && j.code).to.eql('NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerFreshToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/team/{{deskMemberId}}/remove",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "team",
+                "{{deskMemberId}}",
+                "remove"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: drain events",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/drain",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "drain"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: refresh desk's session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('deskToken', v); }",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/refresh?who=desk",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "refresh"
+              ],
+              "query": [
+                {
+                  "key": "who",
+                  "value": "desk"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Removed staff: no access (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/ground-bookings?groundId={{groundId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "ground-bookings"
+              ],
+              "query": [
+                {
+                  "key": "groundId",
+                  "value": "{{groundId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Removed staff were told (TEAM_ADDED, TEAM_REMOVED)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"both notices\", () => { pm.expect(['TEAM_ADDED', 'TEAM_REMOVED'].every((c) => j.items.some((n) => n.code === c))).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "notifications"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

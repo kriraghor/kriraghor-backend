@@ -51,4 +51,5 @@ module.exports = {
   tournamentAction: guard('tmact', { windowMs: 60 * 1000, settingKey: 'tournament.actions_per_minute', code: 'RATE_LIMITED' }), // M14 organiser console writes per minute
   teamInvite: guard('tminv', { windowMs: 24 * 60 * 60 * 1000, settingKey: 'teams.invites_per_day', code: 'RATE_LIMITED' }), // M16 invites per captain per day
   eventAction: guard('esev', { windowMs: 60 * 1000, settingKey: 'esports_events.actions_per_minute', code: 'RATE_LIMITED' }), // M23 follows and poll votes
+  teamAdd: guard('bmadd', { windowMs: 60 * 60 * 1000, settingKey: 'business.team_adds_per_hour', code: 'RATE_LIMITED' }), // Round B3 staff adds per owner (Q180)
 };
