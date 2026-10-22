@@ -9,7 +9,11 @@ const { seedReferenceIfChanged, seedFingerprint, SETTING_KEYS } = require('../..
 const { models } = h;
 const { sequelize } = models;
 
-beforeEach(h.resetDb);
+// The state table is not in the shared reset list (tests/helpers.js), so this suite clears it itself.
+beforeEach(async () => {
+  await h.resetDb();
+  await sequelize.query('TRUNCATE TABLE reference_seed_state');
+});
 afterAll(async () => {
   await closeAllRedis();
   await sequelize.close();
