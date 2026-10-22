@@ -6,7 +6,10 @@
  *   bookingsRouter  /bookings                        holds and payment (gate book_ground: a verified phone)
  *   meBookings      /me/bookings                     the member's bookings and cancel
  *   meOwner         /me/ground-bookings              the owner's day: check-in, no-show, extend, balance, cancel, move
- *   meWalkIns       /me/grounds/:id/walk-ins         walk-ins (gate list_ground)
+ *                                                    (gate work_ground, Round B3: the owner or the venue's staff,
+ *                                                    each action checked against the staff's permissions)
+ *   meWalkIns       /me/grounds/:id/walk-ins         walk-ins (gate work_ground; mounted before the owner-only
+ *                                                    /me/grounds router, so its middleware runs per route)
  *   adminRouter     /admin/bookings                  staff list and detail; master platform cancel (step-up escrow.manage)
  */
 const { Router } = require('express');
@@ -45,7 +48,7 @@ meBookings.post('/:id/cancel', id, validate(s.cancelBody), async (req, res) => r
 
 // ---------------- owner
 const meOwner = Router();
-meOwner.use(authenticate, requireGate('list_ground'));
+meOwner.use(authenticate, requireGate('work_ground'));
 meOwner.get('/', validate(s.timelineQuery, 'query'), async (req, res) => res.json(await bookings.timeline(req.user, req.validQuery)));
 meOwner.get('/search', validate(s.ownerSearchQuery, 'query'), async (req, res) => res.json(await bookings.ownerSearch(req.user, req.validQuery)));
 meOwner.get('/:id', id, async (req, res) => res.json(await bookings.ownerGet(req.user, req.params.id)));
@@ -58,8 +61,7 @@ meOwner.get('/:id/move-targets', id, async (req, res) => res.json(await bookings
 meOwner.post('/:id/move', id, validate(s.moveBody), async (req, res) => res.json(await bookings.move(req.user, req.params.id, req.body, req)));
 
 const meWalkIns = Router();
-meWalkIns.use(authenticate, requireGate('list_ground'));
-meWalkIns.post('/:id/walk-ins', id, validate(s.walkInBody), requireIdempotencyKey('bookings.walk_in'), async (req, res) =>
+meWalkIns.post('/:id/walk-ins', authenticate, requireGate('work_ground'), id, validate(s.walkInBody), requireIdempotencyKey('bookings.walk_in'), async (req, res) =>
   res.status(201).json(await bookings.walkIn(req.user, req.params.id, req.body, req.idempotencyKey, req))
 );
 

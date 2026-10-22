@@ -19,7 +19,7 @@ const dashboardQuery = z
     locale,
   })
   .refine((q) => q.role !== 'organiser' || Boolean(q.orgId), { path: ['orgId'], message: 'Choose the organisation (orgId) for the organiser dashboard' });
-const actionsQuery = z.object({ role: z.enum(['member', 'ground_owner', 'shop_owner', 'gym_owner', 'organiser']).default('member') });
+const actionsQuery = z.object({ role: z.enum(['member', 'ground_owner', 'shop_owner', 'gym_owner', 'organiser', 'business_staff']).default('member').meta({ description: 'business_staff (Round B3): the to-do of every venue, gym or shop the caller works at' }) });
 const EXPORTS = ['owner_bookings', 'owner_revenue', 'member_payments', 'shop_orders', 'shop_sales_by_product', 'gym_passes', 'gym_admissions'];
 const exportQuery = z.object({ dataset: z.enum(EXPORTS), period: period.default('7w') });
 const platformQuery = z.object({ period: period.default('yr'), locale });

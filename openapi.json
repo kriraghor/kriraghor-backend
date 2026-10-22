@@ -24,6 +24,10 @@
       "description": "The signed-in user's account"
     },
     {
+      "name": "business-members",
+      "description": "Staff accounts for businesses: an owner’s team at each venue, gym or shop, and where a member works (Round B3)"
+    },
+    {
       "name": "admin",
       "description": "Staff desks"
     },
@@ -362,6 +366,43 @@
               "required",
               "enabled"
             ]
+          },
+          "workplaces": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "businessType": {
+                  "type": "string",
+                  "enum": [
+                    "venue",
+                    "gym",
+                    "shop"
+                  ]
+                },
+                "businessId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "permissions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "businessType",
+                "businessId",
+                "permissions"
+              ]
+            },
+            "description": "Round B3: the venues, gyms and shops this member works at as staff (live owners only)"
           }
         },
         "required": [
@@ -385,7 +426,8 @@
           "identities",
           "isStaff",
           "isMaster",
-          "twoFactor"
+          "twoFactor",
+          "workplaces"
         ],
         "description": "The signed-in user's own view"
       },
@@ -587,6 +629,221 @@
           "next",
           "challengeToken",
           "challengeExpiresAt"
+        ]
+      },
+      "BusinessWorkplace": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "businessType": {
+            "type": "string",
+            "enum": [
+              "venue",
+              "gym",
+              "shop"
+            ],
+            "description": "venue (a ground), gym or shop"
+          },
+          "businessId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "business": {
+            "type": "object",
+            "properties": {
+              "businessType": {
+                "type": "string",
+                "enum": [
+                  "venue",
+                  "gym",
+                  "shop"
+                ],
+                "description": "venue (a ground), gym or shop"
+              },
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "status": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "businessType",
+              "id",
+              "name",
+              "status"
+            ]
+          },
+          "owner": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "displayName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "displayName"
+            ]
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "since": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "businessType",
+          "businessId",
+          "business",
+          "owner",
+          "permissions",
+          "since"
+        ]
+      },
+      "BusinessTeamMember": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "businessType": {
+            "type": "string",
+            "enum": [
+              "venue",
+              "gym",
+              "shop"
+            ],
+            "description": "venue (a ground), gym or shop"
+          },
+          "businessId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "business": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "businessType": {
+                "type": "string",
+                "enum": [
+                  "venue",
+                  "gym",
+                  "shop"
+                ],
+                "description": "venue (a ground), gym or shop"
+              },
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "status": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "businessType",
+              "id",
+              "name",
+              "status"
+            ]
+          },
+          "member": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "displayName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "phoneLast4": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "displayName",
+              "phoneLast4"
+            ]
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "removed"
+            ]
+          },
+          "addedAt": {
+            "type": "string"
+          },
+          "removedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "businessType",
+          "businessId",
+          "business",
+          "member",
+          "permissions",
+          "status",
+          "addedAt",
+          "removedAt"
         ]
       },
       "GateResult": {
@@ -33142,6 +33399,535 @@
         }
       }
     },
+    "/me/workplaces": {
+      "get": {
+        "tags": [
+          "business-members"
+        ],
+        "summary": "Where I work as staff: each venue, gym or shop (live owners only), its owner and my permissions (Q169: a verified phone is enough)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/BusinessWorkplace"
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/team": {
+      "get": {
+        "tags": [
+          "business-members"
+        ],
+        "summary": "My staff at my venues, gyms and shops (names and the last 4 digits of their phones), my businesses, the permission catalogue with defaults, and business.team_max_members",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "venue",
+                "gym",
+                "shop"
+              ],
+              "description": "venue (a ground), gym or shop"
+            },
+            "required": false,
+            "description": "venue (a ground), gym or shop",
+            "name": "businessType",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "businessId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "removed",
+                "all"
+              ],
+              "default": "active"
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/BusinessTeamMember"
+                      }
+                    },
+                    "businesses": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "businessType": {
+                            "type": "string",
+                            "enum": [
+                              "venue",
+                              "gym",
+                              "shop"
+                            ],
+                            "description": "venue (a ground), gym or shop"
+                          },
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "businessType",
+                          "id",
+                          "name",
+                          "status"
+                        ]
+                      }
+                    },
+                    "permissionCatalogue": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "key": {
+                              "type": "string"
+                            },
+                            "default": {
+                              "type": "boolean"
+                            },
+                            "needs": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "key",
+                            "default",
+                            "needs"
+                          ]
+                        }
+                      }
+                    },
+                    "maxMembers": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "businesses",
+                    "permissionCatalogue",
+                    "maxMembers"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "business-members"
+        ],
+        "summary": "Add a staff member to one of my businesses by their verified phone (no NID needed, Q169; scope is that business only, Q170). Leave out permissions for the defaults. Refused: unknown numbers, myself, Kriraghor staff accounts, unverified phones, someone already on the team and a full team",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "businessType": {
+                    "type": "string",
+                    "enum": [
+                      "venue",
+                      "gym",
+                      "shop"
+                    ],
+                    "description": "venue (a ground), gym or shop"
+                  },
+                  "businessId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "phone": {
+                    "type": "string",
+                    "description": "The staff member’s verified phone number (they must already have a Kriraghor account)"
+                  },
+                  "permissions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 3,
+                      "maxLength": 40
+                    },
+                    "maxItems": 20,
+                    "description": "Leave out for the defaults of the business type"
+                  }
+                },
+                "required": [
+                  "businessType",
+                  "businessId",
+                  "phone"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "member": {
+                      "$ref": "#/components/schemas/BusinessTeamMember"
+                    },
+                    "unchanged": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "member"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: ROLE_REQUIRED, ROLE_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND, MEMBER_NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: ALREADY_MEMBER, TEAM_FULL",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, MEMBER_IS_OWNER, MEMBER_IS_STAFF, PHONE_NOT_VERIFIED, PERMISSIONS_INVALID",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/team/{id}": {
+      "patch": {
+        "tags": [
+          "business-members"
+        ],
+        "summary": "Change what a staff member may do (from the allow-list of the business type); their access token goes stale at once",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "permissions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 3,
+                      "maxLength": 40
+                    },
+                    "maxItems": 20
+                  }
+                },
+                "required": [
+                  "permissions"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "member": {
+                      "$ref": "#/components/schemas/BusinessTeamMember"
+                    },
+                    "unchanged": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "member"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: ROLE_REQUIRED, ROLE_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, PERMISSIONS_INVALID",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/team/{id}/remove": {
+      "post": {
+        "tags": [
+          "business-members"
+        ],
+        "summary": "Remove a staff member: they lose access on their next request (the row is kept as removed)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "member": {
+                      "$ref": "#/components/schemas/BusinessTeamMember"
+                    },
+                    "unchanged": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "member"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/me/avatar": {
       "post": {
         "tags": [
@@ -59066,7 +59852,7 @@
         "tags": [
           "bookings"
         ],
-        "summary": "The owner's day at a ground: courts, hours, bookings, closures (FR-35)",
+        "summary": "The owner's day at a ground: courts, hours, bookings, closures (FR-35). Round B3: also the venue’s staff with the permission (bookings.view); staff never see the fee, released or retained amounts",
         "security": [
           {
             "bearer": []
@@ -59114,7 +59900,7 @@
             }
           },
           "403": {
-            "description": "Error. Codes: ROLE_REQUIRED, KYC_REQUIRED, NOT_OWNER",
+            "description": "Error. Codes: ROLE_REQUIRED, KYC_REQUIRED, NOT_OWNER, PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -59151,7 +59937,7 @@
         "tags": [
           "bookings"
         ],
-        "summary": "Search my bookings at any venue and date: code, phone last 4 digits, team or contact name (newest start first)",
+        "summary": "Search my bookings at any venue and date: code, phone last 4 digits, team or contact name (newest start first). Round B3: also the venue’s staff with the permission (bookings.view; without groundId, every venue where they hold it); staff never see the fee, released or retained amounts",
         "security": [
           {
             "bearer": []
@@ -59222,7 +60008,7 @@
             }
           },
           "403": {
-            "description": "Error. Codes: ROLE_REQUIRED, KYC_REQUIRED, NOT_OWNER",
+            "description": "Error. Codes: ROLE_REQUIRED, KYC_REQUIRED, NOT_OWNER, PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -59259,7 +60045,7 @@
         "tags": [
           "bookings"
         ],
-        "summary": "A booking at my ground",
+        "summary": "A booking at my ground. Round B3: also the venue’s staff with the permission (bookings.view); staff never see the fee, released or retained amounts",
         "security": [
           {
             "bearer": []
@@ -59298,7 +60084,7 @@
             }
           },
           "403": {
-            "description": "Error. Codes: ROLE_REQUIRED, KYC_REQUIRED, NOT_OWNER",
+            "description": "Error. Codes: ROLE_REQUIRED, KYC_REQUIRED, NOT_OWNER, PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -59325,7 +60111,7 @@
         "tags": [
           "bookings"
         ],
-        "summary": "Check in from start − 30 min to the end; releases the online money minus the fee on the full value (FR-13, v3)",
+        "summary": "Check in from start − 30 min to the end; releases the online money minus the fee on the full value (FR-13, v3). Round B3: also the venue’s staff with the permission (bookings.check_in); staff never see the fee, released or retained amounts",
         "security": [
           {
             "bearer": []
@@ -59364,7 +60150,7 @@
             }
           },
           "403": {
-            "description": "Error. Codes: ROLE_REQUIRED, KYC_REQUIRED, NOT_OWNER",
+            "description": "Error. Codes: ROLE_REQUIRED, KYC_REQUIRED, NOT_OWNER, PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -59401,7 +60187,7 @@
         "tags": [
           "bookings"
         ],
-        "summary": "Mark a no-show once late, until auto-complete; the advance is retained (FR-15, Q68)",
+        "summary": "Mark a no-show once late, until auto-complete; the advance is retained (FR-15, Q68). Round B3: also the venue’s staff with the permission (bookings.no_show); staff never see the fee, released or retained amounts",
         "security": [
           {
             "bearer": []
@@ -59440,7 +60226,7 @@
             }
           },
           "403": {
-            "description": "Error. Codes: ROLE_REQUIRED, KYC_REQUIRED, NOT_OWNER",
+            "description": "Error. Codes: ROLE_REQUIRED, KYC_REQUIRED, NOT_OWNER, PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -59477,7 +60263,7 @@
         "tags": [
           "bookings"
         ],
-        "summary": "Extend by 30 minutes, paid at the venue; the fee is owed (FR-16)",
+        "summary": "Extend by 30 minutes, paid at the venue; the fee is owed (FR-16). Round B3: also the venue’s staff with the permission (bookings.extend); staff never see the fee, released or retained amounts",
         "security": [
           {
             "bearer": []
@@ -59516,7 +60302,7 @@
             }
           },
           "403": {
-            "description": "Error. Codes: ROLE_REQUIRED, KYC_REQUIRED, NOT_OWNER",
+            "description": "Error. Codes: ROLE_REQUIRED, KYC_REQUIRED, NOT_OWNER, PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -59563,7 +60349,7 @@
         "tags": [
           "bookings"
         ],
-        "summary": "Record the balance paid at the venue (cash or bKash), the full amount due (FR-17)",
+        "summary": "Record the balance paid at the venue (cash or bKash), the full amount due (FR-17). Round B3: also the venue’s staff with the permission (bookings.collect_balance); staff never see the fee, released or retained amounts",
         "security": [
           {
             "bearer": []
@@ -59628,7 +60414,7 @@
             }
           },
           "403": {
-            "description": "Error. Codes: ROLE_REQUIRED, KYC_REQUIRED, NOT_OWNER",
+            "description": "Error. Codes: ROLE_REQUIRED, KYC_REQUIRED, NOT_OWNER, PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -59675,7 +60461,7 @@
         "tags": [
           "bookings"
         ],
-        "summary": "Cancel as the owner before the start: 100% back to the member (FR-19, v3; weather not penalised, Q22)",
+        "summary": "Cancel as the owner before the start: 100% back to the member (FR-19, v3; weather not penalised, Q22). Round B3: also the venue’s staff with the permission (bookings.cancel, optional and off by default, Q170); staff never see the fee, released or retained amounts",
         "security": [
           {
             "bearer": []
@@ -59743,7 +60529,7 @@
             }
           },
           "403": {
-            "description": "Error. Codes: ROLE_REQUIRED, KYC_REQUIRED, NOT_OWNER",
+            "description": "Error. Codes: ROLE_REQUIRED, KYC_REQUIRED, NOT_OWNER, PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -59790,7 +60576,7 @@
         "tags": [
           "bookings"
         ],
-        "summary": "Free courts at my grounds for the same time (M09 §6.4)",
+        "summary": "Free courts at my grounds for the same time (M09 §6.4). Round B3: also the venue’s staff with the permission (bookings.move; staff see that venue’s courts only); staff never see the fee, released or retained amounts",
         "security": [
           {
             "bearer": []
@@ -59829,7 +60615,7 @@
             }
           },
           "403": {
-            "description": "Error. Codes: ROLE_REQUIRED, KYC_REQUIRED, NOT_OWNER",
+            "description": "Error. Codes: ROLE_REQUIRED, KYC_REQUIRED, NOT_OWNER, PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -59856,7 +60642,7 @@
         "tags": [
           "bookings"
         ],
-        "summary": "Move to another court, same time and price; a new ground lets the member cancel free (FR-20)",
+        "summary": "Move to another court, same time and price; a new ground lets the member cancel free (FR-20). Round B3: also the venue’s staff with the permission (bookings.move, optional; within that venue only); staff never see the fee, released or retained amounts",
         "security": [
           {
             "bearer": []
@@ -59913,7 +60699,7 @@
             }
           },
           "403": {
-            "description": "Error. Codes: ROLE_REQUIRED, KYC_REQUIRED, NOT_OWNER",
+            "description": "Error. Codes: ROLE_REQUIRED, KYC_REQUIRED, NOT_OWNER, PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -59960,7 +60746,7 @@
         "tags": [
           "bookings"
         ],
-        "summary": "Record a walk-in paid in full at the counter; checked in at once when starting soon (FR-18)",
+        "summary": "Record a walk-in paid in full at the counter; checked in at once when starting soon (FR-18). Round B3: also the venue’s staff with the permission (bookings.walk_in); staff never see the fee, released or retained amounts",
         "security": [
           {
             "bearer": []
@@ -60052,7 +60838,7 @@
             }
           },
           "403": {
-            "description": "Error. Codes: ROLE_REQUIRED, KYC_REQUIRED, NOT_OWNER",
+            "description": "Error. Codes: ROLE_REQUIRED, KYC_REQUIRED, NOT_OWNER, PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -60541,7 +61327,7 @@
         "tags": [
           "analytics"
         ],
-        "summary": "Needs your action, from the owning modules (FR-11); role organiser: registrations waiting for approval (admins) and unpaid entry fees in your sports organisations",
+        "summary": "Needs your action, from the owning modules (FR-11); role organiser: registrations waiting for approval (admins) and unpaid entry fees in your sports organisations; role business_staff (Round B3): check-ins and balances at your venues, orders to accept or ship and stock at your shops, by your permissions",
         "security": [
           {
             "bearer": []
@@ -60556,11 +61342,14 @@
                 "ground_owner",
                 "shop_owner",
                 "gym_owner",
-                "organiser"
+                "organiser",
+                "business_staff"
               ],
-              "default": "member"
+              "default": "member",
+              "description": "business_staff (Round B3): the to-do of every venue, gym or shop the caller works at"
             },
             "required": false,
+            "description": "business_staff (Round B3): the to-do of every venue, gym or shop the caller works at",
             "name": "role",
             "in": "query"
           }
@@ -64216,7 +65005,7 @@
         "tags": [
           "reviews"
         ],
-        "summary": "My reviews; with role=owner (or a subjectType or subjectId) the published reviews of my venues, pro profiles, shops and gyms, to reply to",
+        "summary": "My reviews; with role=owner (or a subjectType or subjectId) the published reviews of my venues, pro profiles, shops and gyms, to reply to. Round B3: venue staff with reviews.reply see that venue’s reviews (subjectType=ground&subjectId=)",
         "security": [
           {
             "bearer": []
@@ -64319,7 +65108,7 @@
         "tags": [
           "reviews"
         ],
-        "summary": "Reply to (or edit my reply to) a published review of something I own; contact details are refused; the author is told about the first reply (FR-34)",
+        "summary": "Reply to (or edit my reply to) a published review of something I own; contact details are refused; the author is told about the first reply (FR-34). Round B3: also a venue’s staff with reviews.reply (optional, off by default, Q170); staff of another venue get 404",
         "security": [
           {
             "bearer": []
@@ -64377,7 +65166,7 @@
             }
           },
           "403": {
-            "description": "Error. Codes: NOT_OWNER",
+            "description": "Error. Codes: NOT_OWNER, PERMISSION_REQUIRED, PHONE_REQUIRED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -68557,7 +69346,7 @@
         "tags": [
           "market"
         ],
-        "summary": "Change the count on the shelf with a reason (received, count correction, damaged, lost, other) (FR-13)",
+        "summary": "Change the count on the shelf with a reason (received, count correction, damaged, lost, other) (FR-13). Round B3: also the shop’s staff with stock.adjust",
         "security": [
           {
             "bearer": []
@@ -68635,7 +69424,7 @@
             }
           },
           "403": {
-            "description": "Error. Codes: ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, NOT_OWNER",
+            "description": "Error. Codes: ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, NOT_OWNER, PERMISSION_REQUIRED, ROLE_SUSPENDED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -68682,7 +69471,7 @@
         "tags": [
           "market"
         ],
-        "summary": "The stock ledger of a variant, newest first (FR-11)",
+        "summary": "The stock ledger of a variant, newest first (FR-11). Round B3: also the shop’s staff with stock.view",
         "security": [
           {
             "bearer": []
@@ -68741,7 +69530,7 @@
             }
           },
           "403": {
-            "description": "Error. Codes: ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, NOT_OWNER",
+            "description": "Error. Codes: ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, NOT_OWNER, PERMISSION_REQUIRED, ROLE_SUSPENDED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -68759,6 +69548,16 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, BUSINESS_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
           }
         }
       }
@@ -68768,7 +69567,7 @@
         "tags": [
           "market"
         ],
-        "summary": "Inventory desk: stock value, out, low, held, blocked; every active variant (§4)",
+        "summary": "Inventory desk: stock value, out, low, held, blocked; every active variant (§4). Round B3: also the shop’s staff with stock.view (shopId names the shop; never the stock value)",
         "security": [
           {
             "bearer": []
@@ -68787,6 +69586,17 @@
             },
             "required": false,
             "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Round B3: the shop (staff working at several shops name one; the owner may leave it out)"
+            },
+            "required": false,
+            "description": "Round B3: the shop (staff working at several shops name one; the owner may leave it out)",
+            "name": "shopId",
             "in": "query"
           }
         ],
@@ -68812,7 +69622,7 @@
             }
           },
           "403": {
-            "description": "Error. Codes: ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, NOT_OWNER",
+            "description": "Error. Codes: ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, NOT_OWNER, PERMISSION_REQUIRED, ROLE_SUSPENDED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -68833,6 +69643,16 @@
           },
           "409": {
             "description": "Error. Codes: SHOP_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, BUSINESS_REQUIRED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -70711,7 +71531,7 @@
         "tags": [
           "orders"
         ],
-        "summary": "My shop orders by tab (to accept, to ship, shipped, done, cancelled) with counts",
+        "summary": "My shop orders by tab (to accept, to ship, shipped, done, cancelled) with counts. Round B3: also the shop’s staff (orders.view; shopId names the shop; never the buyer’s contact in lists); staff never see the commission, net or released amounts",
         "security": [
           {
             "bearer": []
@@ -70752,6 +71572,17 @@
             "required": false,
             "name": "limit",
             "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Round B3: the shop (staff working at several shops name one; the owner may leave it out)"
+            },
+            "required": false,
+            "description": "Round B3: the shop (staff working at several shops name one; the owner may leave it out)",
+            "name": "shopId",
+            "in": "query"
           }
         ],
         "responses": {
@@ -70776,7 +71607,7 @@
             }
           },
           "403": {
-            "description": "Error. Codes: ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, NOT_OWNER",
+            "description": "Error. Codes: ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, NOT_OWNER, PERMISSION_REQUIRED, ROLE_SUSPENDED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -70813,7 +71644,7 @@
         "tags": [
           "orders"
         ],
-        "summary": "A shop order; the buyer’s phone and address show once accepted (FR-10)",
+        "summary": "A shop order; the buyer’s phone and address show once accepted (FR-10). Round B3: also the shop’s staff (orders.view; the buyer’s contact only with orders.ship, each view audited (Q168)); staff never see the commission, net or released amounts",
         "security": [
           {
             "bearer": []
@@ -70852,7 +71683,7 @@
             }
           },
           "403": {
-            "description": "Error. Codes: ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, NOT_OWNER, NOT_YOUR_SHOP",
+            "description": "Error. Codes: ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, NOT_OWNER, NOT_YOUR_SHOP, PERMISSION_REQUIRED, ROLE_SUSPENDED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -70889,7 +71720,7 @@
         "tags": [
           "orders"
         ],
-        "summary": "Accept within market.shop_accept_hours (FR-08)",
+        "summary": "Accept within market.shop_accept_hours (FR-08). Round B3: also the shop’s staff (orders.accept); staff never see the commission, net or released amounts",
         "security": [
           {
             "bearer": []
@@ -70928,7 +71759,7 @@
             }
           },
           "403": {
-            "description": "Error. Codes: ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, NOT_OWNER, NOT_YOUR_SHOP",
+            "description": "Error. Codes: ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, NOT_OWNER, NOT_YOUR_SHOP, PERMISSION_REQUIRED, ROLE_SUSPENDED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -70965,7 +71796,7 @@
         "tags": [
           "orders"
         ],
-        "summary": "Reject the whole sub-order with a reason (Q82): 100% refund, stock released",
+        "summary": "Reject the whole sub-order with a reason (Q82): 100% refund, stock released. Round B3: also the shop’s staff (orders.reject, optional and off by default); staff never see the commission, net or released amounts",
         "security": [
           {
             "bearer": []
@@ -71033,7 +71864,7 @@
             }
           },
           "403": {
-            "description": "Error. Codes: ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, NOT_OWNER, NOT_YOUR_SHOP",
+            "description": "Error. Codes: ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, NOT_OWNER, NOT_YOUR_SHOP, PERMISSION_REQUIRED, ROLE_SUSPENDED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -71080,7 +71911,7 @@
         "tags": [
           "orders"
         ],
-        "summary": "Ship with the courier and tracking number; the held stock is committed",
+        "summary": "Ship with the courier and tracking number; the held stock is committed. Round B3: also the shop’s staff (orders.ship); staff never see the commission, net or released amounts",
         "security": [
           {
             "bearer": []
@@ -71143,7 +71974,7 @@
             }
           },
           "403": {
-            "description": "Error. Codes: ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, NOT_OWNER, NOT_YOUR_SHOP",
+            "description": "Error. Codes: ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, NOT_OWNER, NOT_YOUR_SHOP, PERMISSION_REQUIRED, ROLE_SUSPENDED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -71190,7 +72021,7 @@
         "tags": [
           "orders"
         ],
-        "summary": "Mark delivered (optional photo proof, private storage); auto-completes after market.auto_complete_days",
+        "summary": "Mark delivered (optional photo proof, private storage); auto-completes after market.auto_complete_days. Round B3: also the shop’s staff (orders.deliver); staff never see the commission, net or released amounts",
         "security": [
           {
             "bearer": []
@@ -71249,7 +72080,7 @@
             }
           },
           "403": {
-            "description": "Error. Codes: ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, NOT_OWNER, NOT_YOUR_SHOP",
+            "description": "Error. Codes: ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, NOT_OWNER, NOT_YOUR_SHOP, PERMISSION_REQUIRED, ROLE_SUSPENDED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -71316,7 +72147,7 @@
         "tags": [
           "orders"
         ],
-        "summary": "Completed (released to my payable), in escrow and refunded totals",
+        "summary": "Completed (released to my payable), in escrow and refunded totals (the owner only; never for staff, Round B3)",
         "security": [
           {
             "bearer": []
@@ -77988,7 +78819,7 @@
         "tags": [
           "gym"
         ],
-        "summary": "The front desk: admit a pass by its QR token or 6-character code (FR-05)",
+        "summary": "The front desk: admit a pass by its QR token or 6-character code (FR-05). Round B3: also the gym’s staff with desk.admit (never the amount released)",
         "security": [
           {
             "bearer": []
@@ -78048,7 +78879,7 @@
             }
           },
           "403": {
-            "description": "Error. Codes: NOT_OWNER, ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED",
+            "description": "Error. Codes: NOT_OWNER, ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -78093,7 +78924,7 @@
         "tags": [
           "gym"
         ],
-        "summary": "The day’s admissions (default today, Dhaka)",
+        "summary": "The day’s admissions (default today, Dhaka). Round B3: also the gym’s staff with desk.admissions",
         "security": [
           {
             "bearer": []
@@ -78141,7 +78972,7 @@
             }
           },
           "403": {
-            "description": "Error. Codes: NOT_OWNER, ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED",
+            "description": "Error. Codes: NOT_OWNER, ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -78178,7 +79009,7 @@
         "tags": [
           "gym"
         ],
-        "summary": "Passes sold (the buyer’s name only)",
+        "summary": "Passes sold (the buyer’s name only). Round B3: also the gym’s staff with passes.view (optional), without any money",
         "security": [
           {
             "bearer": []
@@ -78234,7 +79065,7 @@
             }
           },
           "403": {
-            "description": "Error. Codes: NOT_OWNER, ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED",
+            "description": "Error. Codes: NOT_OWNER, ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED",
             "content": {
               "application/problem+json": {
                 "schema": {

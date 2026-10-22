@@ -39,7 +39,12 @@ const checkoutBody = z.object({ ship, expectedTotal: poisha.meta({ description: 
 const myOrdersQuery = z.object({ status: z.enum(ORDER_STATUSES).optional(), cursor: dateTime.optional(), limit: limit(50, 20) });
 const cancelBody = z.object({ reason: z.enum(['changed_mind', 'ordered_by_mistake', 'found_cheaper', 'buyer_cancelled', 'other']).optional() });
 const notReceivedBody = z.object({ statement: text(10, 2000) });
-const shopListQuery = z.object({ tab: z.enum(['to_accept', 'to_ship', 'shipped', 'done', 'cancelled']).default('to_accept'), cursor: dateTime.optional(), limit: limit(50, 20) });
+const shopListQuery = z.object({
+  tab: z.enum(['to_accept', 'to_ship', 'shipped', 'done', 'cancelled']).default('to_accept'),
+  cursor: dateTime.optional(),
+  limit: limit(50, 20),
+  shopId: z.uuid().optional().meta({ description: 'Round B3: the shop (staff working at several shops name one; the owner may leave it out)' }),
+});
 const rejectBody = z.object({ reason: z.enum(REJECT_REASONS), note: text(2, 300).optional() });
 const shipBody = z.object({ courierName: text(2, 60), trackingNo: z.string().trim().regex(/^[A-Za-z0-9/-]{4,40}$/, '4 to 40 letters, digits, - or /') });
 const adminListQuery = z.object({ code: z.string().trim().max(24).optional(), status: z.enum(ORDER_STATUSES).optional(), cursor: dateTime.optional(), limit: limit(100, 50) });

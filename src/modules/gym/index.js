@@ -13,6 +13,8 @@ const lazy = (file, names, values = []) => {
 };
 
 module.exports = {
+  // Round B3: the gym adapter of the business-members port (registered by registry.registerAll).
+  businessPort: lazy('./gym.business', ['register']),
   disputes: lazy('./gym.disputes', ['register']),
   reviewSource: lazy('./gym.reviews', ['register']),
   reads: lazy('./gym.reads', ['exportPassKpiFacts', 'passFacts', 'passKpiFact', 'pendingActions']),

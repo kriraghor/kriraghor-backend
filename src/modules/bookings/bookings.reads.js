@@ -117,6 +117,25 @@ async function pendingActions(principal, role, now = new Date()) {
   return holds.map((b) => ({ key: 'hold_to_pay', count: 1, severity: 'high', dueAt: b.holdExpiresAt.toISOString(), href: `/me/bookings/${b.id}` }));
 }
 
+/**
+ * Round B3 staff to-do of one venue: check-ins due within the hour (bookings.check_in) and venue
+ * balances to collect (bookings.collect_balance). Counts only; never money.
+ */
+async function staffActions(groundId, permissions, now = new Date()) {
+  const items = [];
+  const href = `/vendor/bookings?groundId=${groundId}`;
+  if (permissions.includes('bookings.check_in')) {
+    const soon = new Date(now.getTime() + 60 * 60 * 1000);
+    const n = await Booking.count({ where: { groundId, status: 'confirmed', startAt: { [Op.lte]: soon }, endAt: { [Op.gt]: now } } });
+    if (n) items.push({ key: 'check_in_due', count: n, severity: 'high', dueAt: now.toISOString(), href });
+  }
+  if (permissions.includes('bookings.collect_balance')) {
+    const n = await Booking.count({ where: { groundId, status: ['checked_in', 'completed'], balanceStatus: 'due' } });
+    if (n) items.push({ key: 'balance_due', count: n, severity: 'normal', dueAt: null, href });
+  }
+  return items;
+}
+
 const reviewView = (b) => ({ bookingId: b.id, code: b.code, groundId: b.groundId, ownerId: b.ownerId, bookerUserId: b.bookerUserId ?? null, status: b.status, start: b.startAt, end: b.endAt });
 
 async function reviewSource(bookingId) {
@@ -151,4 +170,4 @@ async function reliabilityFacts(userId, since, { lateHours }) {
   };
 }
 
-module.exports = { reliabilityFacts, reviewSource, playedBy, pendingActions, facts, bookingFact, exportFacts, courtsOfBooking, seriesBookingIds, courtDays };
+module.exports = { reliabilityFacts, reviewSource, playedBy, pendingActions, staffActions, facts, bookingFact, exportFacts, courtsOfBooking, seriesBookingIds, courtDays };

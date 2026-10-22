@@ -7,6 +7,12 @@
  *   ship       courier and tracking number; the held stock is committed (on hand goes down)
  *   delivered  optional photo proof; auto-completes after market.auto_complete_days
  * The money is released to the shop when the buyer confirms (or auto-complete): see orders.settle.
+ *
+ * Round B3: the shop's staff work this desk too (business-members actFor; 404 for other shops):
+ * orders.view, .accept, .ship, .deliver and (optional, off by default) .reject. Staff never see the
+ * commission, net or released amounts, nor the settlement. The buyer's phone and address (Q168) show
+ * to staff with orders.ship only on the order's own page once it is accepted, and every such view is
+ * audited (sub_order.contact_viewed); lists and action answers never carry them for staff.
  */
 const { Op } = require('sequelize');
 const { E } = require('../../common/errors');
@@ -17,6 +23,8 @@ const { sequelize, SubOrder, Order, OrderItem } = require('../../models');
 const { Area } = require('../catalog').reference;
 const audit = require('../audit').audit;
 const inventory = require('../market').inventory;
+const marketReads = require('../market').reads;
+const access = require('../business-members').access;
 const { fileBlock } = require('../../common/filetype');
 const checkout = require('./checkout.service');
 const settle = require('./orders.settle');
@@ -35,17 +43,42 @@ const TABS = {
   cancelled: ['rejected', 'expired', 'cancelled', 'refunded'],
 };
 
-async function view(s, { transaction } = {}) {
+const OWNER = { as: 'owner', staff: false };
+
+/**
+ * The shop's view of a sub-order. For staff (B3): without the money they never see, and without the
+ * buyer's contact unless `reveal` (the order page, orders.ship, accepted): that view is audited.
+ */
+async function view(s, { transaction, ctx = OWNER, reveal = false, req = null } = {}) {
   const [items, order] = await Promise.all([c.itemsOf([s.id], { transaction }), Order.findByPk(s.orderId, { transaction })]);
   const a = await Area.findByPk(order.shipAreaId, { transaction });
-  return c.shopSubView(s, items, order, a ? { id: a.id, nameEn: a.nameEn, nameBn: a.nameBn, isDhakaMetro: a.isDhakaMetro } : null);
+  const out = c.shopSubView(s, items, order, a ? { id: a.id, nameEn: a.nameEn, nameBn: a.nameBn, isDhakaMetro: a.isDhakaMetro } : null);
+  if (!ctx.staff) return out;
+  const staffOut = access.forStaff(out);
+  if (!out.shipTo) return staffOut;
+  if (reveal && access.can(ctx, 'orders.ship')) {
+    // Q168: shop staff with the shipping permission see the buyer's phone and address once accepted.
+    await audit.record({ action: 'sub_order.contact_viewed', actor: ctx.actor, entityType: 'sub_order', entityId: s.id, entityCode: s.code, meta: { shopId: s.shopId }, req }, { transaction });
+    return staffOut;
+  }
+  return { ...staffOut, shipTo: null, contactHidden: true };
 }
 
-async function own(principal, id, transaction) {
+const actAtShop = (principal, shopId, ownerId, permission, notFound) => access.actFor(principal, 'shop', shopId, permission, { ownerId, notFound, foreign: () => fail('NOT_YOUR_SHOP') });
+
+async function own(principal, id, transaction, permission) {
   const s = transaction ? await c.lockSub(id, transaction) : await SubOrder.findByPk(id);
   if (!s || s.status === 'pending_payment') throw E.notFound('Order');
-  if (s.sellerId !== principal.id) throw fail('NOT_YOUR_SHOP');
-  return s;
+  return { s, ctx: actAtShop(principal, s.shopId, s.sellerId, permission, 'Order') };
+}
+
+/** Which sub-orders a list shows: ?shopId= (owner or staff), the owner's own, or the staff's only shop. */
+async function listScope(principal, shopId) {
+  const id = shopId ?? access.defaultWorkplace(principal, 'shop', 'orders.view');
+  if (!id) return { where: { sellerId: principal.id }, ctx: OWNER };
+  const shop = await marketReads.shop(id);
+  if (!shop) throw E.notFound('Shop');
+  return { where: { shopId: id }, ctx: actAtShop(principal, id, shop.ownerId, 'orders.view', 'Shop') };
 }
 
 const move = (action, s) => {
@@ -55,41 +88,43 @@ const move = (action, s) => {
 };
 
 /** GET /shop/sub-orders?tab&cursor&limit: newest first, with counts per tab. */
-async function list(principal, { tab = 'to_accept', cursor, limit = 20 } = {}) {
-  const where = { sellerId: principal.id, status: TABS[tab], ...(cursor ? { createdAt: { [Op.lt]: new Date(cursor) } } : {}) };
+async function list(principal, { tab = 'to_accept', cursor, limit = 20, shopId } = {}) {
+  const scope = await listScope(principal, shopId);
+  const where = { ...scope.where, status: TABS[tab], ...(cursor ? { createdAt: { [Op.lt]: new Date(cursor) } } : {}) };
   const rows = await SubOrder.findAll({ where, order: [['createdAt', 'DESC']], limit: limit + 1 });
   const page = rows.slice(0, limit);
   const counts = {};
-  for (const [k, statuses] of Object.entries(TABS)) counts[k] = await SubOrder.count({ where: { sellerId: principal.id, status: statuses } });
-  return { items: await Promise.all(page.map((s) => view(s))), counts, nextCursor: rows.length > limit ? c.iso(page[page.length - 1].createdAt) : null };
+  for (const [k, statuses] of Object.entries(TABS)) counts[k] = await SubOrder.count({ where: { ...scope.where, status: statuses } });
+  return { items: await Promise.all(page.map((s) => view(s, { ctx: scope.ctx }))), counts, nextCursor: rows.length > limit ? c.iso(page[page.length - 1].createdAt) : null };
 }
 
-async function get(principal, id) {
-  return view(await own(principal, id));
+async function get(principal, id, req = null) {
+  const { s, ctx } = await own(principal, id, null, 'orders.view');
+  return view(s, { ctx, reveal: true, req });
 }
 
 async function accept(principal, id, req) {
   return sequelize.transaction(async (transaction) => {
-    const s = await own(principal, id, transaction);
+    const { s, ctx } = await own(principal, id, transaction, 'orders.accept');
     await s.update({ status: move('accept', s), acceptedAt: new Date() }, { transaction });
-    await c.publishSub(transaction, 'sub_order.accepted', s, { shipBy: c.iso(s.shipBy) }, principal);
-    await audit.record({ action: 'sub_order.accepted', actor: principal, entityType: 'sub_order', entityId: s.id, entityCode: s.code, after: { status: s.status }, req }, { transaction });
-    return view(s, { transaction });
+    await c.publishSub(transaction, 'sub_order.accepted', s, { shipBy: c.iso(s.shipBy) }, ctx.actor);
+    await audit.record({ action: 'sub_order.accepted', actor: ctx.actor, entityType: 'sub_order', entityId: s.id, entityCode: s.code, after: { status: s.status }, req }, { transaction });
+    return view(s, { transaction, ctx });
   });
 }
 
 /** Reject (Q82: the whole sub-order): 100% back to the buyer, the stock released. */
 async function reject(principal, id, { reason, note = null }, req) {
   return sequelize.transaction(async (transaction) => {
-    const s = await own(principal, id, transaction);
+    const { s, ctx } = await own(principal, id, transaction, 'orders.reject');
     const to = move('reject', s);
     await checkout.releaseStock(s, { transaction });
-    const refunded = await settle.refundAll(s, { reasonCode: 'shop_rejected', key: `sub_order:${s.id}:reject`, actor: principal, transaction });
+    const refunded = await settle.refundAll(s, { reasonCode: 'shop_rejected', key: `sub_order:${s.id}:reject`, actor: ctx.actor, transaction });
     await s.update({ status: to, cancelledAt: new Date(), cancelledBy: 'shop', cancelReason: reason, cancelNote: note }, { transaction });
-    await c.publishSub(transaction, 'sub_order.rejected', s, { reason, refund: refunded }, principal);
+    await c.publishSub(transaction, 'sub_order.rejected', s, { reason, refund: refunded }, ctx.actor);
     await c.syncOrder(s.orderId, { transaction });
-    await audit.record({ action: 'sub_order.rejected', actor: principal, entityType: 'sub_order', entityId: s.id, entityCode: s.code, after: { status: s.status, reason, refund: refunded }, req }, { transaction });
-    return view(s, { transaction });
+    await audit.record({ action: 'sub_order.rejected', actor: ctx.actor, entityType: 'sub_order', entityId: s.id, entityCode: s.code, after: { status: s.status, reason, refund: refunded }, req }, { transaction });
+    return view(s, { transaction, ctx });
   });
 }
 
@@ -97,14 +132,14 @@ async function reject(principal, id, { reason, note = null }, req) {
 async function ship(principal, id, { courierName, trackingNo }, req) {
   if (!rules.trackingValid(trackingNo)) throw fail('TRACKING_INVALID');
   return sequelize.transaction(async (transaction) => {
-    const s = await own(principal, id, transaction);
+    const { s, ctx } = await own(principal, id, transaction, 'orders.ship');
     const to = move('ship', s);
     const items = await OrderItem.findAll({ where: { subOrderId: s.id }, order: [['productId', 'ASC'], ['variantId', 'ASC']], transaction });
     for (const i of items) await inventory.commit(i.variantId, i.qty, i.id, { transaction });
     await s.update({ status: to, shippedAt: new Date(), courierName, trackingNo }, { transaction });
-    await c.publishSub(transaction, 'sub_order.shipped', s, { courier: courierName, tracking: trackingNo }, principal);
-    await audit.record({ action: 'sub_order.shipped', actor: principal, entityType: 'sub_order', entityId: s.id, entityCode: s.code, after: { status: s.status, courierName, trackingNo }, req }, { transaction });
-    return view(s, { transaction });
+    await c.publishSub(transaction, 'sub_order.shipped', s, { courier: courierName, tracking: trackingNo }, ctx.actor);
+    await audit.record({ action: 'sub_order.shipped', actor: ctx.actor, entityType: 'sub_order', entityId: s.id, entityCode: s.code, after: { status: s.status, courierName, trackingNo }, req }, { transaction });
+    return view(s, { transaction, ctx });
   });
 }
 
@@ -116,18 +151,18 @@ async function delivered(principal, id, { contentType, body }, req) {
     const declared = String(contentType ?? '').split(';')[0].trim().toLowerCase();
     const block = fileBlock({ declared, sniffed: sniffMime(buf), size: buf.length, max: c.config().proofMaxBytes });
     if (block) throw fail(block);
-    const s0 = await own(principal, id);
+    const { s: s0 } = await own(principal, id, null, 'orders.deliver');
     proofKey = `orders/${s0.id}/delivered-${uuid7()}.${EXT[declared]}`;
     await storage.putPrivate(proofKey, buf, declared);
   }
   return sequelize.transaction(async (transaction) => {
-    const s = await own(principal, id, transaction);
+    const { s, ctx } = await own(principal, id, transaction, 'orders.deliver');
     const to = move('deliver', s);
     const now = new Date();
     await s.update({ status: to, deliveredAt: now, deliveredProofKey: proofKey, completeBy: rules.completeBy({ deliveredAt: now, days: c.config().autoCompleteDays }) }, { transaction });
-    await c.publishSub(transaction, 'sub_order.delivered', s, { completeBy: c.iso(s.completeBy), proof: Boolean(proofKey) }, principal);
-    await audit.record({ action: 'sub_order.delivered', actor: principal, entityType: 'sub_order', entityId: s.id, entityCode: s.code, after: { status: s.status, proof: Boolean(proofKey) }, req }, { transaction });
-    return view(s, { transaction });
+    await c.publishSub(transaction, 'sub_order.delivered', s, { completeBy: c.iso(s.completeBy), proof: Boolean(proofKey) }, ctx.actor);
+    await audit.record({ action: 'sub_order.delivered', actor: ctx.actor, entityType: 'sub_order', entityId: s.id, entityCode: s.code, after: { status: s.status, proof: Boolean(proofKey) }, req }, { transaction });
+    return view(s, { transaction, ctx });
   });
 }
 

@@ -6,7 +6,10 @@
  *   checkoutRouter /checkout             quote and place (gate buy: a verified phone; Idempotency-Key)
  *   meOrders       /me/orders            my orders and the payment link of an unpaid one
  *   meSubOrders    /me/sub-orders        cancel, received, not received (an M17 dispute)
- *   shopOrders     /shop                 the shop owner's sub-orders and settlement (gate list_product)
+ *   shopOrders     /shop                 the shop's sub-orders (gate work_shop, Round B3: the owner or the
+ *                                        shop's staff by permission) and the owner's settlement (gate
+ *                                        list_product); per-route middleware, mounted before /shop's
+ *                                        owner-only router
  *   adminRouter    /admin/orders         staff: search and the timeline (manage_users, refund_small or
  *                                        view_payouts); platform cancel (master + step-up escrow.manage)
  */
@@ -57,18 +60,19 @@ meSubOrders.post('/:id/not-received', id, requireGate('file_dispute'), validate(
   res.status(201).json(await buyer.notReceived(req.user, req.params.id, req.body, req.idempotencyKey, req))
 );
 
-// ---------------- shop owner
+// ---------------- the shop's order desk (owner or shop staff, Round B3) and the owner's settlement
 const shopOrders = Router();
-shopOrders.use(authenticate, requireGate('list_product'));
-shopOrders.get('/sub-orders', validate(s.shopListQuery, 'query'), async (req, res) => res.json(await fulfil.list(req.user, req.validQuery)));
-shopOrders.get('/sub-orders/:id', id, async (req, res) => res.json(await fulfil.get(req.user, req.params.id)));
-shopOrders.post('/sub-orders/:id/accept', id, async (req, res) => res.json(await fulfil.accept(req.user, req.params.id, req)));
-shopOrders.post('/sub-orders/:id/reject', id, validate(s.rejectBody), async (req, res) => res.json(await fulfil.reject(req.user, req.params.id, req.body, req)));
-shopOrders.post('/sub-orders/:id/ship', id, validate(s.shipBody), async (req, res) => res.json(await fulfil.ship(req.user, req.params.id, req.body, req)));
-shopOrders.post('/sub-orders/:id/delivered', id, limits.productPhoto, raw, async (req, res) =>
+const work = [authenticate, requireGate('work_shop')];
+shopOrders.get('/sub-orders', ...work, validate(s.shopListQuery, 'query'), async (req, res) => res.json(await fulfil.list(req.user, req.validQuery)));
+shopOrders.get('/sub-orders/:id', ...work, id, async (req, res) => res.json(await fulfil.get(req.user, req.params.id, req)));
+shopOrders.post('/sub-orders/:id/accept', ...work, id, async (req, res) => res.json(await fulfil.accept(req.user, req.params.id, req)));
+shopOrders.post('/sub-orders/:id/reject', ...work, id, validate(s.rejectBody), async (req, res) => res.json(await fulfil.reject(req.user, req.params.id, req.body, req)));
+shopOrders.post('/sub-orders/:id/ship', ...work, id, validate(s.shipBody), async (req, res) => res.json(await fulfil.ship(req.user, req.params.id, req.body, req)));
+shopOrders.post('/sub-orders/:id/delivered', ...work, id, limits.productPhoto, raw, async (req, res) =>
   res.json(await fulfil.delivered(req.user, req.params.id, { contentType: req.get('content-type'), body: req.body }, req))
 );
-shopOrders.get('/settlement', async (req, res) => res.json(await fulfil.settlement(req.user)));
+// Never for staff (B3): the settlement shows commission and net.
+shopOrders.get('/settlement', authenticate, requireGate('list_product'), async (req, res) => res.json(await fulfil.settlement(req.user)));
 
 // ---------------- staff
 const adminRouter = Router();

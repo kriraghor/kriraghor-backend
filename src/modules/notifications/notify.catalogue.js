@@ -118,6 +118,17 @@ const toBooker = (e) => (e.payload.bookerUserId ? [e.payload.bookerUserId] : [])
 const myBooking = (e) => `/me/bookings/${e.payload.bookingId}`;
 const tTitle = async (id, locale) => es().title(await es().tournament(id), locale);
 const payoutFacts = (id) => require('../payouts').payouts.facts(id);
+// Round B3: a business's staff who hold a permission also hear about its bookings, orders and stock
+// (never completed-order money, payouts or moderation); their own team changes come to them.
+const staffOf = (type, businessId, permission) => require('../business-members').members.staffRecipients(type, businessId, permission);
+const businessName = (type, businessId) => require('../business-members').members.businessName(type, businessId);
+const BUSINESS_LABELS = { en: { venue: 'venue', gym: 'gym', shop: 'shop' }, bn: { venue: 'ভেন্যু', gym: 'জিম', shop: 'দোকান' } };
+const businessLabel = (type, locale) => BUSINESS_LABELS[locale]?.[type] ?? BUSINESS_LABELS.en[type] ?? type;
+const staffBookingValues = async (e) => {
+  const f = await bookingFacts(e.payload.bookingId);
+  return { code: f.code, ground: f.groundName, start: f.start, due: f.dueAtVenue };
+};
+const staffBookings = (e) => vendorUrl(`/bookings?groundId=${e.payload.groundId}`);
 const accountFacts = (id) => require('../payouts').payoutAccounts.facts(id);
 const settingsHours = () => require('../settings').settings.get('risk.payout_change_hold_hours');
 const HOLD_REASONS = {
@@ -308,6 +319,25 @@ const CATALOGUE = [
     recipients: (e) => [e.payload.userId],
     values: async () => ({ url: adminUrl('/admin/sign-in') }),
     link: () => '/admin',
+  },
+  // ---------------- Round B3: staff accounts for businesses (the staff member hears of their own access)
+  {
+    code: 'TEAM_ADDED',
+    events: ['business_member.added'],
+    category: 'security',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.memberId],
+    values: async (e, { locale }) => ({ owner: await nameOf(e.payload.ownerId), business: await businessName(e.payload.businessType, e.payload.businessId), kind: businessLabel(e.payload.businessType, locale) }),
+    link: () => vendorUrl('/'),
+  },
+  {
+    code: 'TEAM_REMOVED',
+    events: ['business_member.removed'],
+    category: 'security',
+    channels: ['in_app', 'sms'],
+    recipients: (e) => [e.payload.memberId],
+    values: async (e, { locale }) => ({ owner: await nameOf(e.payload.ownerId), business: await businessName(e.payload.businessType, e.payload.businessId), kind: businessLabel(e.payload.businessType, locale) }),
+    link: () => '/me',
   },
   {
     code: 'STAFF_PERMISSIONS_CHANGED',
@@ -814,6 +844,15 @@ const CATALOGUE = [
     link: () => vendorUrl('/bookings'),
   },
   {
+    code: 'TEAM_BOOKING_NEW',
+    events: ['booking.confirmed'],
+    category: 'bookings',
+    channels: ['in_app'],
+    recipients: (e) => staffOf('venue', e.payload.groundId, 'bookings.view'),
+    values: staffBookingValues,
+    link: staffBookings,
+  },
+  {
     code: 'BOOKING_CANCELLED',
     events: ['booking.cancelled'],
     category: 'bookings',
@@ -830,6 +869,15 @@ const CATALOGUE = [
     recipients: (e) => [e.payload.ownerId],
     values: bookingValues,
     link: () => vendorUrl('/bookings'),
+  },
+  {
+    code: 'TEAM_BOOKING_CANCELLED',
+    events: ['booking.cancelled'],
+    category: 'bookings',
+    channels: ['in_app'],
+    recipients: (e) => staffOf('venue', e.payload.groundId, 'bookings.view'),
+    values: staffBookingValues,
+    link: staffBookings,
   },
   {
     code: 'BOOKING_OWNER_CANCELLED',
@@ -849,6 +897,15 @@ const CATALOGUE = [
     recipients: toBooker,
     values: bookingValues,
     link: myBooking,
+  },
+  {
+    code: 'TEAM_CHECKIN_SOON',
+    events: ['booking.reminded'],
+    category: 'bookings',
+    channels: ['in_app'],
+    recipients: (e) => staffOf('venue', e.payload.groundId, 'bookings.check_in'),
+    values: staffBookingValues,
+    link: staffBookings,
   },
   {
     code: 'BOOKING_MOVED',
@@ -1044,7 +1101,7 @@ const CATALOGUE = [
     events: ['variant.low_stock_reached'],
     category: 'orders',
     channels: ['in_app'],
-    recipients: (e) => [e.payload.ownerId],
+    recipients: async (e) => [e.payload.ownerId, ...(await staffOf('shop', e.payload.shopId, 'stock.view'))],
     values: async (e, { locale }) => ({ ...(await variantValues(e, locale)), left: e.payload.available }),
     link: () => '/vendor/inventory?status=low',
   },
@@ -1053,7 +1110,7 @@ const CATALOGUE = [
     events: ['variant.stock_depleted'],
     category: 'orders',
     channels: ['in_app'],
-    recipients: (e) => [e.payload.ownerId],
+    recipients: async (e) => [e.payload.ownerId, ...(await staffOf('shop', e.payload.shopId, 'stock.view'))],
     values: async (e, { locale }) => variantValues(e, locale),
     link: () => '/vendor/inventory?status=out',
   },
@@ -1062,7 +1119,7 @@ const CATALOGUE = [
     events: ['variant.sale_blocked'],
     category: 'orders',
     channels: ['in_app'],
-    recipients: (e) => [e.payload.ownerId],
+    recipients: async (e) => [e.payload.ownerId, ...(await staffOf('shop', e.payload.shopId, 'stock.view'))],
     values: async (e, { locale }) => ({ ...(await variantValues(e, locale)), expiry: e.payload.expiryDate ?? '' }),
     link: () => '/vendor/inventory?status=blocked',
   },
@@ -1226,7 +1283,7 @@ const CATALOGUE = [
     category: 'orders',
     channels: ['in_app', 'sms'],
     urgent: true,
-    recipients: (e) => [e.payload.sellerId],
+    recipients: async (e) => [e.payload.sellerId, ...(await staffOf('shop', e.payload.shopId, 'orders.view'))],
     values: (e) => ({ code: e.payload.code, total: e.payload.total, acceptBy: e.payload.acceptBy }),
     link: vendorOrder,
   },
@@ -1236,7 +1293,7 @@ const CATALOGUE = [
     category: 'orders',
     channels: ['in_app', 'sms'],
     urgent: true,
-    recipients: (e) => [e.payload.sellerId],
+    recipients: async (e) => [e.payload.sellerId, ...(await staffOf('shop', e.payload.shopId, 'orders.accept'))],
     values: (e) => ({ code: e.payload.code, acceptBy: e.payload.acceptBy }),
     link: vendorOrder,
   },
@@ -1300,7 +1357,7 @@ const CATALOGUE = [
     events: ['sub_order.cancelled', 'sub_order.expired'],
     category: 'orders',
     channels: ['in_app'],
-    recipients: (e) => (['payment_not_completed', 'payment_timeout'].includes(e.payload.reason) ? [] : [e.payload.sellerId]),
+    recipients: async (e) => (['payment_not_completed', 'payment_timeout'].includes(e.payload.reason) ? [] : [e.payload.sellerId, ...(await staffOf('shop', e.payload.shopId, 'orders.view'))]),
     values: (e, { locale }) => ({ code: e.payload.code, reason: orderReason(e.payload.reason, locale) }),
     link: vendorOrder,
   },

@@ -7,24 +7,32 @@
  * The admission row (UNIQUE pass and day) and the pass row lock settle two scans at once: one admits,
  * the other answers "Already used at 07:42". The first admission releases the pass's money to the
  * owner minus fees.gym_pct; a day pass is then used up.
+ *
+ * Round B3: the gym's staff work the desk too (business-members actFor): desk.admit admits,
+ * desk.admissions lists the day, passes.view lists passes sold without any money. Staff never see the
+ * amount released; the money still goes to the gym's owner. Other gyms answer 404 to staff.
  */
 const { Op, UniqueConstraintError } = require('sequelize');
 const { E } = require('../../common/errors');
 const { sequelize, Gym, GymPass, PassRedemption } = require('../../models');
 const audit = require('../audit').audit;
 const directory = require('../users').directory;
+const access = require('../business-members').access;
 const rules = require('./gym.rules');
 const c = require('./gym.common');
 
 const { fail } = c;
 const DESK = ['live', 'paused'];
 
-async function ownGym(principal, gymId) {
+const actAt = (principal, gymId, ownerId, permission) => access.actFor(principal, 'gym', gymId, permission, { ownerId, notFound: 'Gym', foreign: () => fail('NOT_OWNER') });
+const shown = (ctx, body) => (ctx.staff ? access.forStaff(body) : body);
+
+async function ownGym(principal, gymId, permission) {
   const g = await Gym.findByPk(gymId);
   if (!g || g.status === 'removed') throw E.notFound('Gym');
-  if (g.ownerId !== principal.id) throw fail('NOT_OWNER');
+  const ctx = actAt(principal, g.id, g.ownerId, permission);
   if (!DESK.includes(g.status)) throw fail('GYM_STATE');
-  return g;
+  return { g, ctx };
 }
 
 /** The pass a token or a typed code names (codes are looked up within this gym only). */
@@ -64,7 +72,7 @@ async function card(p, { redeemedAt, released }) {
 
 /** POST /me/gyms/:id/redemptions { token } | { code }. */
 async function redeem(principal, gymId, body, req) {
-  const g = await ownGym(principal, gymId);
+  const { g, ctx } = await ownGym(principal, gymId, 'desk.admit');
   const found = await findPass(g, body);
   const now = new Date();
   const today = c.today(now);
@@ -83,17 +91,17 @@ async function redeem(principal, gymId, body, req) {
       throw err;
     }
     const a = rules.admission(p);
-    const moved = a.release ? await c.release(p, { actor: principal, transaction }) : { gross: 0, fee: 0, net: 0 };
+    const moved = a.release ? await c.release(p, { actor: ctx.actor, transaction }) : { gross: 0, fee: 0, net: 0 };
     await p.update({ status: a.status, firstRedeemedAt: p.firstRedeemedAt ?? now, lastRedeemedAt: now }, { transaction });
-    await audit.record({ action: 'gym_pass.redeemed', actor: principal, entityType: 'gym_pass', entityId: p.id, entityCode: p.code, after: { status: p.status, method: found.method }, meta: { gymId: g.id }, req }, { transaction });
-    await c.publishPass(transaction, 'gym_pass.redeemed', p, { method: found.method, released: moved.gross, net: moved.net }, principal);
-    return card(p, { redeemedAt: now, released: moved.net });
+    await audit.record({ action: 'gym_pass.redeemed', actor: ctx.actor, entityType: 'gym_pass', entityId: p.id, entityCode: p.code, after: { status: p.status, method: found.method }, meta: { gymId: g.id }, req }, { transaction });
+    await c.publishPass(transaction, 'gym_pass.redeemed', p, { method: found.method, released: moved.gross, net: moved.net }, ctx.actor);
+    return shown(ctx, await card(p, { redeemedAt: now, released: moved.net }));
   });
 }
 
 /** GET /me/gyms/:id/redemptions?date: the day's admissions (default today, Dhaka). */
 async function admissions(principal, gymId, { date } = {}) {
-  const g = await ownGym(principal, gymId);
+  const { g } = await ownGym(principal, gymId, 'desk.admissions');
   const day = date ?? c.today();
   const rows = await PassRedemption.findAll({ where: { gymId: g.id, redeemedOn: day }, order: [['redeemedAt', 'DESC']] });
   const passes = await GymPass.findAll({ where: { id: rows.map((r) => r.passId) } });
@@ -110,7 +118,9 @@ async function admissions(principal, gymId, { date } = {}) {
 /** GET /me/gyms/:id/passes?status: passes sold (codes and dates; the buyer's name only). */
 async function sold(principal, gymId, { status } = {}) {
   const g = await Gym.findByPk(gymId);
-  if (!g || g.ownerId !== principal.id) throw fail('NOT_OWNER');
+  // A missing gym stays NOT_OWNER for owners (as before); staff get the 404 of actFor.
+  const ctx = actAt(principal, gymId, g?.ownerId, 'passes.view');
+  if (!g) throw fail('NOT_OWNER');
   const rows = await GymPass.findAll({ where: { gymId: g.id, status: status ? [status] : { [Op.notIn]: ['void', 'pending_payment'] } }, order: [['createdAt', 'DESC']], limit: 200 });
   const names = await directory.publicNames(rows.map((p) => p.holderId));
   return {
@@ -123,7 +133,8 @@ async function sold(principal, gymId, { status } = {}) {
       validFrom: p.validFrom,
       validTo: p.validTo,
       holder: names.get(p.holderId)?.displayName ?? null,
-      money: { price: p.pricePoisha, fee: p.feePoisha, net: p.netPoisha, released: p.releasedPoisha, refunded: p.refundedPoisha },
+      // Round B3: staff with passes.view see the passes, never their money.
+      ...(ctx.staff ? {} : { money: { price: p.pricePoisha, fee: p.feePoisha, net: p.netPoisha, released: p.releasedPoisha, refunded: p.refundedPoisha } }),
       paidAt: c.iso(p.paidAt),
       firstRedeemedAt: c.iso(p.firstRedeemedAt),
     })),

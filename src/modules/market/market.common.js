@@ -143,6 +143,45 @@ async function ownedVariant(principal, variantId, { transaction }) {
   return { product, shop, variant };
 }
 
+// ---------------------------------------------------------------- Round B3: the stock desk (owner or shop staff)
+
+const access = () => require('../business-members').access;
+const actAtShop = (principal, shop, permission, notFound) => access().actFor(principal, 'shop', shop.id, permission, { ownerId: shop.ownerId, notFound, foreign: () => fail('NOT_OWNER') });
+/** Staff never see stock value, fees or settlement (B3); the owner's view is unchanged. */
+const shownTo = (ctx, body) => (ctx.staff ? access().forStaff(body) : body);
+
+/** A product on the stock desk: its shop's owner, or the shop's staff with the permission (404 for other shops). */
+async function deskProduct(principal, productId, permission, { transaction, lock = false } = {}) {
+  const p = await Product.findByPk(productId, { transaction, ...(lock ? { lock: transaction.LOCK.UPDATE } : {}) });
+  if (!p || p.status === 'removed') throw E.notFound('Product');
+  const shop = await Shop.findByPk(p.shopId, { transaction });
+  return { product: p, shop, ctx: actAtShop(principal, shop, permission, 'Product') };
+}
+
+/** A variant on the stock desk, with the product locked first (lock order: product → variants). */
+async function deskVariant(principal, variantId, permission, { transaction }) {
+  const v0 = await ProductVariant.findByPk(variantId, { transaction });
+  if (!v0) throw E.notFound('Variant');
+  const { product, shop, ctx } = await deskProduct(principal, v0.productId, permission, { transaction, lock: true });
+  const variant = await ProductVariant.findByPk(variantId, { transaction, lock: transaction.LOCK.UPDATE });
+  return { product, shop, variant, ctx };
+}
+
+/**
+ * The shop a desk list shows: ?shopId= (owner or staff, checked), else the owner's own shop, else the
+ * only shop where the caller is staff with the permission (BUSINESS_REQUIRED when several).
+ */
+async function deskShop(principal, shopId, permission) {
+  const id = shopId ?? access().defaultWorkplace(principal, 'shop', permission);
+  if (!id) {
+    const own = await myShop(principal);
+    return { shop: own, ctx: actAtShop(principal, own, permission, 'Shop') };
+  }
+  const s = await Shop.findByPk(id);
+  if (!s || s.status === 'removed') throw E.notFound('Shop');
+  return { shop: s, ctx: actAtShop(principal, s, permission, 'Shop') };
+}
+
 // ---------------------------------------------------------------- working copy and public version
 
 const ACTIVE = { status: 'active' };
@@ -280,6 +319,10 @@ module.exports = {
   myShop,
   ownedProduct,
   ownedVariant,
+  deskProduct,
+  deskVariant,
+  deskShop,
+  shownTo,
   loadWorking,
   variantShape,
   snapshotOf,

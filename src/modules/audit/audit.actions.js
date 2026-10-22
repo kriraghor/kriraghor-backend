@@ -53,6 +53,10 @@ const ACTIONS = {
   'staff.totp_setup_started': A('M01', 'info', 'Started authenticator setup', 'অথেন্টিকেটর সেটআপ শুরু'),
   'staff.totp_enabled': A('M01', 'notice', 'Authenticator turned on', 'অথেন্টিকেটর চালু'),
   'staff.totp_reset': A('M01', 'critical', 'Two-factor reset', 'টু-ফ্যাক্টর রিসেট'),
+  // Round B3: a business owner's staff (actions they take are audited under the staff member with meta.onBehalfOf the owner).
+  'business_member.added': A('M01', 'notice', 'Added a staff member to a {meta.businessType}', '{meta.businessType}-এ স্টাফ সদস্য যোগ'),
+  'business_member.permissions_changed': A('M01', 'notice', 'Changed a staff member’s permissions', 'স্টাফ সদস্যের অনুমতি বদলানো'),
+  'business_member.removed': A('M01', 'notice', 'Removed a staff member from a {meta.businessType}', '{meta.businessType} থেকে স্টাফ সদস্য সরানো'),
 
   // ---------------- M03 Settings and catalogue ----------------
   'setting.change_proposed': A('M03', 'notice', 'Proposed a settings change', 'সেটিংস পরিবর্তনের প্রস্তাব'),
@@ -346,6 +350,8 @@ const ACTIONS = {
   'sub_order.rejected': A('M13', 'notice', 'Rejected an order ({after.reason}); refund {after.refund}', 'অর্ডার প্রত্যাখ্যান ({after.reason}); ফেরত {after.refund}'),
   'sub_order.shipped': A('M13', 'info', 'Shipped an order with {after.courierName}', '{after.courierName} দিয়ে অর্ডার পাঠানো'),
   'sub_order.delivered': A('M13', 'info', 'Marked an order delivered', 'অর্ডার ডেলিভারি চিহ্নিত'),
+  // Round B3 (Q168): shop staff with the shipping permission viewed the buyer's phone and address.
+  'sub_order.contact_viewed': A('M13', 'notice', 'Staff viewed the buyer’s shipping contact', 'স্টাফ ক্রেতার শিপিং যোগাযোগ দেখেছেন'),
   'sub_order.completed': A('M13', 'info', 'Confirmed an order received; released {after.released}', 'অর্ডার পাওয়া নিশ্চিত; ছাড় {after.released}'),
   'sub_order.cancelled': A('M13', 'notice', 'Cancelled an order ({after.reason}); refund {after.refund}', 'অর্ডার বাতিল ({after.reason}); ফেরত {after.refund}'),
   'sub_order.platform_cancelled': A('M13', 'critical', 'Cancelled an order for the platform (refund {after.refund})', 'প্ল্যাটফর্মের পক্ষে অর্ডার বাতিল (ফেরত {after.refund})'),

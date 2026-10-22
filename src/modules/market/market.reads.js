@@ -36,15 +36,30 @@ async function pendingActions(principal) {
   const products = await Product.findAll({ where: { shopId: s.id, status: { [Op.ne]: 'removed' } }, attributes: ['id', 'status', 'editStatus', 'isMto'] });
   const changes = products.filter((p) => p.status === 'changes_requested' || p.editStatus === 'changes_requested').length;
   if (changes) items.push({ key: 'products_changes_requested', count: changes, severity: 'high', dueAt: null, href: '/vendor/products' });
+  items.push(...(await stockItems(s, products)));
+  return items;
+}
+
+/** Stock running low, out or blocked for expiry among a shop's published, stocked products. */
+async function stockItems(s, products, query = '') {
   const stocked = products.filter((p) => ['live', 'paused'].includes(p.status) && !p.isMto).map((p) => p.id);
   const variants = stocked.length ? await ProductVariant.findAll({ where: { productId: stocked, status: 'active' }, attributes: ['onHand', 'held', 'saleBlocked'] }) : [];
   const out = variants.filter((v) => !v.saleBlocked && v.onHand - v.held <= 0).length;
   const low = variants.filter((v) => !v.saleBlocked && v.onHand - v.held > 0 && v.onHand - v.held <= s.lowStockThreshold).length;
   const blocked = variants.filter((v) => v.saleBlocked).length;
-  if (out) items.push({ key: 'stock_out', count: out, severity: 'high', dueAt: null, href: '/vendor/inventory?status=out' });
-  if (low) items.push({ key: 'stock_low', count: low, severity: 'normal', dueAt: null, href: '/vendor/inventory?status=low' });
-  if (blocked) items.push({ key: 'stock_blocked', count: blocked, severity: 'normal', dueAt: null, href: '/vendor/inventory?status=blocked' });
+  const items = [];
+  if (out) items.push({ key: 'stock_out', count: out, severity: 'high', dueAt: null, href: `/vendor/inventory?status=out${query}` });
+  if (low) items.push({ key: 'stock_low', count: low, severity: 'normal', dueAt: null, href: `/vendor/inventory?status=low${query}` });
+  if (blocked) items.push({ key: 'stock_blocked', count: blocked, severity: 'normal', dueAt: null, href: `/vendor/inventory?status=blocked${query}` });
   return items;
+}
+
+/** Round B3 staff to-do of one shop (stock.view): the same stock counts as the owner's, for that shop. */
+async function stockActions(shopId) {
+  const s = await Shop.findByPk(shopId, { attributes: ['id', 'status', 'lowStockThreshold'] });
+  if (!s || s.status === 'removed') return [];
+  const products = await Product.findAll({ where: { shopId: s.id, status: { [Op.ne]: 'removed' } }, attributes: ['id', 'status', 'isMto'] });
+  return stockItems(s, products, `&shopId=${s.id}`);
 }
 
 /**
@@ -96,4 +111,4 @@ async function purchasable(variantIds, { transaction } = {}) {
   return out;
 }
 
-module.exports = { shop, product, pendingActions, purchasable };
+module.exports = { shop, product, pendingActions, stockActions, purchasable };

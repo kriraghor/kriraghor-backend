@@ -13,6 +13,8 @@ const lazy = (file, names, values = []) => {
 };
 
 module.exports = {
+  // Round B3: the shop adapter of the business-members port (registered by registry.registerAll).
+  businessPort: lazy('./market.business', ['register']),
   inventory: lazy('./inventory.service', ['commit', 'hold', 'release']),
   reads: lazy('./market.reads', ['pendingActions', 'product', 'purchasable', 'shop']),
   products: lazy('./products.service', ['facts', 'staffActionInTx', 'variantFacts']),

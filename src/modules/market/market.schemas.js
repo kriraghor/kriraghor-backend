@@ -76,7 +76,10 @@ const adjustBody = z
   .refine((b) => (b.delta === undefined) !== (b.setTo === undefined), 'Send delta or setTo')
   .refine((b) => b.reasonCode !== 'other' || b.reasonText, { message: 'Explain the reason', path: ['reasonText'] });
 const ownerListQuery = z.object({ status: z.enum(STATUSES).optional() });
-const inventoryQuery = z.object({ status: z.enum(['low', 'out', 'mto', 'blocked']).optional() });
+const inventoryQuery = z.object({
+  status: z.enum(['low', 'out', 'mto', 'blocked']).optional(),
+  shopId: z.uuid().optional().meta({ description: 'Round B3: the shop (staff working at several shops name one; the owner may leave it out)' }),
+});
 const cursorQuery = z.object({ cursor: z.iso.datetime({ offset: true }).optional(), limit: z.coerce.number().int().min(1).max(100).default(50) });
 
 // ---------------- staff

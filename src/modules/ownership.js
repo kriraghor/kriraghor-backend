@@ -8,7 +8,7 @@
 
 /** Module groups (future service boundaries). `shared` stays a library: audit log and outbox. */
 const GROUPS = {
-  identity: ['auth', 'users', 'admin'],
+  identity: ['auth', 'users', 'admin', 'business-members'],
   platform: ['settings', 'catalog', 'analytics'],
   shared: ['audit', 'events'],
   notification: ['notifications'],
@@ -27,6 +27,8 @@ const OWNERS = {
   'auth': ['Session', 'OtpCode', 'OAuthIdentity', 'StepUpToken'],
   'users': ['User', 'UserRole', 'UserSanction'],
   'admin': ['StaffMember', 'StaffPermission'],
+  // Round B3 (Q69, Q169, Q170): staff accounts working at one venue, gym or shop for its owner.
+  'business-members': ['BusinessMember'],
   'settings': ['PlatformSetting', 'SettingsHistory', 'SettingsChangeRequest'],
   'catalog': ['Sport', 'Division', 'District', 'Area', 'Facility', 'Surface', 'SportRuleSchema', 'ItemCategory', 'ItemType', 'ItemTypeField', 'HireCategory', 'HireRole', 'EsportsGame', 'EsportsMode', 'EsportsMap', 'EsportsPointsPreset'],
   'analytics': ['KpiFactBooking', 'KpiFactCourtDay', 'KpiFactPayment', 'KpiFactLedgerTxn', 'KpiFactEsportsEntry', 'KpiFactEsportsTournament', 'KpiProcessedEvent', 'KpiDrift', 'KpiFactSubOrder', 'KpiFactOrderLine', 'KpiFactGymPass', 'KpiFactGymAdmission'],

@@ -139,18 +139,19 @@ async function openingStock({ product, shop, variant }, qty, actor, { transactio
 /**
  * POST /shop/variants/:id/adjust {delta | setTo, reasonCode, reasonText}: a reasoned change of the
  * count on the shelf. Received stock is a `receive`; corrections, damage and losses are `adjust`.
+ * Round B3: the shop's owner, or its staff with stock.adjust (audited as the staff member for the owner).
  */
 async function adjust(principal, variantId, body, req) {
   return sequelize.transaction(async (transaction) => {
-    const { product, shop, variant } = await c.ownedVariant(principal, variantId, { transaction });
+    const { product, shop, variant, ctx } = await c.deskVariant(principal, variantId, 'stock.adjust', { transaction });
     if (product.isMto) throw fail('MTO_NO_STOCK');
     if (variant.status !== 'active') throw fail('VARIANT_STATE');
     const delta = body.setTo !== undefined ? body.setTo - variant.onHand : body.delta;
     if (!delta) return { ...result({ variant, movement: null }), unchanged: true };
     const type = body.reasonCode === 'received' && delta > 0 ? 'receive' : 'adjust';
-    const moved = await moveInTx({ product, shop, variant }, { type, qty: delta, reasonCode: body.reasonCode, reasonText: body.reasonText ?? null, actor: principal }, { transaction });
+    const moved = await moveInTx({ product, shop, variant }, { type, qty: delta, reasonCode: body.reasonCode, reasonText: body.reasonText ?? null, actor: ctx.actor }, { transaction });
     await audit.record(
-      { action: 'inventory.adjusted', actor: principal, entityType: 'product_variant', entityId: variant.id, before: { onHand: variant.onHand - delta }, after: { onHand: variant.onHand }, reason: body.reasonText ?? body.reasonCode, meta: { productId: product.id, delta, reasonCode: body.reasonCode }, req },
+      { action: 'inventory.adjusted', actor: ctx.actor, entityType: 'product_variant', entityId: variant.id, before: { onHand: variant.onHand - delta }, after: { onHand: variant.onHand }, reason: body.reasonText ?? body.reasonCode, meta: { productId: product.id, delta, reasonCode: body.reasonCode }, req },
       { transaction }
     );
     await events.publish(transaction, { name: 'inventory.adjusted', aggregateType: 'product_variant', aggregateId: variant.id, payload: { variantId: variant.id, productId: product.id, shopId: shop.id, delta, reasonCode: body.reasonCode } });
@@ -162,7 +163,7 @@ async function adjust(principal, variantId, body, req) {
 async function movements(principal, variantId, { cursor, limit = 50 } = {}) {
   const v0 = await ProductVariant.findByPk(variantId);
   if (!v0) throw fail('VARIANT_STATE');
-  await c.ownedProduct(principal, v0.productId);
+  await c.deskProduct(principal, v0.productId, 'stock.view');
   const where = { variantId, ...(cursor ? { createdAt: { [Op.lt]: new Date(cursor) } } : {}) };
   const rows = await InventoryMovement.findAll({ where, order: [['createdAt', 'DESC'], ['id', 'DESC']], limit: limit + 1 });
   const page = rows.slice(0, limit);
@@ -170,11 +171,12 @@ async function movements(principal, variantId, { cursor, limit = 50 } = {}) {
 }
 
 /**
- * GET /shop/inventory?status=low|out|mto|blocked: every active variant of the shop's products with
- * the desk KPIs (stock value at selling price, out of stock, running low, held, blocked).
+ * GET /shop/inventory?status=low|out|mto|blocked&shopId=: every active variant of the shop's products
+ * with the desk KPIs (stock value at selling price, out of stock, running low, held, blocked).
+ * Round B3: shop staff with stock.view see the same list without the stock value.
  */
-async function overview(principal, { status } = {}) {
-  const shop = await c.myShop(principal);
+async function overview(principal, { status, shopId } = {}) {
+  const { shop, ctx } = await c.deskShop(principal, shopId, 'stock.view');
   const products = await Product.findAll({ where: { shopId: shop.id, status: { [Op.ne]: 'removed' } } });
   const variants = products.length ? await ProductVariant.findAll({ where: { productId: products.map((p) => p.id), status: 'active' }, order: [['productId', 'ASC'], ['sort', 'ASC']] }) : [];
   const byId = new Map(products.map((p) => [p.id, p]));
@@ -196,7 +198,7 @@ async function overview(principal, { status } = {}) {
     blocked: rows.filter((r) => r.stock.code === 'blocked').length,
   };
   const FILTER = { low: ['low'], out: ['out', 'out_hidden'], mto: ['mto'], blocked: ['blocked'] };
-  return { kpis, items: status ? rows.filter((r) => FILTER[status].includes(r.stock.code)) : rows, stockRules: c.shopView(shop).stockRules };
+  return c.shownTo(ctx, { kpis, items: status ? rows.filter((r) => FILTER[status].includes(r.stock.code)) : rows, stockRules: c.shopView(shop).stockRules });
 }
 
 // ---------------------------------------------------------------- jobs (§10)

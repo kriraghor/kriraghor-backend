@@ -54,6 +54,9 @@ const reviewSubject = z.enum(['ground', 'hire_profile', 'shop', 'gym']);
 const reviewEvent = z.object({ reviewId: uuid, subjectType: reviewSubject, subjectId: uuid, authorId: uuid });
 const docRequestEvent = z.object({ requestId: uuid, userId: uuid, docType: z.string().max(30), sourceRef: uuid.nullable(), dueAt: iso.nullable() });
 const riskFlagEvent = z.object({ flagId: uuid, userId: uuid, ruleKey: z.string().max(40), severity: z.enum(['info', 'medium', 'high', 'critical']) });
+// Round B3 staff accounts for businesses (business-members, identity group).
+const businessMemberEvent = z.object({ businessMemberId: uuid, businessType: z.enum(['venue', 'gym', 'shop']), businessId: uuid, ownerId: uuid, memberId: uuid });
+const permissionList = z.array(z.string().max(40)).max(20);
 const catalogItem = z.object({ table: z.string(), id: uuid, key: z.string(), version: z.number().int().optional(), isActive: z.boolean().optional() });
 
 const EVENTS = {
@@ -71,6 +74,10 @@ const EVENTS = {
   'user_role.reinstated': { module: 'M01', version: 1, schema: z.object({ userId: uuid, role }) },
   'user_role.rejected': { module: 'M01', version: 1, schema: z.object({ userId: uuid, role, reasonCode: z.string().max(40).nullable() }) },
   'user_role.suspended': { module: 'M01', version: 1, schema: z.object({ userId: uuid, role, reasonCode: z.string().max(40).nullable() }) },
+  // Round B3: an owner's staff (Q69, Q169, Q170).
+  'business_member.added': { module: 'M01', version: 1, schema: businessMemberEvent.extend({ permissions: permissionList }) },
+  'business_member.permissions_changed': { module: 'M01', version: 1, schema: businessMemberEvent.extend({ added: permissionList, removed: permissionList }) },
+  'business_member.removed': { module: 'M01', version: 1, schema: businessMemberEvent },
   'user_role.withdrawn': { module: 'M01', version: 1, schema: z.object({ userId: uuid, role }) },
   'staff.invited': { module: 'M01', version: 1, schema: z.object({ userId: uuid }) },
   'staff.activated': { module: 'M01', version: 1, schema: z.object({ userId: uuid }) },
