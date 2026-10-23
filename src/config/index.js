@@ -24,6 +24,9 @@ const schema = z.object({
   OPS_PORT: z.coerce.number().int().positive().default(9464),
   REALTIME_PORT: z.coerce.number().int().positive().default(4001),
   SHUTDOWN_DRAIN_MS: z.coerce.number().int().min(0).default(5000),
+  // Reference seed at API start and in scripts/release.js: "auto" skips it while the reference data
+  // and seed code are unchanged; "always" runs the full seed every time.
+  REFERENCE_SEED: z.enum(['auto', 'always']).default('auto'),
 
   REDIS_URL: z.string().default('redis://127.0.0.1:6379'),
   REDIS_KEY_PREFIX: z.string().default('kg'),
@@ -143,6 +146,7 @@ module.exports = {
   opsPort: env.OPS_PORT,
   realtimePort: env.REALTIME_PORT,
   shutdownDrainMs: env.NODE_ENV === 'test' ? 0 : env.SHUTDOWN_DRAIN_MS,
+  referenceSeed: env.REFERENCE_SEED,
   redis: { url: env.REDIS_URL, prefix: env.REDIS_KEY_PREFIX },
   db: {
     url: env.DATABASE_URL,
