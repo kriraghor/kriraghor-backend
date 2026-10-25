@@ -9,9 +9,9 @@
  * docs (M02 as-built, open questions) and this test together.
  */
 require('../env');
-const { ACTIONS, PHONE_VERIFIED } = require('../../src/modules/auth/gate.service');
+const { ACTIONS, PHONE_VERIFIED, GYM_RUNNER, evaluate } = require('../../src/modules/auth/gate.service');
 
-const PHONE_ONLY = ['buy_gym_pass', 'subscribe_trainer', 'book_ground', 'hire', 'buy', 'join_esports', 'create_team', 'join_team', 'vote_poll', 'file_dispute'];
+const PHONE_ONLY = ['join_gym', 'buy_gym_pass', 'subscribe_trainer', 'book_ground', 'hire', 'buy', 'join_esports', 'create_team', 'join_team', 'vote_poll', 'file_dispute'];
 const MEMBER_NID = ['offer', 'sell_used', 'register_team', 'join_open_game', 'withdraw_winnings'];
 const BUSINESS = { list_ground: 'ground_owner', list_gym: 'gym_owner', list_product: 'shop_owner', publish_tournament: 'organiser', accept_hire: ['player', 'pro'] };
 
@@ -28,7 +28,19 @@ describe('gate NID policy (M01 §6.2, product owner 25 Oct 2026)', () => {
     expect(ACTIONS[action]).toEqual(need);
   });
 
-  it('has no action outside these three lists', () => {
-    expect(Object.keys(ACTIONS).sort()).toEqual([...PHONE_ONLY, ...MEMBER_NID, ...Object.keys(BUSINESS)].sort());
+  // M24 §3.4 (G1): a private gym needs a verified phone and a gym_owner role that is not suspended (no NID).
+  it('run_gym needs a verified phone and refuses a suspended gym_owner role (M24-FR-01, FR-03)', () => {
+    expect(ACTIONS.run_gym).toBe(GYM_RUNNER);
+    const p = (user, roles = {}) => ({ user: { status: 'active', phone: '+8801711111111', phoneVerifiedAt: new Date(), ...user }, roles });
+    expect(evaluate(p({}), GYM_RUNNER)).toEqual({ allowed: true });
+    expect(evaluate(p({}, { gym_owner: 'in_review' }), GYM_RUNNER)).toEqual({ allowed: true });
+    expect(evaluate(p({ phoneVerifiedAt: null }), GYM_RUNNER)).toMatchObject({ allowed: false, code: 'PHONE_REQUIRED' });
+    expect(evaluate(p({}, { gym_owner: 'suspended' }), GYM_RUNNER)).toMatchObject({ allowed: false, code: 'ROLE_SUSPENDED', role: 'gym_owner' });
+    expect(evaluate(p({ status: 'suspended' }), GYM_RUNNER)).toMatchObject({ allowed: false, code: 'ACCOUNT_SUSPENDED' });
+    expect(evaluate({ user: { status: 'active', phone: '+8801711111111', phoneVerifiedAt: new Date() } }, GYM_RUNNER)).toEqual({ allowed: true });
+  });
+
+  it('has no action outside these lists', () => {
+    expect(Object.keys(ACTIONS).sort()).toEqual([...PHONE_ONLY, ...MEMBER_NID, ...Object.keys(BUSINESS), 'run_gym'].sort());
   });
 });

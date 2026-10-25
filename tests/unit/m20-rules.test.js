@@ -64,6 +64,22 @@ describe('packages', () => {
   it('knows the days of each kind', () => {
     expect([r.daysOf('day', { monthDays: 30, quarterDays: 90 }), r.daysOf('month', { monthDays: 30 }), r.daysOf('quarter', { quarterDays: 90 })]).toEqual([1, 30, 90]);
   });
+  it('M24-FR-24: 6 and 12 months from settings, custom days as chosen', () => {
+    const cfg = { monthDays: 30, quarterDays: 90, halfYearDays: 180, yearDays: 365 };
+    expect([r.daysOf('half_year', cfg), r.daysOf('year', cfg), r.daysOf('custom', cfg, 45), r.daysOf('custom', cfg)]).toEqual([180, 365, 45, null]);
+  });
+  it('M24-FR-24: a day pass is needed only to submit; at most max_custom_packages custom packages', () => {
+    expect(r.packageErrors([{ kind: 'month', price: 250000 }], lim, { submit: false })).toEqual([]);
+    expect(r.packageErrors([{ kind: 'month', price: 250000 }], lim)).toEqual([{ field: 'packages', message: 'Add a day pass' }]);
+    const customs = [{ kind: 'custom', price: 1000 }, { kind: 'custom', price: 2000 }, { kind: 'custom', price: 3000 }];
+    expect(r.packageErrors(customs, { ...lim, maxCustom: 2 }, { submit: false })).toEqual([{ field: 'packages', message: 'At most 2 custom packages' }]);
+    expect(r.packageErrors(customs, { ...lim, maxCustom: 3 }, { submit: false })).toEqual([]);
+  });
+  it('M24 §7.1: desk packages are never sold online; old packages (no channel) are', () => {
+    expect([r.soldOnline({ channel: 'desk' }), r.soldOnline({ channel: 'online' }), r.soldOnline({ channel: 'both' }), r.soldOnline({})]).toEqual([false, true, true, true]);
+    expect(r.CHANNELS).toEqual(['desk', 'online', 'both']);
+    expect(r.KINDS).toEqual(['day', 'month', 'quarter', 'half_year', 'year', 'custom']);
+  });
   it('accepts the design gyms', () => {
     expect(r.packageErrors([{ kind: 'day', price: 40000 }, { kind: 'month', price: 450000 }, { kind: 'quarter', price: 1200000 }], lim)).toEqual([]);
     expect(r.packageErrors([{ kind: 'day', price: 30000 }, { kind: 'quarter', price: 30000 }], lim)).toEqual([]);

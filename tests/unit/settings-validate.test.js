@@ -66,6 +66,19 @@ describe('shapeError per value type (M03-FR-14)', () => {
     expect(shapeError(def('json'), {})).toBeNull();
   });
 
+  it('a json map of text keeps text values (M24 gym_saas.feature_min_tiers)', () => {
+    const d = def('json', { value: { attendance: 'basic', plans: 'standard' } });
+    expect(shapeError(d, { attendance: 'free', plans: 'pro' })).toBeNull();
+    expect(shapeError(d, { attendance: 1, plans: 'pro' })).toBe('Every field must be a lowercase key like basic');
+    expect(shapeError(d, { attendance: 'Basic', plans: 'pro' })).toBe('Every field must be a lowercase key like basic');
+    expect(shapeError(d, { attendance: 'basic' })).toBe('Must have exactly these fields: attendance, plans');
+  });
+
+  it('the feature tiers rule tolerates a missing value', () => {
+    const r = CROSS_RULES.find((x) => x.id === 'gym_saas.feature_tiers_known');
+    expect(r.ok(() => undefined)).toBe(true);
+  });
+
   it('rejects an unknown type', () => {
     expect(shapeError(def('blob'), 1)).toBe('Unknown value type blob');
   });
@@ -142,6 +155,14 @@ describe('cross-key rules (§6.5)', () => {
     'refunds.staff_limit_poisha': 1000000,
     'payouts.four_eyes_threshold_poisha': 5000000,
     'payouts.auto_release_max_poisha': 0,
+    // M24 §6.12 gym plans.
+    'gym_saas.tier_free_max_members': 30,
+    'gym_saas.tier_basic_max_members': 100,
+    'gym_saas.tier_standard_max_members': 300,
+    'gym_saas.tier_basic_price_poisha': 79900,
+    'gym_saas.tier_standard_price_poisha': 150000,
+    'gym_saas.tier_pro_price_poisha': 250000,
+    'gym_saas.feature_min_tiers': { attendance: 'basic', reminders: 'basic', online_fees: 'basic', reports: 'standard', trainers: 'standard', plans: 'standard', multi_gym: 'pro' },
   };
   const lookupWith = (over = {}) => (k) => (k in over ? over[k] : defaults[k]);
   const broken = (over, changed) => crossRuleViolations(lookupWith(over), changed).map((r) => r.id);
@@ -167,13 +188,18 @@ describe('cross-key rules (§6.5)', () => {
     ['esports.room_reveal', { 'esports.room_reveal_minutes': 21 }],
     ['money.refund_below_payout_threshold', { 'refunds.staff_limit_poisha': 5000001 }],
     ['money.auto_release_below_payout_threshold', { 'payouts.auto_release_max_poisha': 5000001 }],
+    ['gym_saas.tier_limits_order', { 'gym_saas.tier_free_max_members': 100 }],
+    ['gym_saas.tier_limits_order', { 'gym_saas.tier_standard_max_members': 100 }],
+    ['gym_saas.tier_prices_order', { 'gym_saas.tier_basic_price_poisha': 150001 }],
+    ['gym_saas.tier_prices_order', { 'gym_saas.tier_pro_price_poisha': 149999 }],
+    ['gym_saas.feature_tiers_known', { 'gym_saas.feature_min_tiers': { attendance: 'gold' } }],
   ])('%s is broken by %p', (id, over) => {
     expect(broken(over)).toContain(id);
   });
 
   it('every rule is covered by the cases above', () => {
     expect(CROSS_RULES.map((r) => r.id).sort()).toEqual(
-      ['booking.advance_order', 'booking.advance_covers_fee', 'booking.refund_tiers', 'booking.grid_order', 'ground.price_band', 'market.offer_order', 'market.return_window', 'market.photos_order', 'market.mto_default', 'market.qty_default', 'esports.checkin_order', 'esports.room_reveal', 'money.refund_below_payout_threshold', 'money.auto_release_below_payout_threshold'].sort()
+      ['booking.advance_order', 'booking.advance_covers_fee', 'booking.refund_tiers', 'booking.grid_order', 'ground.price_band', 'market.offer_order', 'market.return_window', 'market.photos_order', 'market.mto_default', 'market.qty_default', 'esports.checkin_order', 'esports.room_reveal', 'money.refund_below_payout_threshold', 'money.auto_release_below_payout_threshold', 'gym_saas.tier_limits_order', 'gym_saas.tier_prices_order', 'gym_saas.feature_tiers_known'].sort()
     );
   });
 

@@ -35,9 +35,18 @@ describe('B3 permission allow-lists and defaults', () => {
     expect(rules.defaultsFor('venue')).toEqual(['bookings.check_in', 'bookings.collect_balance', 'bookings.extend', 'bookings.no_show', 'bookings.view', 'bookings.walk_in']);
     expect(rules.allowedFor('venue')).toEqual([...rules.defaultsFor('venue'), 'bookings.cancel', 'bookings.move', 'reviews.reply'].sort());
   });
-  it('gym: admit and admissions on; the passes list optional', () => {
-    expect(rules.defaultsFor('gym')).toEqual(['desk.admissions', 'desk.admit']);
-    expect(rules.allowedFor('gym')).toEqual(['desk.admissions', 'desk.admit', 'passes.view']);
+  it('gym: admit, admissions, check-ins and the member list on; the rest optional (M24-FR-04)', () => {
+    expect(rules.defaultsFor('gym')).toEqual(['attendance.mark', 'desk.admissions', 'desk.admit', 'members.view']);
+    expect(rules.allowedFor('gym')).toEqual(['attendance.mark', 'desk.admissions', 'desk.admit', 'fees.adjust', 'fees.collect', 'members.edit', 'members.trainer', 'members.view', 'passes.view', 'plans.manage', 'reports.view']);
+  });
+  it('gym: editing members and collecting fees need the member list; adjusting fees needs collecting (M24-FR-04)', () => {
+    expect(rules.normalizePermissions('gym', ['fees.adjust', 'members.view'])).toEqual({ error: 'PERMISSIONS_INVALID', unknown: [], missing: [{ permission: 'fees.adjust', needs: 'fees.collect' }] });
+    expect(rules.normalizePermissions('gym', ['members.edit']).missing).toEqual([{ permission: 'members.edit', needs: 'members.view' }]);
+    expect(rules.normalizePermissions('gym', ['fees.collect']).missing).toEqual([{ permission: 'fees.collect', needs: 'members.view' }]);
+    expect(rules.normalizePermissions('gym', ['fees.adjust', 'fees.collect', 'members.view'])).toEqual({ permissions: ['fees.adjust', 'fees.collect', 'members.view'] });
+    // owner.only is a pseudo-permission: never grantable (M24 §3.3).
+    expect(rules.normalizePermissions('gym', [rules.OWNER_ONLY]).unknown).toEqual(['owner.only']);
+    expect(rules.NEVER.gym).toEqual(expect.arrayContaining(['billing', 'staff', 'imports', 'exports', 'settings', 'refunds']));
   });
   it('shop: view, accept, ship, deliver orders and view and adjust stock on; reject optional', () => {
     expect(rules.defaultsFor('shop')).toEqual(['orders.accept', 'orders.deliver', 'orders.ship', 'orders.view', 'stock.adjust', 'stock.view']);
@@ -94,6 +103,18 @@ describe('ownerLive, phoneVerified, workplaces', () => {
     expect(rules.ownerLive({ ...owner(), roles: { ground_owner: 'active' } }, 'venue')).toBe(false);
     expect(rules.ownerLive({ user: { status: 'active' } }, 'venue')).toBe(false);
     expect(rules.ownerLive(null, 'venue')).toBe(false);
+  });
+  it('a gym owner is live with an active account, a verified phone and gym_owner not suspended, no NID (M24-FR-03)', () => {
+    const plain = { id: OWNER_ID, user: { status: 'active', phone: '+8801711111111', phoneVerifiedAt: new Date() }, roles: { member: 'applied' } };
+    expect(rules.ownerLive(plain, 'gym')).toBe(true);
+    expect(rules.ownerLive({ ...plain, roles: { gym_owner: 'in_review' } }, 'gym')).toBe(true);
+    expect(rules.ownerLive({ ...plain, roles: { gym_owner: 'suspended' } }, 'gym')).toBe(false);
+    expect(rules.ownerLive({ ...plain, user: { ...plain.user, phoneVerifiedAt: null } }, 'gym')).toBe(false);
+    expect(rules.ownerLive({ ...plain, user: { ...plain.user, status: 'banned' } }, 'gym')).toBe(false);
+    expect(rules.ownerLive({ ...plain, roles: undefined }, 'gym')).toBe(true);
+    expect(rules.ownerRefusal({ ...plain, user: { ...plain.user, phoneVerifiedAt: null } }, 'gym')).toBe('PHONE_REQUIRED');
+    expect(rules.ownerRefusal({ ...plain, roles: { gym_owner: 'suspended' } }, 'gym')).toBe('ROLE_SUSPENDED');
+    expect(rules.ownerRefusal({ ...plain, roles: {} }, 'venue')).toBe('ROLE_REQUIRED');
   });
   it('phone verified', () => {
     expect(rules.phoneVerified(staff([]))).toBe(true);
@@ -170,6 +191,17 @@ describe('actFor (B3)', () => {
     const p = staff([work('venue', GROUND, rules.defaultsFor('venue'))]);
     expect(code(() => rules.actFor(p, 'venue', GROUND, 'bookings.cancel', opts()))).toEqual({ status: 403, code: 'PERMISSION_REQUIRED', meta: { permission: 'bookings.cancel', businessType: 'venue', businessId: GROUND } });
   });
+  it('owner.only (M24-FR-06): the owner passes, staff get 403 PERMISSION_REQUIRED naming it', () => {
+    const GYM = '00000000-0000-4000-8000-0000000000c1';
+    const gymOpts = { ownerId: OWNER_ID, notFound: 'Gym' };
+    expect(rules.actFor(owner(), 'gym', GYM, rules.OWNER_ONLY, gymOpts).as).toBe('owner');
+    expect(code(() => rules.actFor(staff([work('gym', GYM, rules.allowedFor('gym'))]), 'gym', GYM, rules.OWNER_ONLY, gymOpts))).toEqual({ status: 403, code: 'PERMISSION_REQUIRED', meta: { permission: 'owner.only', businessType: 'gym', businessId: GYM } });
+    // A private gym's owner (no documents, no NID) acts with a verified phone; without it PHONE_REQUIRED.
+    const plain = { id: OWNER_ID, user: { status: 'active', phone: '+8801711111111', phoneVerifiedAt: new Date() }, roles: { member: 'applied' }, workplaces: [] };
+    expect(rules.actFor(plain, 'gym', GYM, 'members.edit', gymOpts).as).toBe('owner');
+    expect(code(() => rules.actFor({ ...plain, user: { ...plain.user, phoneVerifiedAt: null } }, 'gym', GYM, 'members.edit', gymOpts))).toMatchObject({ status: 403, code: 'PHONE_REQUIRED' });
+    expect(code(() => rules.actFor({ ...plain, roles: { gym_owner: 'suspended' } }, 'gym', GYM, 'members.edit', gymOpts))).toMatchObject({ status: 403, code: 'ROLE_SUSPENDED' });
+  });
   it('staff with the permission act for the owner: actor is the staff member, onBehalfOf the owner', () => {
     const p = staff([work('venue', GROUND, rules.defaultsFor('venue'))]);
     const ctx = rules.actFor(p, 'venue', GROUND, 'bookings.check_in', opts());
@@ -201,6 +233,7 @@ describe('what staff never see (forStaff, hiddenKeysIn)', () => {
     at: new Date('2026-10-22T00:00:00Z'),
     settlement: { net: 1 },
     payoutsHref: '/vendor/payouts',
+    online: { providerCharge: 3000, providerChargePoisha: 3000, amount: 150000 },
   };
   it('removes every hidden key at any depth and keeps the rest (dates too)', () => {
     const out = rules.forStaff(owned);
@@ -211,6 +244,7 @@ describe('what staff never see (forStaff, hiddenKeysIn)', () => {
     expect(out.kpis).toEqual({ outOfStock: 1 });
     expect(out.at).toEqual(owned.at);
     expect(out.released).toBeUndefined();
+    expect(out.online).toEqual({ amount: 150000 }); // M24-FR-04: the provider charge never reaches staff
   });
   it('hiddenKeysIn finds them in the owner’s view', () => {
     expect(rules.hiddenKeysIn(owned)).toEqual(expect.arrayContaining(['booking.money.fee', 'booking.money.released', 'booking.money.retained', 'released', 'items[0].money.commission', 'items[0].money.net', 'kpis.stockValuePoisha', 'settlement', 'payoutsHref']));
@@ -231,7 +265,10 @@ describe('the staff gates (M01 gate, Q169)', () => {
   });
   it('staff of one type do not pass another type’s gate; non-staff get the owner gate’s answer', () => {
     expect(gate.evaluateAction(staff([work('venue', GROUND, ['bookings.view'])]), 'work_shop').code).toBe('KYC_REQUIRED');
-    expect(gate.evaluateAction(staff([]), 'work_gym').code).toBe('KYC_REQUIRED');
+    // M24 §3.4: work_gym lets anyone with a verified phone through as a would-be gym owner (run_gym);
+    // which gym is checked by actFor (404 for gyms they neither own nor staff).
+    expect(gate.evaluateAction(staff([]), 'work_gym')).toEqual({ allowed: true });
+    expect(gate.evaluateAction(staff([], { phoneVerifiedAt: null }), 'work_gym').code).toBe('PHONE_REQUIRED');
     expect(gate.evaluateAction({ ...owner('suspended') }, 'work_ground').code).toBe('ROLE_SUSPENDED');
     expect(gate.evaluateAction(null, 'work_ground').code).toBe('AUTH_REQUIRED');
     expect(gate.evaluateAction({ user: { status: 'active' }, roles: { member: 'active' } }, 'work_ground').code).toBe('ROLE_REQUIRED');
