@@ -10,7 +10,7 @@
  */
 const fs = require('fs');
 const path = require('path');
-const { req } = require('./lib');
+const { req, CONSENT, consentVar } = require('./lib');
 
 const out = path.join(__dirname, 'kriraghor-kyc.postman_collection.json');
 
@@ -34,6 +34,25 @@ const idem = (item) => {
   return item;
 };
 
+/**
+ * Pre-request: under18Dob = today's Dhaka date 18 years ago plus one day, so the member turns 18
+ * tomorrow (§6.3 age_ok, 18 and over since 25 Oct 2026).
+ */
+const under18 = (item) => {
+  item.event.unshift({
+    listen: 'prerequest',
+    script: {
+      type: 'text/javascript',
+      exec: [
+        'const d = new Date(Date.now() + 6 * 3600000);',
+        'const b = new Date(Date.UTC(d.getUTCFullYear() - 18, d.getUTCMonth(), d.getUTCDate() + 1));',
+        "pm.collectionVariables.set('under18Dob', b.toISOString().slice(0, 10));",
+      ],
+    },
+  });
+  return item;
+};
+
 const collection = {
   info: {
     name: 'Kriraghor API: M02 KYC',
@@ -54,6 +73,7 @@ const collection = {
     ['selfieId', ''],
     ['documentId', ''],
     ['submissionId', ''],
+    ['under18Dob', ''],
   ].map(([key, value]) => ({ key, value })),
   item: [
     {
@@ -73,17 +93,40 @@ const collection = {
       item: [
         member('Member checklist', 'GET', '/me/verification', {
           expect: { status: 200 },
-          checks: [['phone done, NID missing', "j.badge === 'verification_needed' && j.items[0].status === 'approved' && j.items[1].status === 'missing'"]],
+          save: { consentVersion: 'consent.version' },
+          checks: [
+            ['phone done, NID missing', "j.badge === 'verification_needed' && j.items[0].status === 'approved' && j.items[1].status === 'missing'"],
+            // M02-FR-05, FR-17, FR-18 (25 Oct 2026): the consent text with the retention days and the minimum age filled in.
+            ['consent text and minimum age', "Number.isInteger(j.consent.version) && j.consent.draft === true && j.consent.text.startsWith('I agree that Kriraghor uses these documents') && j.consent.text.includes('90 days') && j.consent.text.includes('aged 18 and over') && j.minAgeYears === 18"],
+          ],
+        }),
+        member('Member checklist in Bangla', 'GET', '/me/verification?locale=bn', {
+          expect: { status: 200 },
+          checks: [['Bangla consent with Bangla digits', "j.consent.text.includes('৯০ দিন') && j.consent.text.includes('১৮ বছর') && j.consent.version === Number(pm.collectionVariables.get('consentVersion'))"]],
         }),
         upload('Upload the NID front (JPEG)', 'front', 'nid-front.jpg', 'image/jpeg', { expect: { status: 201 }, save: { frontId: 'fileId' } }),
         upload('Upload the NID back (PNG)', 'back', 'nid-back.png', 'image/png', { expect: { status: 201 }, save: { backId: 'fileId' } }),
         upload('Upload the selfie (PDF)', 'selfie', 'nid-selfie.pdf', 'application/pdf', { expect: { status: 201 }, save: { selfieId: 'fileId' } }),
+        member('Submit with the old consent: true (expect 422)', 'POST', '/me/documents', {
+          body: { docType: 'nid', fields: { legalName: 'Nusrat Jahan', number: '1990 1234 5678 9012 3', dob: '1990-05-14' }, files: { front: '{{frontId}}', back: '{{backId}}', selfie: '{{selfieId}}' }, consent: true },
+          expect: { status: 422, code: 'CONSENT_REQUIRED' },
+        }),
+        member('Submit with an old consent version (expect 422)', 'POST', '/me/documents', {
+          body: { docType: 'nid', fields: { legalName: 'Nusrat Jahan', number: '1990 1234 5678 9012 3', dob: '1990-05-14' }, files: { front: '{{frontId}}', back: '{{backId}}', selfie: '{{selfieId}}' }, consent: { accepted: true, version: 0 } },
+          expect: { status: 422, code: 'CONSENT_VERSION_STALE' },
+          checks: [['the current version is in the problem', "j.currentVersion === Number(pm.collectionVariables.get('consentVersion'))"]],
+        }),
+        under18(member('Submit a date of birth one day short of 18 (expect 422)', 'POST', '/me/documents', {
+          body: { docType: 'nid', fields: { legalName: 'Nusrat Jahan', number: '1990 1234 5678 9012 3', dob: '{{under18Dob}}' }, files: { front: '{{frontId}}', back: '{{backId}}', selfie: '{{selfieId}}' }, consent: CONSENT },
+          expect: { status: 422, code: 'UNDER_MIN_AGE' },
+          checks: [['18 and over', "j.minAge === 18 && j.title === 'NID verification is for people aged 18 and over'"]],
+        })),
         member('Submit with a wrong NID number (expect 422)', 'POST', '/me/documents', {
-          body: { docType: 'nid', fields: { legalName: 'Nusrat Jahan', number: '12345678901', dob: '1990-05-14' }, files: { front: '{{frontId}}', back: '{{backId}}', selfie: '{{selfieId}}' }, consent: true },
+          body: { docType: 'nid', fields: { legalName: 'Nusrat Jahan', number: '12345678901', dob: '1990-05-14' }, files: { front: '{{frontId}}', back: '{{backId}}', selfie: '{{selfieId}}' }, consent: CONSENT },
           expect: { status: 422, code: 'NID_FORMAT_INVALID' },
         }),
         member('Submit the NID', 'POST', '/me/documents', {
-          body: { docType: 'nid', fields: { legalName: 'Nusrat Jahan', number: '1990 1234 5678 9012 3', dob: '1990-05-14' }, files: { front: '{{frontId}}', back: '{{backId}}', selfie: '{{selfieId}}' }, consent: true },
+          body: { docType: 'nid', fields: { legalName: 'Nusrat Jahan', number: '1990 1234 5678 9012 3', dob: '1990-05-14' }, files: { front: '{{frontId}}', back: '{{backId}}', selfie: '{{selfieId}}' }, consent: CONSENT },
           expect: { status: 201 },
           save: { documentId: 'id' },
           checks: [['in review, masked', "j.status === 'in_review' && j.numberMasked === '•••• 0123' && !JSON.stringify(j).includes('19901234567890123')"]],
@@ -104,7 +147,14 @@ const collection = {
         }),
         req('Review panel', 'GET', '/admin/kyc/documents/{{documentId}}', {
           expect: { status: 200 },
-          checks: [['legal name and DOB, number masked', "j.fields.legalName === 'Nusrat Jahan' && j.fields.dob === '1990-05-14' && j.fields.numberMasked === '•••• 0123' && j.files.length === 3"]],
+          checks: [
+            ['legal name and DOB, number masked', "j.fields.legalName === 'Nusrat Jahan' && j.fields.dob === '1990-05-14' && j.fields.numberMasked === '•••• 0123' && j.files.length === 3"],
+            ['consent recorded', "j.consent && j.consent.version === Number(pm.collectionVariables.get('consentVersion')) && !Number.isNaN(Date.parse(j.consent.at))"],
+          ],
+        }),
+        req('NID holders under the minimum age (audited)', 'GET', '/admin/kyc/under-min-age', {
+          expect: { status: 200 },
+          checks: [['none: the member was born in 1990', "j.minAgeYears === 18 && j.count === 0 && j.items.length === 0 && pm.response.headers.get('Cache-Control') === 'no-store'"]],
         }),
         req('View the front (audited)', 'GET', '/admin/kyc/documents/{{documentId}}/files/{{frontId}}', {
           expect: { status: 200 },
@@ -142,6 +192,7 @@ const collection = {
   ],
 };
 
+collection.variable.push(consentVar());
 fs.writeFileSync(out, `${JSON.stringify(collection, null, 2)}\n`);
 const count = collection.item.reduce((n, f) => n + f.item.length, 0);
 // eslint-disable-next-line no-console

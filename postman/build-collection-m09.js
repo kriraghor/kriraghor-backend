@@ -11,7 +11,7 @@
  */
 const fs = require('fs');
 const path = require('path');
-const { req } = require('./lib');
+const { req, CONSENT, consentVar } = require('./lib');
 
 const out = path.join(__dirname, 'kriraghor-grounds.postman_collection.json');
 
@@ -88,18 +88,18 @@ const collection = {
         }),
         upload('Upload the trade licence (PDF)', '/me/documents/files?slot=document&docType=trade_license', 'nid-selfie.pdf', 'application/pdf', { expect: { status: 201 }, save: { fileId: 'fileId' } }),
         owner('Expired licence (expect 422)', 'POST', '/me/documents', {
-          body: { docType: 'trade_license', fields: { number: 'TRAD/DNCC/889912', holderName: 'Kamal Sports', expiresOn: '2020-01-01' }, files: { document: '{{fileId}}' }, consent: true },
+          body: { docType: 'trade_license', fields: { number: 'TRAD/DNCC/889912', holderName: 'Kamal Sports', expiresOn: '2020-01-01' }, files: { document: '{{fileId}}' }, consent: CONSENT },
           expect: { status: 422, code: 'VALIDATION_FAILED' },
         }),
         owner('Send the trade licence', 'POST', '/me/documents', {
-          body: { docType: 'trade_license', fields: { number: 'TRAD/DNCC/889912', holderName: 'Kamal Sports', expiresOn: '2028-06-30' }, files: { document: '{{fileId}}' }, consent: true },
+          body: { docType: 'trade_license', fields: { number: 'TRAD/DNCC/889912', holderName: 'Kamal Sports', expiresOn: '2028-06-30' }, files: { document: '{{fileId}}' }, consent: CONSENT },
           expect: { status: 201 },
           checks: [['in review, number masked', "j.status === 'in_review' && j.numberMasked === '•••• 9912' && !JSON.stringify(j).includes('889912')"]],
         }),
         // The role moved to in_review (authz version bumped): the owner needs a fresh token.
         control('drain events and refresh the owner token', 'refresh', { checks: [['fresh owner token', "(pm.environment.set('accessToken', j.accessToken), typeof j.accessToken === 'string')"]] }),
         upload('Upload the lease (PNG)', '/me/documents/files?slot=document&docType=deed_or_lease', 'nid-back.png', 'image/png', { expect: { status: 201 }, save: { fileId: 'fileId' } }),
-        owner('Send the lease', 'POST', '/me/documents', { body: { docType: 'deed_or_lease', fields: { kind: 'lease', expiresOn: '2030-12-31' }, files: { document: '{{fileId}}' }, consent: true }, expect: { status: 201 } }),
+        owner('Send the lease', 'POST', '/me/documents', { body: { docType: 'deed_or_lease', fields: { kind: 'lease', expiresOn: '2030-12-31' }, files: { document: '{{fileId}}' }, consent: CONSENT }, expect: { status: 201 } }),
         control('drain events', 'settle'),
         req('Both are on the Moderation desk', 'GET', '/admin/submissions?status=pending_review&kind=document', {
           as: 'B',
@@ -227,6 +227,7 @@ const collection = {
   ],
 };
 
+collection.variable.push(consentVar());
 fs.writeFileSync(out, `${JSON.stringify(collection, null, 2)}\n`);
 const count = collection.item.reduce((n, f) => n + f.item.length, 0);
 // eslint-disable-next-line no-console

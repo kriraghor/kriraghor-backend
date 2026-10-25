@@ -59,7 +59,7 @@ async function submitNid(who, salt) {
   for (const [slot, buf, type] of [['front', JPEG, 'image/jpeg'], ['back', PNG, 'image/png'], ['selfie', PDF, 'application/pdf']]) {
     files[slot] = (await api().post(`${P}/me/documents/files?slot=${slot}`).set(h.bearer(who)).set('Content-Type', type).send(Buffer.concat([buf, Buffer.from(salt)])).expect(201)).body.fileId;
   }
-  return api().post(`${P}/me/documents`).set(h.bearer(who)).send({ docType: 'nid', fields: { number: NID, dob: '1990-05-14', legalName: 'Same Person' }, files, consent: true });
+  return api().post(`${P}/me/documents`).set(h.bearer(who)).send({ docType: 'nid', fields: { number: NID, dob: '1990-05-14', legalName: 'Same Person' }, files, consent: h.consent() });
 }
 
 /** A request whose step-up token is minted first; `.expect(status)` like supertest, with the body on failure. */

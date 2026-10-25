@@ -244,4 +244,10 @@ async function stepUp(session, scope) {
 
 const bearer = (s) => ({ Authorization: `Bearer ${s.accessToken}` });
 
-module.exports = { ADMIN_ORIGIN, WEB_ORIGIN, adminPost, cookieValue, cookieHeader, refreshWeb, api, P, models, resetDb, nextPhone, e164, lastCode, lastEmailCode, mail, allowResend, signupUser, verifyMember, totpFor, createSignedInMaster, createSecondMaster, signInStaff, stepUp, bearer, sms, settings, setSettingForTest, events, consumers, notify, realtime, drainEvents, simulator, paymentJobs, payWithSimulator, drainPaymentJobs, clearSimulator };
+/**
+ * M02-FR-05 (25 Oct 2026): the consent a client sends with an NID or business document, for the
+ * current consent version (the version GET /me/verification shows).
+ */
+const consent = () => ({ accepted: true, version: require('../src/modules/kyc/consent').current().version });
+
+module.exports = { consent, ADMIN_ORIGIN, WEB_ORIGIN, adminPost, cookieValue, cookieHeader, refreshWeb, api, P, models, resetDb, nextPhone, e164, lastCode, lastEmailCode, mail, allowResend, signupUser, verifyMember, totpFor, createSignedInMaster, createSecondMaster, signInStaff, stepUp, bearer, sms, settings, setSettingForTest, events, consumers, notify, realtime, drainEvents, simulator, paymentJobs, payWithSimulator, drainPaymentJobs, clearSimulator };

@@ -12,6 +12,7 @@ const crypto = require('crypto');
 const rt = require('../runtime');
 const { subjectIdFor } = require('../../../src/modules/kyc/kyc.moderation');
 const tokens = require('../../../src/modules/auth/token.service');
+const kycConsent = require('../../../src/modules/kyc/consent');
 
 const { models } = rt;
 const REVIEWER_PERMISSIONS = ['approve_listings', 'approve_documents', 'manage_esports', 'enter_results', 'manage_organisers', 'resolve_reports'];
@@ -20,6 +21,8 @@ const REVIEWER_PERMISSIONS = ['approve_listings', 'approve_documents', 'manage_e
 const phoneOf = (n) => `+8801300${String(n).padStart(6, '0')}`;
 /** A 17-digit NID with district code 99 (no real NID has it). */
 const nidOf = (n) => ({ year: 1985 + (n % 15), number: `${1985 + (n % 15)}99${String(n).padStart(11, '0')}` });
+/** M02-FR-05: the demo members tick the consent box (the current version, as the web sends it). */
+const consent = () => ({ accepted: true, version: kycConsent.current().version });
 /** A tiny JPEG stand-in for an ID scan (magic bytes plus a unique tail, as the tests do). */
 const scan = (tag) => Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.from(`demo ${tag} ${crypto.randomUUID()}`)]);
 
@@ -100,7 +103,7 @@ async function verifyNid(a, reviewer) {
       files[slot] = (await rt.post(a, `/me/documents/files?slot=${slot}&docType=nid`, undefined, { raw: scan(`${slot} ${a.n}`), contentType: 'image/jpeg' })).fileId;
     }
     const nid = nidOf(a.n);
-    await rt.post(a, '/me/documents', { docType: 'nid', fields: { number: nid.number, dob: `${nid.year}-03-14`, legalName: a.name }, files, consent: true });
+    await rt.post(a, '/me/documents', { docType: 'nid', fields: { number: nid.number, dob: `${nid.year}-03-14`, legalName: a.name }, files, consent: consent() });
   }
   await review(reviewer, 'document', subjectIdFor(a.userId, 'nid'));
   return a;
@@ -125,7 +128,7 @@ const DOCS = {
 
 async function sendDoc(a, docType, fields, role) {
   const up = await rt.post(a, `/me/documents/files?slot=document&docType=${docType}`, undefined, { raw: scan(`${docType} ${a.n}`), contentType: 'image/jpeg' });
-  await rt.post(a, '/me/documents', { docType, fields, files: { document: up.fileId }, consent: true, ...(role ? { role } : {}) });
+  await rt.post(a, '/me/documents', { docType, fields, files: { document: up.fileId }, consent: consent(), ...(role ? { role } : {}) });
 }
 
 const roleStatus = async (userId, role) => (await models.UserRole.findOne({ where: { userId, role } }))?.status ?? null;
@@ -154,7 +157,7 @@ async function hireRole(a, { platformRole = 'pro', roleKey, credential }, review
   if (!(await models.Submission.findOne({ where: { kind: 'document', subjectId: subject, status: 'pending_review' } }))) {
     const issuer = roleKey.startsWith('cricket') ? 'Bangladesh Cricket Board' : roleKey.startsWith('football') ? 'Bangladesh Football Federation' : 'Bangladesh Sports Medicine Society';
     const up = await rt.post(a, '/me/documents/files?slot=document&docType=credential', undefined, { raw: scan(`credential ${a.n}`), contentType: 'image/jpeg' });
-    await rt.post(a, '/me/documents', { docType: 'credential', fields: { hireRole: roleKey, level: credential, issuer, number: `DEMO-${a.n}-${roleKey}`.slice(0, 40) }, files: { document: up.fileId }, consent: true, role: platformRole });
+    await rt.post(a, '/me/documents', { docType: 'credential', fields: { hireRole: roleKey, level: credential, issuer, number: `DEMO-${a.n}-${roleKey}`.slice(0, 40) }, files: { document: up.fileId }, consent: consent(), role: platformRole });
   }
   await review(reviewer, 'document', subject);
   return a;

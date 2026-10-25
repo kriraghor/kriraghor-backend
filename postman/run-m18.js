@@ -56,7 +56,7 @@ async function main() {
     for (const [slot, buf, type] of [['front', JPEG, 'image/jpeg'], ['back', PNG, 'image/png'], ['selfie', PDF, 'application/pdf']]) {
       files[slot] = (await api().post(`${P}/me/documents/files?slot=${slot}`).set(h.bearer(who)).set('Content-Type', type).send(Buffer.concat([buf, Buffer.from(salt)])).expect(201)).body.fileId;
     }
-    await api().post(`${P}/me/documents`).set(h.bearer(who)).send({ docType: 'nid', fields: { number: '1990 1234 5678 9012 3', dob: '1990-05-14', legalName: 'Same Person' }, files, consent: true }).expect(201);
+    await api().post(`${P}/me/documents`).set(h.bearer(who)).send({ docType: 'nid', fields: { number: '1990 1234 5678 9012 3', dob: '1990-05-14', legalName: 'Same Person' }, files, consent: h.consent() }).expect(201);
   }
   const first = await h.signupUser({ name: 'First Holder' });
   const second = await h.signupUser({ name: 'Second Holder' });

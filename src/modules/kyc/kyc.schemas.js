@@ -16,6 +16,20 @@ const BUSINESS_ROLES = ['ground_owner', 'shop_owner', 'gym_owner', 'organiser', 
 const verificationQuery = z.object({ locale: z.enum(['en', 'bn']).default('en'), role: z.enum(['member', ...BUSINESS_ROLES]).default('member') });
 const uploadQuery = z.object({ slot: z.enum(['front', 'back', 'selfie', 'document']), docType: z.enum(['nid', ...BUSINESS_TYPES]).default('nid') });
 
+/**
+ * M02-FR-05 (25 Oct 2026): `{ accepted: true, version }`, the version from GET /me/verification
+ * consent.version. Any value passes zod; the service checks it first so the codes stay stable
+ * (missing, `true` or not accepted → 422 CONSENT_REQUIRED; another version → 422 CONSENT_VERSION_STALE).
+ */
+const consentField = z
+  .unknown()
+  .optional()
+  .meta({
+    description:
+      'Required: { "accepted": true, "version": <GET /me/verification consent.version> }. Missing, true or accepted not true → 422 CONSENT_REQUIRED; another version → 422 CONSENT_VERSION_STALE (currentVersion in the problem body)',
+    example: { accepted: true, version: 1 },
+  });
+
 const nidBody = z.object({
   docType: z.literal('nid'),
   fields: z.object({
@@ -24,7 +38,7 @@ const nidBody = z.object({
     dob: z.iso.date().meta({ description: 'Date of birth as on the NID (YYYY-MM-DD)' }),
   }),
   files: z.object({ front: z.uuid(), back: z.uuid(), selfie: z.uuid() }).meta({ description: 'File ids from POST /me/documents/files, by slot' }),
-  consent: z.literal(true).meta({ description: 'Agreement to the Privacy Policy and Terms for identity checks' }),
+  consent: consentField,
 });
 
 /** A business document: fields follow the requirement (GET /me/verification?role= lists them). */
@@ -33,7 +47,7 @@ const businessBody = z.object({
   fields: z.record(z.string(), z.string().max(200).nullable()).meta({ description: 'By field key, e.g. number, holderName, expiresOn (YYYY-MM-DD), kind' }),
   files: z.object({ document: z.uuid() }).meta({ description: 'The file id from POST /me/documents/files?slot=document' }),
   role: z.enum(BUSINESS_ROLES).optional().meta({ description: 'The business role the document is for (documents are kept per role). Needed only when more than one applied role asks for this type' }),
-  consent: z.literal(true),
+  consent: consentField,
 });
 const submitBody = z.discriminatedUnion('docType', [nidBody, ...BUSINESS_TYPES.map((t) => businessBody.extend({ docType: z.literal(t) }))]);
 
@@ -77,6 +91,10 @@ const Verification = z
     items: z.array(Item),
     unlocks: z.array(z.string()),
     limits: z.array(z.string()),
+    consent: z
+      .object({ version: z.number().int(), draft: z.boolean(), text: z.string() })
+      .meta({ description: 'The consent the form shows (the NID text for role=member, the business text otherwise, in the locale asked). Send { accepted: true, version } with the document (M02-FR-05)' }),
+    minAgeYears: z.number().int().meta({ description: 'kyc.min_age_years: NID verification is for people this old and over (§6.3 age_ok)' }),
   })
   .meta({ id: 'Verification' });
 const Uploaded = z.object({ fileId: z.uuid(), slot: z.string(), mime: z.string(), sizeBytes: z.number().int() }).meta({ id: 'DocumentFileUploaded' });
@@ -84,6 +102,7 @@ const Check = z.object({ key: z.string(), ok: z.boolean(), blocks: z.boolean(), 
 const Review = Document.extend({
   fields: z.looseObject({ legalName: z.string().optional(), dob: z.string().optional(), numberMasked: z.string().nullable() }).meta({ description: 'NID: legalName, dob. Business: the typed fields (holderName, expiresOn, kind) and the role' }),
   checks: z.array(Check),
+  consent: z.object({ version: z.number().int(), at: dateTime }).nullable().meta({ description: 'The consent the member gave with this version; null for documents sent before 25 Oct 2026' }),
   decidedBy: z.uuid().nullable(),
   user: z.object({ id: z.uuid(), displayName: z.string().nullable(), kycStatus: z.string().nullable(), phoneVerified: z.boolean(), accountStatus: z.string().nullable() }),
   history: z.array(z.object({ id: z.uuid(), version: z.number().int(), status: z.string(), reasonCode: z.string().nullable(), submittedAt: dateTime, decidedAt: dateTime.nullable() })),
@@ -92,4 +111,14 @@ const Reveal = z
   .object({ documentId: z.uuid(), number: z.string(), normalised: z.string(), showForSeconds: z.number().int() })
   .meta({ id: 'KycNidReveal', description: 'The full NID number for 60 seconds. Audited (critical); never stored or logged; do not cache.' });
 
-module.exports = { idParam, fileParams, verificationQuery, uploadQuery, submitBody, revealBody, Document, Verification, Uploaded, Review, Reveal };
+const UnderMinAge = z
+  .object({
+    minAgeYears: z.number().int(),
+    count: z.number().int(),
+    items: z.array(
+      z.object({ userId: z.uuid(), displayName: z.string().nullable(), documentId: z.uuid(), status: z.enum(['approved', 'in_review', 'changes_requested']), age: z.number().int(), decidedAt: dateTime.nullable() })
+    ),
+  })
+  .meta({ id: 'KycUnderMinAge', description: 'Current NID documents whose holder is under kyc.min_age_years today (Dhaka). Ages only, never the number or date of birth. Audited; do not cache.' });
+
+module.exports = { idParam, fileParams, verificationQuery, uploadQuery, submitBody, revealBody, Document, Verification, Uploaded, Review, Reveal, UnderMinAge };

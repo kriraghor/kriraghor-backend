@@ -341,11 +341,12 @@ Every process (api, realtime, worker) refuses to start until every seeded settin
 
 | Endpoint | Access | Notes |
 |---|---|---|
-| `GET /me/verification` | member | Checklist (phone, NID), badge, unlocks and limits; `?locale=bn` |
+| `GET /me/verification` | member | Checklist (phone, NID), badge, unlocks and limits, the consent to show (`consent: { version, draft, text }`) and `minAgeYears`; `?locale=bn`, `?role=` for a business role |
 | `POST /me/documents/files?slot=front|back|selfie` | member | Raw body (JPEG, PNG or PDF), checked by its first bytes; rate-limited per account |
-| `POST /me/documents` · `GET /me/documents/:id/files/:fileId` | member | Submit the NID (number, DOB, legal name, three file ids, consent); view your own upload |
+| `POST /me/documents` · `GET /me/documents/:id/files/:fileId` | member | Submit the NID (number, DOB, legal name, three file ids) or a business document, with `consent: { accepted: true, version }` (25 Oct 2026: missing or `true` → `CONSENT_REQUIRED`, an old version → `CONSENT_VERSION_STALE`; NID 18 and over, `UNDER_MIN_AGE`); view your own upload |
 | `GET /admin/kyc/documents/:id` · `/:id/files/:fileId` | `approve_documents` | The document panel on the Moderation desk; every file view audited |
 | `POST /admin/kyc/documents/:id/reveal-nid` | `approve_documents` | Reveal with a reason (critical audit, 60 s). Decisions are M05's (`/admin/submissions`) |
+| `GET /admin/kyc/under-min-age` | `approve_documents` | Current NID documents whose holder is under `kyc.min_age_years` today (Dhaka): user, status, age, decided date. Read-only, audited. `node scripts/kyc-under-min-age.js` prints only the count |
 
 **Who reads the result:** M01 moves the member role from the M02 events; other modules call `kyc.getVerifiedIdentity(userId)` or use the gate (`requireGate('withdraw_winnings')`). `NID_HMAC_SECRET` keys the NID hash: never rotate it without re-hashing.
 

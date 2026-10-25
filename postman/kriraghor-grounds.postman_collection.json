@@ -76,6 +76,10 @@
     {
       "key": "editSubmissionId",
       "value": ""
+    },
+    {
+      "key": "consentVersion",
+      "value": "1"
     }
   ],
   "item": [
@@ -440,7 +444,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"docType\": \"trade_license\",\n  \"fields\": {\n    \"number\": \"TRAD/DNCC/889912\",\n    \"holderName\": \"Kamal Sports\",\n    \"expiresOn\": \"2020-01-01\"\n  },\n  \"files\": {\n    \"document\": \"{{fileId}}\"\n  },\n  \"consent\": true\n}",
+              "raw": "{\n  \"docType\": \"trade_license\",\n  \"fields\": {\n    \"number\": \"TRAD/DNCC/889912\",\n    \"holderName\": \"Kamal Sports\",\n    \"expiresOn\": \"2020-01-01\"\n  },\n  \"files\": {\n    \"document\": \"{{fileId}}\"\n  },\n  \"consent\": {\n    \"accepted\": true,\n    \"version\": {{consentVersion}}\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -492,7 +496,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"docType\": \"trade_license\",\n  \"fields\": {\n    \"number\": \"TRAD/DNCC/889912\",\n    \"holderName\": \"Kamal Sports\",\n    \"expiresOn\": \"2028-06-30\"\n  },\n  \"files\": {\n    \"document\": \"{{fileId}}\"\n  },\n  \"consent\": true\n}",
+              "raw": "{\n  \"docType\": \"trade_license\",\n  \"fields\": {\n    \"number\": \"TRAD/DNCC/889912\",\n    \"holderName\": \"Kamal Sports\",\n    \"expiresOn\": \"2028-06-30\"\n  },\n  \"files\": {\n    \"document\": \"{{fileId}}\"\n  },\n  \"consent\": {\n    \"accepted\": true,\n    \"version\": {{consentVersion}}\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -636,7 +640,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"docType\": \"deed_or_lease\",\n  \"fields\": {\n    \"kind\": \"lease\",\n    \"expiresOn\": \"2030-12-31\"\n  },\n  \"files\": {\n    \"document\": \"{{fileId}}\"\n  },\n  \"consent\": true\n}",
+              "raw": "{\n  \"docType\": \"deed_or_lease\",\n  \"fields\": {\n    \"kind\": \"lease\",\n    \"expiresOn\": \"2030-12-31\"\n  },\n  \"files\": {\n    \"document\": \"{{fileId}}\"\n  },\n  \"consent\": {\n    \"accepted\": true,\n    \"version\": {{consentVersion}}\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"

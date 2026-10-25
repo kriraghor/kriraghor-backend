@@ -80,6 +80,10 @@
     {
       "key": "v44",
       "value": ""
+    },
+    {
+      "key": "consentVersion",
+      "value": "1"
     }
   ],
   "item": [
@@ -303,7 +307,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"docType\": \"trade_license\",\n  \"fields\": {\n    \"number\": \"TRAD/DNCC/771234\",\n    \"holderName\": \"Nayeem Sports\",\n    \"expiresOn\": \"2029-06-30\"\n  },\n  \"files\": {\n    \"document\": \"{{fileId}}\"\n  },\n  \"consent\": true\n}",
+              "raw": "{\n  \"docType\": \"trade_license\",\n  \"fields\": {\n    \"number\": \"TRAD/DNCC/771234\",\n    \"holderName\": \"Nayeem Sports\",\n    \"expiresOn\": \"2029-06-30\"\n  },\n  \"files\": {\n    \"document\": \"{{fileId}}\"\n  },\n  \"consent\": {\n    \"accepted\": true,\n    \"version\": {{consentVersion}}\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -414,7 +418,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"docType\": \"tin\",\n  \"fields\": {\n    \"number\": \"123456789012\"\n  },\n  \"files\": {\n    \"document\": \"{{fileId}}\"\n  },\n  \"consent\": true\n}",
+              "raw": "{\n  \"docType\": \"tin\",\n  \"fields\": {\n    \"number\": \"123456789012\"\n  },\n  \"files\": {\n    \"document\": \"{{fileId}}\"\n  },\n  \"consent\": {\n    \"accepted\": true,\n    \"version\": {{consentVersion}}\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"

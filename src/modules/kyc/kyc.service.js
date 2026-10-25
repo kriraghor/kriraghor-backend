@@ -36,12 +36,15 @@ const directory = require('../users').directory;
 const rules = require('./kyc.rules');
 const moderation = require('../moderation').moderation;
 const { subjectIdFor } = require('./kyc.moderation');
+const kycConsent = require('./consent');
 
 const ERRORS = {
   NID_FORMAT_INVALID: [422, 'Enter the NID number with 10, 13 or 17 digits'],
   DOB_INVALID: [422, 'Enter the date of birth as on the NID'],
   DOB_IN_FUTURE: [422, 'The date of birth cannot be in the future'],
-  UNDER_MIN_AGE: [422, 'You are below the minimum age for verification'],
+  UNDER_MIN_AGE: [422, 'NID verification is for people aged {n} and over'],
+  CONSENT_REQUIRED: [422, 'Tick the box to agree to how Kriraghor uses your documents'],
+  CONSENT_VERSION_STALE: [422, 'The consent text has changed. Read it again and tick the box'],
   FILE_EMPTY: [422, 'The file is empty'],
   FILE_TOO_LARGE: [413, 'The file is too large'],
   FILE_TYPE_NOT_ALLOWED: [415, 'Upload a JPEG, PNG or PDF'],
@@ -57,7 +60,8 @@ const ERRORS = {
   ROLE_AMBIGUOUS: [422, 'Say which business role this document is for'],
   REVEAL_NOT_AVAILABLE: [409, 'Only an NID number can be revealed'],
 };
-const fail = (code) => new AppError(ERRORS[code][0], code, ERRORS[code][1]);
+/** An M02 error; meta goes into the problem body (e.g. minAge, currentVersion). */
+const fail = (code, meta, title = ERRORS[code][1]) => new AppError(ERRORS[code][0], code, title, meta ? { meta } : {});
 
 const nidHash = (normalised) => hmac(`nid:${normalised}`, config.kyc.nidHashSecret);
 const sha256 = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
@@ -170,8 +174,17 @@ async function roleVerification(principal, role, locale) {
     items,
     unlocks: UNLOCKS[role]?.[bn ? 'bn' : 'en'] ?? [],
     limits: [],
+    ...consentFor('business', locale),
     ...(['player', 'pro'].includes(role) ? { credentials: await credentialsOf(user.id) } : {}),
   };
+}
+
+/**
+ * M02-FR-05, FR-17, FR-18 (25 Oct 2026): the consent the form shows (the client sends its version back
+ * with the document) and the minimum age, so no app hard-codes either.
+ */
+function consentFor(kind, locale) {
+  return { consent: { ...kycConsent.current(), text: kycConsent.textFor(kind, locale) }, minAgeYears: settings.get('kyc.min_age_years') };
 }
 
 /** M11: the credentials a player or pro sent, one per hire role (the latest version of each). */
@@ -203,6 +216,7 @@ async function verification(principal, locale = 'en', role = 'member') {
     items,
     unlocks: bn ? ['ভেন্যু বুকিং ও অগ্রিম', 'খেলোয়াড় ও স্টাফ হায়ার', 'পুরনো পণ্য বিক্রি', 'এস্পোর্টস পুরস্কার তোলা'] : ['Book venues and pay advances', 'Hire players and staff', 'Sell used gear', 'Withdraw esports winnings'],
     limits: bn ? ['একসাথে সর্বোচ্চ ৫টি পুরনো পণ্যের বিজ্ঞাপন'] : ['Up to 5 active used-gear listings'],
+    ...consentFor('nid', locale),
   };
 }
 
@@ -226,14 +240,34 @@ async function uploadFile(principal, { slot, docType = 'nid', contentType, body 
 /** An open M18 document request lets a verified member send the document again (M18-FR-07). */
 const requested = async (userId, docType, transaction) => (await DocumentRequest.count({ where: { userId, docType, status: ['open', 'overdue'] }, transaction })) > 0;
 
+/**
+ * M02-FR-05 (25 Oct 2026): explicit consent to the current text, checked before any other work for the
+ * NID and every business document. Missing, `true` (old clients) or not accepted → CONSENT_REQUIRED;
+ * another version → CONSENT_VERSION_STALE with the current version. Returns what the row stores.
+ */
+function requireConsent(given) {
+  const { version } = kycConsent.current();
+  const block = kycConsent.check(given);
+  if (block === 'CONSENT_VERSION_STALE') throw fail(block, { currentVersion: version });
+  if (block) throw fail(block);
+  return { consentVersion: version, consentedAt: new Date() };
+}
+
+/** The consent facts in the document.submitted audit row (version and time only). */
+const consentAudit = ({ consentVersion, consentedAt }) => ({ consentVersion, consentedAt: consentedAt.toISOString() });
+
 /** POST /me/documents: submit the NID or a business document for review (a new version). */
 async function submit(principal, body, req) {
-  if (body.docType !== 'nid') return submitBusiness(principal, body, req);
+  const consented = requireConsent(body.consent);
+  if (body.docType !== 'nid') return submitBusiness(principal, body, consented, req);
   const { docType, fields, files } = body;
   const { user } = principal;
   if (!user.phone || !user.phoneVerifiedAt) throw fail('PHONE_REQUIRED');
   const birthYear = /^\d{4}/.test(fields.dob) ? fields.dob.slice(0, 4) : null;
-  const dobBlock = rules.dobBlock(fields.dob, new Date(), settings.get('kyc.min_age_years'));
+  // §6.3 age_ok: 18 and over since 25 Oct 2026 (kyc.min_age_years), on the Dhaka calendar.
+  const minAge = settings.get('kyc.min_age_years');
+  const dobBlock = rules.dobBlock(fields.dob, new Date(), minAge);
+  if (dobBlock === 'UNDER_MIN_AGE') throw fail(dobBlock, { minAge }, ERRORS.UNDER_MIN_AGE[1].replace('{n}', minAge));
   if (dobBlock) throw fail(dobBlock);
   const nid = rules.normaliseNid(fields.number, birthYear);
   if (nid.error) throw fail(nid.error);
@@ -265,6 +299,7 @@ async function submit(principal, body, req) {
         fieldsPublic: { numberMasked: rules.maskNid(nid.value), numberLength: nid.value.length, birthYear: Number(birthYear) },
         nidHash: hash,
         checks,
+        ...consented,
       },
       { transaction }
     );
@@ -281,10 +316,10 @@ async function submit(principal, body, req) {
       { transaction }
     );
     await audit.record(
-      { action: 'document.submitted', actor: principal, entityType: 'verification_document', entityId: doc.id, after: { docType, version: doc.version, status: doc.status }, req },
+      { action: 'document.submitted', actor: principal, entityType: 'verification_document', entityId: doc.id, after: { docType, version: doc.version, status: doc.status, ...consentAudit(consented) }, req },
       { transaction }
     );
-    const payload = { documentId: doc.id, userId: user.id, docType, version: doc.version };
+    const payload = { documentId: doc.id, userId: user.id, docType, version: doc.version, consentVersion: consented.consentVersion };
     await events.publish(transaction, { name: 'document.submitted', aggregateType: 'verification_document', aggregateId: doc.id, payload, actor: principal, req });
     if (duplicateUsers > 0) {
       await events.publish(transaction, {
@@ -302,7 +337,7 @@ async function submit(principal, body, req) {
  * POST /me/documents for a business document (trade licence, deed or lease, TIN). The fields follow
  * the requirement's field_schema; the number is encrypted with the rest and shown masked.
  */
-async function submitBusiness(principal, { docType, fields = {}, files = {}, role: asked }, req) {
+async function submitBusiness(principal, { docType, fields = {}, files = {}, role: asked }, consented, req) {
   const { user } = principal;
   if (principal.roles?.member !== 'active') throw fail('MEMBER_NOT_ACTIVE');
   const today = rules.dhakaToday(new Date());
@@ -345,6 +380,7 @@ async function submitBusiness(principal, { docType, fields = {}, files = {}, rol
         fieldsEnc: encrypt(JSON.stringify(clean)),
         fieldsPublic: { numberMasked: clean.number ? rules.maskNid(clean.number) : null, expiresOn: clean.expiresOn ?? null, role, ...(docType === 'credential' ? { hireRole: clean.hireRole, level: clean.level, issuer: clean.issuer } : {}) },
         checks: rules.businessChecks({ reusedFiles, expiresOn: clean.expiresOn ?? null, today }),
+        ...consented,
       },
       { transaction }
     );
@@ -360,14 +396,14 @@ async function submitBusiness(principal, { docType, fields = {}, files = {}, rol
       { transaction }
     );
     await audit.record(
-      { action: 'document.submitted', actor: principal, entityType: 'verification_document', entityId: doc.id, after: { docType, role, version: doc.version, status: doc.status }, req },
+      { action: 'document.submitted', actor: principal, entityType: 'verification_document', entityId: doc.id, after: { docType, role, version: doc.version, status: doc.status, ...consentAudit(consented) }, req },
       { transaction }
     );
     await events.publish(transaction, {
       name: 'document.submitted',
       aggregateType: 'verification_document',
       aggregateId: doc.id,
-      payload: { documentId: doc.id, userId: user.id, docType, role, version: doc.version },
+      payload: { documentId: doc.id, userId: user.id, docType, role, version: doc.version, consentVersion: consented.consentVersion },
       actor: principal,
       req,
     });
@@ -406,6 +442,8 @@ async function adminGet(id) {
     ...serialize(d, { files }),
     fields,
     checks: d.checks,
+    // M02-FR-05: the consent the member gave (null for documents sent before 25 Oct 2026).
+    consent: d.consentVersion != null ? { version: d.consentVersion, at: d.consentedAt } : null,
     decidedBy: d.decidedBy ?? null,
     user: { id: d.userId, displayName: who?.displayName ?? null, kycStatus: who?.kycStatus ?? null, phoneVerified: Boolean(contact?.phone), accountStatus: contact?.status ?? null },
     history: history.map((h) => ({ id: h.id, version: h.version, status: h.status, reasonCode: h.reasonCode ?? null, submittedAt: h.createdAt, decidedAt: h.decidedAt ?? null })),
@@ -431,6 +469,54 @@ async function revealNid(actor, id, { reason }, req) {
   const { numberAsTyped, number } = JSON.parse(decrypt(d.fieldsEnc));
   await audit.record({ action: 'document.nid_revealed', actor, entityType: 'verification_document', entityId: d.id, reason, meta: { last4: number.slice(-4) }, req });
   return { documentId: d.id, number: numberAsTyped, normalised: number, showForSeconds: 60 };
+}
+
+// ---------------------------------------------------------------- staff: NID holders now under the minimum age (25 Oct 2026)
+
+const UNDER_AGE_STATUSES = ['approved', 'in_review', 'changes_requested'];
+const birthYearSql = sequelize.literal("(fields_public->>'birthYear')");
+
+/**
+ * Current NID documents (approved, in review or changes requested) whose holder is under
+ * kyc.min_age_years today in Dhaka (§6.3 age_ok; the minimum went from 16 to 18 on 25 Oct 2026).
+ * Read-only: nothing changes automatically, the product owner decides. Prefilters on
+ * fields_public.birthYear, then uses users.dob (copied from an approved NID by M01) or else decrypts
+ * the document's date of birth. The result carries ages only: never the number or the date of birth.
+ */
+async function underMinAge({ now = new Date() } = {}) {
+  const minAge = settings.get('kyc.min_age_years');
+  const fromYear = rules.underAgeFromYear(now, minAge);
+  const docs = await VerificationDocument.findAll({
+    where: {
+      docType: 'nid',
+      isCurrent: true,
+      status: UNDER_AGE_STATUSES,
+      [Op.or]: [sequelize.where(birthYearSql, Op.is, null), sequelize.where(sequelize.cast(birthYearSql, 'integer'), Op.gte, fromYear)],
+    },
+    order: [['createdAt', 'ASC']],
+  });
+  const userIds = docs.map((d) => d.userId);
+  const identity = await directory.eligibilityIdentity(userIds);
+  const names = await directory.displayNames(userIds);
+  const items = [];
+  for (const d of docs) {
+    const dob = identity.get(d.userId)?.dob ?? JSON.parse(decrypt(d.fieldsEnc)).dob;
+    const age = rules.ageOn(dob, now);
+    if (age >= minAge) continue;
+    items.push({ userId: d.userId, displayName: names.get(d.userId) ?? null, documentId: d.id, status: d.status, age, decidedAt: d.decidedAt ?? null });
+  }
+  items.sort((a, b) => a.age - b.age);
+  return { minAgeYears: minAge, count: items.length, items };
+}
+
+/**
+ * GET /admin/kyc/under-min-age (approve_documents) and scripts/kyc-under-min-age.js: the list above.
+ * Every view is audited (counts only in the row).
+ */
+async function listUnderMinAge(actor, req, { source = 'admin' } = {}) {
+  const out = await underMinAge();
+  await audit.record({ action: 'kyc.under_min_age_listed', actor, entityType: 'verification_document', entityId: 'under_min_age', meta: { count: out.count, minAge: out.minAgeYears, source }, req });
+  return out;
 }
 
 // ---------------------------------------------------------------- checks and decisions through M05 (FR-07 to FR-10)
@@ -585,4 +671,4 @@ async function nidAttempts(userId) {
   return others + 1;
 }
 
-module.exports = { nidAttempts, verification, uploadFile, submit, ownFile, adminGet, viewFile, revealNid, checksFor, applyDecision, getVerifiedIdentity, credentialFor, policeClearedUntil, facts, purgeDue, requirementsFor, nidHash };
+module.exports = { nidAttempts, verification, uploadFile, submit, ownFile, adminGet, viewFile, revealNid, underMinAge, listUnderMinAge, checksFor, applyDecision, getVerifiedIdentity, credentialFor, policeClearedUntil, facts, purgeDue, requirementsFor, nidHash };

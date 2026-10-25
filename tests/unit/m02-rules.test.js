@@ -43,6 +43,82 @@ describe('M02 date of birth in Asia/Dhaka', () => {
   });
 });
 
+// §6.3 age_ok with kyc.min_age_years 18 (product owner, 25 Oct 2026), on fixed clocks in Asia/Dhaka.
+describe('M02 minimum age 18 (§6.3 age_ok, 25 Oct 2026)', () => {
+  const noon = at('2026-10-25T06:00:00Z'); // 25 Oct 2026, 12:00 in Dhaka
+
+  it('accepts the 18th birthday and refuses 17 years and 364 days', () => {
+    expect(R.dobBlock('2008-10-25', noon, 18)).toBeNull();
+    expect(R.ageOn('2008-10-25', noon)).toBe(18);
+    expect(R.dobBlock('2008-10-26', noon, 18)).toBe('UNDER_MIN_AGE');
+    expect(R.ageOn('2008-10-26', noon)).toBe(17);
+    expect(R.dobBlock('1990-05-14', noon, 18)).toBeNull();
+  });
+
+  it('turns 18 at midnight in Dhaka, which is 18:00 UTC the day before', () => {
+    const lastMinute = at('2026-10-24T17:59:59.999Z'); // 24 Oct, 23:59:59 in Dhaka
+    const midnight = at('2026-10-24T18:00:00.000Z'); // 25 Oct, 00:00 in Dhaka
+    expect(R.dobBlock('2008-10-25', lastMinute, 18)).toBe('UNDER_MIN_AGE');
+    expect(R.dobBlock('2008-10-25', midnight, 18)).toBeNull();
+  });
+
+  it('a 29 February birthday turns 18 on 1 March in a common year', () => {
+    expect(R.dobBlock('2008-02-29', at('2026-02-28T06:00:00Z'), 18)).toBe('UNDER_MIN_AGE');
+    expect(R.dobBlock('2008-02-29', at('2026-03-01T06:00:00Z'), 18)).toBeNull();
+    expect(R.dobBlock('2008-02-29', at('2026-02-28T18:00:00Z'), 18)).toBeNull(); // 1 Mar 00:00 in Dhaka
+  });
+
+  it('prefilters birth years with one year of slack', () => {
+    expect(R.underAgeFromYear(noon, 18)).toBe(2007);
+    expect(R.underAgeFromYear(at('2026-12-31T18:00:00Z'), 18)).toBe(2008); // already 2027 in Dhaka
+  });
+});
+
+// M02-FR-05 (25 Oct 2026): explicit consent to the current version.
+describe('M02 consent', () => {
+  it.each([
+    [undefined, 'CONSENT_REQUIRED'],
+    [null, 'CONSENT_REQUIRED'],
+    [true, 'CONSENT_REQUIRED'],
+    [false, 'CONSENT_REQUIRED'],
+    ['yes', 'CONSENT_REQUIRED'],
+    [1, 'CONSENT_REQUIRED'],
+    [{}, 'CONSENT_REQUIRED'],
+    [[], 'CONSENT_REQUIRED'],
+    [{ accepted: false, version: 1 }, 'CONSENT_REQUIRED'],
+    [{ accepted: 'true', version: 1 }, 'CONSENT_REQUIRED'],
+    [{ accepted: true }, 'CONSENT_VERSION_STALE'],
+    [{ accepted: true, version: 0 }, 'CONSENT_VERSION_STALE'],
+    [{ accepted: true, version: '1' }, 'CONSENT_VERSION_STALE'],
+    [{ accepted: true, version: 2 }, 'CONSENT_VERSION_STALE'],
+    [{ accepted: true, version: 1 }, null],
+  ])('%p → %p', (given, code) => {
+    expect(R.consentBlock(given, 1)).toBe(code);
+  });
+
+  it('fills placeholders, with Bangla digits for Bangla text, and leaves unknown ones', () => {
+    expect(R.fillText('deleted {retentionDays} days after; {minAge} and over', { retentionDays: 90, minAge: 18 })).toBe('deleted 90 days after; 18 and over');
+    expect(R.fillText('{retentionDays} দিন পর; {minAge} বছর', { retentionDays: 90, minAge: 18 }, { bn: true })).toBe('৯০ দিন পর; ১৮ বছর');
+    expect(R.fillText('{other} {minAge} {gone}', { minAge: 18, gone: null })).toBe('{other} 18 {gone}');
+    expect(R.toBnDigits('2026-10-25')).toBe('২০২৬-১০-২৫');
+  });
+
+  it('the shipped consent: one version, an NID and a business text in EN and BN', () => {
+    const consent = require('../../src/modules/kyc/consent');
+    const seed = require('../../src/db/seed/reference/kyc-requirements.v1.json');
+    expect(consent.current()).toEqual({ version: seed.consent.version, draft: true });
+    expect(consent.check({ accepted: true, version: seed.consent.version })).toBeNull();
+    expect(consent.check(true)).toBe('CONSENT_REQUIRED');
+    // The k3d e2e specs find the checkbox by this text (kriraghor-infrastructure).
+    expect(seed.consent.nid.en).toMatch(/^I agree that Kriraghor uses these documents/);
+    for (const kind of ['nid', 'business']) {
+      for (const locale of ['en', 'bn']) expect(seed.consent[kind][locale]).toContain('{retentionDays}');
+    }
+    expect(seed.consent.nid.en).toContain('{minAge}');
+    expect(seed.consent.nid.bn).toContain('{minAge}');
+  });
+});
+
 describe('M02 files (magic bytes, size, slots)', () => {
   const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0]);
   const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a]);

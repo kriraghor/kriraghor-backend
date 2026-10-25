@@ -53,7 +53,7 @@ async function main() {
       const r = await api().post(`${P}/me/documents/files?slot=${slot}`).set(h.bearer(m)).set('Content-Type', mime).send(Buffer.concat([fixture(file), Buffer.from(m.user.id)])).expect(201);
       files[slot] = r.body.fileId;
     }
-    await api().post(`${P}/me/documents`).set(h.bearer(m)).send({ docType: 'nid', fields: { legalName: name, number, dob: '1990-05-14' }, files, consent: true }).expect(201);
+    await api().post(`${P}/me/documents`).set(h.bearer(m)).send({ docType: 'nid', fields: { legalName: name, number, dob: '1990-05-14' }, files, consent: h.consent() }).expect(201);
     members.push(m);
   }
 

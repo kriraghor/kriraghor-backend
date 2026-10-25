@@ -168,7 +168,8 @@ const EVENTS = {
   'payout_account.rejected': { module: 'M07', version: 1, schema: z.object({ accountId: uuid, userId: uuid }) },
 
   // ---------------- M02 KYC (ids, type and reason codes only: never the number, DOB or name) ----------------
-  'document.submitted': { module: 'M02', version: 1, schema: docEvent.extend({ version: z.number().int() }) },
+  // consentVersion (M02-FR-05, 25 Oct 2026): the consent version accepted; optional so older events stay valid.
+  'document.submitted': { module: 'M02', version: 1, schema: docEvent.extend({ version: z.number().int(), consentVersion: z.number().int().optional() }) },
   'document.approved': { module: 'M02', version: 1, schema: docEvent },
   'document.changes_requested': { module: 'M02', version: 1, schema: docEvent.extend({ reasonCode: z.string().max(40) }) },
   'document.rejected': { module: 'M02', version: 1, schema: docEvent.extend({ reasonCode: z.string().max(40) }) },

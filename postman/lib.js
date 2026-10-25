@@ -4,7 +4,16 @@
  * Shared helpers for the Postman collection builders (M03, M04): requests with bearer tokens for
  * master A or B, pre-minted step-up tokens taken from stepUpQueueA/B, and generated test scripts.
  */
-const json = (o) => ({ mode: 'raw', raw: JSON.stringify(o, null, 2), options: { raw: { language: 'json' } } });
+// {{consentVersion}} is a number: it goes into the raw body without quotes (Postman substitutes the text).
+const json = (o) => ({ mode: 'raw', raw: JSON.stringify(o, null, 2).replace(/"{{consentVersion}}"/g, '{{consentVersion}}'), options: { raw: { language: 'json' } } });
+
+/**
+ * M02-FR-05 (25 Oct 2026): the consent every document submit sends, and the collection variable that
+ * holds the current consent version (read from the code when the collection is built; the M02 collection
+ * also reads it from GET /me/verification).
+ */
+const CONSENT = { accepted: true, version: '{{consentVersion}}' };
+const consentVar = () => ({ key: 'consentVersion', value: String(require('../src/modules/kyc/consent').current().version) });
 
 /** Test script: status/code assertions, extra checks, and saving values from 2xx responses. */
 function tests({ save = {}, expect, checks = [] } = {}) {
@@ -71,4 +80,4 @@ const req = (name, method, p, { body, as = 'A', stepUp = false, desc, save, expe
   },
 });
 
-module.exports = { json, tests, takeStepUp, url, req };
+module.exports = { json, tests, takeStepUp, url, req, CONSENT, consentVar };

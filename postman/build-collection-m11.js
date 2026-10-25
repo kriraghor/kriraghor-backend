@@ -15,7 +15,7 @@
  */
 const fs = require('fs');
 const path = require('path');
-const { req } = require('./lib');
+const { req, CONSENT, consentVar } = require('./lib');
 
 const out = path.join(__dirname, 'kriraghor-hire.postman_collection.json');
 
@@ -86,8 +86,8 @@ const collection = {
       item: [
         req('The hire taxonomy', 'GET', '/hire/taxonomy', { as: false, expect: { status: 200 }, checks: [['6 categories, 24 roles', 'j.items.length === 6 && j.items.flatMap((c) => c.roles).length === 24'], ['umpires price formats', "j.items.find((c) => c.key === 'officials').roles.find((r) => r.key === 'cricket_umpire').formatPriced === true"]] }),
         upload('Upload the umpire certificate (PDF)', '/me/documents/files?slot=document&docType=credential', 'nid-selfie.pdf', 'application/pdf', { expect: { status: 201 }, save: { fileId: 'fileId' } }),
-        pro('A level the role does not have (expect 422)', 'POST', '/me/documents', { body: { docType: 'credential', role: 'pro', fields: { hireRole: 'cricket_umpire', level: 'grandmaster', issuer: 'Bangladesh Cricket Board' }, files: { document: '{{fileId}}' }, consent: true }, expect: { status: 422 } }),
-        pro('Send the BCB Level 2 credential', 'POST', '/me/documents', { body: { docType: 'credential', role: 'pro', fields: { hireRole: 'cricket_umpire', level: 'pro', issuer: 'Bangladesh Cricket Board', number: 'BCB-L2-1188' }, files: { document: '{{fileId}}' }, consent: true }, expect: { status: 201 } }),
+        pro('A level the role does not have (expect 422)', 'POST', '/me/documents', { body: { docType: 'credential', role: 'pro', fields: { hireRole: 'cricket_umpire', level: 'grandmaster', issuer: 'Bangladesh Cricket Board' }, files: { document: '{{fileId}}' }, consent: CONSENT }, expect: { status: 422 } }),
+        pro('Send the BCB Level 2 credential', 'POST', '/me/documents', { body: { docType: 'credential', role: 'pro', fields: { hireRole: 'cricket_umpire', level: 'pro', issuer: 'Bangladesh Cricket Board', number: 'BCB-L2-1188' }, files: { document: '{{fileId}}' }, consent: CONSENT }, expect: { status: 201 } }),
         docs('The credential on the desk', 'GET', '/admin/submissions?status=pending_review&kind=document', { expect: { status: 200 }, checks: [setVar('credSubmissionId', 'j.items[0].id')] }),
         ...decide(docs, 'Credential', 'credSubmissionId', DOC_RUBRIC),
         control('drain events and refresh the pro token', 'refresh', { checks: [['fresh token', "(pm.environment.set('proToken', j.accessToken), typeof j.accessToken === 'string')"]] }),
@@ -198,6 +198,7 @@ const collection = {
   ],
 };
 
+collection.variable.push(consentVar());
 fs.writeFileSync(out, `${JSON.stringify(collection, null, 2)}\n`);
 // eslint-disable-next-line no-console
 console.log(`wrote ${path.relative(process.cwd(), out)}`);

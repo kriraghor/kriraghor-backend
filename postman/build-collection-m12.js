@@ -11,7 +11,7 @@
  */
 const fs = require('fs');
 const path = require('path');
-const { req } = require('./lib');
+const { req, CONSENT, consentVar } = require('./lib');
 
 const out = path.join(__dirname, 'kriraghor-market.postman_collection.json');
 
@@ -73,12 +73,12 @@ const collection = {
         }),
         upload('Upload the trade licence (PDF)', '/me/documents/files?slot=document&docType=trade_license', 'nid-selfie.pdf', 'application/pdf', { expect: { status: 201 }, save: { fileId: 'fileId' } }),
         owner('Send the trade licence (the role is the only one applied)', 'POST', '/me/documents', {
-          body: { docType: 'trade_license', fields: { number: 'TRAD/DNCC/771234', holderName: 'Nayeem Sports', expiresOn: '2029-06-30' }, files: { document: '{{fileId}}' }, consent: true },
+          body: { docType: 'trade_license', fields: { number: 'TRAD/DNCC/771234', holderName: 'Nayeem Sports', expiresOn: '2029-06-30' }, files: { document: '{{fileId}}' }, consent: CONSENT },
           expect: { status: 201 },
           checks: [['in review', "j.status === 'in_review' && j.numberMasked.endsWith('1234')"]],
         }),
         upload('Upload the TIN certificate (PNG)', '/me/documents/files?slot=document&docType=tin', 'nid-back.png', 'image/png', { expect: { status: 201 }, save: { fileId: 'fileId' } }),
-        owner('Send the TIN', 'POST', '/me/documents', { body: { docType: 'tin', fields: { number: '123456789012' }, files: { document: '{{fileId}}' }, consent: true }, expect: { status: 201 } }),
+        owner('Send the TIN', 'POST', '/me/documents', { body: { docType: 'tin', fields: { number: '123456789012' }, files: { document: '{{fileId}}' }, consent: CONSENT }, expect: { status: 201 } }),
         req('Both are on the Moderation desk', 'GET', '/admin/submissions?status=pending_review&kind=document', {
           as: 'B',
           expect: { status: 200 },
@@ -215,6 +215,7 @@ const collection = {
   ],
 };
 
+collection.variable.push(consentVar());
 fs.writeFileSync(out, `${JSON.stringify(collection, null, 2)}\n`);
 // eslint-disable-next-line no-console
 console.log(`wrote ${path.relative(process.cwd(), out)}`);
