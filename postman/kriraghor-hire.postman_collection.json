@@ -88,6 +88,10 @@
     {
       "key": "version",
       "value": ""
+    },
+    {
+      "key": "consentVersion",
+      "value": "1"
     }
   ],
   "item": [
@@ -221,7 +225,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"docType\": \"credential\",\n  \"role\": \"pro\",\n  \"fields\": {\n    \"hireRole\": \"cricket_umpire\",\n    \"level\": \"grandmaster\",\n    \"issuer\": \"Bangladesh Cricket Board\"\n  },\n  \"files\": {\n    \"document\": \"{{fileId}}\"\n  },\n  \"consent\": true\n}",
+              "raw": "{\n  \"docType\": \"credential\",\n  \"role\": \"pro\",\n  \"fields\": {\n    \"hireRole\": \"cricket_umpire\",\n    \"level\": \"grandmaster\",\n    \"issuer\": \"Bangladesh Cricket Board\"\n  },\n  \"files\": {\n    \"document\": \"{{fileId}}\"\n  },\n  \"consent\": {\n    \"accepted\": true,\n    \"version\": {{consentVersion}}\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -272,7 +276,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"docType\": \"credential\",\n  \"role\": \"pro\",\n  \"fields\": {\n    \"hireRole\": \"cricket_umpire\",\n    \"level\": \"pro\",\n    \"issuer\": \"Bangladesh Cricket Board\",\n    \"number\": \"BCB-L2-1188\"\n  },\n  \"files\": {\n    \"document\": \"{{fileId}}\"\n  },\n  \"consent\": true\n}",
+              "raw": "{\n  \"docType\": \"credential\",\n  \"role\": \"pro\",\n  \"fields\": {\n    \"hireRole\": \"cricket_umpire\",\n    \"level\": \"pro\",\n    \"issuer\": \"Bangladesh Cricket Board\",\n    \"number\": \"BCB-L2-1188\"\n  },\n  \"files\": {\n    \"document\": \"{{fileId}}\"\n  },\n  \"consent\": {\n    \"accepted\": true,\n    \"version\": {{consentVersion}}\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"

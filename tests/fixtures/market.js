@@ -46,7 +46,7 @@ async function review(by, kind, subjectId, decision = 'approve', extra = {}) {
 
 async function sendDoc(who, docType, fields, { role, status = 201 } = {}) {
   const up = await api().post(`${P}/me/documents/files?slot=document&docType=${docType}`).set(h.bearer(who)).set('Content-Type', 'image/jpeg').send(Buffer.concat([JPEG, Buffer.from(uniq(docType))])).expect(201);
-  return api().post(`${P}/me/documents`).set(h.bearer(who)).send({ docType, fields, files: { document: up.body.fileId }, consent: true, ...(role ? { role } : {}) }).expect(status);
+  return api().post(`${P}/me/documents`).set(h.bearer(who)).send({ docType, fields, files: { document: up.body.fileId }, consent: h.consent(), ...(role ? { role } : {}) }).expect(status);
 }
 
 /** A member who applied for shop_owner and whose trade licence and TIN were approved (role active). */

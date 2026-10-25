@@ -1,6 +1,18 @@
 {
-  "seedVersion": 6,
-  "source": "M02 §6.1, lite (Oct 2026): the member (NID) requirements, and the ground owner business documents (with M09). v2 (M12): the shop owner business documents (trade licence, TIN, and BIN when the shop is VAT registered); documents are kept per role. v3 (M11): the player and pro credentials (one per hire role, kept under hire:<role>) and the police clearance for under-16 work. Rows are inserted only when (role, type) is missing, so a master's edits survive. v4 (M20): the gym owner documents, the ground owner set (trade licence, deed or lease of the premises, an optional TIN), kept per role. v5 (M22): the organiser's organisation registration (trade licence, company or society registration, or an institution letter), kept under the organiser role. v6: user-facing words Grounds → Venues, Tournaments → Events, big events → Showcases (19 Oct 2026).",
+  "seedVersion": 7,
+  "source": "M02 §6.1, lite (Oct 2026): the member (NID) requirements, and the ground owner business documents (with M09). v2 (M12): the shop owner business documents (trade licence, TIN, and BIN when the shop is VAT registered); documents are kept per role. v3 (M11): the player and pro credentials (one per hire role, kept under hire:<role>) and the police clearance for under-16 work. Rows are inserted only when (role, type) is missing, so a master's edits survive. v4 (M20): the gym owner documents, the ground owner set (trade licence, deed or lease of the premises, an optional TIN), kept per role. v5 (M22): the organiser's organisation registration (trade licence, company or society registration, or an institution letter), kept under the organiser role. v6: user-facing words Grounds → Venues, Tournaments → Events, big events → Showcases (19 Oct 2026). v7 (M02, 25 Oct 2026): the consent texts shown with the NID and business document forms (one version, an NID text and a business text, EN and BN; draft, under legal review). They are read from this file at run time (src/modules/kyc/consent.js), never copied into the database; a wording change is a new consent version. {retentionDays} and {minAge} are filled from kyc.raw_image_retention_days and kyc.min_age_years.",
+  "consent": {
+    "version": 1,
+    "draft": true,
+    "nid": {
+      "en": "I agree that Kriraghor uses these documents to verify my identity. What is collected: my NID number, my name and date of birth as printed on the NID, and photos of the NID front, the back and a selfie holding it. Why: to check that I am who I say I am and to prevent fraud before I sell, get hired, receive payouts or withdraw winnings. Who sees it: only Kriraghor review staff. The NID number is stored encrypted and only its last 4 digits are shown. How long: the photos are deleted {retentionDays} days after the review decision. NID verification is for people aged {minAge} and over. I can ask Kriraghor support at any time to withdraw this consent and delete my verification data (features that need a verified NID then stop working).",
+      "bn": "আমি সম্মতি দিচ্ছি যে ক্রীড়াঘর আমার পরিচয় যাচাইয়ের জন্য এই ডকুমেন্টগুলো ব্যবহার করবে। যা নেওয়া হয়: আমার NID নম্বর, NID-তে ছাপা নাম ও জন্মতারিখ, এবং NID-এর সামনের ও পেছনের ছবি আর NID হাতে নিয়ে তোলা একটি সেলফি। কেন: বিক্রি করা, হায়ার হওয়া, পেআউট পাওয়া বা পুরস্কারের টাকা তোলার আগে আমি সত্যিই আমি কি না তা যাচাই করা এবং প্রতারণা ঠেকানো। কারা দেখেন: শুধু ক্রীড়াঘরের যাচাইকারী কর্মীরা। NID নম্বর এনক্রিপ্ট করে রাখা হয় এবং শুধু শেষ ৪টি সংখ্যা দেখানো হয়। কতদিন রাখা হয়: যাচাইয়ের সিদ্ধান্তের {retentionDays} দিন পর ছবিগুলো মুছে ফেলা হয়। NID যাচাই শুধু {minAge} বছর বা তার বেশি বয়সীদের জন্য। আমি যেকোনো সময় ক্রীড়াঘর সাপোর্টকে জানিয়ে এই সম্মতি তুলে নিতে এবং আমার যাচাইয়ের তথ্য মুছে ফেলতে পারি (তখন যাচাই করা NID লাগে এমন সুবিধাগুলো বন্ধ হয়ে যাবে)।"
+    },
+    "business": {
+      "en": "I agree that Kriraghor uses these documents to approve my business and pay me. What is collected: the documents I send for this role (trade licence, TIN, BIN, land deed or lease, credentials, police clearance or organisation registration), the numbers, names and dates I type from them, and a photo or PDF of each. Why: to check that the business is real and that I may run it, to prevent fraud, and to approve the role and send payouts to the right person. Who sees it: only Kriraghor review staff. Document numbers are stored encrypted and only their last 4 digits are shown. How long: the photos and PDFs are deleted {retentionDays} days after the review decision. I can ask Kriraghor support at any time to withdraw this consent and delete my verification data (the business role then stops working).",
+      "bn": "আমি সম্মতি দিচ্ছি যে ক্রীড়াঘর আমার ব্যবসা অনুমোদন ও আমাকে টাকা পাঠানোর জন্য এই ডকুমেন্টগুলো ব্যবহার করবে। যা নেওয়া হয়: এই ভূমিকার জন্য আমি যে ডকুমেন্টগুলো পাঠাই (ট্রেড লাইসেন্স, টিআইএন, বিআইএন, জমির দলিল বা লিজ, সনদ, পুলিশ ক্লিয়ারেন্স বা প্রতিষ্ঠানের নিবন্ধন), সেগুলো থেকে আমার লেখা নম্বর, নাম ও তারিখ, এবং প্রতিটির ছবি বা PDF। কেন: ব্যবসাটি আসল এবং আমি তা চালানোর অধিকার রাখি কি না তা যাচাই করা, প্রতারণা ঠেকানো, এবং ভূমিকাটি অনুমোদন করে সঠিক মানুষের কাছে পেআউট পাঠানো। কারা দেখেন: শুধু ক্রীড়াঘরের যাচাইকারী কর্মীরা। ডকুমেন্টের নম্বর এনক্রিপ্ট করে রাখা হয় এবং শুধু শেষ ৪টি সংখ্যা দেখানো হয়। কতদিন রাখা হয়: যাচাইয়ের সিদ্ধান্তের {retentionDays} দিন পর ছবি ও PDF মুছে ফেলা হয়। আমি যেকোনো সময় ক্রীড়াঘর সাপোর্টকে জানিয়ে এই সম্মতি তুলে নিতে এবং আমার যাচাইয়ের তথ্য মুছে ফেলতে পারি (তখন ব্যবসার ভূমিকাটি বন্ধ হয়ে যাবে)।"
+    }
+  },
   "requirements": [
     {
       "role": "member",
@@ -44,8 +56,8 @@
       ],
       "labelEn": "National ID (NID)",
       "labelBn": "জাতীয় পরিচয়পত্র (NID)",
-      "whyEn": "Front, back and a selfie holding it. Needed to book, buy, hire, sell and withdraw winnings.",
-      "whyBn": "সামনে, পেছনে এবং হাতে ধরে একটি সেলফি। বুকিং, কেনা, হায়ার, বিক্রি ও পুরস্কার তোলার জন্য দরকার।",
+      "whyEn": "Front, back and a selfie holding it. For people aged 18 and over. Needed to sell used gear, get hired, run a business on Kriraghor and withdraw winnings.",
+      "whyBn": "সামনে, পেছনে এবং হাতে ধরে একটি সেলফি। ১৮ বছর বা তার বেশি বয়সীদের জন্য। পুরনো পণ্য বিক্রি, হায়ার হওয়া, ক্রীড়াঘরে ব্যবসা চালানো ও পুরস্কার তোলার জন্য দরকার।",
       "sort": 2
     },
     {

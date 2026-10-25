@@ -7314,6 +7314,30 @@
             "items": {
               "type": "string"
             }
+          },
+          "consent": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "integer"
+              },
+              "draft": {
+                "type": "boolean"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "version",
+              "draft",
+              "text"
+            ],
+            "description": "The consent the form shows (the NID text for role=member, the business text otherwise, in the locale asked). Send { accepted: true, version } with the document (M02-FR-05)"
+          },
+          "minAgeYears": {
+            "type": "integer",
+            "description": "kyc.min_age_years: NID verification is for people this old and over (§6.3 age_ok)"
           }
         },
         "required": [
@@ -7324,7 +7348,9 @@
           "progress",
           "items",
           "unlocks",
-          "limits"
+          "limits",
+          "consent",
+          "minAgeYears"
         ]
       },
       "VerificationDocument": {
@@ -7612,6 +7638,26 @@
               ]
             }
           },
+          "consent": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "version": {
+                "type": "integer"
+              },
+              "at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "version",
+              "at"
+            ],
+            "description": "The consent the member gave with this version; null for documents sent before 25 Oct 2026"
+          },
           "decidedBy": {
             "type": [
               "string",
@@ -7715,10 +7761,76 @@
           "files",
           "fields",
           "checks",
+          "consent",
           "decidedBy",
           "user",
           "history"
         ]
+      },
+      "KycUnderMinAge": {
+        "type": "object",
+        "properties": {
+          "minAgeYears": {
+            "type": "integer"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "userId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "displayName": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "documentId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "approved",
+                    "in_review",
+                    "changes_requested"
+                  ]
+                },
+                "age": {
+                  "type": "integer"
+                },
+                "decidedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "userId",
+                "displayName",
+                "documentId",
+                "status",
+                "age",
+                "decidedAt"
+              ]
+            }
+          }
+        },
+        "required": [
+          "minAgeYears",
+          "count",
+          "items"
+        ],
+        "description": "Current NID documents whose holder is under kyc.min_age_years today (Dhaka). Ages only, never the number or date of birth. Audited; do not cache."
       },
       "KycNidReveal": {
         "type": "object",
@@ -46852,7 +46964,7 @@
         "tags": [
           "kyc"
         ],
-        "summary": "My verification checklist: phone and NID status, badge, unlocks and limits (FR-18)",
+        "summary": "My verification checklist: phone and NID status, badge, unlocks and limits, the consent text and version to show, and the minimum age (FR-18, FR-05)",
         "security": [
           {
             "bearer": []
@@ -47060,7 +47172,7 @@
         "tags": [
           "kyc"
         ],
-        "summary": "Submit my NID (number, date of birth, legal name, three files) or a business document of a role I applied for (fields from the requirement, one file)",
+        "summary": "Submit my NID (number, date of birth, legal name, three files) or a business document of a role I applied for (fields from the requirement, one file), with consent { accepted: true, version } to the current text (FR-05)",
         "security": [
           {
             "bearer": []
@@ -47131,18 +47243,17 @@
                         "description": "File ids from POST /me/documents/files, by slot"
                       },
                       "consent": {
-                        "type": "boolean",
-                        "enum": [
-                          true
-                        ],
-                        "description": "Agreement to the Privacy Policy and Terms for identity checks"
+                        "description": "Required: { \"accepted\": true, \"version\": <GET /me/verification consent.version> }. Missing, true or accepted not true → 422 CONSENT_REQUIRED; another version → 422 CONSENT_VERSION_STALE (currentVersion in the problem body)",
+                        "example": {
+                          "accepted": true,
+                          "version": 1
+                        }
                       }
                     },
                     "required": [
                       "docType",
                       "fields",
-                      "files",
-                      "consent"
+                      "files"
                     ]
                   },
                   {
@@ -47191,17 +47302,17 @@
                         "description": "The business role the document is for (documents are kept per role). Needed only when more than one applied role asks for this type"
                       },
                       "consent": {
-                        "type": "boolean",
-                        "enum": [
-                          true
-                        ]
+                        "description": "Required: { \"accepted\": true, \"version\": <GET /me/verification consent.version> }. Missing, true or accepted not true → 422 CONSENT_REQUIRED; another version → 422 CONSENT_VERSION_STALE (currentVersion in the problem body)",
+                        "example": {
+                          "accepted": true,
+                          "version": 1
+                        }
                       }
                     },
                     "required": [
                       "docType",
                       "fields",
-                      "files",
-                      "consent"
+                      "files"
                     ]
                   },
                   {
@@ -47250,17 +47361,17 @@
                         "description": "The business role the document is for (documents are kept per role). Needed only when more than one applied role asks for this type"
                       },
                       "consent": {
-                        "type": "boolean",
-                        "enum": [
-                          true
-                        ]
+                        "description": "Required: { \"accepted\": true, \"version\": <GET /me/verification consent.version> }. Missing, true or accepted not true → 422 CONSENT_REQUIRED; another version → 422 CONSENT_VERSION_STALE (currentVersion in the problem body)",
+                        "example": {
+                          "accepted": true,
+                          "version": 1
+                        }
                       }
                     },
                     "required": [
                       "docType",
                       "fields",
-                      "files",
-                      "consent"
+                      "files"
                     ]
                   },
                   {
@@ -47309,17 +47420,17 @@
                         "description": "The business role the document is for (documents are kept per role). Needed only when more than one applied role asks for this type"
                       },
                       "consent": {
-                        "type": "boolean",
-                        "enum": [
-                          true
-                        ]
+                        "description": "Required: { \"accepted\": true, \"version\": <GET /me/verification consent.version> }. Missing, true or accepted not true → 422 CONSENT_REQUIRED; another version → 422 CONSENT_VERSION_STALE (currentVersion in the problem body)",
+                        "example": {
+                          "accepted": true,
+                          "version": 1
+                        }
                       }
                     },
                     "required": [
                       "docType",
                       "fields",
-                      "files",
-                      "consent"
+                      "files"
                     ]
                   },
                   {
@@ -47368,17 +47479,17 @@
                         "description": "The business role the document is for (documents are kept per role). Needed only when more than one applied role asks for this type"
                       },
                       "consent": {
-                        "type": "boolean",
-                        "enum": [
-                          true
-                        ]
+                        "description": "Required: { \"accepted\": true, \"version\": <GET /me/verification consent.version> }. Missing, true or accepted not true → 422 CONSENT_REQUIRED; another version → 422 CONSENT_VERSION_STALE (currentVersion in the problem body)",
+                        "example": {
+                          "accepted": true,
+                          "version": 1
+                        }
                       }
                     },
                     "required": [
                       "docType",
                       "fields",
-                      "files",
-                      "consent"
+                      "files"
                     ]
                   },
                   {
@@ -47427,17 +47538,17 @@
                         "description": "The business role the document is for (documents are kept per role). Needed only when more than one applied role asks for this type"
                       },
                       "consent": {
-                        "type": "boolean",
-                        "enum": [
-                          true
-                        ]
+                        "description": "Required: { \"accepted\": true, \"version\": <GET /me/verification consent.version> }. Missing, true or accepted not true → 422 CONSENT_REQUIRED; another version → 422 CONSENT_VERSION_STALE (currentVersion in the problem body)",
+                        "example": {
+                          "accepted": true,
+                          "version": 1
+                        }
                       }
                     },
                     "required": [
                       "docType",
                       "fields",
-                      "files",
-                      "consent"
+                      "files"
                     ]
                   },
                   {
@@ -47486,17 +47597,17 @@
                         "description": "The business role the document is for (documents are kept per role). Needed only when more than one applied role asks for this type"
                       },
                       "consent": {
-                        "type": "boolean",
-                        "enum": [
-                          true
-                        ]
+                        "description": "Required: { \"accepted\": true, \"version\": <GET /me/verification consent.version> }. Missing, true or accepted not true → 422 CONSENT_REQUIRED; another version → 422 CONSENT_VERSION_STALE (currentVersion in the problem body)",
+                        "example": {
+                          "accepted": true,
+                          "version": 1
+                        }
                       }
                     },
                     "required": [
                       "docType",
                       "fields",
-                      "files",
-                      "consent"
+                      "files"
                     ]
                   },
                   {
@@ -47545,17 +47656,17 @@
                         "description": "The business role the document is for (documents are kept per role). Needed only when more than one applied role asks for this type"
                       },
                       "consent": {
-                        "type": "boolean",
-                        "enum": [
-                          true
-                        ]
+                        "description": "Required: { \"accepted\": true, \"version\": <GET /me/verification consent.version> }. Missing, true or accepted not true → 422 CONSENT_REQUIRED; another version → 422 CONSENT_VERSION_STALE (currentVersion in the problem body)",
+                        "example": {
+                          "accepted": true,
+                          "version": 1
+                        }
                       }
                     },
                     "required": [
                       "docType",
                       "fields",
-                      "files",
-                      "consent"
+                      "files"
                     ]
                   }
                 ]
@@ -47595,7 +47706,7 @@
             }
           },
           "422": {
-            "description": "Error. Codes: VALIDATION_FAILED, NID_FORMAT_INVALID, DOB_INVALID, DOB_IN_FUTURE, UNDER_MIN_AGE, FILES_INCOMPLETE, DOC_TYPE_NOT_REQUIRED",
+            "description": "Error. Codes: VALIDATION_FAILED, CONSENT_REQUIRED, CONSENT_VERSION_STALE, NID_FORMAT_INVALID, DOB_INVALID, DOB_IN_FUTURE, UNDER_MIN_AGE, FILES_INCOMPLETE, DOC_TYPE_NOT_REQUIRED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -47767,6 +47878,51 @@
           },
           "422": {
             "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/kyc/under-min-age": {
+      "get": {
+        "tags": [
+          "kyc"
+        ],
+        "summary": "Current NID documents (approved, in review, changes requested) whose holder is under kyc.min_age_years today in Dhaka: user, status, age, decided date. Read-only; every view is audited (no-store)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KycUnderMinAge"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
             "content": {
               "application/problem+json": {
                 "schema": {

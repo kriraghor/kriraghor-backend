@@ -35,7 +35,7 @@ async function submit(who, { number = NID, legalName = 'Nusrat Jahan', salt = ''
     const r = await api().post(`${P}/me/documents/files?slot=${slot}`).set(h.bearer(who)).set('Content-Type', type).send(Buffer.concat([buf, Buffer.from(`${salt}${who.user.id}`)])).expect(201);
     files[slot] = r.body.fileId;
   }
-  const r = await api().post(`${P}/me/documents`).set(h.bearer(who)).send({ docType: 'nid', fields: { number, dob: '1990-05-14', legalName }, files, consent: true }).expect(201);
+  const r = await api().post(`${P}/me/documents`).set(h.bearer(who)).send({ docType: 'nid', fields: { number, dob: '1990-05-14', legalName }, files, consent: h.consent() }).expect(201);
   return r.body;
 }
 const submissionOf = (documentId) => models.Submission.findOne({ where: { kind: 'document', payload: { documentId } } });

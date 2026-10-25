@@ -40,6 +40,14 @@
     {
       "key": "submissionId",
       "value": ""
+    },
+    {
+      "key": "under18Dob",
+      "value": ""
+    },
+    {
+      "key": "consentVersion",
+      "value": "1"
     }
   ],
   "item": [
@@ -252,10 +260,12 @@
                   "let j = null; try { j = pm.response.json(); } catch (e) {}",
                   "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
                   "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'consent.version'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('consentVersion', v); }",
                   "pm.test('status 200', () => {",
                   "  pm.response.to.have.status(200);",
                   "});",
-                  "pm.test(\"phone done, NID missing\", () => { pm.expect(j.badge === 'verification_needed' && j.items[0].status === 'approved' && j.items[1].status === 'missing').to.eql(true); });"
+                  "pm.test(\"phone done, NID missing\", () => { pm.expect(j.badge === 'verification_needed' && j.items[0].status === 'approved' && j.items[1].status === 'missing').to.eql(true); });",
+                  "pm.test(\"consent text and minimum age\", () => { pm.expect(Number.isInteger(j.consent.version) && j.consent.draft === true && j.consent.text.startsWith('I agree that Kriraghor uses these documents') && j.consent.text.includes('90 days') && j.consent.text.includes('aged 18 and over') && j.minAgeYears === 18).to.eql(true); });"
                 ]
               }
             }
@@ -276,6 +286,51 @@
               "path": [
                 "me",
                 "verification"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Member checklist in Bangla",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Bangla consent with Bangla digits\", () => { pm.expect(j.consent.text.includes('৯০ দিন') && j.consent.text.includes('১৮ বছর') && j.consent.version === Number(pm.collectionVariables.get('consentVersion'))).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/verification?locale=bn",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "verification"
+              ],
+              "query": [
+                {
+                  "key": "locale",
+                  "value": "bn"
+                }
               ]
             }
           }
@@ -449,6 +504,175 @@
           }
         },
         {
+          "name": "Submit with the old consent: true (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 CONSENT_REQUIRED', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('CONSENT_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"docType\": \"nid\",\n  \"fields\": {\n    \"legalName\": \"Nusrat Jahan\",\n    \"number\": \"1990 1234 5678 9012 3\",\n    \"dob\": \"1990-05-14\"\n  },\n  \"files\": {\n    \"front\": \"{{frontId}}\",\n    \"back\": \"{{backId}}\",\n    \"selfie\": \"{{selfieId}}\"\n  },\n  \"consent\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/documents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "documents"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Submit with an old consent version (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 CONSENT_VERSION_STALE', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('CONSENT_VERSION_STALE');",
+                  "});",
+                  "pm.test(\"the current version is in the problem\", () => { pm.expect(j.currentVersion === Number(pm.collectionVariables.get('consentVersion'))).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"docType\": \"nid\",\n  \"fields\": {\n    \"legalName\": \"Nusrat Jahan\",\n    \"number\": \"1990 1234 5678 9012 3\",\n    \"dob\": \"1990-05-14\"\n  },\n  \"files\": {\n    \"front\": \"{{frontId}}\",\n    \"back\": \"{{backId}}\",\n    \"selfie\": \"{{selfieId}}\"\n  },\n  \"consent\": {\n    \"accepted\": true,\n    \"version\": 0\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/documents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "documents"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Submit a date of birth one day short of 18 (expect 422)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = new Date(Date.now() + 6 * 3600000);",
+                  "const b = new Date(Date.UTC(d.getUTCFullYear() - 18, d.getUTCMonth(), d.getUTCDate() + 1));",
+                  "pm.collectionVariables.set('under18Dob', b.toISOString().slice(0, 10));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 UNDER_MIN_AGE', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('UNDER_MIN_AGE');",
+                  "});",
+                  "pm.test(\"18 and over\", () => { pm.expect(j.minAge === 18 && j.title === 'NID verification is for people aged 18 and over').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"docType\": \"nid\",\n  \"fields\": {\n    \"legalName\": \"Nusrat Jahan\",\n    \"number\": \"1990 1234 5678 9012 3\",\n    \"dob\": \"{{under18Dob}}\"\n  },\n  \"files\": {\n    \"front\": \"{{frontId}}\",\n    \"back\": \"{{backId}}\",\n    \"selfie\": \"{{selfieId}}\"\n  },\n  \"consent\": {\n    \"accepted\": true,\n    \"version\": {{consentVersion}}\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/documents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "documents"
+              ]
+            }
+          }
+        },
+        {
           "name": "Submit with a wrong NID number (expect 422)",
           "event": [
             {
@@ -481,7 +705,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"docType\": \"nid\",\n  \"fields\": {\n    \"legalName\": \"Nusrat Jahan\",\n    \"number\": \"12345678901\",\n    \"dob\": \"1990-05-14\"\n  },\n  \"files\": {\n    \"front\": \"{{frontId}}\",\n    \"back\": \"{{backId}}\",\n    \"selfie\": \"{{selfieId}}\"\n  },\n  \"consent\": true\n}",
+              "raw": "{\n  \"docType\": \"nid\",\n  \"fields\": {\n    \"legalName\": \"Nusrat Jahan\",\n    \"number\": \"12345678901\",\n    \"dob\": \"1990-05-14\"\n  },\n  \"files\": {\n    \"front\": \"{{frontId}}\",\n    \"back\": \"{{backId}}\",\n    \"selfie\": \"{{selfieId}}\"\n  },\n  \"consent\": {\n    \"accepted\": true,\n    \"version\": {{consentVersion}}\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -534,7 +758,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"docType\": \"nid\",\n  \"fields\": {\n    \"legalName\": \"Nusrat Jahan\",\n    \"number\": \"1990 1234 5678 9012 3\",\n    \"dob\": \"1990-05-14\"\n  },\n  \"files\": {\n    \"front\": \"{{frontId}}\",\n    \"back\": \"{{backId}}\",\n    \"selfie\": \"{{selfieId}}\"\n  },\n  \"consent\": true\n}",
+              "raw": "{\n  \"docType\": \"nid\",\n  \"fields\": {\n    \"legalName\": \"Nusrat Jahan\",\n    \"number\": \"1990 1234 5678 9012 3\",\n    \"dob\": \"1990-05-14\"\n  },\n  \"files\": {\n    \"front\": \"{{frontId}}\",\n    \"back\": \"{{backId}}\",\n    \"selfie\": \"{{selfieId}}\"\n  },\n  \"consent\": {\n    \"accepted\": true,\n    \"version\": {{consentVersion}}\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -659,7 +883,8 @@
                   "pm.test('status 200', () => {",
                   "  pm.response.to.have.status(200);",
                   "});",
-                  "pm.test(\"legal name and DOB, number masked\", () => { pm.expect(j.fields.legalName === 'Nusrat Jahan' && j.fields.dob === '1990-05-14' && j.fields.numberMasked === '•••• 0123' && j.files.length === 3).to.eql(true); });"
+                  "pm.test(\"legal name and DOB, number masked\", () => { pm.expect(j.fields.legalName === 'Nusrat Jahan' && j.fields.dob === '1990-05-14' && j.fields.numberMasked === '•••• 0123' && j.files.length === 3).to.eql(true); });",
+                  "pm.test(\"consent recorded\", () => { pm.expect(j.consent && j.consent.version === Number(pm.collectionVariables.get('consentVersion')) && !Number.isNaN(Date.parse(j.consent.at))).to.eql(true); });"
                 ]
               }
             }
@@ -682,6 +907,46 @@
                 "kyc",
                 "documents",
                 "{{documentId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "NID holders under the minimum age (audited)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"none: the member was born in 1990\", () => { pm.expect(j.minAgeYears === 18 && j.count === 0 && j.items.length === 0 && pm.response.headers.get('Cache-Control') === 'no-store').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/kyc/under-min-age",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "kyc",
+                "under-min-age"
               ]
             }
           }

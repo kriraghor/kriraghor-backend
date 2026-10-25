@@ -93,6 +93,7 @@ const ACTIONS = {
   'document.withdrawn': A('M02', 'info', 'Withdrew an identity document under review', 'যাচাইয়ের পরিচয় ডকুমেন্ট প্রত্যাহার'),
   'document.file_viewed': A('M02', 'notice', 'Viewed the {meta.slot} image of an identity document', 'পরিচয় ডকুমেন্টের {meta.slot} ছবি দেখা'),
   'document.nid_revealed': A('M02', 'critical', 'Viewed a full NID number (ending {meta.last4}): {reason}', 'পুরো NID নম্বর দেখা (শেষ {meta.last4}): {reason}'),
+  'kyc.under_min_age_listed': A('M02', 'notice', 'Listed NID holders under the minimum age ({meta.count} under {meta.minAge})', 'ন্যূনতম বয়সের কম NID ধারীদের তালিকা দেখা ({meta.minAge} বছরের কম {meta.count} জন)'),
   'document.files_purged': A('M02', 'info', 'Deleted {meta.decided} reviewed and {meta.orphans} unused document images (retention)', '{meta.decided}টি যাচাই করা ও {meta.orphans}টি অব্যবহৃত ছবি মুছে ফেলা (সংরক্ষণের মেয়াদ)'),
 
   // ---------------- M05 Moderation ----------------

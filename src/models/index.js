@@ -1013,7 +1013,7 @@ VerificationDocument.init(
   {
     id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
     userId: { type: DataTypes.UUID, allowNull: false },
-    docType: { type: DataTypes.ENUM('nid', 'trade_license', 'deed_or_lease', 'tin', 'bin', 'credential', 'police_clearance'), allowNull: false },
+    docType: { type: DataTypes.ENUM('nid', 'trade_license', 'deed_or_lease', 'tin', 'bin', 'credential', 'police_clearance', 'org_registration'), allowNull: false },
     subjectKey: { type: DataTypes.STRING(64), allowNull: false, defaultValue: '' },
     version: { type: DataTypes.INTEGER, allowNull: false },
     status: { type: DataTypes.ENUM('in_review', 'changes_requested', 'approved', 'rejected', 'superseded', 'withdrawn'), allowNull: false },
@@ -1026,6 +1026,9 @@ VerificationDocument.init(
     decidedAt: DataTypes.DATE(3),
     reasonCode: DataTypes.STRING(40),
     reasonText: DataTypes.STRING(500),
+    // M02-FR-05 (25 Oct 2026): the consent version accepted and when; NULL for documents sent before.
+    consentVersion: DataTypes.INTEGER,
+    consentedAt: DataTypes.DATE(3),
     createdAt: DataTypes.DATE(3),
     updatedAt: DataTypes.DATE(3),
   },

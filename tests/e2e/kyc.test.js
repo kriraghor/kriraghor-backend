@@ -3,7 +3,8 @@
 // M02 KYC lite: the member checklist (FR-18), uploads through the API (FR-03, FR-04 lite), submitting
 // the NID (FR-05 to FR-07, FR-11), the document panel with the audited viewer and reveal (FR-12, FR-13),
 // decisions through the M05 Moderation desk (FR-08, FR-09), the member role and identity fields in M01 (FR-10, M01-FR-14), the
-// withdraw_winnings gate, notifications, retention (FR-17) and no PII in events.
+// withdraw_winnings gate, notifications, retention (FR-17) and no PII in events. Consent and the 18+ rule of
+// 25 Oct 2026 are in kyc-consent.test.js.
 const h = require('../helpers');
 const { closeAllRedis } = require('../../src/common/redis');
 const storage = require('../../src/common/storage');
@@ -43,7 +44,7 @@ async function uploadAll(who, salt = '') {
 }
 
 const submit = async (who, { number = NID, dob = '1990-05-14', legalName = 'Nusrat  Jahan', salt = '' } = {}) =>
-  api().post(`${P}/me/documents`).set(h.bearer(who)).send({ docType: 'nid', fields: { number, dob, legalName }, files: await uploadAll(who, salt), consent: true });
+  api().post(`${P}/me/documents`).set(h.bearer(who)).send({ docType: 'nid', fields: { number, dob, legalName }, files: await uploadAll(who, salt), consent: h.consent() });
 
 let emp = 0;
 async function staffWith(permissions) {
@@ -114,19 +115,22 @@ describe('uploads (FR-03, FR-04 lite)', () => {
 describe('submitting the NID (FR-05 to FR-07, FR-11)', () => {
   it('validates the number, the date of birth and the files', async () => {
     expect((await submit(member, { number: '12345678901' })).body.code).toBe('NID_FORMAT_INVALID');
-    expect((await submit(member, { dob: '2015-01-01' })).body.code).toBe('UNDER_MIN_AGE');
+    const young = await submit(member, { dob: '2015-01-01' });
+    expect(young.body).toMatchObject({ code: 'UNDER_MIN_AGE', minAge: 18, title: 'NID verification is for people aged 18 and over' });
     expect((await submit(member, { dob: '2999-01-01' })).body.code).toBe('DOB_IN_FUTURE');
     const files = await uploadAll(member);
-    const missing = await api().post(`${P}/me/documents`).set(h.bearer(member)).send({ docType: 'nid', fields: { number: NID, dob: '1990-05-14', legalName: 'Nusrat Jahan' }, files: { ...files, selfie: files.front }, consent: true });
+    const missing = await api().post(`${P}/me/documents`).set(h.bearer(member)).send({ docType: 'nid', fields: { number: NID, dob: '1990-05-14', legalName: 'Nusrat Jahan' }, files: { ...files, selfie: files.front }, consent: h.consent() });
     expect(missing.status).toBe(422);
     expect(missing.body.code).toBe('FILES_INCOMPLETE');
     // Someone else's file ids are not yours to submit.
     const other = await h.signupUser({ name: 'Fahim Rahman' });
     const theirs = await uploadAll(other);
-    const stolen = await api().post(`${P}/me/documents`).set(h.bearer(member)).send({ docType: 'nid', fields: { number: NID, dob: '1990-05-14', legalName: 'Nusrat Jahan' }, files: theirs, consent: true });
+    const stolen = await api().post(`${P}/me/documents`).set(h.bearer(member)).send({ docType: 'nid', fields: { number: NID, dob: '1990-05-14', legalName: 'Nusrat Jahan' }, files: theirs, consent: h.consent() });
     expect(stolen.body.code).toBe('FILES_INCOMPLETE');
     const noConsent = await api().post(`${P}/me/documents`).set(h.bearer(member)).send({ docType: 'nid', fields: { number: NID, dob: '1990-05-14', legalName: 'Nusrat Jahan' }, files, consent: false });
-    expect(noConsent.body.code).toBe('VALIDATION_FAILED');
+    // M02-FR-05 (25 Oct 2026): consent is checked by the service with a stable code (kyc-consent.test.js covers the rest).
+    expect(noConsent.status).toBe(422);
+    expect(noConsent.body.code).toBe('CONSENT_REQUIRED');
   });
 
   it('a verified phone comes first', async () => {

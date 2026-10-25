@@ -34,12 +34,45 @@ function ageOn(dob, now) {
   return ty - y - (tm < m || (tm === m && td < d) ? 1 : 0);
 }
 
-/** null when the DOB is acceptable; otherwise why not. */
+/**
+ * null when the DOB is acceptable; otherwise why not. §6.3 age_ok: the holder must be at least
+ * kyc.min_age_years (18 since 25 Oct 2026, product owner) on today's Dhaka calendar day.
+ */
 function dobBlock(dob, now, minAge) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dob) || Number.isNaN(Date.parse(`${dob}T00:00:00Z`))) return 'DOB_INVALID';
   if (dob > dhakaToday(now)) return 'DOB_IN_FUTURE';
   if (ageOn(dob, now) < minAge) return 'UNDER_MIN_AGE';
   return null;
+}
+
+/**
+ * The earliest birth year that can still be under minAge today in Dhaka (one year of slack), used to
+ * prefilter NID documents on fields_public.birthYear before decrypting any date of birth.
+ */
+const underAgeFromYear = (now, minAge) => Number(dhakaToday(now).slice(0, 4)) - minAge - 1;
+
+// ---------------------------------------------------------------- consent (M02-FR-05, 25 Oct 2026)
+
+/**
+ * The consent sent with a document: { accepted: true, version } where version is the current consent
+ * version. Old clients sending `consent: true` get CONSENT_REQUIRED, so nobody submits without ticking
+ * the box that showed the current text. null when the consent is valid.
+ */
+function consentBlock(consent, currentVersion) {
+  if (!consent || typeof consent !== 'object' || consent.accepted !== true) return 'CONSENT_REQUIRED';
+  if (consent.version !== currentVersion) return 'CONSENT_VERSION_STALE';
+  return null;
+}
+
+const BN_DIGITS = '০১২৩৪৫৬৭৮৯';
+const toBnDigits = (s) => String(s).replace(/\d/g, (d) => BN_DIGITS[Number(d)]);
+
+/** Fill {name} placeholders (unknown names stay as they are); Bangla text gets Bangla digits. */
+function fillText(template, vars, { bn = false } = {}) {
+  return template.replace(/\{(\w+)\}/g, (whole, k) => {
+    if (vars[k] === undefined || vars[k] === null) return whole;
+    return bn ? toBnDigits(vars[k]) : String(vars[k]);
+  });
 }
 
 // ---------------------------------------------------------------- files (FR-03, FR-04 lite)
@@ -195,6 +228,10 @@ module.exports = {
   dhakaToday,
   ageOn,
   dobBlock,
+  underAgeFromYear,
+  consentBlock,
+  fillText,
+  toBnDigits,
   sniffMime,
   fileBlock,
   slotsBlock,

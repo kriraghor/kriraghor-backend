@@ -5,8 +5,9 @@
  *   meVerification  /me/verification     the member checklist, badge, unlocks and limits
  *   meDocuments     /me/documents        upload a file (raw body), submit the NID, view my own upload
  *   adminKyc        /admin/kyc           the document panel on the Moderation desk (approve_documents):
- *                                        review fields, audited file viewer, NID reveal. The queue and
- *                                        the decision are M05 (/admin/submissions).
+ *                                        review fields, audited file viewer, NID reveal, and the list of
+ *                                        NID holders now under the minimum age. The queue and the
+ *                                        decision are M05 (/admin/submissions).
  * Files and the NID number are never cached (no-store) and never idempotency-stored.
  */
 const express = require('express');
@@ -47,6 +48,11 @@ meDocumentRequests.get('/', authenticate, async (req, res) => res.json(await req
 const adminKyc = Router();
 adminKyc.use(authenticateAdmin, requireStaff, requireAnyPermission(PERMISSIONS.APPROVE_DOCUMENTS));
 adminKyc.get('/documents/:id', validate(s.idParam, 'params'), async (req, res) => res.json(await kyc.adminGet(req.params.id)));
+// 25 Oct 2026: NID holders now under kyc.min_age_years (read-only, audited, no PII beyond the age).
+adminKyc.get('/under-min-age', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(await kyc.listUnderMinAge(req.user, req));
+});
 adminKyc.get('/documents/:id/files/:fileId', validate(s.fileParams, 'params'), async (req, res) => sendFile(res, await kyc.viewFile(req.user, req.params.id, req.params.fileId, req)));
 adminKyc.post('/documents/:id/reveal-nid', validate(s.idParam, 'params'), validate(s.revealBody), async (req, res) => {
   res.set('Cache-Control', 'no-store');

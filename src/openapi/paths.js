@@ -466,19 +466,21 @@ function register(registry) {
   const binary = (description) => ({ description, content: { 'image/jpeg': { schema: z.string() }, 'image/png': { schema: z.string() }, 'application/pdf': { schema: z.string() } } });
   const KYC_STAFF = { ...ADMIN_AUTH };
 
-  p({ method: 'get', path: '/me/verification', tags: ['kyc'], summary: 'My verification checklist: phone and NID status, badge, unlocks and limits (FR-18)', security: bearer,
+  p({ method: 'get', path: '/me/verification', tags: ['kyc'], summary: 'My verification checklist: phone and NID status, badge, unlocks and limits, the consent text and version to show, and the minimum age (FR-18, FR-05)', security: bearer,
     request: { query: kycS.verificationQuery }, responses: { 200: json(kycS.Verification), ...errors({ ...COMMON_AUTH, ...VALIDATION }) } });
   p({ method: 'post', path: '/me/documents/files', tags: ['kyc'], summary: 'Upload one NID image or PDF (raw body: image/jpeg, image/png or application/pdf; checked by its first bytes)', security: bearer,
     request: { query: kycS.uploadQuery, body: binary('The file itself, up to kyc.max_file_bytes') },
     responses: { 201: json(kycS.Uploaded, 'Created'), ...errors({ ...COMMON_AUTH, 413: ['FILE_TOO_LARGE', 'PAYLOAD_TOO_LARGE'], 415: ['FILE_TYPE_NOT_ALLOWED', 'FILE_TYPE_MISMATCH'], 422: ['VALIDATION_FAILED', 'FILE_EMPTY'], 429: ['UPLOAD_RATE_LIMITED'] }) } });
-  p({ method: 'post', path: '/me/documents', tags: ['kyc'], summary: 'Submit my NID (number, date of birth, legal name, three files) or a business document of a role I applied for (fields from the requirement, one file)', security: bearer,
+  p({ method: 'post', path: '/me/documents', tags: ['kyc'], summary: 'Submit my NID (number, date of birth, legal name, three files) or a business document of a role I applied for (fields from the requirement, one file), with consent { accepted: true, version } to the current text (FR-05)', security: bearer,
     request: body(kycS.submitBody),
-    responses: { 201: json(kycS.Document, 'Created'), ...errors({ ...COMMON_AUTH, 409: ['PHONE_REQUIRED', 'DOC_ALREADY_APPROVED', 'MEMBER_NOT_ACTIVE', 'ROLE_NOT_APPLIED'], 422: ['VALIDATION_FAILED', 'NID_FORMAT_INVALID', 'DOB_INVALID', 'DOB_IN_FUTURE', 'UNDER_MIN_AGE', 'FILES_INCOMPLETE', 'DOC_TYPE_NOT_REQUIRED'] }) } });
+    responses: { 201: json(kycS.Document, 'Created'), ...errors({ ...COMMON_AUTH, 409: ['PHONE_REQUIRED', 'DOC_ALREADY_APPROVED', 'MEMBER_NOT_ACTIVE', 'ROLE_NOT_APPLIED'], 422: ['VALIDATION_FAILED', 'CONSENT_REQUIRED', 'CONSENT_VERSION_STALE', 'NID_FORMAT_INVALID', 'DOB_INVALID', 'DOB_IN_FUTURE', 'UNDER_MIN_AGE', 'FILES_INCOMPLETE', 'DOC_TYPE_NOT_REQUIRED'] }) } });
   p({ method: 'get', path: '/me/documents/{id}/files/{fileId}', tags: ['kyc'], summary: 'View my own upload (no-store)', security: bearer,
     request: kycFileP, responses: { 200: binary('The file'), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], 410: ['FILE_PURGED'], ...VALIDATION }) } });
 
   p({ method: 'get', path: '/admin/kyc/documents/{id}', tags: ['kyc'], summary: 'The document panel on the Moderation desk: legal name, DOB, masked number, checks, files and history', security: adminBearer,
     request: kycDocP, responses: { 200: json(kycS.Review), ...errors({ ...KYC_STAFF, 404: ['NOT_FOUND'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/admin/kyc/under-min-age', tags: ['kyc'], summary: 'Current NID documents (approved, in review, changes requested) whose holder is under kyc.min_age_years today in Dhaka: user, status, age, decided date. Read-only; every view is audited (no-store)', security: adminBearer,
+    responses: { 200: json(kycS.UnderMinAge), ...errors(KYC_STAFF) } });
   p({ method: 'get', path: '/admin/kyc/documents/{id}/files/{fileId}', tags: ['kyc'], summary: 'View one image or PDF (inline, no-store, sandboxed). Every view is audited (FR-12)', security: adminBearer,
     request: kycFileP, responses: { 200: binary('The file'), ...errors({ ...KYC_STAFF, 404: ['NOT_FOUND'], 410: ['FILE_PURGED'], ...VALIDATION }) } });
   p({ method: 'post', path: '/admin/kyc/documents/{id}/reveal-nid', tags: ['kyc'], summary: 'Show the full NID number for 60 seconds, with a reason (critical audit, FR-13)', security: adminBearer,
