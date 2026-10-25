@@ -27,6 +27,8 @@ const schema = z.object({
   // Reference seed at API start and in scripts/release.js: "auto" skips it while the reference data
   // and seed code are unchanged; "always" runs the full seed every time.
   REFERENCE_SEED: z.enum(['auto', 'always']).default('auto'),
+  // ADR-003 amendment (25 Oct 2026): one-process mode for free hosting without a worker service.
+  JOBS_IN_API: bool.default(false),
 
   REDIS_URL: z.string().default('redis://127.0.0.1:6379'),
   REDIS_KEY_PREFIX: z.string().default('kg'),
@@ -147,6 +149,7 @@ module.exports = {
   realtimePort: env.REALTIME_PORT,
   shutdownDrainMs: env.NODE_ENV === 'test' ? 0 : env.SHUTDOWN_DRAIN_MS,
   referenceSeed: env.REFERENCE_SEED,
+  jobsInApi: env.JOBS_IN_API,
   redis: { url: env.REDIS_URL, prefix: env.REDIS_KEY_PREFIX },
   db: {
     url: env.DATABASE_URL,
