@@ -17,7 +17,7 @@ const GROUPS = {
   booking: ['grounds', 'bookings'],
   marketplace: ['market', 'orders'],
   hiring: ['hire'],
-  gym: ['gym'],
+  gym: ['gym', 'gym-manage'],
   esports: ['esports', 'esports-events', 'organisations', 'organiser-saas'],
   tournament: ['teams', 'tournaments', 'scoring'],
 };
@@ -47,6 +47,8 @@ const OWNERS = {
   'orders': ['Cart', 'CartItem', 'Order', 'SubOrder', 'OrderItem'],
   'hire': ['HireProfile', 'RateCard', 'RateCardItem', 'HireRequest', 'HireJob', 'HireMessage', 'HireShortlist', 'AvailabilityBlock'],
   'gym': ['Gym', 'GymHours', 'GymPhoto', 'GymPackage', 'GymPass', 'PassRedemption', 'TrainerPlan', 'TrainerSubscription', 'TrainerSubscriptionPeriod'],
+  // M24 gym management (prompt 1 of 3b: 11 of the 24 tables, §7.2); reads M20 only through gym/index.js.
+  'gym-manage': ['GymManageSettings', 'GymMember', 'GymLinkRequest', 'GymMembership', 'GymFreeze', 'GymDue', 'GymFeePayment', 'GymAttendance', 'GymMemberNote', 'GymImport', 'GymOwnerSubscription'],
   'organisations': ['Organisation', 'OrganisationMember'],
   'organiser-saas': ['OrganiserContract', 'OrganiserInvoice', 'OrganiserInvoiceLine', 'OrganiserPrizeFund', 'OrganisationBranding'],
   'esports-events': ['EsportsEvent', 'EsportsEventStage', 'EsportsEventQualification', 'EsportsEventStream', 'EsportsEventSponsor', 'EsportsEventPoll', 'EsportsEventPollOption', 'EsportsEventPollVote', 'EsportsEventFollow', 'EsportsEventFeedItem', 'EsportsEventAlert'],
