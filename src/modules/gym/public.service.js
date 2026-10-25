@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * M20 public reads on kriraghor.com/gym (no sign-in): live gyms by area and facility, sorted by the
+ * M20 public reads for the gym app on gym.kriraghor.com (no sign-in; M24-FR-103): live gyms by area and facility, sorted by the
  * day pass price, rating or newest; a gym page (photos, address, weekly hours with women-only
  * windows, facilities, packages, open now); the fitness trainers (M11 profiles in role
  * fitness_trainer) with their active monthly plans. Only the public version (live_snapshot) is read.

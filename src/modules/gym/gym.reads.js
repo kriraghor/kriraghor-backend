@@ -6,20 +6,23 @@
  * exportPassKpiFacts). Codes, names and amounts only.
  */
 const { Op } = require('sequelize');
+const config = require('../../config');
 const { Gym, GymPass, PassRedemption, TrainerSubscription, TrainerSubscriptionPeriod } = require('../../models');
 
 const earliest = (rows, key) => rows.reduce((m, r) => (r[key] && (!m || r[key] < m) ? r[key] : m), null);
 
+// M24-FR-103: since 25 Oct 2026 gym owners and members work in the gym app (gym.kriraghor.com), so
+// both to-do links are absolute gym URLs.
 async function pendingActions(principal, role) {
   const items = [];
   if (role === 'gym_owner') {
     const changes = await Gym.findAll({ where: { ownerId: principal.id, [Op.or]: [{ status: 'changes_requested' }, { editStatus: 'changes_requested' }] }, attributes: ['id'] });
-    if (changes.length) items.push({ key: 'gym_changes_requested', count: changes.length, severity: 'normal', dueAt: null, href: '/vendor/gyms' });
+    if (changes.length) items.push({ key: 'gym_changes_requested', count: changes.length, severity: 'normal', dueAt: null, href: `${config.apps.gym}/manage` });
     return items;
   }
   const subs = await TrainerSubscription.findAll({ where: { memberId: principal.id, status: 'active' }, attributes: ['id'] });
   const due = subs.length ? await TrainerSubscriptionPeriod.findAll({ where: { subscriptionId: subs.map((s) => s.id), status: 'pending_payment', seq: { [Op.gt]: 1 } }, attributes: ['payBy'] }) : [];
-  if (due.length) items.push({ key: 'trainer_renewals_due', count: due.length, severity: 'high', dueAt: earliest(due, 'payBy')?.toISOString() ?? null, href: '/me/subscriptions' });
+  if (due.length) items.push({ key: 'trainer_renewals_due', count: due.length, severity: 'high', dueAt: earliest(due, 'payBy')?.toISOString() ?? null, href: `${config.apps.gym}/me/subscriptions` });
   return items;
 }
 

@@ -52,6 +52,9 @@ const es = () => require('../esports').facts;
 const groundFacts = (id) => require('../grounds').grounds.facts(id);
 // VENDOR_APP_URL already ends in /vendor (values/backend/*.yaml): pass the path inside the vendor area.
 const vendorUrl = (p) => `${config.apps.vendor}${p}`;
+// M24-FR-103: since 25 Oct 2026 gym owners and members use the gym app on gym.kriraghor.com
+// (GYM_APP_URL), so gym and member-side trainer links are absolute gym URLs.
+const gymUrl = (p) => `${config.apps.gym}${p}`;
 // M20: gyms (the owner), passes (the holder), trainer subscriptions (the member and the trainer).
 const gymFacts = (id) => require('../gym').gyms.facts(id);
 // M14 lite and M22: the organisation (its name) and its admins (owner and admins get organiser news).
@@ -331,7 +334,8 @@ const CATALOGUE = [
     channels: ['in_app', 'sms'],
     recipients: (e) => [e.payload.memberId],
     values: async (e, { locale }) => ({ owner: await nameOf(e.payload.ownerId), business: await businessName(e.payload.businessType, e.payload.businessId), kind: businessLabel(e.payload.businessType, locale) }),
-    link: () => vendorUrl('/'),
+    // M24-FR-103: gym staff work in the gym app (gym.kriraghor.com, 25 Oct 2026); venues and shops stay on vendor.
+    link: (e) => (e.payload.businessType === 'gym' ? gymUrl('/manage') : vendorUrl('/')),
   },
   {
     code: 'TEAM_REMOVED',
@@ -1420,6 +1424,8 @@ const CATALOGUE = [
     link: () => vendorUrl(''),
   },
   // ---------------- M20 gym: owners, pass holders, trainers and their members
+  // M24-FR-103 (25 Oct 2026): owner and member links point at the gym app (gym.kriraghor.com); the
+  // trainer's own links (/pro/subscriptions, /me/payouts) stay on kriraghor.com with Hire.
   {
     code: 'GYM_LIVE',
     events: ['gym.published'],
@@ -1427,7 +1433,7 @@ const CATALOGUE = [
     channels: ['in_app', 'sms'],
     recipients: (e) => [e.payload.ownerId],
     values: async (e) => ({ name: (await gymFacts(e.payload.gymId)).name }),
-    link: (e) => `/vendor/gyms/${e.payload.gymId}`,
+    link: (e) => gymUrl(`/manage/${e.payload.gymId}/edit`),
   },
   {
     code: 'GYM_CHANGES_REQUESTED',
@@ -1436,7 +1442,7 @@ const CATALOGUE = [
     channels: ['in_app', 'sms'],
     recipients: (e) => [e.payload.ownerId],
     values: async (e, { locale }) => ({ name: (await gymFacts(e.payload.gymId)).name, reason: groundReason(e.payload.reasonCode, locale) }),
-    link: (e) => `/vendor/gyms/${e.payload.gymId}`,
+    link: (e) => gymUrl(`/manage/${e.payload.gymId}/edit`),
   },
   {
     code: 'GYM_REJECTED',
@@ -1445,7 +1451,7 @@ const CATALOGUE = [
     channels: ['in_app', 'sms'],
     recipients: (e) => [e.payload.ownerId],
     values: async (e, { locale }) => ({ name: (await gymFacts(e.payload.gymId)).name, reason: groundReason(e.payload.reasonCode, locale) }),
-    link: (e) => `/vendor/gyms/${e.payload.gymId}`,
+    link: (e) => gymUrl(`/manage/${e.payload.gymId}/edit`),
   },
   {
     code: 'GYM_PASS_READY',
@@ -1458,7 +1464,7 @@ const CATALOGUE = [
       const f = await passFacts(e.payload.passId);
       return { code: e.payload.code, gym: f?.gym ?? '', from: e.payload.validFrom, price: e.payload.price };
     },
-    link: (e) => `/me/passes/${e.payload.code}`,
+    link: (e) => gymUrl(`/me/passes/${e.payload.code}`),
   },
   {
     code: 'GYM_PASS_CANCELLED',
@@ -1467,7 +1473,7 @@ const CATALOGUE = [
     channels: ['in_app'],
     recipients: (e) => [e.payload.holderId],
     values: (e) => ({ code: e.payload.code, refund: e.payload.refund }),
-    link: () => '/me/passes',
+    link: () => gymUrl('/me/passes'),
   },
   {
     code: 'TRAINER_SUB_STARTED',
@@ -1476,7 +1482,7 @@ const CATALOGUE = [
     channels: ['in_app'],
     recipients: (e) => [e.payload.memberId],
     values: (e) => ({ code: e.payload.code, from: e.payload.periodStart, to: e.payload.periodEnd }),
-    link: () => '/me/subscriptions',
+    link: () => gymUrl('/me/subscriptions'),
   },
   {
     code: 'TRAINER_NEW_SUBSCRIBER',
@@ -1494,7 +1500,7 @@ const CATALOGUE = [
     channels: ['in_app', 'sms'],
     recipients: (e) => [e.payload.memberId],
     values: (e) => ({ code: e.payload.code, price: e.payload.price, payBy: e.payload.payBy }),
-    link: () => '/me/subscriptions',
+    link: () => gymUrl('/me/subscriptions'),
   },
   {
     code: 'TRAINER_SUB_LAPSED',
@@ -1503,7 +1509,8 @@ const CATALOGUE = [
     channels: ['in_app'],
     recipients: (e) => [e.payload.memberId, e.payload.trainerId],
     values: (e) => ({ code: e.payload.code }),
-    link: () => '/me/subscriptions',
+    // Per recipient: the trainer manages subscribers on their kriraghor.com desk, the member in the gym app.
+    link: (e, { userId } = {}) => (userId && userId === e.payload.trainerId ? webUrl('/pro/subscriptions') : gymUrl('/me/subscriptions')),
   },
   {
     code: 'TRAINER_SUB_CANCELLED',
@@ -1840,4 +1847,4 @@ const CATALOGUE = [
 
 const byCode = new Map(CATALOGUE.map((c) => [c.code, c]));
 
-module.exports = { CATALOGUE, byCode, roleLabel };
+module.exports = { CATALOGUE, byCode, roleLabel, gymUrl };

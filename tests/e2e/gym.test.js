@@ -12,6 +12,7 @@ const g = require('../fixtures/gym');
 const ledger = require('../../src/modules/payments/ledger.service');
 const gymJobs = require('../../src/modules/gym/gym.jobs');
 const rules = require('../../src/modules/gym/gym.rules');
+const config = require('../../src/config');
 
 const { api, P, models } = h;
 
@@ -79,11 +80,21 @@ describe('M20 gym', () => {
     expect(page.photos).toHaveLength(3);
     expect((await api().get(`${P}/gym/gyms?sort=price`).expect(200)).body.items.map((x) => x.slug)).toEqual([ready.slug]);
     expect(await models.Notification.count({ where: { userId: owner.user.id, code: 'GYM_LIVE' } })).toBe(1);
+    // M24-FR-103: the owner's links open the gym app (gym.kriraghor.com).
+    expect((await models.Notification.findOne({ where: { userId: owner.user.id, code: 'GYM_LIVE' } })).link).toBe(`${config.apps.gym}/manage/${ready.id}/edit`);
 
     // An edit of a live gym waits for review; the public keeps the live copy.
     await api().patch(`${P}/me/gyms/${ready.id}`).set(h.bearer(owner)).send({ name: 'Pulse Fitness Dhanmondi' }).expect(200);
     expect((await api().get(`${P}/gym/gyms/${ready.slug}`).expect(200)).body.name).toBe('Pulse Fitness');
     expect((await api().get(`${P}/me/gyms/${ready.id}`).set(h.bearer(owner)).expect(200)).body).toMatchObject({ status: 'live', editStatus: 'draft' });
+
+    // Changes requested on the edit: the notification and the owner's to-do link to the gym app (M24-FR-103).
+    await api().post(`${P}/me/gyms/${ready.id}/submit`).set(h.bearer(owner)).expect(200);
+    await h.drainEvents();
+    await f.review(reviewer, 'gym', ready.id, 'request_changes', { reasonCode: 'photos_unclear' });
+    expect((await models.Notification.findOne({ where: { userId: owner.user.id, code: 'GYM_CHANGES_REQUESTED' } })).link).toBe(`${config.apps.gym}/manage/${ready.id}/edit`);
+    const todo = (await api().get(`${P}/me/dashboard/actions?role=gym_owner`).set(h.bearer(owner)).expect(200)).body.items;
+    expect(todo).toEqual([expect.objectContaining({ key: 'gym_changes_requested', count: 1, href: `${config.apps.gym}/manage` })]);
   });
 
   it('a day pass: paid, shown as a QR, admitted once by token; the owner gets ৳380 (FR-03 to FR-05)', async () => {
@@ -101,6 +112,8 @@ describe('M20 gym', () => {
     expect(pass.token).toMatch(/^v1\./);
     expect(pass.backupCode).toMatch(/^[0-9A-HJKMNP-TV-Z]{6}$/);
     expect(await models.Notification.count({ where: { userId: member.user.id, code: 'GYM_PASS_READY' } })).toBe(1);
+    // M24-FR-103: the pass opens in the gym app.
+    expect((await models.Notification.findOne({ where: { userId: member.user.id, code: 'GYM_PASS_READY' } })).link).toBe(`${config.apps.gym}/me/passes/${pass.code}`);
 
     const other = await g.gymOwner(docsReviewer, 'Lift Lab');
     const otherGym = await g.liveGym(other, reviewer, { name: 'Lift Lab Uttara', area: 'uttara' });
@@ -197,6 +210,9 @@ describe('M20 gym', () => {
     expect((await gymJobs.tick(new Date())).renewalsDue).toBe(1);
     await h.drainEvents();
     expect(await models.Notification.count({ where: { userId: member.user.id, code: 'TRAINER_SUB_RENEWAL_DUE' } })).toBe(1);
+    expect((await models.Notification.findOne({ where: { userId: member.user.id, code: 'TRAINER_SUB_RENEWAL_DUE' } })).link).toBe(`${config.apps.gym}/me/subscriptions`);
+    // The member's to-do opens the gym app too (M24-FR-103).
+    expect((await api().get(`${P}/me/dashboard/actions`).set(h.bearer(member)).expect(200)).body.items).toEqual(expect.arrayContaining([expect.objectContaining({ key: 'trainer_renewals_due', href: `${config.apps.gym}/me/subscriptions` })]));
     await g.shiftSubscription(s.id, -2); // two days after the end: in grace
     let view = (await api().get(`${P}/me/subscriptions/${s.id}`).set(h.bearer(member)).expect(200)).body;
     expect(view).toMatchObject({ phase: 'grace', next: { seq: 2, status: 'pending_payment' } });
@@ -216,6 +232,11 @@ describe('M20 gym', () => {
     await g.shiftSubscription(s.id, -4);
     expect((await gymJobs.tick(new Date())).lapsed).toBe(1);
     expect((await models.TrainerSubscription.findByPk(s.id)).status).toBe('lapsed');
+    // TRAINER_SUB_LAPSED links per recipient: the member to the gym app, the trainer to their kriraghor.com desk.
+    await h.drainEvents();
+    const lapsedLink = async (who) => (await models.Notification.findOne({ where: { userId: who.user.id, code: 'TRAINER_SUB_LAPSED' } })).link;
+    expect(await lapsedLink(member)).toBe(`${config.apps.gym}/me/subscriptions`);
+    expect(await lapsedLink(sabbir)).toBe(`${config.apps.web}/pro/subscriptions`);
   });
 
   it('a problem with a trainer month is an M17 case: the money waits, staff decide (v3)', async () => {

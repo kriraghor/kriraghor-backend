@@ -69,3 +69,50 @@ describe('catalogue ↔ templates', () => {
     expect(new Set(CATALOGUE.map((c) => c.code)).size).toBe(CATALOGUE.length);
   });
 });
+
+// M24-FR-103 (25 Oct 2026): gym owners and members use the gym app on gym.kriraghor.com, so their
+// notification links are absolute gym URLs; the trainer's own links stay on kriraghor.com (Hire).
+describe('gym notification links (M24-FR-103)', () => {
+  const config = require('../../src/config');
+  const { byCode, gymUrl } = require('../../src/modules/notifications/notify.catalogue');
+  const gym = config.apps.gym;
+  const link = (code, payload, ctx) => byCode.get(code).link({ payload }, ctx);
+
+  it('gymUrl prefixes GYM_APP_URL (no trailing slash)', () => {
+    expect(gym).not.toMatch(/\/$/);
+    expect(gymUrl('/me/passes')).toBe(`${gym}/me/passes`);
+  });
+
+  it('owner listing news opens the gym editor in the gym app', () => {
+    for (const code of ['GYM_LIVE', 'GYM_CHANGES_REQUESTED', 'GYM_REJECTED']) {
+      expect([code, link(code, { gymId: 'g-1', ownerId: 'o-1' })]).toEqual([code, `${gym}/manage/g-1/edit`]);
+    }
+  });
+
+  it('passes and the member side of trainer subscriptions open the gym app', () => {
+    expect(link('GYM_PASS_READY', { code: 'GP-7K2M9Q' })).toBe(`${gym}/me/passes/GP-7K2M9Q`);
+    expect(link('GYM_PASS_CANCELLED', { code: 'GP-7K2M9Q' })).toBe(`${gym}/me/passes`);
+    expect(link('TRAINER_SUB_STARTED', { memberId: 'm-1' })).toBe(`${gym}/me/subscriptions`);
+    expect(link('TRAINER_SUB_RENEWAL_DUE', { memberId: 'm-1' })).toBe(`${gym}/me/subscriptions`);
+  });
+
+  it('TRAINER_SUB_LAPSED links per recipient: the member to the gym app, the trainer to kriraghor.com', () => {
+    const payload = { memberId: 'm-1', trainerId: 't-1', code: 'TS-1' };
+    expect(link('TRAINER_SUB_LAPSED', payload, { userId: 'm-1' })).toBe(`${gym}/me/subscriptions`);
+    expect(link('TRAINER_SUB_LAPSED', payload, { userId: 't-1' })).toBe(`${config.apps.web}/pro/subscriptions`);
+    expect(link('TRAINER_SUB_LAPSED', payload)).toBe(`${gym}/me/subscriptions`);
+  });
+
+  it('TEAM_ADDED sends gym staff to the gym app and venue or shop staff to vendor', () => {
+    expect(link('TEAM_ADDED', { businessType: 'gym', businessId: 'g-1' })).toBe(`${gym}/manage`);
+    expect(link('TEAM_ADDED', { businessType: 'venue', businessId: 'v-1' })).toBe(`${config.apps.vendor}/`);
+    expect(link('TEAM_ADDED', { businessType: 'shop', businessId: 's-1' })).toBe(`${config.apps.vendor}/`);
+  });
+
+  it('trainer-side links and gym reviews are unchanged', () => {
+    expect(link('TRAINER_NEW_SUBSCRIBER', { trainerId: 't-1' })).toBe('/pro/subscriptions');
+    expect(link('TRAINER_SUB_CANCELLED', { trainerId: 't-1' })).toBe('/pro/subscriptions');
+    expect(link('TRAINER_SUB_PAID', { trainerId: 't-1' })).toBe('/me/payouts');
+    expect(link('REVIEW_NEW', { subjectType: 'gym', ownerId: 'o-1' })).toBe(`${config.apps.vendor}/reviews`);
+  });
+});

@@ -1,7 +1,8 @@
 'use strict';
 
 /**
- * M20 gym listings (FR-01, FR-02), owner side on vendor.kriraghor.com (/me/gyms; gate list_gym).
+ * M20 gym listings (FR-01, FR-02), owner side (/me/gyms; gate list_gym), used from the gym app on
+ * gym.kriraghor.com (/manage, M24-FR-103, 25 Oct 2026).
  *  - The owner edits a working copy: basics, facilities, weekly windows (some women-only), photos and
  *    one package per kind (day, month, quarter). Submit sends it to the Moderation desk (M05 kind
  *    `gym`) with the automatic checks; approval writes live_snapshot (hours and packages included),
