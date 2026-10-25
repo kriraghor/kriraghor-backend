@@ -12,7 +12,7 @@ const schema = z.object({
   PORT: z.coerce.number().int().positive().default(4000),
   API_PREFIX: z.string().default('/api/v1'),
   // ADR-004: exact origins and anchored wildcard patterns ("http://*.kriraghor.localhost"), comma-separated.
-  CORS_ORIGINS: z.string().default('http://localhost:3000,http://localhost:3001,http://localhost:3002'),
+  CORS_ORIGINS: z.string().default('http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3003'),
   ADMIN_ORIGINS: z.string().default('http://localhost:3002'),
   // false, true (one hop) or a hop count behind the ingress.
   TRUST_PROXY: z
@@ -80,6 +80,8 @@ const schema = z.object({
   ESPORTS_APP_URL: z.string().default('http://localhost:3001'),
   VENDOR_APP_URL: z.string().default('http://localhost:3002/vendor'),
   ADMIN_APP_URL: z.string().default('http://localhost:3002'),
+  // M24-FR-103: the gym app (gym.kriraghor.com since 25 Oct 2026) for gym owners and members.
+  GYM_APP_URL: z.string().default('http://localhost:3003'),
   // M06: where a payment started in the mobile app returns (returnTo: 'app'); the app's own URL scheme.
   APP_RETURN_URL: z
     .string()
@@ -217,6 +219,7 @@ module.exports = {
     esports: env.ESPORTS_APP_URL.replace(/\/$/, ''),
     vendor: env.VENDOR_APP_URL.replace(/\/$/, ''),
     admin: env.ADMIN_APP_URL.replace(/\/$/, ''),
+    gym: env.GYM_APP_URL.replace(/\/$/, ''),
     payReturn: env.APP_RETURN_URL.replace(/\/+$/, ''),
   },
   apiPublicUrl: apiPublic,

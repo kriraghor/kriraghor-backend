@@ -111,6 +111,8 @@ describe('Round B3 membership lifecycle (Q169, Q170)', () => {
     const note = await models.Notification.findOne({ where: { userId: s.user.id, code: 'TEAM_ADDED' } });
     expect(note.body).toContain('Kamal Hossain');
     expect(note.body).toContain('Dhanmondi Arena');
+    // A venue's staff open vendor.kriraghor.com (gym staff open the gym app, M24-FR-103).
+    expect(note.link).toBe(`${require('../../src/config').apps.vendor}/`);
     expect(await models.NotificationDelivery.count({ where: { notificationId: note.id, channel: 'sms' } })).toBe(1);
   });
 

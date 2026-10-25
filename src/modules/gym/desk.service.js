@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * M20 front desk (FR-05) on vendor.kriraghor.com: the gym owner admits a pass by its QR token or its
+ * M20 front desk (FR-05) in the gym app on gym.kriraghor.com (/manage/:id/desk): the gym owner admits a pass by its QR token or its
  * 6-character backup code. Every check runs on the server (no offline admission): the pass is this
  * gym's, active, valid today (Dhaka), not yet used today, and the gym is open now (its live hours).
  * The admission row (UNIQUE pass and day) and the pass row lock settle two scans at once: one admits,
