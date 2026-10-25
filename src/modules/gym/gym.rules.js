@@ -21,7 +21,11 @@
  */
 const DHAKA_MS = 6 * 3600000;
 const DAY_MS = 86400000;
-const KINDS = ['day', 'month', 'quarter'];
+// M24 §7.1 (G2): 6 months, 12 months and custom days (1–366) join day, month and quarter.
+const KINDS = ['day', 'month', 'quarter', 'half_year', 'year', 'custom'];
+const CHANNELS = ['desk', 'online', 'both'];
+/** M24: a package sold online (public page, live_snapshot, passes); `desk` packages are the gym's own books only. */
+const soldOnline = (p) => (p.channel ?? 'both') !== 'desk';
 const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 
 // ---------------------------------------------------------------- dates (Dhaka calendar)
@@ -93,23 +97,27 @@ function closingOn(hours, date) {
 
 // ---------------------------------------------------------------- packages
 
-/** The days a package of a kind covers. */
-const daysOf = (kind, cfg) => ({ day: 1, month: cfg.monthDays, quarter: cfg.quarterDays })[kind];
+/** The days a package of a kind covers (custom: the days the owner chose, M24-FR-24). */
+const daysOf = (kind, cfg, customDays = null) => (kind === 'custom' ? customDays : { day: 1, month: cfg.monthDays, quarter: cfg.quarterDays, half_year: cfg.halfYearDays, year: cfg.yearDays }[kind]);
 
 /**
- * Problems with a gym's active packages ({ kind, price }), or []: a day pass is required and inside
- * the M03 limits; a month pass costs at least a day pass, a quarter at least a month.
+ * Problems with a gym's active packages ({ kind, price }), or []: a day pass inside the M03 limits; a
+ * month pass costs at least a day pass, a quarter at least a month. M24-FR-24: the day pass is required
+ * only to submit the gym for review (`submit`), so a private gym may save only a month package; at most
+ * `maxCustom` custom packages (gym_manage.max_custom_packages) when that limit is given.
  */
-function packageErrors(packages, { dayMin, dayMax }) {
+function packageErrors(packages, { dayMin, dayMax, maxCustom = null }, { submit = true } = {}) {
   const errors = [];
   const price = (k) => packages.find((p) => p.kind === k)?.price ?? null;
   const day = price('day');
   const month = price('month');
   const quarter = price('quarter');
-  if (day === null) errors.push({ field: 'packages', message: 'Add a day pass' });
-  else if (day < dayMin || day > dayMax) errors.push({ field: 'packages.day', message: `A day pass costs between ${dayMin / 100} and ${dayMax / 100} taka` });
+  if (day === null) {
+    if (submit) errors.push({ field: 'packages', message: 'Add a day pass' });
+  } else if (day < dayMin || day > dayMax) errors.push({ field: 'packages.day', message: `A day pass costs between ${dayMin / 100} and ${dayMax / 100} taka` });
   if (month !== null && day !== null && month < day) errors.push({ field: 'packages.month', message: 'A month pass costs at least a day pass' });
   if (quarter !== null && (month ?? day) !== null && quarter < (month ?? day)) errors.push({ field: 'packages.quarter', message: 'A quarter pass costs at least a month pass' });
+  if (maxCustom !== null && packages.filter((p) => p.kind === 'custom').length > maxCustom) errors.push({ field: 'packages', message: `At most ${maxCustom} custom packages` });
   return errors;
 }
 
@@ -237,6 +245,8 @@ function planErrors(plan, { min, max }) {
 
 module.exports = {
   KINDS,
+  CHANNELS,
+  soldOnline,
   CROCKFORD,
   dhakaDate,
   addDays,

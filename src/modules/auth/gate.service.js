@@ -11,6 +11,11 @@ const { ROLES } = require('../../common/enums');
  * escrow, so NID adds friction without protecting anyone. Owners still need NID (list_ground).
  */
 const PHONE_VERIFIED = 'phone_verified';
+/**
+ * M24 §3.4 (G1): running a private gym needs only a verified phone (no NID), but an owner whose
+ * gym_owner role was suspended is refused (ROLE_SUSPENDED), exactly as M01-FR-46 does for listed gyms.
+ */
+const GYM_RUNNER = 'gym_runner';
 const ACTIONS = Object.freeze({
   book_ground: PHONE_VERIFIED,
   // M11 (17 Oct 2026): hiring is prepaid into escrow, so a verified phone is enough, as for booking
@@ -29,6 +34,10 @@ const ACTIONS = Object.freeze({
   // documents). Passes and trainer subscriptions are prepaid into escrow, so a verified phone is
   // enough, as for booking a ground.
   list_gym: ROLES.GYM_OWNER,
+  // M24-FR-01 (G1): a private gym (management only) needs a verified phone and a gym_owner role that is
+  // not suspended; members accept gym invites and join gyms with a verified phone (never NID, D6).
+  run_gym: GYM_RUNNER,
+  join_gym: PHONE_VERIFIED,
   buy_gym_pass: PHONE_VERIFIED,
   subscribe_trainer: PHONE_VERIFIED,
   publish_tournament: ROLES.ORGANISER,
@@ -73,6 +82,10 @@ function evaluate(principal, need) {
   if (user.status === 'suspended') return deny('ACCOUNT_SUSPENDED');
   if (user.status !== 'active') return deny('ACCOUNT_BANNED');
   if (need === PHONE_VERIFIED) return user.phone && user.phoneVerifiedAt ? { allowed: true } : deny('PHONE_REQUIRED');
+  if (need === GYM_RUNNER) {
+    if (!(user.phone && user.phoneVerifiedAt)) return deny('PHONE_REQUIRED');
+    return roles?.[ROLES.GYM_OWNER] === 'suspended' ? deny('ROLE_SUSPENDED', { role: ROLES.GYM_OWNER }) : { allowed: true };
+  }
 
   const member = roles[ROLES.MEMBER];
   if (member !== 'active') {
@@ -96,7 +109,8 @@ function evaluate(principal, need) {
  */
 const WORK = Object.freeze({
   work_ground: { owner: 'list_ground', type: 'venue' },
-  work_gym: { owner: 'list_gym', type: 'gym' },
+  // M24 §3.4: a gym owner passes with run_gym (a private gym needs no documents); staff as in Round B3.
+  work_gym: { owner: 'run_gym', type: 'gym' },
   work_shop: { owner: 'list_product', type: 'shop' },
 });
 
@@ -114,4 +128,4 @@ function evaluateAction(principal, action) {
   return evaluate(principal, need);
 }
 
-module.exports = { ACTIONS, WORK, PHONE_VERIFIED, evaluate, evaluateAction };
+module.exports = { ACTIONS, WORK, PHONE_VERIFIED, GYM_RUNNER, evaluate, evaluateAction };

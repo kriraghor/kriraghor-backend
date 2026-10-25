@@ -57,6 +57,10 @@ const config = () => ({
   advanceDays: settings.get('gym.pass_advance_days'),
   monthDays: settings.get('gym.month_days'),
   quarterDays: settings.get('gym.quarter_days'),
+  halfYearDays: settings.get('gym.half_year_days'),
+  yearDays: settings.get('gym.year_days'),
+  // M24-FR-24: custom packages per gym (an M24 setting M20 enforces when the owner saves packages).
+  maxCustom: settings.get('gym_manage.max_custom_packages'),
   minPhotos: settings.get('gym.min_photos'),
   maxPhotos: settings.get('gym.max_photos'),
   photoMaxBytes: settings.get('ground.photo_max_bytes'),

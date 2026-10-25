@@ -5,6 +5,9 @@
  * else in gym is internal (tests/unit/boundaries.test.js). Each facade lists exactly what other
  * modules call. Functions delegate lazily, so requiring the index never changes load order and cannot
  * create a require cycle at load time.
+ *
+ * M24 (§7.4): gym-manage reads gyms and packages through `gyms` and `packages` and never writes M20
+ * tables; `desk.lookup` finds a pass from the desk search box (M24 §4.1).
  */
 const lazy = (file, names, values = []) => {
   const out = Object.fromEntries(names.map((n) => [n, (...args) => require(file)[n](...args)]));
@@ -18,5 +21,10 @@ module.exports = {
   disputes: lazy('./gym.disputes', ['register']),
   reviewSource: lazy('./gym.reviews', ['register']),
   reads: lazy('./gym.reads', ['exportPassKpiFacts', 'passFacts', 'passKpiFact', 'pendingActions']),
-  gyms: lazy('./gyms.service', ['facts']),
+  gyms: lazy('./gyms.service', ['facts', 'get', 'ofOwner']),
+  packages: Object.freeze({
+    get: (...args) => require('./gyms.service').packageGet(...args),
+    forGym: (...args) => require('./gyms.service').packagesForGym(...args),
+  }),
+  desk: lazy('./desk.service', ['lookup']),
 };

@@ -6,7 +6,8 @@
  *                                       (gate buy_gym_pass) and subscribe to a plan (gate subscribe_trainer)
  *   mePasses       /me/passes           my passes, one with its QR token and backup code, cancel
  *   meSubs         /me/subscriptions    my trainer subscriptions: renew, cancel, report a problem (M17)
- *   ownerRouter    /me/gyms             the owner's gyms, hours, packages, photos, review (gate list_gym);
+ *   ownerRouter    /me/gyms             the owner's gyms, hours, packages, photos (gate run_gym, M24), review,
+ *                                       pause and resume (gate list_gym);
  *                                       the front desk (redemptions) and passes sold (gate work_gym, Round B3:
  *                                       the owner or the gym's staff, by permission)
  *   proPlans       /pro/trainer-plans   a fitness trainer's monthly plans
@@ -75,10 +76,13 @@ meSubs.post('/:id/problem', id, requireGate('file_dispute'), validate(s.problemB
 
 // ---------------- gym owner (vendor desk)
 const ownerRouter = Router();
-// Round B3: every desk route passes work_gym (the owner exactly as before, or the gym's staff); the
-// owner-only routes add list_gym, so staff never reach the listing, packages, hours or photos.
+// Round B3: every desk route passes work_gym (the owner, or the gym's staff). M24-FR-01/02 (G1): the
+// owner's own routes need run_gym (a verified phone, gym_owner not suspended: a private gym needs no
+// documents); submitting for review, pausing and resuming keep list_gym (the gym_owner role active).
+// Staff never reach these: they own no gym (NOT_OWNER), and list_gym needs the role.
 ownerRouter.use(authenticate, requireGate('work_gym'));
-const owner = requireGate('list_gym');
+const owner = requireGate('run_gym');
+const listed = requireGate('list_gym');
 ownerRouter.get('/', owner, async (req, res) => res.json(await gyms.listMine(req.user)));
 ownerRouter.post('/', owner, validate(s.createGym), async (req, res) => res.status(201).json(await gyms.create(req.user, req.body, req)));
 ownerRouter.get('/:id', owner, id, async (req, res) => res.json(await gyms.getMine(req.user, req.params.id)));
@@ -90,9 +94,9 @@ ownerRouter.post('/:id/photos', owner, id, limits.groundPhoto, raw, async (req, 
 );
 ownerRouter.put('/:id/photos/order', owner, id, validate(s.photoOrder), async (req, res) => res.json(await gyms.reorderPhotos(req.user, req.params.id, req.body.ids, req)));
 ownerRouter.post('/:id/photos/:photoId/remove', owner, validate(s.photoParams, 'params'), async (req, res) => res.json(await gyms.removePhoto(req.user, req.params.id, req.params.photoId, req)));
-ownerRouter.post('/:id/submit', owner, id, async (req, res) => res.json(await gyms.submit(req.user, req.params.id, req)));
-ownerRouter.post('/:id/pause', owner, id, async (req, res) => res.json(await gyms.setPaused(req.user, req.params.id, true, req)));
-ownerRouter.post('/:id/resume', owner, id, async (req, res) => res.json(await gyms.setPaused(req.user, req.params.id, false, req)));
+ownerRouter.post('/:id/submit', listed, id, async (req, res) => res.json(await gyms.submit(req.user, req.params.id, req)));
+ownerRouter.post('/:id/pause', listed, id, async (req, res) => res.json(await gyms.setPaused(req.user, req.params.id, true, req)));
+ownerRouter.post('/:id/resume', listed, id, async (req, res) => res.json(await gyms.setPaused(req.user, req.params.id, false, req)));
 ownerRouter.post('/:id/redemptions', id, validate(s.redeemBody), async (req, res) => res.status(201).json(await desk.redeem(req.user, req.params.id, req.body, req)));
 ownerRouter.get('/:id/redemptions', id, validate(s.admissionsQuery, 'query'), async (req, res) => res.json(await desk.admissions(req.user, req.params.id, req.validQuery)));
 ownerRouter.get('/:id/passes', id, validate(s.soldQuery, 'query'), async (req, res) => res.json(await desk.sold(req.user, req.params.id, req.validQuery)));

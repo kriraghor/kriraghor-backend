@@ -6,7 +6,7 @@
  * invalid payloads before commit. Payloads carry IDs, codes, amounts, statuses and timestamps only:
  * no phone, NID, DOB, email or names (consumers read details through the producer's service).
  *
- * Built so far: M01, M02, M03, M04, M05, M06, M07, M09, M10, M11, M12, M13, M14 lite, M17, M18, M19, M20, M21, M22, M23. Each later module adds its events here when it is built.
+ * Built so far: M01, M02, M03, M04, M05, M06, M07, M09, M10, M11, M12, M13, M14 lite, M17, M18, M19, M20, M21, M22, M23, M24 (prompt 1). Each later module adds its events here when it is built.
  */
 const { z } = require('zod');
 
@@ -31,7 +31,18 @@ const hireProfileEvent = z.object({ profileId: uuid, userId: uuid, roleId: uuid 
 const hireRequestEvent = z.object({ requestId: uuid, code: z.string().max(20), profileId: uuid, hirerId: uuid, proUserId: uuid, total: poisha });
 const hireJobEvent = z.object({ jobId: uuid, code: z.string().max(24), requestId: uuid, hirerId: uuid, proUserId: uuid, quote: poisha });
 const gymEvent = z.object({ gymId: uuid, ownerId: uuid });
-const gymPassEvent = z.object({ passId: uuid, code: z.string().max(20), gymId: uuid, holderId: uuid, ownerId: uuid, kind: z.enum(['day', 'month', 'quarter']), price: poisha });
+// M24 §7.1: passes of the new package kinds (6 months, 12 months, custom days).
+const gmKind = z.enum(['day', 'month', 'quarter', 'half_year', 'year', 'custom']);
+const gymPassEvent = z.object({ passId: uuid, code: z.string().max(20), gymId: uuid, holderId: uuid, ownerId: uuid, kind: gmKind, price: poisha });
+// M24 gym management (§2.2).
+const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const gmMember = z.object({ memberId: uuid, gymId: uuid, ownerId: uuid, by: uuid.nullable() });
+const gmLink = z.object({ requestId: uuid, gymId: uuid, direction: z.enum(['gym_invite', 'join_request']), memberId: uuid.nullable(), userId: uuid.nullable() });
+const gmMembership = z.object({ membershipId: uuid, memberId: uuid, gymId: uuid });
+const gmDue = z.object({ dueId: uuid, memberId: uuid, gymId: uuid });
+const gmMethod = z.enum(['cash', 'owner_bkash', 'owner_nagad', 'card_counter', 'other', 'online', 'opening']);
+const gmTier = z.enum(['free', 'basic', 'standard', 'pro']);
+const gmImport = z.object({ importId: uuid, gymId: uuid, rowsOk: z.number().int().nonnegative(), rowsFailed: z.number().int().nonnegative(), by: uuid.nullable() });
 const trainerSubEvent = z.object({ subscriptionId: uuid, code: z.string().max(20), memberId: uuid, trainerId: uuid, price: poisha });
 const orgEvent = z.object({ organisationId: uuid, ownerId: uuid });
 const qualEvent = z.object({ qualificationId: uuid, eventId: uuid, finalTournamentId: uuid });
@@ -375,7 +386,8 @@ const EVENTS = {
   'gym.suspended': { module: 'M20', version: 1, schema: gymEvent.extend({ reason: reasonText }) },
   'gym.restored': { module: 'M20', version: 1, schema: gymEvent.extend({ reason: reasonText }) },
   'gym_pass.paid': { module: 'M20', version: 1, schema: gymPassEvent.extend({ validFrom: iso, validTo: iso, paymentId: uuid }) },
-  'gym_pass.redeemed': { module: 'M20', version: 1, schema: gymPassEvent.extend({ method: z.enum(['qr', 'code']), released: poisha, net: poisha }) },
+  // M24-FR-52: the redemption row and its Dhaka day (gym-manage records a linked member's check-in).
+  'gym_pass.redeemed': { module: 'M20', version: 1, schema: gymPassEvent.extend({ method: z.enum(['qr', 'code']), released: poisha, net: poisha, redemptionId: uuid.optional(), redeemedOn: z.string().max(10).optional() }) },
   'gym_pass.expired': { module: 'M20', version: 1, schema: gymPassEvent.extend({ used: z.boolean(), released: poisha, net: poisha }) },
   'gym_pass.cancelled': { module: 'M20', version: 1, schema: gymPassEvent.extend({ refund: poisha, by: z.enum(['holder', 'staff']) }) },
   'trainer_subscription.started': { module: 'M20', version: 1, schema: trainerSubEvent.extend({ seq: z.number().int(), periodStart: iso, periodEnd: iso, paymentId: uuid }) },
@@ -471,9 +483,45 @@ const EVENTS = {
 
   // ---------------- M19 Dashboards and Analytics
   'analytics.drift_detected': { module: 'M19', version: 1, schema: z.object({ vertical: z.string().max(20), records: z.number().int(), amount: poisha, runAt: iso }) },
+
+  // ---------------- M24 Gym management, prompt 1 (§2.2): ids, codes, poisha, Dhaka dates; never a name, phone, email or health note
+  'gym_member.added': { module: 'M24', version: 1, schema: gmMember.extend({ source: z.enum(['desk', 'platform', 'import', 'pass']), linked: z.boolean() }) },
+  'gym_member.left': { module: 'M24', version: 1, schema: gmMember.extend({ reason: z.string().max(12) }) },
+  'gym_member.rejoined': { module: 'M24', version: 1, schema: gmMember },
+  'gym_member.removed': { module: 'M24', version: 1, schema: gmMember },
+  'gym_member.linked': { module: 'M24', version: 1, schema: gmMember.extend({ userId: uuid }) },
+  'gym_member.unlinked': { module: 'M24', version: 1, schema: gmMember.extend({ userId: uuid }) },
+  'gym_link.requested': { module: 'M24', version: 1, schema: gmLink.extend({ ownerId: uuid, expiresAt: iso, attached: z.boolean().optional() }) },
+  'gym_link.accepted': { module: 'M24', version: 1, schema: gmLink },
+  'gym_link.declined': { module: 'M24', version: 1, schema: gmLink },
+  'gym_link.expired': { module: 'M24', version: 1, schema: gmLink },
+  'gym_link.cancelled': { module: 'M24', version: 1, schema: gmLink },
+  'gym_membership.started': { module: 'M24', version: 1, schema: gmMembership.extend({ packageKind: gmKind, startsOn: day, endsOn: day, userId: uuid.nullable() }) },
+  'gym_membership.renewed': { module: 'M24', version: 1, schema: gmMembership.extend({ packageKind: gmKind, startsOn: day, endsOn: day, userId: uuid.nullable() }) },
+  'gym_membership.changed': { module: 'M24', version: 1, schema: gmMembership.extend({ packageKind: gmKind, startsOn: day, endsOn: day, userId: uuid.nullable(), previousId: uuid }) },
+  'gym_membership.frozen': { module: 'M24', version: 1, schema: gmMembership.extend({ fromOn: day, toOn: day, endsOn: day }) },
+  'gym_membership.unfrozen': { module: 'M24', version: 1, schema: gmMembership.extend({ fromOn: day, toOn: day, endsOn: day }) },
+  'gym_membership.expired': { module: 'M24', version: 1, schema: gmMembership.extend({ endsOn: day }) },
+  'gym_membership.cancelled': { module: 'M24', version: 1, schema: gmMembership.extend({ endsOn: day, reason: z.string().max(40).nullable() }) },
+  'gym_due.created': { module: 'M24', version: 1, schema: gmDue.extend({ membershipId: uuid, amount: poisha, dueOn: day }) },
+  // §2.2 calls it gym_due.overdue; FR-19 needs a past-tense verb (as document_request.overdue_marked).
+  'gym_due.overdue_marked': { module: 'M24', version: 1, schema: gmDue.extend({ outstanding: poisha, dueOn: day }) },
+  'gym_due.paid': { module: 'M24', version: 1, schema: gmDue.extend({ amount: poisha }) },
+  'gym_due.waived': { module: 'M24', version: 1, schema: gmDue.extend({ amount: poisha }) },
+  'gym_fee.recorded': {
+    module: 'M24',
+    version: 1,
+    schema: gmDue.extend({ feePaymentId: uuid, ownerId: uuid, amount: poisha, method: gmMethod, receiptNo: z.string().max(24), paidOn: day, outstandingAfter: poisha, by: uuid.nullable(), sms: z.object({ billingRef: uuid }).nullable() }),
+  },
+  'gym_fee.reversed': { module: 'M24', version: 1, schema: z.object({ feePaymentId: uuid, reversesId: uuid, dueId: uuid, memberId: uuid, gymId: uuid, amount: poisha, reason: z.string().max(300) }) },
+  'gym_attendance.recorded': { module: 'M24', version: 1, schema: z.object({ attendanceId: uuid, gymId: uuid, memberId: uuid, method: z.enum(['desk', 'member_qr', 'entrance_qr', 'pass']), localDate: day }) },
+  'gym_subscription.tier_changed': { module: 'M24', version: 1, schema: z.object({ subscriptionId: uuid, ownerId: uuid, from: gmTier, to: gmTier }) },
+  'gym_import.previewed': { module: 'M24', version: 1, schema: gmImport },
+  'gym_import.applied': { module: 'M24', version: 1, schema: gmImport },
+  'gym_import.undone': { module: 'M24', version: 1, schema: gmImport },
 };
 /** FR-19: `<aggregate>.<past_tense_verb>`, snake_case. Irregular past tenses are listed. */
-const IRREGULAR = new Set(['sent', 'paid', 'held', 'won', 'lost', 'made', 'begun', 'done', 'drawn', 'shown', 'thrown', 'given', 'taken', 'built', 'set', 'put', 'cut', 'withdrawn', 'chosen', 'written', 'frozen', 'unfrozen', 'seen', 'broken', 'sold', 'told', 'found', 'left', 'met', 'read', 'run', 'spent', 'struck', 'hidden', 'unhidden']);
+const IRREGULAR = new Set(['sent', 'paid', 'held', 'won', 'lost', 'made', 'begun', 'done', 'drawn', 'shown', 'thrown', 'given', 'taken', 'built', 'set', 'put', 'cut', 'withdrawn', 'chosen', 'written', 'frozen', 'unfrozen', 'undone', 'seen', 'broken', 'sold', 'told', 'found', 'left', 'met', 'read', 'run', 'spent', 'struck', 'hidden', 'unhidden']);
 function nameError(name) {
   const m = /^([a-z][a-z0-9_]*)\.([a-z][a-z0-9_]*)$/.exec(name);
   if (!m) return 'Use <aggregate>.<verb> in snake_case';

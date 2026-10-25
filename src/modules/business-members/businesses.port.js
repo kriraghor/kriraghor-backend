@@ -35,12 +35,14 @@ const registered = () => [...adapters.keys()];
 async function describe(type, id, { transaction } = {}) {
   const b = await get(type).business(id, { transaction });
   if (!b || b.status === 'removed') return null;
-  const [roleStatus, member, accounts] = await Promise.all([
-    directory.roleStatus(b.ownerId, rules.OWNER_ROLE[type], { transaction }),
-    directory.roleStatus(b.ownerId, 'member', { transaction }),
-    directory.accounts([b.ownerId]),
-  ]);
-  const ownerLive = roleStatus === 'active' && member === 'active' && accounts.get(b.ownerId)?.status === 'active';
+  // One after another: inside a transaction the queries share one connection.
+  const roleStatus = await directory.roleStatus(b.ownerId, rules.OWNER_ROLE[type], { transaction });
+  const member = await directory.roleStatus(b.ownerId, 'member', { transaction });
+  const accounts = await directory.accounts([b.ownerId]);
+  const phone = type === 'gym' ? await directory.verifiedPhoneOf(b.ownerId, { transaction }) : null;
+  const active = accounts.get(b.ownerId)?.status === 'active';
+  // M24-FR-03: a gym owner is live with an active account, a verified phone and gym_owner not suspended.
+  const ownerLive = type === 'gym' ? active && Boolean(phone) && roleStatus !== 'suspended' : roleStatus === 'active' && member === 'active' && active;
   return { ...b, businessType: type, ownerRoleStatus: roleStatus, ownerLive };
 }
 
