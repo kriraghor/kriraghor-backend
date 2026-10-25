@@ -214,7 +214,8 @@ async function verification(principal, locale = 'en', role = 'member') {
     badge: rules.badge(items),
     progress: { approved: items.filter((i) => i.status === 'approved').length, total: items.length },
     items,
-    unlocks: bn ? ['ভেন্যু বুকিং ও অগ্রিম', 'খেলোয়াড় ও স্টাফ হায়ার', 'পুরনো পণ্য বিক্রি', 'এস্পোর্টস পুরস্কার তোলা'] : ['Book venues and pay advances', 'Hire players and staff', 'Sell used gear', 'Withdraw esports winnings'],
+    // NID only where the product owner requires it (25 Oct 2026): booking, buying and hiring someone are phone-only.
+    unlocks: bn ? ['পুরনো পণ্য বিক্রি ও অফার', 'খেলোয়াড় বা প্রো হিসেবে হায়ার হওয়া', 'ভেন্যু, দোকান, জিম বা স্পোর্টস ইভেন্ট চালানো', 'স্পোর্টস ইভেন্টে দল নিবন্ধন ও ওপেন গেম', 'এস্পোর্টস পুরস্কার তোলা'] : ['Sell used gear and make offers', 'Get hired as a player or pro', 'Run a venue, shop, gym or sports events', 'Register teams in sports events and join open games', 'Withdraw esports winnings'],
     limits: bn ? ['একসাথে সর্বোচ্চ ৫টি পুরনো পণ্যের বিজ্ঞাপন'] : ['Up to 5 active used-gear listings'],
     ...consentFor('nid', locale),
   };
