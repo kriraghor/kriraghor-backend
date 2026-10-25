@@ -2,9 +2,8 @@
 
 const { Worker } = require('bullmq');
 const logger = require('../common/logger');
-const { createRedis } = require('../common/redis');
 const { jobsTotal } = require('../common/metrics');
-const { getQueue, prefix } = require('./queues');
+const { getQueue, prefix, bullConnection } = require('./queues');
 const { JOBS, byName } = require('./definitions');
 const settings = require('../modules/settings/settings.service');
 const { backoffMs } = require('../modules/events/events.backoff');
@@ -40,7 +39,7 @@ function startWorkers({ concurrency = 4 } = {}) {
   const queueNames = [...new Set(JOBS.map((j) => j.queue))];
   return queueNames.map((name) => {
     const worker = new Worker(name, processJob, {
-      connection: createRedis(`worker:${name}`, { bullmq: true }),
+      connection: bullConnection(`worker:${name}`),
       prefix,
       concurrency,
       // Retry delays: M08 deliveries (type 'notify') 30 s, 2 min, 10 min; event deliveries

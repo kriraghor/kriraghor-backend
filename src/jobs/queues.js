@@ -34,11 +34,24 @@ const QUEUES = Object.freeze({
 const prefix = `${config.redis.prefix}:bull`;
 const queues = new Map();
 
+let sharedBull;
+/**
+ * The connection a BullMQ queue or worker uses for its normal commands. Normally one per queue and per
+ * worker. In the one-process mode (JOBS_IN_API, ADR-003 amendment) they all share one, so the API stays
+ * under small hosted Redis connection limits (Render's free Key Value allows 50; 23 queues with their
+ * own connections need about 70). BullMQ still gives each worker its own blocking connection.
+ */
+function bullConnection(name) {
+  if (!config.jobsInApi) return createRedis(name, { bullmq: true });
+  if (!sharedBull || sharedBull.status === 'end') sharedBull = createRedis('bull-shared', { bullmq: true });
+  return sharedBull;
+}
+
 /** Producer-side queue (lazily created, one connection per queue). */
 function getQueue(name) {
   if (!Object.values(QUEUES).includes(name)) throw new Error(`Unknown queue: ${name}`);
   if (!queues.has(name)) {
-    queues.set(name, new Queue(name, { connection: createRedis(`queue:${name}`, { bullmq: true }), prefix }));
+    queues.set(name, new Queue(name, { connection: bullConnection(`queue:${name}`), prefix }));
   }
   return queues.get(name);
 }
@@ -48,4 +61,4 @@ async function closeQueues() {
   queues.clear();
 }
 
-module.exports = { QUEUES, getQueue, closeQueues, prefix };
+module.exports = { QUEUES, getQueue, closeQueues, prefix, bullConnection };

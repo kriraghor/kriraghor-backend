@@ -2,7 +2,9 @@
 
 const http = require('http');
 const { spawn } = require('child_process');
-// API entrypoint (ADR-003 backend-api). Scheduled jobs run in src/worker.js, never here.
+// API entrypoint (ADR-003 backend-api). Scheduled jobs run in src/worker.js, except in the one-process
+// mode for free hosting (JOBS_IN_API=true, ADR-003 amendment of 25 Oct 2026), where this process runs
+// them too.
 const config = require('./config');
 const logger = require('./common/logger');
 const lifecycle = require('./common/lifecycle');
@@ -81,6 +83,8 @@ async function main() {
 
   handler = createApp();
   logger.info(`Kriraghor API listening on :${config.port}${config.apiPrefix}`);
+
+  if (config.jobsInApi) await require('./jobs/in-api').startJobsInApi();
 
   startOpsServer();
   lifecycle.setReady(true);
