@@ -59,7 +59,8 @@ function seeded(teams, { seeding, manualOrder }, seed) {
 }
 
 async function teamNames(ids, transaction) {
-  const rows = await Promise.all([...new Set(ids)].map((id) => teamsSvc.getTeam(id, { transaction })));
+  const rows = [];
+  for (const id of new Set(ids)) rows.push(await teamsSvc.getTeam(id, { transaction }));
   return new Map(rows.filter(Boolean).map((x) => [x.id, { id: x.id, name: x.name, shortCode: x.shortCode }]));
 }
 

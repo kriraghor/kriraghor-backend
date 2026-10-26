@@ -50,7 +50,7 @@ const OWNER = { as: 'owner', staff: false };
  * buyer's contact unless `reveal` (the order page, orders.ship, accepted): that view is audited.
  */
 async function view(s, { transaction, ctx = OWNER, reveal = false, req = null } = {}) {
-  const [items, order] = await Promise.all([c.itemsOf([s.id], { transaction }), Order.findByPk(s.orderId, { transaction })]);
+  const [items, order] = [await c.itemsOf([s.id], { transaction }), await Order.findByPk(s.orderId, { transaction })];
   const a = await Area.findByPk(order.shipAreaId, { transaction });
   const out = c.shopSubView(s, items, order, a ? { id: a.id, nameEn: a.nameEn, nameBn: a.nameBn, isDhakaMetro: a.isDhakaMetro } : null);
   if (!ctx.staff) return out;

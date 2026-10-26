@@ -191,10 +191,10 @@ const photoView = (p) => ({ id: p.id, url: storage.publicUrl(p.storageKey), sort
 async function loadWorking(productId, { transaction } = {}) {
   const product = await Product.findByPk(productId, { transaction });
   if (!product) return null;
-  const [photos, variants] = await Promise.all([
-    ProductPhoto.findAll({ where: { ownerType: 'product', ownerId: productId, status: 'active' }, order: [['sort', 'ASC'], ['createdAt', 'ASC']], transaction }),
-    ProductVariant.findAll({ where: { productId, ...ACTIVE }, order: [['sort', 'ASC'], ['createdAt', 'ASC']], transaction }),
-  ]);
+  const [photos, variants] = [
+    await ProductPhoto.findAll({ where: { ownerType: 'product', ownerId: productId, status: 'active' }, order: [['sort', 'ASC'], ['createdAt', 'ASC']], transaction }),
+    await ProductVariant.findAll({ where: { productId, ...ACTIVE }, order: [['sort', 'ASC'], ['createdAt', 'ASC']], transaction }),
+  ];
   return { product, photos, variants };
 }
 

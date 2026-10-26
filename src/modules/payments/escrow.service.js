@@ -279,7 +279,7 @@ async function settleOrganiserPool({ tournamentId, fundId, prizes, feeBps, organ
   const entry = purposes.get('esports_entry');
   const fund = purposes.get('esports_prize_fund');
   const holdsOf = (purpose, groupRef) => EscrowHold.findAll({ where: { purpose, groupRef }, order: [['id', 'ASC']], transaction, lock: transaction.LOCK.UPDATE });
-  const [entryRows, fundRows] = await Promise.all([holdsOf('esports_entry', tournamentId), holdsOf('esports_prize_fund', fundId)]);
+  const [entryRows, fundRows] = [await holdsOf('esports_entry', tournamentId), await holdsOf('esports_prize_fund', fundId)];
   if ([...entryRows, ...fundRows].some((h) => h.status === 'frozen')) throw blocked('ESCROW_FROZEN');
   const open = (rows) => rows.filter((h) => rules.OPEN.has(h.status)).map((h) => ({ hold: h, id: h.id, available: rules.available(h) }));
   const entryHolds = open(entryRows);

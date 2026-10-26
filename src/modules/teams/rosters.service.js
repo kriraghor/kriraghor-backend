@@ -105,7 +105,7 @@ async function playerIds(registrationId, { transaction } = {}) {
  */
 async function readiness(registrationId, t, { transaction } = {}) {
   const ids = await playerIds(registrationId, { transaction });
-  const [result, names] = await Promise.all([storeChecks(t, ids, transaction), directory.publicNames(ids, { transaction })]);
+  const [result, names] = [await storeChecks(t, ids, transaction), await directory.publicNames(ids, { transaction })];
   const list = ids.map((userId) => {
     const r = result.get(userId);
     return { userId, displayName: names.get(userId)?.displayName ?? '—', nidVerified: r.checks.find((x) => x.key === 'nid_verified').status === 'pass', eligible: r.eligible };
@@ -168,7 +168,7 @@ async function rostersFor(registrationIds, { transaction } = {}) {
   const rosters = await Roster.findAll({ where: { registrationId: { [Op.in]: registrationIds } }, transaction });
   const playersAll = await RosterPlayer.findAll({ where: { rosterId: { [Op.in]: rosters.map((r) => r.id) }, status: 'active' }, transaction });
   const ids = [...new Set(playersAll.map((p) => p.userId))];
-  const [names, identity] = await Promise.all([directory.publicNames(ids, { transaction }), directory.eligibilityIdentity(ids, { transaction })]);
+  const [names, identity] = [await directory.publicNames(ids, { transaction }), await directory.eligibilityIdentity(ids, { transaction })];
   return new Map(
     rosters.map((r) => [
       r.registrationId,

@@ -52,7 +52,7 @@ const jobsOf = (userIds, { from, to }, { transaction } = {}) =>
 
 /** A person's blocked spans (repeats expanded) and booked jobs in a range. */
 async function busyFor(userId, r, { transaction } = {}) {
-  const [blocks, jobs] = await Promise.all([blocksOf([userId], r, { transaction }), jobsOf([userId], r, { transaction })]);
+  const [blocks, jobs] = [await blocksOf([userId], r, { transaction }), await jobsOf([userId], r, { transaction })];
   return { blocks, spans: rules.expandBlocks(blocks, r), jobs };
 }
 

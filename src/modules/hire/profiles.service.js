@@ -331,7 +331,7 @@ async function checksFor(profileId, { transaction }) {
   const p = await HireProfile.findByPk(profileId, { transaction });
   if (!p) return [];
   const ok = (key, pass, severity, detail = null) => ({ key, severity, result: pass ? 'pass' : 'fail', detail: pass ? null : detail });
-  const [owner, role, card] = await Promise.all([authz.loadPrincipal(p.userId), taxonomy.role(p.roleId, { transaction }), currentCard(p.id, { transaction })]);
+  const [owner, role, card] = [await authz.loadPrincipal(p.userId), await taxonomy.role(p.roleId, { transaction }), await currentCard(p.id, { transaction })];
   const credential = role.requiresCredential ? await kyc.credentialFor(p.userId, role.key, { transaction }) : null;
   const police = p.worksWithU16 && role.policeCheckForU16 ? await kyc.policeClearedUntil(p.userId, { transaction }) : null;
   const errors = card ? cardErrors(role, { ...cardView(card), items: cardView(card).items }) : [{ field: 'rateCard' }];

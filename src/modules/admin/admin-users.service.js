@@ -91,11 +91,11 @@ async function correctGender(principal, userId, { gender, reason }, req) {
 }
 
 async function getOneInTx(user, transaction) {
-  const [roles, sanctions, staff] = await Promise.all([
-    UserRole.findAll({ where: { userId: user.id }, transaction }),
-    UserSanction.findAll({ where: { userId: user.id }, order: [['createdAt', 'DESC']], limit: 20, transaction }),
-    StaffMember.findOne({ where: { userId: user.id }, transaction }),
-  ]);
+  const [roles, sanctions, staff] = [
+    await UserRole.findAll({ where: { userId: user.id }, transaction }),
+    await UserSanction.findAll({ where: { userId: user.id }, order: [['createdAt', 'DESC']], limit: 20, transaction }),
+    await StaffMember.findOne({ where: { userId: user.id }, transaction }),
+  ];
   return serializeUserForAdmin(user, { roles, sanctions, staff });
 }
 

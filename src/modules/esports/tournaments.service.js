@@ -95,12 +95,12 @@ function card(t, names, counts) {
 }
 
 async function detailOf(t, { staff = false, transaction } = {}) {
-  const [prizes, stages, matches, streams] = await Promise.all([
-    EsportsPrizePlace.findAll({ where: { tournamentId: t.id }, order: [['place', 'ASC']], transaction }),
-    EsportsStage.findAll({ where: { tournamentId: t.id }, order: [['seq', 'ASC']], transaction }),
-    EsportsMatch.findAll({ where: { tournamentId: t.id }, order: [['seq', 'ASC']], transaction }),
-    EsportsStream.findAll({ where: { tournamentId: t.id, status: 'active' }, order: [['sort', 'ASC']], transaction }),
-  ]);
+  const [prizes, stages, matches, streams] = [
+    await EsportsPrizePlace.findAll({ where: { tournamentId: t.id }, order: [['place', 'ASC']], transaction }),
+    await EsportsStage.findAll({ where: { tournamentId: t.id }, order: [['seq', 'ASC']], transaction }),
+    await EsportsMatch.findAll({ where: { tournamentId: t.id }, order: [['seq', 'ASC']], transaction }),
+    await EsportsStream.findAll({ where: { tournamentId: t.id, status: 'active' }, order: [['sort', 'ASC']], transaction }),
+  ];
   const names = await catalogueNames([t.gameId], [t.modeId], matches.map((m) => m.mapId));
   names.orgs = await organisersOf([t]);
   const counts = await slotCounts([t.id]);

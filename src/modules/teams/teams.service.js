@@ -60,7 +60,7 @@ const activeMembersOf = (teamId, transaction) => TeamMember.findAll({ where: { t
 /** Members as a captain sees them: names, roles, jersey numbers and the NID-verified boolean only. */
 async function memberViews(members, transaction) {
   const ids = members.map((m) => m.userId);
-  const [names, identity] = await Promise.all([directory.publicNames(ids, { transaction }), directory.eligibilityIdentity(ids, { transaction })]);
+  const [names, identity] = [await directory.publicNames(ids, { transaction }), await directory.eligibilityIdentity(ids, { transaction })];
   return members.map((m) => {
     const who = identity.get(m.userId);
     return {

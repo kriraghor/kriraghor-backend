@@ -22,10 +22,10 @@ const DAY = 86400000;
 /** The stats of one profile now. */
 async function statsOf(profileId, { now = new Date(), transaction } = {}) {
   const windowDays = c.config().acceptanceWindowDays;
-  const [jobsDone, rows] = await Promise.all([
-    HireJob.count({ where: { profileId, status: 'released' }, transaction }),
-    HireRequest.findAll({ where: { profileId, createdAt: { [Op.gte]: new Date(now.getTime() - windowDays * DAY) } }, attributes: ['status', 'createdAt', 'decidedAt'], transaction }),
-  ]);
+  const [jobsDone, rows] = [
+    await HireJob.count({ where: { profileId, status: 'released' }, transaction }),
+    await HireRequest.findAll({ where: { profileId, createdAt: { [Op.gte]: new Date(now.getTime() - windowDays * DAY) } }, attributes: ['status', 'createdAt', 'decidedAt'], transaction }),
+  ];
   const s = rules.requestStats(rows, { now, windowDays });
   return { jobsDone, acceptanceRate: s.acceptanceRate, medianReplyMinutes: s.medianReplyMinutes };
 }

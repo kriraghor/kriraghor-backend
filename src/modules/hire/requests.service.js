@@ -36,7 +36,7 @@ const OPEN = ['pending', 'accepted_unpaid'];
 // ---------------------------------------------------------------- views
 
 async function view(r, viewer, { transaction } = {}) {
-  const [jobs, profile] = await Promise.all([HireJob.findAll({ where: { requestId: r.id }, order: [['startAt', 'ASC']], transaction }), HireProfile.findByPk(r.profileId, { transaction })]);
+  const [jobs, profile] = [await HireJob.findAll({ where: { requestId: r.id }, order: [['startAt', 'ASC']], transaction }), await HireProfile.findByPk(r.profileId, { transaction })];
   const role = await taxonomy.role(profile.roleId);
   const otherId = viewer === r.hirerId ? r.proUserId : r.hirerId;
   const contact = (await directory.contactFor([otherId], { transaction })).get(otherId);
@@ -152,7 +152,7 @@ async function checksOf(r, { transaction } = {}) {
   const role = await taxonomy.role(profile.roleId, { transaction });
   const lines = r.quoteSnapshot.lines;
   const days = [...new Set(lines.map((l) => rules.dhakaDay(l.start)))];
-  const [credential, policeUntil] = await Promise.all([kyc.credentialFor(r.proUserId, role.key, { transaction }), kyc.policeClearedUntil(r.proUserId, { transaction })]);
+  const [credential, policeUntil] = [await kyc.credentialFor(r.proUserId, role.key, { transaction }), await kyc.policeClearedUntil(r.proUserId, { transaction })];
   const clashes = [];
   const perDay = {};
   const mine = await HireJob.findAll({ where: { proUserId: r.proUserId, status: rules.ACTIVE_JOB, requestId: { [Op.ne]: r.id } }, attributes: ['code', 'startAt', 'endAt'], transaction });

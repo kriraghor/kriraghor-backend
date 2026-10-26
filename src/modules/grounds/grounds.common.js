@@ -148,10 +148,10 @@ const ACTIVE_COURTS = { status: { [Op.ne]: 'retired' } };
 async function loadWorking(groundId, { transaction } = {}) {
   const ground = await Ground.findByPk(groundId, { transaction });
   if (!ground) return null;
-  const [photos, courts] = await Promise.all([
-    GroundPhoto.findAll({ where: { groundId, status: 'active' }, order: [['sort', 'ASC'], ['createdAt', 'ASC']], transaction }),
-    Court.findAll({ where: { groundId, ...ACTIVE_COURTS }, order: [['sort', 'ASC'], ['createdAt', 'ASC']], transaction }),
-  ]);
+  const [photos, courts] = [
+    await GroundPhoto.findAll({ where: { groundId, status: 'active' }, order: [['sort', 'ASC'], ['createdAt', 'ASC']], transaction }),
+    await Court.findAll({ where: { groundId, ...ACTIVE_COURTS }, order: [['sort', 'ASC'], ['createdAt', 'ASC']], transaction }),
+  ];
   const hours = courts.length ? await CourtHours.findAll({ where: { courtId: courts.map((c) => c.id) }, order: [['dow', 'ASC']], transaction }) : [];
   return { ground, photos, courts, hours };
 }

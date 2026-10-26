@@ -38,11 +38,11 @@ const PHOTO_TYPES = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'we
 async function loadWorking(gymId, { transaction } = {}) {
   const gym = await Gym.findByPk(gymId, { transaction });
   if (!gym) return null;
-  const [photos, hours, packages] = await Promise.all([
-    GymPhoto.findAll({ where: { gymId, status: 'active' }, order: [['sort', 'ASC'], ['createdAt', 'ASC']], transaction }),
-    GymHours.findAll({ where: { gymId, removedAt: null }, transaction }),
-    GymPackage.findAll({ where: { gymId, status: 'active' }, transaction }),
-  ]);
+  const [photos, hours, packages] = [
+    await GymPhoto.findAll({ where: { gymId, status: 'active' }, order: [['sort', 'ASC'], ['createdAt', 'ASC']], transaction }),
+    await GymHours.findAll({ where: { gymId, removedAt: null }, transaction }),
+    await GymPackage.findAll({ where: { gymId, status: 'active' }, transaction }),
+  ];
   return { gym, photos, hours: c.hoursView(hours), packages: packages.sort(byPackageOrder) };
 }
 

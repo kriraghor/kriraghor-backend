@@ -103,12 +103,12 @@ async function counts(tournamentId, transaction) {
 
 /** The console view of a tournament (organisation members). */
 async function consoleView(t, { transaction } = {}) {
-  const [r, venues, n, matches] = await Promise.all([
-    c.rulesOf(t.id, transaction),
-    TournamentVenue.findAll({ where: { tournamentId: t.id, status: 'active' }, order: [['sort', 'ASC']], transaction }),
-    counts(t.id, transaction),
-    Match.count({ where: { tournamentId: t.id, status: { [Op.ne]: 'cancelled' } }, transaction }),
-  ]);
+  const [r, venues, n, matches] = [
+    await c.rulesOf(t.id, transaction),
+    await TournamentVenue.findAll({ where: { tournamentId: t.id, status: 'active' }, order: [['sort', 'ASC']], transaction }),
+    await counts(t.id, transaction),
+    await Match.count({ where: { tournamentId: t.id, status: { [Op.ne]: 'cancelled' } }, transaction }),
+  ];
   const schema = await sportRules.schemaFor(t.sportId, { version: r.schemaVersion, transaction });
   return {
     id: t.id,
