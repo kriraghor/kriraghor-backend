@@ -36,10 +36,20 @@ const PERMISSIONS = Object.freeze({
     'bookings.cancel': false,
     'reviews.reply': false,
   }),
+  // M24-FR-04 (§3.3): the gym's own books. Check-ins and the member list are on by default; editing
+  // members, collecting and adjusting fees, reports, trainers and plans are optional and off.
   gym: Object.freeze({
     'desk.admit': true,
     'desk.admissions': true,
     'passes.view': false,
+    'attendance.mark': true,
+    'members.view': true,
+    'members.edit': false,
+    'fees.collect': false,
+    'fees.adjust': false,
+    'reports.view': false,
+    'members.trainer': false,
+    'plans.manage': false,
   }),
   shop: Object.freeze({
     'orders.view': true,
@@ -55,19 +65,26 @@ const PERMISSIONS = Object.freeze({
 /** Never for staff (plan B3): documented here so tests can assert none of it can be granted. */
 const NEVER = Object.freeze({
   venue: ['pricing', 'listing', 'closures', 'series', 'analytics', 'payouts', 'settlement'],
-  gym: ['listing', 'packages', 'hours', 'analytics', 'payouts', 'settlement'],
+  // M24 §3.3: also billing, staff, imports, exports, gym settings and refunds of online fees.
+  gym: ['listing', 'packages', 'hours', 'analytics', 'payouts', 'settlement', 'billing', 'staff', 'imports', 'exports', 'settings', 'refunds'],
   shop: ['profile', 'products', 'prices', 'settlement', 'analytics', 'payouts'],
 });
 
 /** A permission → the permission it needs alongside it. */
 const REQUIRES = Object.freeze({
   venue: { 'bookings.check_in': 'bookings.view', 'bookings.no_show': 'bookings.view', 'bookings.extend': 'bookings.view', 'bookings.collect_balance': 'bookings.view', 'bookings.walk_in': 'bookings.view', 'bookings.move': 'bookings.view', 'bookings.cancel': 'bookings.view' },
-  gym: {},
+  gym: { 'members.edit': 'members.view', 'fees.collect': 'members.view', 'fees.adjust': 'fees.collect' },
   shop: { 'orders.accept': 'orders.view', 'orders.ship': 'orders.view', 'orders.deliver': 'orders.view', 'orders.reject': 'orders.view', 'stock.adjust': 'stock.view' },
 });
 
 /** Keys staff responses never carry (the owner's view is unchanged). */
-const STAFF_HIDDEN_KEYS = Object.freeze(['fee', 'feeBps', 'feePoisha', 'commission', 'commissionBps', 'commissionPoisha', 'net', 'netPoisha', 'released', 'releasedPoisha', 'retained', 'retainedPoisha', 'stockValuePoisha', 'settlement', 'payout', 'payouts', 'payoutsHref']);
+const STAFF_HIDDEN_KEYS = Object.freeze(['fee', 'feeBps', 'feePoisha', 'commission', 'commissionBps', 'commissionPoisha', 'net', 'netPoisha', 'released', 'releasedPoisha', 'retained', 'retainedPoisha', 'stockValuePoisha', 'settlement', 'payout', 'payouts', 'payoutsHref', 'providerCharge', 'providerChargePoisha']);
+
+/**
+ * M24 §3.3: owner-only routes of a staff-capable desk pass this pseudo-permission. It is in no
+ * allow-list, so it can never be granted: the owner passes, staff get 403 PERMISSION_REQUIRED naming it.
+ */
+const OWNER_ONLY = 'owner.only';
 
 const isType = (t) => TYPES.includes(t);
 const allowList = (type) => {
@@ -111,13 +128,26 @@ function diffPermissions(before, after) {
 /** Is the team full? (business.team_max_members; the setting is passed in.) */
 const teamFull = ({ activeCount, max }) => activeCount >= max;
 
-/** Is this principal's owner role for the business type live (account active, NID member, role active)? */
+const phoneVerified = (principal) => Boolean(principal?.user?.phone && principal?.user?.phoneVerifiedAt);
+
+/**
+ * Is this principal's owner role for the business type live? Venues and shops: account active, NID
+ * member, owner role active. Gyms (M24-FR-03, §3.4): account active, phone verified and the gym_owner
+ * role not suspended, so a private gym (no documents yet) can have working staff.
+ */
 function ownerLive(principal, type) {
   const roles = principal?.roles ?? {};
-  return principal?.user?.status === 'active' && roles.member === 'active' && roles[OWNER_ROLE[type]] === 'active';
+  if (principal?.user?.status !== 'active') return false;
+  if (type === 'gym') return phoneVerified(principal) && roles[OWNER_ROLE.gym] !== 'suspended';
+  return roles.member === 'active' && roles[OWNER_ROLE[type]] === 'active';
 }
 
-const phoneVerified = (principal) => Boolean(principal?.user?.phone && principal?.user?.phoneVerifiedAt);
+/** Why an owner is not live, as the 403 code (gyms: an unverified phone first, M24 §3.4). */
+function ownerRefusal(principal, type) {
+  if (principal.roles?.[OWNER_ROLE[type]] === 'suspended') return 'ROLE_SUSPENDED';
+  if (type === 'gym' && !phoneVerified(principal)) return 'PHONE_REQUIRED';
+  return 'ROLE_REQUIRED';
+}
 
 /**
  * The staff rule every staff read and action applies (Q169): a verified phone and an active account.
@@ -148,12 +178,11 @@ const worksAnyOf = (principal, type) => (principal?.workplaces ?? []).some((w) =
  */
 function actFor(principal, businessType, businessId, permission, { ownerId, notFound = 'Business', foreign = null } = {}) {
   const allowed = allowList(businessType);
-  if (permission !== null && !Object.prototype.hasOwnProperty.call(allowed, permission)) throw new Error(`Unknown ${businessType} permission ${permission}`);
+  if (permission !== null && permission !== OWNER_ONLY && !Object.prototype.hasOwnProperty.call(allowed, permission)) throw new Error(`Unknown ${businessType} permission ${permission}`);
   if (!principal) throw E.unauthorized();
   if (ownerId && principal.id === ownerId) {
     if (!ownerLive(principal, businessType)) {
-      const suspended = principal.roles?.[OWNER_ROLE[businessType]] === 'suspended';
-      throw E.forbidden(suspended ? 'ROLE_SUSPENDED' : 'ROLE_REQUIRED', 'You cannot do this yet', undefined, { role: OWNER_ROLE[businessType] });
+      throw E.forbidden(ownerRefusal(principal, businessType), 'You cannot do this yet', undefined, { role: OWNER_ROLE[businessType] });
     }
     return { as: 'owner', staff: false, ownerId, businessType, businessId, permissions: allowedFor(businessType), actor: principal };
   }
@@ -236,6 +265,7 @@ module.exports = {
   NEVER,
   REQUIRES,
   STAFF_HIDDEN_KEYS,
+  OWNER_ONLY,
   isType,
   defaultsFor,
   allowedFor,
@@ -243,6 +273,7 @@ module.exports = {
   diffPermissions,
   teamFull,
   ownerLive,
+  ownerRefusal,
   phoneVerified,
   canWork,
   assertCanWork,

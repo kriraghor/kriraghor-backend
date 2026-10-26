@@ -7,7 +7,7 @@ const { uuid7 } = require('../common/uuid7');
 const { toPoisha } = require('../common/money');
 
 const ROLE_STATUSES = ROLE_STATUS_LIST;
-const PERMS = ['approve_listings', 'approve_documents', 'resolve_reports', 'refund_small', 'view_payouts', 'release_payouts', 'edit_fees', 'manage_staff', 'manage_users', 'manage_catalog', 'manage_esports', 'enter_results', 'view_analytics', 'manage_organisers'];
+const PERMS = ['approve_listings', 'approve_documents', 'resolve_reports', 'refund_small', 'view_payouts', 'release_payouts', 'edit_fees', 'manage_staff', 'manage_users', 'manage_catalog', 'manage_esports', 'enter_results', 'view_analytics', 'manage_organisers', 'manage_gyms'];
 
 const uuidPk = { type: DataTypes.UUID, primaryKey: true, defaultValue: DataTypes.UUIDV4 };
 
@@ -1226,6 +1226,9 @@ const hire = require('./hire');
 // ---- M20 gym, step 1 (./gym.js) ----
 const gym = require('./gym');
 
+// ---- M24 gym management, prompt 1 (./gym-manage.js) ----
+const gymManage = require('./gym-manage');
+
 // ---- M14 lite organisations and M22 organiser SaaS (./organisations.js) ----
 const organisations = require('./organisations');
 
@@ -1265,6 +1268,7 @@ module.exports = {
   ...orders,
   ...hire,
   ...gym,
+  ...gymManage,
   ...organisations,
   ...esportsEvents,
   ...teams,

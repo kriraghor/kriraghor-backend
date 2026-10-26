@@ -49,7 +49,8 @@ async function paidPass(who, gym, kind, validFrom) {
 describe('M20 gym', () => {
   it('owner role and documents, review, the public gym page (FR-01, FR-02)', async () => {
     const plain = await h.signupUser({ name: 'Nadia Islam' });
-    expect((await api().get(`${P}/me/gyms`).set(h.bearer(plain)).expect(403)).body.code).toBe('KYC_REQUIRED');
+    // M24-FR-01 (G1): a verified phone runs gyms (gate run_gym); this member owns none yet.
+    expect((await api().get(`${P}/me/gyms`).set(h.bearer(plain)).expect(200)).body.items).toEqual([]);
     const owner = await g.gymOwner(docsReviewer);
     const draft = (await api().post(`${P}/me/gyms`).set(h.bearer(owner)).send({ name: 'Iron Yard Banani', areaId: await f.areaId('banani'), addressLine: 'House 9, Road 11, Banani' }).expect(201)).body;
     expect(draft).toMatchObject({ status: 'draft', limits: { dayMin: 10000, dayMax: 300000, minPhotos: 3 } });

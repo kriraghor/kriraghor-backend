@@ -656,12 +656,13 @@ describe('Round B3 gym front desk: route-by-route matrix', () => {
     conforms(gyS.SoldList, ownerSold);
     expect((await api().get(`${P}/me/gyms/00000000-0000-4000-8000-000000000000/passes`).set(h.bearer(foreign)).expect(404)).body.code).toBe('NOT_FOUND');
 
-    // Owner-only: listing, packages, hours, photos, dashboards.
+    // Owner-only: listing, packages, hours, photos, dashboards. M24 (gate run_gym): staff with a verified
+    // phone pass the gate as would-be owners, see only their own (empty) gym list, and get NOT_OWNER here.
+    expect((await api().get(`${P}/me/gyms`).set(h.bearer(full)).expect(200)).body.items).toEqual([]);
     for (const r of await Promise.all([
-      api().get(`${P}/me/gyms`).set(h.bearer(full)),
       api().get(`${P}/me/gyms/${gym.id}`).set(h.bearer(full)),
       api().put(`${P}/me/gyms/${gym.id}/hours`).set(h.bearer(full)).send({ hours: [] }),
-      api().put(`${P}/me/gyms/${gym.id}/packages`).set(h.bearer(full)).send({ packages: [] }),
+      api().put(`${P}/me/gyms/${gym.id}/packages`).set(h.bearer(full)).send({ packages: [{ kind: 'month', title: 'Monthly', price: 250000 }] }),
       api().post(`${P}/me/gyms/${gym.id}/pause`).set(h.bearer(full)),
       api().get(`${P}/me/dashboard?role=gym_owner`).set(h.bearer(full)),
     ])) {
@@ -671,7 +672,8 @@ describe('Round B3 gym front desk: route-by-route matrix', () => {
     const listed = (await team(owner).list(`?businessType=gym&businessId=${gym.id}`).expect(200)).body.items.find((x) => x.member.id === dflt.user.id);
     await team(owner).remove(listed.id).expect(200);
     await bk.refresh(dflt);
-    expect((await day(dflt).expect(403)).body.code).toBe('KYC_REQUIRED');
+    // M24: work_gym lets a verified phone through (run_gym); M20 then answers its legacy NOT_OWNER.
+    expect((await day(dflt).expect(403)).body.code).toBe('NOT_OWNER');
   });
 });
 

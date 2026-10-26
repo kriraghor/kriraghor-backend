@@ -38,6 +38,8 @@ function registerAll() {
   require('./hire/hire.moderation').registerHireConsumers();
   // M20: M05 decisions on gyms, unpaid passes and months close, sanctions pause gyms.
   require('./gym/gym.moderation').registerGymConsumers();
+  // M24: a linked member's pass admission is a check-in; verified phones pick up their gym invites.
+  require('./gym-manage').consumers.registerGymManageConsumers();
   // M17 ratings: pros (M11), shops (M12) and gyms (M20) keep their rating columns from review.aggregate_updated.
   require('./hire/hire.reviews').registerHireReviewConsumers();
   require('./market/market.reviews').registerMarketReviewConsumers();

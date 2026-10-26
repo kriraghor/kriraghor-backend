@@ -55,6 +55,7 @@ const PERMISSIONS = Object.freeze({
   ENTER_RESULTS: 'enter_results', // M21 match results only
   MANAGE_ORGANISERS: 'manage_organisers', // M22 organisations, contracts and invoices
   VIEW_ANALYTICS: 'view_analytics', // M19 platform overview and its exports (Q104)
+  MANAGE_GYMS: 'manage_gyms', // M24 gym management: imports with the owner's consent, owner reads
   EDIT_FEES: 'edit_fees', // master only
   MANAGE_STAFF: 'manage_staff', // master only
 });

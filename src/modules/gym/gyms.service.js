@@ -20,6 +20,8 @@ const { Area, Facility } = require('../catalog').reference;
 const audit = require('../audit').audit;
 const moderation = require('../moderation').moderation;
 const authz = require('../auth').authz;
+// M24: the owner's gym subscription row is gym-manage's (created through its facade).
+const gmOwners = require('../gym-manage').owners;
 const { slugify } = require('../../common/identifiers');
 const rules = require('./gym.rules');
 const c = require('./gym.common');
@@ -41,10 +43,14 @@ async function loadWorking(gymId, { transaction } = {}) {
     GymHours.findAll({ where: { gymId, removedAt: null }, transaction }),
     GymPackage.findAll({ where: { gymId, status: 'active' }, transaction }),
   ]);
-  return { gym, photos, hours: c.hoursView(hours), packages: packages.sort((a, b) => rules.KINDS.indexOf(a.kind) - rules.KINDS.indexOf(b.kind)) };
+  return { gym, photos, hours: c.hoursView(hours), packages: packages.sort(byPackageOrder) };
 }
 
-const packageView = (p) => ({ id: p.id, kind: p.kind, title: p.title, price: p.pricePoisha, days: p.days });
+/** Packages in the owner's order (sort), then by kind and price (M24-FR-24). */
+const byPackageOrder = (a, b) => a.sort - b.sort || rules.KINDS.indexOf(a.kind) - rules.KINDS.indexOf(b.kind) || a.pricePoisha - b.pricePoisha;
+
+// M24 §7.1: the admission fee, channel, visit limit and order travel with every package.
+const packageView = (p) => ({ id: p.id, kind: p.kind, title: p.title, price: p.pricePoisha, days: p.days, admissionFee: p.admissionFeePoisha ?? 0, channel: p.channel ?? 'both', visitLimit: p.visitLimit ?? null, sort: p.sort ?? 0 });
 
 /** The public version (live_snapshot), built from the working copy at approval. */
 const snapshotOf = ({ gym: g, photos, hours, packages }, version) => ({
@@ -59,7 +65,8 @@ const snapshotOf = ({ gym: g, photos, hours, packages }, version) => ({
   dailyCapacity: g.dailyCapacity ?? null,
   photos: photos.map((p) => ({ id: p.id, key: p.storageKey })),
   hours,
-  packages: packages.map(packageView),
+  // M24 §7.1: the public page and passes list only packages sold online (`online`, `both`).
+  packages: packages.filter(rules.soldOnline).map(packageView),
 });
 
 /** What changed between two versions (photos compared by id). */
@@ -73,6 +80,16 @@ function diffOf(live, next) {
       .map((k) => [k, { from: a[k] ?? null, to: b[k] }])
   );
 }
+
+/** What the package and photo editors need (M24-FR-24 adds the custom limit and the days of each kind). */
+const limitsView = (cfg) => ({
+  dayMin: cfg.dayMin,
+  dayMax: cfg.dayMax,
+  minPhotos: cfg.minPhotos,
+  maxPhotos: cfg.maxPhotos,
+  maxCustomPackages: cfg.maxCustom,
+  kindDays: { day: 1, month: cfg.monthDays, quarter: cfg.quarterDays, half_year: cfg.halfYearDays, year: cfg.yearDays },
+});
 
 function ownerView(w) {
   const g = w.gym;
@@ -94,7 +111,7 @@ function ownerView(w) {
     hours: w.hours,
     packages: w.packages.map(packageView),
     reviewReason: g.reviewReasonCode ? { code: g.reviewReasonCode, text: g.reviewReasonText ?? null } : null,
-    limits: { dayMin: c.config().dayMin, dayMax: c.config().dayMax, minPhotos: c.config().minPhotos, maxPhotos: c.config().maxPhotos },
+    limits: limitsView(c.config()),
     firstLiveAt: c.iso(g.firstLiveAt),
   };
 }
@@ -138,6 +155,9 @@ async function create(principal, body, req) {
     for (let i = 2; await Gym.findOne({ where: { slug }, attributes: ['id'], transaction }); i += 1) slug = `${base}-${i}`;
     const g = await Gym.create({ ownerId: principal.id, slug, ...Object.fromEntries(FIELDS.filter((k) => body[k] !== undefined).map((k) => [k, body[k]])), status: 'draft', createdBy: principal.id, updatedBy: principal.id }, { transaction });
     await audit.record({ action: 'gym.created', actor: principal, entityType: 'gym', entityId: g.id, after: { name: g.name, status: g.status }, req }, { transaction });
+    // M24-FR-09, FR-81: the owner's one subscription (tier free) exists from the first gym; gym-manage
+    // writes it through its facade (M20 never writes gym-manage tables). A second gym reuses it.
+    await gmOwners.ensureSubscription(principal.id, { transaction });
     return g.id;
   });
   return view(id);
@@ -182,26 +202,52 @@ async function setHours(principal, id, rows, req) {
   return view(id);
 }
 
-/** PUT /me/gyms/:id/packages: the active package of each kind (an omitted kind is retired). */
+/**
+ * PUT /me/gyms/:id/packages: every active package (an omitted one is retired). One per kind except
+ * `custom` (M24-FR-24, at most gym_manage.max_custom_packages); a day pass is needed only to submit.
+ * A package whose kind, title, price, days and admission fee stay the same keeps its id (channel,
+ * visit limit and order change in place); anything else retires it and creates a new one, so running
+ * memberships keep their snapshot.
+ */
 async function setPackages(principal, id, items, req) {
   const cfg = c.config();
-  const errors = rules.packageErrors(items.map((p) => ({ kind: p.kind, price: p.price })), cfg);
-  if (new Set(items.map((p) => p.kind)).size !== items.length) errors.push({ field: 'packages', message: 'One package per kind' });
+  const rows = items.map((i) => ({ ...i, days: rules.daysOf(i.kind, cfg, i.days ?? null), admissionFee: i.admissionFee ?? 0, channel: i.channel ?? 'both', visitLimit: i.visitLimit ?? null, sort: i.sort ?? 0 }));
+  const errors = rules.packageErrors(rows.map((p) => ({ kind: p.kind, price: p.price })), cfg, { submit: false });
+  const kinds = rows.filter((p) => p.kind !== 'custom').map((p) => p.kind);
+  if (new Set(kinds).size !== kinds.length) errors.push({ field: 'packages', message: 'One package per kind' });
+  rows.forEach((p, i) => {
+    if (p.kind === 'custom' && !p.days) errors.push({ field: `packages.${i}.days`, message: 'A custom package needs its days (1 to 366)' });
+  });
   if (errors.length) throw E.validation(errors);
+  const same = (p, i) => p.kind === i.kind && p.pricePoisha === i.price && p.title === i.title && p.days === i.days && (p.admissionFeePoisha ?? 0) === i.admissionFee;
   await sequelize.transaction(async (transaction) => {
     const g = await owned(principal, id, { transaction, lock: true });
     editable(g);
     const current = await GymPackage.findAll({ where: { gymId: g.id, status: 'active' }, transaction, lock: transaction.LOCK.UPDATE });
-    for (const p of current) {
-      const next = items.find((i) => i.kind === p.kind);
-      if (!next || next.price !== p.pricePoisha || next.title !== p.title) await p.update({ status: 'retired', updatedBy: principal.id }, { transaction });
-    }
-    for (const i of items) {
-      const same = current.find((p) => p.kind === i.kind && p.pricePoisha === i.price && p.title === i.title);
-      if (!same) await GymPackage.create({ gymId: g.id, kind: i.kind, title: i.title, pricePoisha: i.price, days: rules.daysOf(i.kind, cfg), createdBy: principal.id, updatedBy: principal.id }, { transaction });
+    const kept = new Set();
+    const placed = new Set();
+    rows.forEach((i, n) => {
+      const match = current.find((p) => !kept.has(p.id) && same(p, i));
+      if (match) {
+        kept.add(match.id);
+        placed.add(n);
+        i.keep = match;
+      }
+    });
+    for (const p of current) if (!kept.has(p.id)) await p.update({ status: 'retired', updatedBy: principal.id }, { transaction });
+    for (const [n, i] of rows.entries()) {
+      if (placed.has(n)) {
+        const p = i.keep;
+        if (p.channel !== i.channel || (p.visitLimit ?? null) !== i.visitLimit || p.sort !== i.sort) await p.update({ channel: i.channel, visitLimit: i.visitLimit, sort: i.sort, updatedBy: principal.id }, { transaction });
+        continue;
+      }
+      await GymPackage.create(
+        { gymId: g.id, kind: i.kind, title: i.title, pricePoisha: i.price, days: i.days, admissionFeePoisha: i.admissionFee, channel: i.channel, visitLimit: i.visitLimit, sort: i.sort, createdBy: principal.id, updatedBy: principal.id },
+        { transaction }
+      );
     }
     await g.update({ ...markEdited(g), updatedBy: principal.id }, { transaction });
-    await audit.record({ action: 'gym.packages_set', actor: principal, entityType: 'gym', entityId: g.id, after: { packages: items.map((i) => `${i.kind}:${i.price}`) }, req }, { transaction });
+    await audit.record({ action: 'gym.packages_set', actor: principal, entityType: 'gym', entityId: g.id, after: { packages: rows.map((i) => `${i.kind}:${i.price}:${i.channel}`) }, req }, { transaction });
   });
   return view(id);
 }
@@ -274,7 +320,8 @@ function completeness(w) {
   const problems = [];
   if (w.photos.length < cfg.minPhotos) problems.push({ field: 'photos', message: `Add at least ${cfg.minPhotos} photos` });
   if (!rules.hasOpenDay(w.hours)) problems.push({ field: 'hours', message: 'Add the opening hours' });
-  problems.push(...rules.packageErrors(w.packages.map((p) => ({ kind: p.kind, price: p.pricePoisha })), cfg));
+  // M24-FR-24: the day pass is required to list the gym, among the packages sold online.
+  problems.push(...rules.packageErrors(w.packages.filter(rules.soldOnline).map((p) => ({ kind: p.kind, price: p.pricePoisha })), cfg));
   return problems;
 }
 
@@ -297,7 +344,7 @@ async function submit(principal, id, req) {
       diff = diffOf(null, snapshotOf(w, null));
     }
     const version = g.liveVersion + 1;
-    const day = w.packages.find((p) => p.kind === 'day');
+    const day = w.packages.find((p) => p.kind === 'day' && rules.soldOnline(p));
     const sub = await moderation.submit(
       { kind: 'gym', subjectId: g.id, payload: { gymId: g.id, version, isEdit: published, diff, dayPrice: day.pricePoisha, photos: w.photos.length }, title: `${g.name} · v${version}${published ? ' (edit)' : ''}`, submittedBy: principal.id, isEdit: published },
       { transaction }
@@ -390,7 +437,7 @@ async function checksFor(gymId, { transaction }) {
     ok('owner_kyc_approved', owner?.roles?.gym_owner === 'active', 'hard', 'The gym owner role is not approved'),
     ok('photos_min', w.photos.length >= cfg.minPhotos, 'hard', `Fewer than ${cfg.minPhotos} photos`),
     ok('hours_valid', rules.hasOpenDay(w.hours) && !rules.hoursErrors(w.hours).length, 'hard', 'The opening hours are missing or invalid'),
-    ok('packages_valid', !rules.packageErrors(w.packages.map((p) => ({ kind: p.kind, price: p.pricePoisha })), cfg).length, 'hard', 'The packages are missing or outside the limits'),
+    ok('packages_valid', !rules.packageErrors(w.packages.filter(rules.soldOnline).map((p) => ({ kind: p.kind, price: p.pricePoisha })), cfg).length, 'hard', 'The packages are missing or outside the limits'),
     ok('name_unique_in_area', n === 0, 'soft', 'Another gym in this area has a similar name'),
   ];
 }
@@ -439,7 +486,53 @@ async function facts(gymId) {
   return g ? { name: g.name, slug: g.slug, reasonCode: g.reviewReasonCode ?? null } : null;
 }
 
+// ---------------------------------------------------------------- M24 facades (§7.4): gym-manage reads gyms and packages here
+
+const gymRef = (g) => ({ id: g.id, ownerId: g.ownerId, name: g.name, slug: g.slug, status: g.status, areaId: g.areaId, addressLine: g.addressLine });
+
+/** One gym (not removed) for gym-manage, or null. */
+async function get(gymId, { transaction } = {}) {
+  const g = await Gym.findByPk(gymId, { attributes: ['id', 'ownerId', 'name', 'slug', 'status', 'areaId', 'addressLine'], transaction });
+  return g && g.status !== 'removed' ? gymRef(g) : null;
+}
+
+/** An owner's gyms (not removed), oldest first. */
+async function ofOwner(ownerId, { transaction } = {}) {
+  const rows = await Gym.findAll({ where: { ownerId, status: { [Op.ne]: 'removed' } }, attributes: ['id', 'ownerId', 'name', 'slug', 'status', 'areaId', 'addressLine'], order: [['createdAt', 'ASC']], transaction });
+  return rows.map(gymRef);
+}
+
+const packageRef = (p) => ({
+  id: p.id,
+  gymId: p.gymId,
+  kind: p.kind,
+  title: p.title,
+  pricePoisha: p.pricePoisha,
+  days: p.days,
+  admissionFeePoisha: p.admissionFeePoisha ?? 0,
+  channel: p.channel ?? 'both',
+  visitLimit: p.visitLimit ?? null,
+  sort: p.sort ?? 0,
+  status: p.status,
+});
+
+/** One package (any status) for gym-manage, or null. */
+async function packageGet(packageId, { transaction } = {}) {
+  const p = await GymPackage.findByPk(packageId, { transaction });
+  return p ? packageRef(p) : null;
+}
+
+/** A gym's packages (active by default), in the owner's order. */
+async function packagesForGym(gymId, { status = 'active', transaction } = {}) {
+  const rows = await GymPackage.findAll({ where: { gymId, ...(status ? { status } : {}) }, transaction });
+  return rows.sort(byPackageOrder).map(packageRef);
+}
+
 module.exports = {
+  get,
+  ofOwner,
+  packageGet,
+  packagesForGym,
   loadWorking,
   snapshotOf,
   diffOf,

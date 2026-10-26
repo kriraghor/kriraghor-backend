@@ -31,6 +31,7 @@ const inventory = require('../modules/market/inventory.service');
 const orders = require('../modules/orders/orders.jobs');
 const hire = require('../modules/hire/hire.jobs');
 const gym = require('../modules/gym/gym.jobs');
+const gymManage = require('../modules/gym-manage/gym-manage.jobs');
 const saas = require('../modules/organiser-saas/saas.jobs');
 const esportsEvents = require('../modules/esports-events/events.jobs');
 const teamsJobs = require('../modules/teams/teams.jobs');
@@ -342,6 +343,39 @@ const JOBS = [
     queue: QUEUES.GYM,
     every: 60 * 1000,
     run: async () => gym.tick(),
+  },
+  // ---------------- M24 gym management (§10), on the gym queue (no new queue: Render's Redis connection limit).
+  // Idempotent: every step locks its row and re-checks the status (a second run the same day changes nothing).
+  {
+    // Freezes start and end; upcoming → active; active → expired (an upcoming renewal starts); member statuses.
+    name: 'gym-manage.daily',
+    queue: QUEUES.GYM,
+    pattern: '5 0 * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => gymManage.daily(),
+  },
+  {
+    // Dues unpaid or partial after due_on: overdue_at once, gym_due.overdue_marked (M24-FR-39).
+    name: 'gym-manage.dues-overdue',
+    queue: QUEUES.GYM,
+    pattern: '15 0 * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => gymManage.duesOverdue(),
+  },
+  {
+    // Pending gym invites past expires_at → expired.
+    name: 'gym-manage.requests-expire',
+    queue: QUEUES.GYM,
+    every: 15 * 60 * 1000,
+    run: async () => gymManage.requestsExpire(),
+  },
+  {
+    // Raw member list files past gym_manage.import_file_retention_days deleted; stale previews discarded (M24-FR-80).
+    name: 'gym-manage.import-housekeeping',
+    queue: QUEUES.GYM,
+    pattern: '0 3 * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => gymManage.importHousekeeping(),
   },
   // ---------------- M22 organiser SaaS (§10). Idempotent: every step locks the row and re-checks its status.
   {

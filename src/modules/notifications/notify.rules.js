@@ -24,6 +24,10 @@ const CATEGORIES = {
   // M16 sports teams: invites, membership and captaincy.
   teams: { mandatory: ['in_app'], defaults: ['in_app', 'sms', 'push'] },
   staff_ops: { mandatory: ['in_app'], defaults: ['in_app', 'email', 'push'] },
+  // M24 §11.1: gym members (memberships, dues, receipts, plans) and gym owners and staff (requests,
+  // summaries, billing). SMS only with the owner's paid add-on (prompt 3b), never by default.
+  gym: { mandatory: ['in_app'], defaults: ['in_app', 'push', 'email'] },
+  gym_business: { mandatory: ['in_app'], defaults: ['in_app', 'push', 'email'] },
 };
 const CHANNELS = ['in_app', 'sms', 'email', 'push'];
 

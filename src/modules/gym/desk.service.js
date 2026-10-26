@@ -84,8 +84,9 @@ async function redeem(principal, gymId, body, req) {
       const { code, ...meta } = block;
       throw fail(code, Object.fromEntries(Object.entries(meta).map(([k, v]) => [k, v instanceof Date ? v.toISOString() : v])));
     }
+    let redemption;
     try {
-      await sequelize.transaction({ transaction }, (savepoint) => PassRedemption.create({ passId: p.id, gymId: g.id, redeemedOn: today, redeemedAt: now, redeemedBy: principal.id, method: found.method }, { transaction: savepoint }));
+      redemption = await sequelize.transaction({ transaction }, (savepoint) => PassRedemption.create({ passId: p.id, gymId: g.id, redeemedOn: today, redeemedAt: now, redeemedBy: principal.id, method: found.method }, { transaction: savepoint }));
     } catch (err) {
       if (err instanceof UniqueConstraintError) throw fail('PASS_ALREADY_REDEEMED');
       throw err;
@@ -94,7 +95,8 @@ async function redeem(principal, gymId, body, req) {
     const moved = a.release ? await c.release(p, { actor: ctx.actor, transaction }) : { gross: 0, fee: 0, net: 0 };
     await p.update({ status: a.status, firstRedeemedAt: p.firstRedeemedAt ?? now, lastRedeemedAt: now }, { transaction });
     await audit.record({ action: 'gym_pass.redeemed', actor: ctx.actor, entityType: 'gym_pass', entityId: p.id, entityCode: p.code, after: { status: p.status, method: found.method }, meta: { gymId: g.id }, req }, { transaction });
-    await c.publishPass(transaction, 'gym_pass.redeemed', p, { method: found.method, released: moved.gross, net: moved.net }, ctx.actor);
+    // M24-FR-52: the redemption row and its Dhaka day, so gym-manage counts a linked member's check-in.
+    await c.publishPass(transaction, 'gym_pass.redeemed', p, { method: found.method, released: moved.gross, net: moved.net, redemptionId: redemption.id, redeemedOn: today }, ctx.actor);
     return shown(ctx, await card(p, { redeemedAt: now, released: moved.net }));
   });
 }
@@ -141,4 +143,25 @@ async function sold(principal, gymId, { status } = {}) {
   };
 }
 
-module.exports = { redeem, admissions, sold };
+/**
+ * M24 desk search (§4.1, one search box): the pass a QR token or a typed backup code names at this gym,
+ * as a card without money or the holder's contact; null when the text is not one of this gym's passes.
+ * Admitting it stays POST /me/gyms/:id/redemptions (desk.admit).
+ */
+async function lookup(gymId, text) {
+  const q = String(text ?? '').trim();
+  let pass = null;
+  const parsed = c.parseToken(q);
+  if (parsed) {
+    const p = await GymPass.findByPk(parsed.passId);
+    if (p && p.qrNonce === parsed.nonce && p.gymId === gymId) pass = p;
+  } else {
+    const code = rules.normalizeCode(q);
+    if (code) pass = await GymPass.findOne({ where: { gymId, backupCode: code, status: 'active' } });
+  }
+  if (!pass) return null;
+  const names = await directory.publicNames([pass.holderId]);
+  return { passCode: pass.code, kind: pass.kind, title: pass.title, validFrom: pass.validFrom, validTo: pass.validTo, status: pass.status, holder: { displayName: names.get(pass.holderId)?.displayName ?? null }, method: parsed ? 'qr' : 'code' };
+}
+
+module.exports = { redeem, admissions, sold, lookup };

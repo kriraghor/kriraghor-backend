@@ -19,7 +19,7 @@ const lazy = (file, names, values = []) => {
 };
 
 module.exports = {
-  access: lazy('./business-members.rules', ['actFor', 'can', 'businessesWith', 'defaultWorkplace', 'forStaff', 'ownerLive', 'workplaceAt'], ['STAFF_HIDDEN_KEYS']),
+  access: lazy('./business-members.rules', ['actFor', 'can', 'businessesWith', 'defaultWorkplace', 'forStaff', 'ownerLive', 'workplaceAt'], ['STAFF_HIDDEN_KEYS', 'OWNER_ONLY']),
   businesses: lazy('./businesses.port', ['register']),
   members: lazy('./business-members.service', ['workplacesOf', 'staffRecipients', 'pendingActions', 'businessName']),
   consumers: lazy('./business-members.consumers', ['registerBusinessMemberConsumers']),

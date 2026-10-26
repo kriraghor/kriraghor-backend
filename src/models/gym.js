@@ -29,7 +29,8 @@ const num = (field, type) => ({
     return v === null || v === undefined ? null : Number(v);
   },
 });
-const KINDS = ['day', 'month', 'quarter'];
+// M24 §7.1 (G2): 6 months, 12 months and custom days join day, month and quarter.
+const KINDS = ['day', 'month', 'quarter', 'half_year', 'year', 'custom'];
 
 class Gym extends Model {}
 Gym.init(
@@ -103,6 +104,11 @@ GymPackage.init(
     pricePoisha: poisha('pricePoisha'),
     days: req(DataTypes.SMALLINT),
     status: { type: DataTypes.ENUM('active', 'retired'), allowNull: false, defaultValue: 'active' },
+    // M24 §7.1: the admission fee (desk memberships only, never passes), where it is sold, a visit limit, the order.
+    admissionFeePoisha: poisha('admissionFeePoisha', { dflt: 0 }),
+    channel: { type: DataTypes.ENUM('desk', 'online', 'both'), allowNull: false, defaultValue: 'both' },
+    visitLimit: DataTypes.SMALLINT,
+    sort: { type: DataTypes.SMALLINT, allowNull: false, defaultValue: 0 },
     ...by,
   },
   { sequelize, modelName: 'GymPackage', tableName: 'gym_packages' }
@@ -139,6 +145,8 @@ GymPass.init(
     closedAt: DataTypes.DATE(3),
     closeReason: DataTypes.STRING(40),
     idempotencyKey: req(DataTypes.STRING(80)),
+    // M24 §7.1: the gym_fee_overrides row behind feeBps (prompt 2; no FK, another module's table).
+    feeOverrideId: DataTypes.UUID,
   },
   { sequelize, modelName: 'GymPass', tableName: 'gym_passes' }
 );

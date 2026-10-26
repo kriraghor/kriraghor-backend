@@ -37,6 +37,7 @@ const marketRoutes = require('./modules/market/market.routes');
 const orderRoutes = require('./modules/orders/orders.routes');
 const hireRoutes = require('./modules/hire/hire.routes');
 const gymRoutes = require('./modules/gym/gym.routes');
+const gymManageRoutes = require('./modules/gym-manage/gym-manage.routes');
 const saasRoutes = require('./modules/organiser-saas/saas.routes');
 const eventRoutes = require('./modules/esports-events/events.routes');
 const teamRoutes = require('./modules/teams/teams.routes');
@@ -106,6 +107,10 @@ function createApp() {
   // Round B3: staff accounts for businesses (before the /me routers that match any path).
   api.use('/me/workplaces', businessMemberRoutes.meWorkplaces);
   api.use('/me/team', businessMemberRoutes.meTeam);
+  // M24 gym management, the member area (before the /me routers that match any path).
+  api.use('/me/gym-requests', gymManageRoutes.meRequests);
+  api.use('/me/gym-memberships', gymManageRoutes.meMemberships);
+  api.use('/me/gym-receipts', gymManageRoutes.meReceipts);
   api.use('/me', teamRoutes.meRouter);
   api.use('/teams', teamRoutes.teamsRouter);
   api.use('/', teamRoutes.publicRouter);
@@ -144,6 +149,10 @@ function createApp() {
   api.use('/me/passes', gymRoutes.mePasses);
   api.use('/me/subscriptions', gymRoutes.meSubs);
   api.use('/me/gyms', gymRoutes.ownerRouter);
+  // M24 gym management: the owner and staff panel, public pricing and receipts.
+  api.use('/manage', gymManageRoutes.manageRouter);
+  api.use('/gym-manage', gymManageRoutes.pricingRouter);
+  api.use('/gym-receipts', gymManageRoutes.receiptRouter);
   // M14 lite and the M22 organiser console (scoped by membership of :orgId).
   api.use('/me/organisations', saasRoutes.meOrgs);
   api.use('/org/:orgId/sports', tournamentRoutes.consoleRouter);
@@ -200,6 +209,7 @@ function createApp() {
   api.use('/admin/orders', orderRoutes.adminRouter);
   api.use('/admin/hire', hireRoutes.adminRouter);
   api.use('/admin/gym', gymRoutes.adminRouter);
+  api.use('/admin/gym-manage', gymManageRoutes.adminRouter);
   api.use('/admin/organisers', saasRoutes.adminRouter);
   api.use('/admin/disputes', trustRoutes.adminDisputes);
   api.use('/admin/reports', trustRoutes.adminReports);

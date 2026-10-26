@@ -57,6 +57,8 @@ const vendorUrl = (p) => `${config.apps.vendor}${p}`;
 const gymUrl = (p) => `${config.apps.gym}${p}`;
 // M20: gyms (the owner), passes (the holder), trainer subscriptions (the member and the trainer).
 const gymFacts = (id) => require('../gym').gyms.facts(id);
+// M24: a gym member's code (the gym's own record; never the name or phone).
+const gmMemberFacts = (id) => require('../gym-manage').facts.member(id);
 // M14 lite and M22: the organisation (its name) and its admins (owner and admins get organiser news).
 const orgAdmins = (id) => require('../organisations').organisations.adminIds(id);
 // M14: tournament names, registrations and captains.
@@ -1529,6 +1531,26 @@ const CATALOGUE = [
     recipients: (e) => (e.payload.net > 0 ? [e.payload.trainerId] : []),
     values: (e) => ({ code: e.payload.code, net: e.payload.net }),
     link: () => '/me/payouts',
+  },
+  // ---------------- M24 gym management, prompt 1 (§11.2): the consent messages, on every tier (no SMS)
+  {
+    code: 'GYM_LINK_INVITE',
+    events: ['gym_link.requested'],
+    category: 'gym',
+    channels: ['in_app', 'email'],
+    // A gym invite to a known account; an invite stored by phone hash is re-published when that phone is verified.
+    recipients: (e) => (e.payload.direction === 'gym_invite' && e.payload.userId ? [e.payload.userId] : []),
+    values: async (e) => ({ gym: (await gymFacts(e.payload.gymId))?.name ?? '', memberCode: (await gmMemberFacts(e.payload.memberId))?.memberCode ?? '', url: gymUrl('/me/requests') }),
+    link: () => gymUrl('/me/requests'),
+  },
+  {
+    code: 'GYM_LINK_ACCEPTED',
+    events: ['gym_member.linked'],
+    category: 'gym_business',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e) => ({ memberCode: (await gmMemberFacts(e.payload.memberId))?.memberCode ?? '' }),
+    link: (e) => gymUrl(`/manage/${e.payload.gymId}/members/${e.payload.memberId}`),
   },
   // ---------------- M14 lite organisations and M22 organiser SaaS: the organisation's owner and admins
   {

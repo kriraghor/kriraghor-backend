@@ -5,8 +5,9 @@
  * (identity group, ADR-007) owns business_members.
  *
  *  - workplacesOf(userId): the principal's workplaces (M01 loadPrincipal), only active memberships
- *    whose owner is live right now (account active, NID member, owner role active): a suspended or
- *    banned owner's staff lose access on their next request.
+ *    whose owner is live right now (account active, NID member, owner role active; for gyms account
+ *    active, phone verified and gym_owner not suspended, M24-FR-03): a suspended or banned owner's
+ *    staff lose access on their next request.
  *  - the owner's team: list, add by verified phone, change permissions, remove. Every change bumps
  *    the staff member's authz_version (their access token goes stale and the client refreshes), is
  *    audited and publishes business_member.added / .permissions_changed / .removed.
@@ -28,11 +29,18 @@ const view = require('./business-members.serializer');
 const { fail } = rules;
 const ownerRoleCase = `CASE bm.business_type ${rules.TYPES.map((t) => `WHEN '${t}' THEN '${rules.OWNER_ROLE[t]}'`).join(' ')} END`;
 
-/** The live-owner join shared by workplaces and recipients (identity group tables only). */
+/**
+ * The live-owner join shared by workplaces and recipients (identity group tables only). Venues and
+ * shops: the owner's account, member (NID) role and owner role are active. Gyms (M24-FR-03): the
+ * owner's account is active, the phone verified and the gym_owner role (if any) not suspended.
+ */
 const LIVE_OWNER = `
-  JOIN users o ON o.id = bm.owner_id AND o.status = 'active'
-  JOIN user_roles om ON om.user_id = bm.owner_id AND om.role = 'member' AND om.status = 'active'
-  JOIN user_roles orl ON orl.user_id = bm.owner_id AND orl.status = 'active' AND orl.role = ${ownerRoleCase}`;
+  JOIN users o ON o.id = bm.owner_id AND o.status = 'active' AND (
+    (bm.business_type = 'gym' AND o.phone IS NOT NULL AND o.phone_verified_at IS NOT NULL
+      AND NOT EXISTS (SELECT 1 FROM user_roles gs WHERE gs.user_id = bm.owner_id AND gs.role = 'gym_owner' AND gs.status = 'suspended'))
+    OR (bm.business_type <> 'gym'
+      AND EXISTS (SELECT 1 FROM user_roles om WHERE om.user_id = bm.owner_id AND om.role = 'member' AND om.status = 'active')
+      AND EXISTS (SELECT 1 FROM user_roles orl WHERE orl.user_id = bm.owner_id AND orl.status = 'active' AND orl.role = ${ownerRoleCase})))`;
 
 /** M01 principal: [{ id, businessType, businessId, ownerId, permissions, since }] (B3 access). */
 async function workplacesOf(userId, { transaction } = {}) {
@@ -70,8 +78,7 @@ async function ownBusiness(principal, type, businessId, { live = true, transacti
   const b = await port.describe(type, businessId, { transaction });
   if (!b || b.ownerId !== principal.id) throw E.notFound('Business');
   if (live && !rules.ownerLive(principal, type)) {
-    const suspended = principal.roles?.[rules.OWNER_ROLE[type]] === 'suspended';
-    throw E.forbidden(suspended ? 'ROLE_SUSPENDED' : 'ROLE_REQUIRED', 'You cannot do this yet', undefined, { role: rules.OWNER_ROLE[type] });
+    throw E.forbidden(rules.ownerRefusal(principal, type), 'You cannot do this yet', undefined, { role: rules.OWNER_ROLE[type] });
   }
   return b;
 }

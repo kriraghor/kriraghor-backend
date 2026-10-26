@@ -1,0 +1,3614 @@
+{
+  "info": {
+    "name": "Kriraghor API: M24 prompt 1 · Desk",
+    "description": "M24 Gym management, prompt 1 (Desk MVP). A member with only a verified phone (no NID, no documents) opens a private gym (gate run_gym), saves a month-only package list (a day pass is needed only to list the gym), picks the short code IY and the Basic plan. They add a member with a membership (৳2,500 + ৳1,000 admission − ৳500 discount = ৳3,000) and a first cash payment in one call (Idempotency-Key replayed), get receipt IY-R26-000001 and its public link, then record the rest, a reversal and a waiver. Counter money never touches the ledger.\n\nA front-desk staff member (attendance.mark, members.view; hired through /me/team) lists members without amounts, checks them in (one counted per Dhaka day) and is refused fees and owner-only settings. The member accepts the gym invite, sees the membership and receipts, and shows the rotating QR that the desk scans. A member list (CSV) is previewed with row errors, applied and undone; Kriraghor staff upload only with the owner’s consent.\n\nRequests named \"Runner\" go to the local test runner (refreshing a session after its access changed, draining events, running the daily jobs).\n\nUnattended: `node postman/run-m24.js`. Rebuild this file with: node postman/build-collection-m24.js",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000/api/v1"
+    },
+    {
+      "key": "controlUrl",
+      "value": ""
+    },
+    {
+      "key": "ownerToken",
+      "value": ""
+    },
+    {
+      "key": "personToken",
+      "value": ""
+    },
+    {
+      "key": "personPhone",
+      "value": ""
+    },
+    {
+      "key": "deskToken",
+      "value": ""
+    },
+    {
+      "key": "deskPhone",
+      "value": ""
+    },
+    {
+      "key": "supportToken",
+      "value": ""
+    },
+    {
+      "key": "areaBanani",
+      "value": ""
+    },
+    {
+      "key": "today",
+      "value": ""
+    },
+    {
+      "key": "yesterday",
+      "value": ""
+    },
+    {
+      "key": "in3",
+      "value": ""
+    },
+    {
+      "key": "ikAdd",
+      "value": ""
+    },
+    {
+      "key": "gymId",
+      "value": ""
+    },
+    {
+      "key": "monthPkg",
+      "value": ""
+    },
+    {
+      "key": "quarterPkg",
+      "value": ""
+    },
+    {
+      "key": "memberId",
+      "value": ""
+    },
+    {
+      "key": "membershipId",
+      "value": ""
+    },
+    {
+      "key": "dueId",
+      "value": ""
+    },
+    {
+      "key": "paymentId",
+      "value": ""
+    },
+    {
+      "key": "receiptToken",
+      "value": ""
+    },
+    {
+      "key": "member2Id",
+      "value": ""
+    },
+    {
+      "key": "due2Id",
+      "value": ""
+    },
+    {
+      "key": "payment2Id",
+      "value": ""
+    },
+    {
+      "key": "renewalId",
+      "value": ""
+    },
+    {
+      "key": "requestId",
+      "value": ""
+    },
+    {
+      "key": "qrToken",
+      "value": ""
+    },
+    {
+      "key": "importId",
+      "value": ""
+    },
+    {
+      "key": "import2Id",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. A private gym and its setup (FR-01, FR-02, FR-09, FR-24, FR-81, FR-82)",
+      "item": [
+        {
+          "name": "A private gym on a verified phone (gate run_gym)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('gymId', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"draft, custom limit from settings\", () => { pm.expect(j.status === 'draft' && j.limits.maxCustomPackages === 10 && j.limits.kindDays.year === 365).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Iron Yard Banani\",\n  \"areaId\": \"{{areaBanani}}\",\n  \"addressLine\": \"House 9, Road 11, Banani, Dhaka\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Packages: month, quarter and a desk-only custom package (no day pass needed)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"saves monthPkg\", () => { pm.expect((pm.collectionVariables.set('monthPkg', j.packages.find((p) => p.kind === 'month').id), true)).to.eql(true); });",
+                  "pm.test(\"saves quarterPkg\", () => { pm.expect((pm.collectionVariables.set('quarterPkg', j.packages.find((p) => p.kind === 'quarter').id), true)).to.eql(true); });",
+                  "pm.test(\"admission fee and channel kept\", () => { pm.expect(j.packages.find((p) => p.kind === 'custom').channel === 'desk' && j.packages.find((p) => p.kind === 'month').admissionFee === 100000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"packages\": [\n    {\n      \"kind\": \"month\",\n      \"title\": \"Monthly\",\n      \"price\": 250000,\n      \"admissionFee\": 100000,\n      \"channel\": \"both\",\n      \"sort\": 1\n    },\n    {\n      \"kind\": \"quarter\",\n      \"title\": \"Quarterly\",\n      \"price\": 650000,\n      \"channel\": \"both\",\n      \"sort\": 2\n    },\n    {\n      \"kind\": \"custom\",\n      \"title\": \"45 days\",\n      \"price\": 350000,\n      \"days\": 45,\n      \"channel\": \"desk\",\n      \"visitLimit\": 3,\n      \"sort\": 3\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/packages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "packages"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Submitting for review still needs the gym_owner role (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 KYC_REQUIRED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('KYC_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "submit"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The private gym is not in the directory",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"empty\", () => { pm.expect(j.items.length === 0).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/gym/gyms",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "gym",
+                "gyms"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Settings before setup",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"not set up\", () => { pm.expect(j.setupDone === false && j.shortCode === null && j.entryPolicy === 'warn').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "settings"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Adding a member before the short code (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 GYM_SETUP_REQUIRED', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('GYM_SETUP_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Too Early\",\n  \"phone\": \"01711999000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "members"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The short code IY (creates the settings)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"IY\", () => { pm.expect(j.setupDone === true && j.shortCode === 'IY' && j.nextMemberCode === 'IY-0001' && j.tin === null).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shortCode\": \"iy\",\n  \"receiptFooter\": \"Thank you for training with us\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "settings"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Public pricing from settings",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"four plans\", () => { pm.expect(j.tiers.map((t) => t.key).join() === 'free,basic,standard,pro' && j.tiers[1].pricePoisha === 79900 && j.tiers[0].maxMembers === 30).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/gym-manage/pricing",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "gym-manage",
+                "pricing"
+              ]
+            }
+          }
+        },
+        {
+          "name": "My plan: Free (one subscription with the first gym)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"free, no check-ins\", () => { pm.expect(j.subscription.chosenTier === 'free' && j.features.attendance === false && j.activeMembers.limit === 30).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/billing",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "billing"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Choose Basic",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"basic\", () => { pm.expect(j.subscription.chosenTier === 'basic' && j.features.attendance === true).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tier\": \"basic\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/billing/tier",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "billing",
+                "tier"
+              ]
+            }
+          }
+        },
+        {
+          "name": "My gyms",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"one gym, owner\", () => { pm.expect(j.items.length === 1 && j.items[0].role === 'owner' && j.items[0].shortCode === 'IY' && j.owner.tier === 'basic').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Members (FR-10 to FR-13, FR-25, FR-26, FR-32, FR-33)",
+      "item": [
+        {
+          "name": "Add a member with a membership and the first payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'member.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('memberId', v); }",
+                  "if (ok && j) { const v = get(j, 'membership.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('membershipId', v); }",
+                  "if (ok && j) { const v = get(j, 'due.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('dueId', v); }",
+                  "if (ok && j) { const v = get(j, 'payment.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('paymentId', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"৳3,000 due, ৳1,000 paid, IY-0001\", () => { pm.expect(j.member.memberCode === 'IY-0001' && j.due.amountPoisha === 300000 && j.due.outstandingPoisha === 200000 && j.due.status === 'partial' && /^IY-R\\d{2}-000001$/.test(j.payment.receiptNo)).to.eql(true); });",
+                  "pm.test(\"saves receiptToken\", () => { pm.expect((pm.collectionVariables.set('receiptToken', j.payment.receiptUrl.split('/r/')[1]), true)).to.eql(true); });",
+                  "pm.test(\"no full phone numbers\", () => { pm.expect(!new RegExp(\"(\\\\+?880|\\\"0)1[3-9]\\\\d{8}\").test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{ikAdd}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Rafiq Hasan\",\n  \"phone\": \"{{personPhone}}\",\n  \"gender\": \"male\",\n  \"membership\": {\n    \"packageId\": \"{{monthPkg}}\",\n    \"startsOn\": \"{{today}}\",\n    \"discountPoisha\": 50000,\n    \"discountReason\": \"Opening offer\"\n  },\n  \"payment\": {\n    \"amountPoisha\": 100000,\n    \"method\": \"cash\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "members"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The same request again replays the first answer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"replayed\", () => { pm.expect(pm.response.headers.get('Idempotent-Replayed') === 'true' && j.member.memberCode === 'IY-0001').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{ikAdd}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Rafiq Hasan\",\n  \"phone\": \"{{personPhone}}\",\n  \"gender\": \"male\",\n  \"membership\": {\n    \"packageId\": \"{{monthPkg}}\",\n    \"startsOn\": \"{{today}}\",\n    \"discountPoisha\": 50000,\n    \"discountReason\": \"Opening offer\"\n  },\n  \"payment\": {\n    \"amountPoisha\": 100000,\n    \"method\": \"cash\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "members"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The same phone again (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 GYM_MEMBER_PHONE_TAKEN', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('GYM_MEMBER_PHONE_TAKEN');",
+                  "});",
+                  "pm.test(\"names the member\", () => { pm.expect(j.memberId === pm.collectionVariables.get('memberId')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Copy\",\n  \"phone\": \"{{personPhone}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "members"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A second member with a membership, nothing paid",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'member.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('member2Id', v); }",
+                  "if (ok && j) { const v = get(j, 'due.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('due2Id', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"IY-0002, ৳2,500\", () => { pm.expect(j.member.memberCode === 'IY-0002' && j.due.amountPoisha === 250000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Nadia Islam\",\n  \"phone\": \"01811000444\",\n  \"membership\": {\n    \"packageId\": \"{{monthPkg}}\",\n    \"startsOn\": \"{{today}}\",\n    \"admissionFee\": false\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "members"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search by member code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"one\", () => { pm.expect(j.items.length === 1 && j.items[0].outstandingPoisha === 200000 && j.items[0].phoneLast4.length === 4).to.eql(true); });",
+                  "pm.test(\"no full phone numbers\", () => { pm.expect(!new RegExp(\"(\\\\+?880|\\\"0)1[3-9]\\\\d{8}\").test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/members?q=iy-0001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "members"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "iy-0001"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "The profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"memberships and dues\", () => { pm.expect(j.memberships.length === 1 && j.dues[0].payments.length === 1 && j.member.version === 1 && j.can.remove === true).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/members/{{memberId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "members",
+                "{{memberId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Edit with the version",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"version 2\", () => { pm.expect(j.member.version === 2 && j.member.displayName === 'Rafiq Hasan Khan').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": 1,\n  \"displayName\": \"Rafiq Hasan Khan\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/members/{{memberId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "members",
+                "{{memberId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A stale version (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 VERSION_CONFLICT', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('VERSION_CONFLICT');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": 1,\n  \"displayName\": \"Old Name\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/members/{{memberId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "members",
+                "{{memberId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reveal the phone (audited, no-store)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"full number, not cached\", () => { pm.expect(j.phone.startsWith('+8801') && pm.response.headers.get('Cache-Control') === 'no-store').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/members/{{memberId}}/reveal-phone",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "members",
+                "{{memberId}}",
+                "reveal-phone"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Dues, payments, receipts, renew and freeze (FR-27, FR-28, FR-30, FR-33 to FR-38)",
+      "item": [
+        {
+          "name": "More than is due (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 GYM_PAYMENT_EXCEEDS_DUE', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('GYM_PAYMENT_EXCEEDS_DUE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amountPoisha\": 200001,\n  \"method\": \"cash\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/dues/{{dueId}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "dues",
+                "{{dueId}}",
+                "payments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Pay the rest by bKash to the owner",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"paid, receipt 2\", () => { pm.expect(j.due.status === 'paid' && j.due.outstandingPoisha === 0 && j.receipt.receiptNo.endsWith('000002')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amountPoisha\": 200000,\n  \"method\": \"owner_bkash\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/dues/{{dueId}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "dues",
+                "{{dueId}}",
+                "payments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Member 2 pays ৳1,000",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'payment.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('payment2Id', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"partial\", () => { pm.expect(j.due.status === 'partial' && j.due.outstandingPoisha === 150000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amountPoisha\": 100000,\n  \"method\": \"cash\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/dues/{{due2Id}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "dues",
+                "{{due2Id}}",
+                "payments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reverse it (recorded by mistake)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"negative row\", () => { pm.expect(j.reversal.amountPoisha === -100000 && j.due.status === 'unpaid').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Recorded twice\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/fee-payments/{{payment2Id}}/reverse",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "fee-payments",
+                "{{payment2Id}}",
+                "reverse"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reverse it again (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 GYM_PAYMENT_NOT_REVERSIBLE', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('GYM_PAYMENT_NOT_REVERSIBLE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Again\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/fee-payments/{{payment2Id}}/reverse",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "fee-payments",
+                "{{payment2Id}}",
+                "reverse"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Waive ৳500 of member 2’s due",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"outstanding ৳2,000\", () => { pm.expect(j.due.outstandingPoisha === 200000 && j.due.waivedPoisha === 50000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amountPoisha\": 50000,\n  \"reason\": \"Student discount\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/dues/{{due2Id}}/waive",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "dues",
+                "{{due2Id}}",
+                "waive"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The receipt (no TIN line without a TIN)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"receipt\", () => { pm.expect(j.receiptNo.endsWith('000001') && j.gym.tin === null && j.member.memberCode === 'IY-0001' && j.amountPoisha === 100000 && j.outstandingAfterPoisha === 200000 && j.reversed === null).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/fee-payments/{{paymentId}}/receipt",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "fee-payments",
+                "{{paymentId}}",
+                "receipt"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The public receipt behind its signed link",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"same receipt, noindex\", () => { pm.expect(j.receiptNo.endsWith('000001') && pm.response.headers.get('X-Robots-Tag') === 'noindex').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/gym-receipts/{{receiptToken}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "gym-receipts",
+                "{{receiptToken}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A tampered link (expect 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 404', () => {",
+                  "  pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/gym-receipts/v1.{{paymentId}}.00000000000000000000000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "gym-receipts",
+                "v1.{{paymentId}}.00000000000000000000000000000000"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Renew within the grace: continuous, upcoming",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'membership.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('renewalId', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"upcoming, no admission fee\", () => { pm.expect(j.membership.status === 'upcoming' && j.membership.origin === 'renewal' && j.membership.admissionFeePoisha === 0).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/memberships/{{membershipId}}/renew",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "memberships",
+                "{{membershipId}}",
+                "renew"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Freeze from today for 3 days",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"frozen, end moved\", () => { pm.expect(j.membership.status === 'frozen' && j.membership.frozenDays === 4).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromOn\": \"{{today}}\",\n  \"toOn\": \"{{in3}}\",\n  \"reason\": \"Fever\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/memberships/{{membershipId}}/freeze",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "memberships",
+                "{{membershipId}}",
+                "freeze"
+              ]
+            }
+          }
+        },
+        {
+          "name": "An overlapping freeze (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 GYM_MEMBERSHIP_STATE', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('GYM_MEMBERSHIP_STATE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromOn\": \"{{in3}}\",\n  \"toOn\": \"{{in3}}\",\n  \"reason\": \"Overlap\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/memberships/{{membershipId}}/freeze",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "memberships",
+                "{{membershipId}}",
+                "freeze"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Unfreeze today: the days come back",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"active again\", () => { pm.expect(j.membership.status === 'active' && j.membership.frozenDays === 0).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/memberships/{{membershipId}}/unfreeze",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "memberships",
+                "{{membershipId}}",
+                "unfreeze"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cancel the upcoming renewal (its due voids)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"cancelled, void\", () => { pm.expect(j.membership.status === 'cancelled' && j.due.status === 'void').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Changed their mind\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/memberships/{{renewalId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "memberships",
+                "{{renewalId}}",
+                "cancel"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Today’s cash closing",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"all staff, counter money\", () => { pm.expect(j.scope === 'all' && j.totals.receivedPoisha === 400000 && j.totals.reversedPoisha === 100000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/cash-closing",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "cash-closing"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The dashboard",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"tiles with money for the owner\", () => { pm.expect(j.tiles.members === 2 && typeof j.tiles.collectedTodayPoisha === 'number').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/overview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "overview"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Staff at the desk (FR-03 to FR-06, FR-47, FR-48)",
+      "item": [
+        {
+          "name": "Hire the front desk (check-ins and the member list)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"businessType\": \"gym\",\n  \"businessId\": \"{{gymId}}\",\n  \"phone\": \"{{deskPhone}}\",\n  \"permissions\": [\n    \"attendance.mark\",\n    \"members.view\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/team",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "team"
+              ]
+            }
+          }
+        },
+        {
+          "name": "fees.adjust without fees.collect (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 PERMISSIONS_INVALID', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('PERMISSIONS_INVALID');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"businessType\": \"gym\",\n  \"businessId\": \"{{gymId}}\",\n  \"phone\": \"{{personPhone}}\",\n  \"permissions\": [\n    \"members.view\",\n    \"fees.adjust\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/team",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "team"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: refresh the desk session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'accessToken'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('deskToken', v); }",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/refresh?who=desk",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "refresh"
+              ],
+              "query": [
+                {
+                  "key": "who",
+                  "value": "desk"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Desk: my workplace",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"staff, basic plan\", () => { pm.expect(j.items[0].role === 'staff' && j.items[0].tier === 'basic' && j.owner === null).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Desk: members without amounts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"no outstandingPoisha\", () => { pm.expect(j.items.length === 2 && j.items.every((i) => i.outstandingPoisha === undefined)).to.eql(true); });",
+                  "pm.test(\"no full phone numbers\", () => { pm.expect(!new RegExp(\"(\\\\+?880|\\\"0)1[3-9]\\\\d{8}\").test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "members"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Desk: search by name",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"a card, no amounts\", () => { pm.expect(j.items.length === 1 && j.items[0].outstandingPoisha === undefined && j.items[0].decision === 'allow').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/desk/search?q=nadia",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "desk",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "nadia"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Desk: check member 1 in",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"counted\", () => { pm.expect(j.counted === true && j.decision === 'allow').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"memberId\": \"{{memberId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/checkins",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "checkins"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Desk: again the same day",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"not counted, first time shown\", () => { pm.expect(j.counted === false && typeof j.firstCheckInToday === 'string').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"memberId\": \"{{memberId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/checkins",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "checkins"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Desk: recording a payment (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 PERMISSION_REQUIRED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('PERMISSION_REQUIRED');",
+                  "});",
+                  "pm.test(\"names fees.collect\", () => { pm.expect(j.permission === 'fees.collect').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amountPoisha\": 100000,\n  \"method\": \"cash\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/dues/{{due2Id}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "dues",
+                "{{due2Id}}",
+                "payments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Desk: the gym settings (expect 403 owner.only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 PERMISSION_REQUIRED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('PERMISSION_REQUIRED');",
+                  "});",
+                  "pm.test(\"owner.only\", () => { pm.expect(j.permission === 'owner.only').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "settings"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Desk: the dashboard without money",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"no money tiles\", () => { pm.expect(j.tiles.collectedTodayPoisha === undefined && j.tiles.checkInsToday === 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/overview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "overview"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The day’s check-ins",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"one counted, two rows\", () => { pm.expect(j.counted === 1 && j.items.length === 2).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/checkins",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "checkins"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Account link and the member area (FR-14, FR-15, FR-18, FR-50)",
+      "item": [
+        {
+          "name": "Invite member 1 to link their account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'request.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('requestId', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"pending, account known\", () => { pm.expect(j.request.status === 'pending' && j.request.accountKnown === true).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/members/{{memberId}}/invite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "members",
+                "{{memberId}}",
+                "invite"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A second invite (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 GYM_LINK_REQUEST_PENDING', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('GYM_LINK_REQUEST_PENDING');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/members/{{memberId}}/invite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "members",
+                "{{memberId}}",
+                "invite"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: deliver events",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/drain",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "drain"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Member: my gym requests",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"the invite with what the gym sees\", () => { pm.expect(j.items.length === 1 && j.items[0].memberCode === 'IY-0001' && j.items[0].shares.includes('payments')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/gym-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gym-requests"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Member: accept (gate join_gym)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"accepted\", () => { pm.expect(j.request.status === 'accepted' && j.memberId === pm.collectionVariables.get('memberId')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/gym-requests/{{requestId}}/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gym-requests",
+                "{{requestId}}",
+                "accept"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Member: my gyms",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"linked, monthly\", () => { pm.expect(j.items.length === 1 && j.items[0].linked === true && j.items[0].current.title === 'Monthly').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/gym-memberships",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gym-memberships"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Member: the membership with receipts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"two receipts\", () => { pm.expect(j.receipts.length === 2 && j.memberships.length === 2).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/gym-memberships/{{memberId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gym-memberships",
+                "{{memberId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Member: my receipts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"two\", () => { pm.expect(j.items.length === 2).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/gym-receipts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gym-receipts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Member: my check-in QR (no-store)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'token'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('qrToken', v); }",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"rotating token\", () => { pm.expect(j.token.startsWith('v1.gm.') && pm.response.headers.get('Cache-Control') === 'no-store').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/gym-memberships/{{memberId}}/checkin-token",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gym-memberships",
+                "{{memberId}}",
+                "checkin-token"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Desk: scan the member QR",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"by QR (already counted today)\", () => { pm.expect(j.method === 'member_qr' && j.counted === false && j.member.linked === true).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{qrToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/checkins",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "checkins"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Desk: a forged QR (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 GYM_CHECKIN_TOKEN_INVALID', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('GYM_CHECKIN_TOKEN_INVALID');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"v1.gm.00000000-0000-4000-8000-000000000000.1.00000000000000000000000000000000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/checkins",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "checkins"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Member: unlink",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"unlinked\", () => { pm.expect(j.linked === false).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/gym-memberships/{{memberId}}/unlink",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gym-memberships",
+                "{{memberId}}",
+                "unlink"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Member: the gym under Past",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"past\", () => { pm.expect(j.items.length === 1 && j.items[0].linked === false).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/gym-memberships",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gym-memberships"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Import a member list (FR-75 to FR-79)",
+      "item": [
+        {
+          "name": "Upload the CSV: a preview with row errors",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('importId', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"3 ok, 1 duplicate\", () => { pm.expect(j.status === 'previewed' && j.rowsOk === 3 && j.rowsFailed === 1 && j.report[3].errors[0].code === 'duplicate_phone_in_gym').to.eql(true); });",
+                  "pm.test(\"no full phone numbers\", () => { pm.expect(!new RegExp(\"(\\\\+?880|\\\"0)1[3-9]\\\\d{8}\").test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "text/csv"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/imports?fileName=members.csv",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "imports"
+              ],
+              "query": [
+                {
+                  "key": "fileName",
+                  "value": "members.csv"
+                }
+              ]
+            },
+            "body": {
+              "mode": "file",
+              "file": {
+                "src": "m24-members.csv"
+              }
+            }
+          }
+        },
+        {
+          "name": "Apply the ok rows",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"applied, undo open\", () => { pm.expect(j.status === 'applied' && j.can.undo === true).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "pm-{{$guid}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/imports/{{importId}}/apply",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "imports",
+                "{{importId}}",
+                "apply"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Members now",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"5 members\", () => { pm.expect(j.items.length === 5).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "members"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Undo the import",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"undone\", () => { pm.expect(j.status === 'undone').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/imports/{{importId}}/undo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "imports",
+                "{{importId}}",
+                "undo"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Members after the undo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"2 members again\", () => { pm.expect(j.items.length === 2).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "members"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Kriraghor staff upload without consent (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 GYM_IMPORT_CONSENT_REQUIRED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('GYM_IMPORT_CONSENT_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{supportToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "text/csv"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/gym-manage/gyms/{{gymId}}/imports",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "gym-manage",
+                "gyms",
+                "{{gymId}}",
+                "imports"
+              ]
+            },
+            "body": {
+              "mode": "file",
+              "file": {
+                "src": "m24-members.csv"
+              }
+            }
+          }
+        },
+        {
+          "name": "The owner allows a Kriraghor upload",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"consent until\", () => { pm.expect(typeof j.importConsentUntil === 'string').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/import-consent",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "import-consent"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Kriraghor staff upload (preview only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('import2Id', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"by staff\", () => { pm.expect(j.uploadedAs === 'staff' && j.status === 'previewed').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{supportToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "text/csv"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/gym-manage/gyms/{{gymId}}/imports",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "gym-manage",
+                "gyms",
+                "{{gymId}}",
+                "imports"
+              ]
+            },
+            "body": {
+              "mode": "file",
+              "file": {
+                "src": "m24-members.csv"
+              }
+            }
+          }
+        },
+        {
+          "name": "Discard that preview",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"discarded, file gone\", () => { pm.expect(j.status === 'discarded' && j.filePurged === true).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/imports/{{import2Id}}/discard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "imports",
+                "{{import2Id}}",
+                "discard"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Jobs and member status (FR-31, FR-39)",
+      "item": [
+        {
+          "name": "Runner: run the daily jobs twice",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"second run changes nothing\", () => { pm.expect(j.second.expired === 0 && j.second.started === 0 && j.secondOverdue.marked === 0).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/daily",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "daily"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Member 2 is still active",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"active\", () => { pm.expect(j.member.status === 'active').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/members/{{member2Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "members",
+                "{{member2Id}}"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

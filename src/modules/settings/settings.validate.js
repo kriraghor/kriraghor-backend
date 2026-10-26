@@ -9,6 +9,8 @@ const { AppError } = require('../../common/errors');
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const SNAKE_RE = /^[a-z][a-z0-9_]{0,39}$/;
 const MAX_LIST = 20;
+/** M24 gym subscription plans, lowest first (gym_saas.feature_min_tiers values). */
+const GYM_TIERS = ['free', 'basic', 'standard', 'pro'];
 
 const isPlainObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 /** At most 2 decimal places (M03 §6.5: percentages are numeric(5,2)). */
@@ -48,11 +50,17 @@ function shapeError(def, value) {
       if (!value.every((x) => typeof x === 'string' && SNAKE_RE.test(x))) return 'Every item must be a lowercase key like sports_gear';
       return new Set(value).size === value.length ? null : 'Items must be unique';
     case 'json': {
-      // JSON settings are flat maps of numbers; the keys must stay the same as the current value.
+      // JSON settings are flat maps of numbers; the keys must stay the same as the current value. A map
+      // whose current values are all text (M24 gym_saas.feature_min_tiers: feature → plan name) keeps
+      // text values instead: lowercase keys like "basic" (the cross rules check which names are allowed).
       if (!isPlainObject(value)) return 'Must be an object';
       const want = Object.keys(def.value || {}).sort();
       const got = Object.keys(value).sort();
       if (want.join(',') !== got.join(',')) return `Must have exactly these fields: ${want.join(', ')}`;
+      const current = Object.values(def.value || {});
+      if (current.length && current.every((x) => typeof x === 'string')) {
+        return Object.values(value).every((x) => typeof x === 'string' && SNAKE_RE.test(x)) ? null : 'Every field must be a lowercase key like basic';
+      }
       return Object.values(value).every((x) => typeof x === 'number' && Number.isFinite(x) && x >= 0) ? null : 'Every field must be a number of 0 or more';
     }
     default:
@@ -166,6 +174,25 @@ const CROSS_RULES = [
     text: 'payouts.auto_release_max_poisha ≤ payouts.four_eyes_threshold_poisha',
     keys: ['payouts.auto_release_max_poisha', 'payouts.four_eyes_threshold_poisha'],
     ok: (v) => v('payouts.auto_release_max_poisha') <= v('payouts.four_eyes_threshold_poisha'),
+  },
+  {
+    // M24 §6.12: the active-member limits grow from Free to Standard (Pro has no limit).
+    id: 'gym_saas.tier_limits_order',
+    text: 'gym_saas.tier_free_max_members < gym_saas.tier_basic_max_members < gym_saas.tier_standard_max_members',
+    keys: ['gym_saas.tier_free_max_members', 'gym_saas.tier_basic_max_members', 'gym_saas.tier_standard_max_members'],
+    ok: (v) => v('gym_saas.tier_free_max_members') < v('gym_saas.tier_basic_max_members') && v('gym_saas.tier_basic_max_members') < v('gym_saas.tier_standard_max_members'),
+  },
+  {
+    id: 'gym_saas.tier_prices_order',
+    text: 'gym_saas.tier_basic_price_poisha ≤ gym_saas.tier_standard_price_poisha ≤ gym_saas.tier_pro_price_poisha',
+    keys: ['gym_saas.tier_basic_price_poisha', 'gym_saas.tier_standard_price_poisha', 'gym_saas.tier_pro_price_poisha'],
+    ok: (v) => v('gym_saas.tier_basic_price_poisha') <= v('gym_saas.tier_standard_price_poisha') && v('gym_saas.tier_standard_price_poisha') <= v('gym_saas.tier_pro_price_poisha'),
+  },
+  {
+    id: 'gym_saas.feature_tiers_known',
+    text: 'every gym_saas.feature_min_tiers value is free, basic, standard or pro',
+    keys: ['gym_saas.feature_min_tiers'],
+    ok: (v) => Object.values(v('gym_saas.feature_min_tiers') ?? {}).every((t) => GYM_TIERS.includes(t)),
   },
 ];
 
