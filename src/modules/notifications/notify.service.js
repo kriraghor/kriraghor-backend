@@ -11,7 +11,7 @@ const logger = require('../../common/logger');
 const { AppError, E } = require('../../common/errors');
 const { hmac } = require('../../common/crypto');
 const { getRedis } = require('../../common/redis');
-const { sequelize, Notification, NotificationPref, NotificationDelivery, SmsLog } = require('../../models');
+const { sequelize, Notification, NotificationPref, NotificationDelivery, NotificationExternalDelivery, SmsLog } = require('../../models');
 const settings = require('../settings').settings;
 const directory = require('../users').directory;
 const sms = require('../../providers/sms');
@@ -20,6 +20,7 @@ const templates = require('./notify.templates');
 const realtime = require('./notify.realtime');
 const rules = require('./notify.rules');
 const pushSvc = require('./notify.push');
+const recipients = require('./notify.recipients');
 const { emailHtml } = require('./notify.email');
 
 const DELIVER_JOB = 'notify.deliver';
@@ -29,16 +30,19 @@ const QUIET = '_quiet_hours';
 
 // ---------------------------------------------------------------- job dispatch
 const testJobs = [];
-function dispatchDeliver(deliveryId) {
+/** Queue one delivery: a user's channel (deliveryId) or an external email (externalId, M24 §11.1). */
+function dispatch(data, jobId) {
   if (config.isTest) {
-    testJobs.push({ name: DELIVER_JOB, data: { deliveryId } });
+    testJobs.push({ name: DELIVER_JOB, data });
     return;
   }
   const { getQueue, QUEUES } = require('../../jobs/queues');
   getQueue(QUEUES.NOTIFY)
-    .add(DELIVER_JOB, { deliveryId }, { jobId: `deliver-${deliveryId}`, attempts: MAX_DELIVERY_ATTEMPTS, backoff: { type: 'notify' }, removeOnComplete: 1000, removeOnFail: 5000 })
-    .catch((err) => logger.warn({ err: err.message, deliveryId }, 'could not queue delivery; the release job will pick it up'));
+    .add(DELIVER_JOB, data, { jobId, attempts: MAX_DELIVERY_ATTEMPTS, backoff: { type: 'notify' }, removeOnComplete: 1000, removeOnFail: 5000 })
+    .catch((err) => logger.warn({ err: err.message, jobId }, 'could not queue delivery; the release job will pick it up'));
 }
+const dispatchDeliver = (deliveryId) => dispatch({ deliveryId }, `deliver-${deliveryId}`);
+const dispatchExternal = (externalId) => dispatch({ externalId }, `deliver-ext-${externalId}`);
 const retryDelay = (attemptsMade) => RETRY_DELAYS_MS[Math.min(Math.max(attemptsMade, 1), RETRY_DELAYS_MS.length) - 1];
 
 async function prefsFor(userIds, transaction) {
@@ -62,7 +66,8 @@ async function unreadCount(userId) {
  */
 async function route(entry, event, { transaction }) {
   const userIds = [...new Set(await entry.recipients(event))];
-  if (!userIds.length) return { created: 0 };
+  const external = entry.external ? await routeExternal(entry, event, { transaction }) : 0;
+  if (!userIds.length) return { created: external };
   const contacts = await directory.contactFor(userIds);
   const prefs = await prefsFor(userIds, transaction);
   const now = new Date();
@@ -124,7 +129,60 @@ async function route(entry, event, { transaction }) {
       realtime.toUser(userId, 'notification.created', { notificationId: notification.id, unreadCount: await unreadCount(userId).catch(() => null) });
     });
   }
-  return { created };
+  return { created: created + external };
+}
+
+/**
+ * M24 §11.1: people without an account, named by the entry as { type, id } and resolved in memory by
+ * the owning module's recipient adapter. Email only (when the entry offers email): one external
+ * delivery row each, with the user deliveries' quiet hours and dedupe window; nothing in the bell and
+ * no address stored. Returns the rows created.
+ */
+async function routeExternal(entry, event, { transaction }) {
+  if (!entry.channels.includes('email')) return 0;
+  const refs = (await entry.external(event)) ?? [];
+  const seen = new Set();
+  const now = new Date();
+  let created = 0;
+  for (const ref of refs) {
+    const key = `${ref.type}:${ref.id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const who = await recipients.resolve(ref.type, ref.id);
+    if (!who) continue;
+    const values = await entry.values(event, { locale: who.locale, userId: null });
+    const rendered = await templates.renderFor(entry.code, 'email', who.locale, values); // fails closed (FR-07)
+    const at = rules.deliverAt({ now, urgent: Boolean(entry.urgent), channel: 'email', quietStart: settings.get('notify.quiet_hours_start'), quietEnd: settings.get('notify.quiet_hours_end') });
+    let row;
+    try {
+      row = await sequelize.transaction({ transaction }, (savepoint) =>
+        NotificationExternalDelivery.create(
+          {
+            code: entry.code,
+            category: entry.category,
+            recipientType: ref.type,
+            recipientId: ref.id,
+            channel: 'email',
+            locale: rendered.locale,
+            values,
+            link: entry.link?.(event, { userId: null }) ?? null,
+            templateVersion: rendered.version,
+            sourceEventId: event.id,
+            dedupeKey: rules.dedupeKey({ code: entry.code, subjectId: event.id, userId: key, at: now, windowHours: settings.get('notify.dedupe_hours') }),
+            status: at > now ? 'deferred' : 'queued',
+            deliverAt: at,
+          },
+          { transaction: savepoint }
+        )
+      );
+    } catch (err) {
+      if (err?.name === 'SequelizeUniqueConstraintError') continue; // FR-02
+      throw err;
+    }
+    created += 1;
+    if (row.status === 'queued') transaction.afterCommit(() => dispatchExternal(row.id));
+  }
+  return created;
 }
 
 // ---------------------------------------------------------------- delivery
@@ -158,7 +216,8 @@ async function logSms({ deliveryId = null, route, phone, text, result, status })
  * Job notify.deliver: send one channel of one notification. Throws on transient failures so BullMQ
  * retries; the last attempt marks the delivery failed (FR-13).
  */
-async function deliver({ deliveryId }, { attemptsMade = 0 } = {}) {
+async function deliver({ deliveryId, externalId }, { attemptsMade = 0 } = {}) {
+  if (externalId) return deliverExternal(externalId, attemptsMade);
   const d = await NotificationDelivery.findByPk(deliveryId);
   if (!d || d.status !== 'queued') return { status: d?.status ?? 'missing', skipped: true };
   if (d.deliverAt > new Date()) return { status: 'deferred', skipped: true };
@@ -219,14 +278,45 @@ async function deliverPush(d, n, attemptsMade) {
   }
 }
 
-/** Job notify.release-deferred: quiet hours are over for these (FR-10). */
+/**
+ * An external email (M24 §11.1): the adapter resolves the address now; gone or no address → suppressed.
+ * Retries like the other channels (FR-13).
+ */
+async function deliverExternal(externalId, attemptsMade) {
+  const d = await NotificationExternalDelivery.findByPk(externalId);
+  if (!d || d.status !== 'queued') return { status: d?.status ?? 'missing', skipped: true };
+  if (d.deliverAt > new Date()) return { status: 'deferred', skipped: true };
+  const who = await recipients.resolve(d.recipientType, d.recipientId);
+  if (!who) {
+    await d.update({ status: 'suppressed', errorCode: 'no_email' });
+    return { status: 'suppressed', code: 'no_email' };
+  }
+  const rendered = await templates.renderFor(d.code, 'email', d.locale, d.values ?? {});
+  try {
+    const result = await email.send({ to: who.email, subject: rendered.title, text: rendered.body, html: emailHtml(rendered, d.locale) });
+    await d.update({ status: result.delivered ? 'delivered' : 'sent', attempts: d.attempts + 1, provider: result.provider, providerMessageId: result.messageId, sentAt: new Date(), errorCode: null });
+    return { status: d.status, external: true };
+  } catch (err) {
+    const last = attemptsMade + 1 >= MAX_DELIVERY_ATTEMPTS;
+    await d.update({ attempts: d.attempts + 1, errorCode: String(err?.code ?? err?.message ?? 'send_failed').slice(0, 60), ...(last ? { status: 'failed' } : {}) });
+    logger.warn({ externalId, channel: 'email', attempt: attemptsMade + 1, err: err?.message }, last ? 'external delivery failed' : 'external delivery will retry');
+    throw err;
+  }
+}
+
+/** Job notify.release-deferred: quiet hours are over for these (FR-10), user deliveries and external emails. */
 async function releaseDeferred() {
-  const due = await NotificationDelivery.findAll({ where: { status: 'deferred', deliverAt: { [Op.lte]: sequelize.literal('clock_timestamp()') } }, attributes: ['id'], limit: 1000 });
-  if (!due.length) return { released: 0 };
+  const where = { status: 'deferred', deliverAt: { [Op.lte]: sequelize.literal('clock_timestamp()') } };
+  const due = await NotificationDelivery.findAll({ where, attributes: ['id'], limit: 1000 });
+  const ext = await NotificationExternalDelivery.findAll({ where, attributes: ['id'], limit: 1000 });
+  if (!due.length && !ext.length) return { released: 0 };
   const ids = due.map((r) => r.id);
-  await NotificationDelivery.update({ status: 'queued' }, { where: { id: ids, status: 'deferred' } });
+  const extIds = ext.map((r) => r.id);
+  if (ids.length) await NotificationDelivery.update({ status: 'queued' }, { where: { id: ids, status: 'deferred' } });
+  if (extIds.length) await NotificationExternalDelivery.update({ status: 'queued' }, { where: { id: extIds, status: 'deferred' } });
   ids.forEach(dispatchDeliver);
-  return { released: ids.length };
+  extIds.forEach(dispatchExternal);
+  return { released: ids.length + extIds.length };
 }
 
 /** Job notify.dlr-timeout: SMS accepted more than a day ago with no receipt are failed (§10). */
