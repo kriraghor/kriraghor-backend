@@ -34,7 +34,7 @@ const OWNERS = {
   'analytics': ['KpiFactBooking', 'KpiFactCourtDay', 'KpiFactPayment', 'KpiFactLedgerTxn', 'KpiFactEsportsEntry', 'KpiFactEsportsTournament', 'KpiProcessedEvent', 'KpiDrift', 'KpiFactSubOrder', 'KpiFactOrderLine', 'KpiFactGymPass', 'KpiFactGymAdmission'],
   'audit': ['AuditLog', 'AuditChain', 'AuditExport'],
   'events': ['OutboxEvent', 'ConsumedEvent'],
-  'notifications': ['Notification', 'NotificationPref', 'MessageTemplate', 'NotificationDelivery', 'SmsLog', 'PushSubscription', 'PushReceipt'],
+  'notifications': ['Notification', 'NotificationPref', 'MessageTemplate', 'NotificationDelivery', 'NotificationExternalDelivery', 'SmsLog', 'PushSubscription', 'PushReceipt'],
   'payments': ['Payment', 'PaymentAttempt', 'ProviderWebhookEvent', 'Refund', 'LedgerAccount', 'LedgerTransaction', 'LedgerEntry', 'EscrowHold', 'ReconciliationRun', 'ReconciliationItem', 'IdempotencyKey', 'IdSequence'],
   'payouts': ['PayoutAccount', 'PayoutBatch', 'Payout', 'PayoutItem', 'PayoutHold', 'PayoutApproval', 'PayoutReveal'],
   'kyc': ['DocumentRequirement', 'VerificationDocument', 'DocumentFile', 'DocumentRequest'],
@@ -47,8 +47,8 @@ const OWNERS = {
   'orders': ['Cart', 'CartItem', 'Order', 'SubOrder', 'OrderItem'],
   'hire': ['HireProfile', 'RateCard', 'RateCardItem', 'HireRequest', 'HireJob', 'HireMessage', 'HireShortlist', 'AvailabilityBlock'],
   'gym': ['Gym', 'GymHours', 'GymPhoto', 'GymPackage', 'GymPass', 'PassRedemption', 'TrainerPlan', 'TrainerSubscription', 'TrainerSubscriptionPeriod'],
-  // M24 gym management (prompt 1 of 3b: 11 of the 24 tables, §7.2); reads M20 only through gym/index.js.
-  'gym-manage': ['GymManageSettings', 'GymMember', 'GymLinkRequest', 'GymMembership', 'GymFreeze', 'GymDue', 'GymFeePayment', 'GymAttendance', 'GymMemberNote', 'GymImport', 'GymOwnerSubscription'],
+  // M24 gym management (prompts 1 and 2 of 3b: 18 of the 24 tables, §7.2); reads M20 only through gym/index.js.
+  'gym-manage': ['GymManageSettings', 'GymMember', 'GymLinkRequest', 'GymMembership', 'GymFreeze', 'GymDue', 'GymFeePayment', 'GymAttendance', 'GymMemberNote', 'GymImport', 'GymOwnerSubscription', 'GymPaymentLink', 'GymReminder', 'GymActiveMemberCount', 'GymSubscriptionInvoice', 'GymSubscriptionInvoiceLine', 'GymFeeOverride', 'GymReferral'],
   'organisations': ['Organisation', 'OrganisationMember'],
   'organiser-saas': ['OrganiserContract', 'OrganiserInvoice', 'OrganiserInvoiceLine', 'OrganiserPrizeFund', 'OrganisationBranding'],
   'esports-events': ['EsportsEvent', 'EsportsEventStage', 'EsportsEventQualification', 'EsportsEventStream', 'EsportsEventSponsor', 'EsportsEventPoll', 'EsportsEventPollOption', 'EsportsEventPollVote', 'EsportsEventFollow', 'EsportsEventFeedItem', 'EsportsEventAlert'],

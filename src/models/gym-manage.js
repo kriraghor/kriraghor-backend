@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * M24 Gym Management, prompt 1 (migration 20261113000002, §7.2): the gym's own books. Owned by the
+ * M24 Gym Management, prompts 1 and 2 (migrations 20261113000002 and 20261114000003, §7.2): the gym's own books. Owned by the
  * gym-manage module (gym group, ADR-007); index.js re-exports them. Encrypted columns (`*Enc`) hold
  * common/crypto.encrypt envelopes and never leave the module undecrypted except through its views.
  */
@@ -23,6 +23,15 @@ const poisha = (field, { allowNull = false, dflt } = {}) => ({
   },
 });
 const enumOf = (values, extra = {}) => ({ type: DataTypes.ENUM(...values), allowNull: false, ...extra });
+/** A signed BIGINT poisha amount (invoice discount lines are negative). */
+const signed = (field) => ({
+  type: DataTypes.BIGINT,
+  allowNull: false,
+  get() {
+    const v = this.getDataValue(field);
+    return v === null || v === undefined ? null : Number(v);
+  },
+});
 const TIERS = ['free', 'basic', 'standard', 'pro'];
 
 class GymManageSettings extends Model {}
@@ -278,4 +287,174 @@ GymOwnerSubscription.init(
   { sequelize, modelName: 'GymOwnerSubscription', tableName: 'gym_owner_subscriptions' }
 );
 
-module.exports = { GymManageSettings, GymMember, GymLinkRequest, GymMembership, GymFreeze, GymDue, GymFeePayment, GymAttendance, GymMemberNote, GymImport, GymOwnerSubscription };
+// ---------------------------------------------------------------- prompt 2 (migration 20261114000003)
+
+class GymPaymentLink extends Model {}
+GymPaymentLink.init(
+  {
+    id,
+    dueId: req(DataTypes.UUID),
+    memberId: req(DataTypes.UUID),
+    gymId: req(DataTypes.UUID),
+    ownerId: req(DataTypes.UUID),
+    amountPoisha: poisha('amountPoisha'),
+    tokenNonce: req(DataTypes.STRING(24)),
+    origin: enumOf(['staff', 'member']),
+    channels: { type: DataTypes.JSONB, allowNull: false, defaultValue: [] },
+    status: enumOf(['open', 'paid', 'expired', 'cancelled'], { defaultValue: 'open' }),
+    expiresAt: req(DataTypes.DATE(3)),
+    paymentId: DataTypes.UUID,
+    paidAt: DataTypes.DATE(3),
+    releaseAt: DataTypes.DATE(3),
+    releasedAt: DataTypes.DATE(3),
+    refundedPoisha: poisha('refundedPoisha', { dflt: 0 }),
+    createdBy: DataTypes.UUID,
+  },
+  { sequelize, modelName: 'GymPaymentLink', tableName: 'gym_payment_links' }
+);
+
+class GymReminder extends Model {}
+GymReminder.init(
+  {
+    id,
+    ownerId: req(DataTypes.UUID),
+    gymId: DataTypes.UUID,
+    kind: enumOf(['renewal_due', 'ends_today', 'overdue', 'expired', 'receipt', 'pay_link', 'plan', 'morning', 'monthly', 'tier_notice', 'invoice_due', 'sms_low', 'sms_empty']),
+    subjectType: enumOf(['membership', 'due', 'fee_payment', 'link', 'assignment', 'gym', 'owner', 'invoice']),
+    subjectId: req(DataTypes.UUID),
+    offsetKey: req(DataTypes.STRING(20)),
+    memberId: DataTypes.UUID,
+    channels: { type: DataTypes.JSONB, allowNull: false, defaultValue: [] },
+    smsBillingRef: DataTypes.UUID,
+    status: enumOf(['published', 'skipped']),
+    skipReason: DataTypes.STRING(12),
+  },
+  { sequelize, modelName: 'GymReminder', tableName: 'gym_reminders', updatedAt: false }
+);
+
+class GymActiveMemberCount extends Model {}
+GymActiveMemberCount.init(
+  {
+    ownerId: { type: DataTypes.UUID, primaryKey: true },
+    localDate: { type: DataTypes.DATEONLY, primaryKey: true },
+    activeCount: req(DataTypes.INTEGER),
+    gymsCount: req(DataTypes.INTEGER),
+    chosenTier: enumOf(TIERS),
+  },
+  { sequelize, modelName: 'GymActiveMemberCount', tableName: 'gym_active_member_counts' }
+);
+
+class GymSubscriptionInvoice extends Model {}
+GymSubscriptionInvoice.init(
+  {
+    id,
+    number: req(DataTypes.STRING(24)),
+    ownerId: req(DataTypes.UUID),
+    subscriptionId: req(DataTypes.UUID),
+    kind: enumOf(['monthly', 'sms_bundle']),
+    periodStart: DataTypes.DATEONLY,
+    periodEnd: DataTypes.DATEONLY,
+    billedTier: { type: DataTypes.ENUM(...TIERS), allowNull: true },
+    peakActive: DataTypes.INTEGER,
+    subtotalPoisha: poisha('subtotalPoisha'),
+    vatPoisha: poisha('vatPoisha', { dflt: 0 }),
+    totalPoisha: poisha('totalPoisha'),
+    status: enumOf(['issued', 'overdue', 'paid', 'void'], { defaultValue: 'issued' }),
+    issuedAt: req(DataTypes.DATE(3)),
+    dueAt: req(DataTypes.DATE(3)),
+    paidAt: DataTypes.DATE(3),
+    paymentId: DataTypes.UUID,
+    voidedAt: DataTypes.DATE(3),
+    voidedBy: DataTypes.UUID,
+    voidReason: DataTypes.STRING(300),
+    settingsSnapshot: { type: DataTypes.JSONB, allowNull: false },
+  },
+  { sequelize, modelName: 'GymSubscriptionInvoice', tableName: 'gym_subscription_invoices' }
+);
+
+class GymSubscriptionInvoiceLine extends Model {}
+GymSubscriptionInvoiceLine.init(
+  {
+    id,
+    invoiceId: req(DataTypes.UUID),
+    kind: enumOf(['tier', 'proration', 'founding_free', 'founding_discount', 'referral', 'sms_addon', 'sms_bundle', 'vat', 'adjustment']),
+    descriptionEn: req(DataTypes.STRING(200)),
+    descriptionBn: req(DataTypes.STRING(200)),
+    quantity: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
+    unitPoisha: signed('unitPoisha'),
+    amountPoisha: signed('amountPoisha'),
+    refType: DataTypes.STRING(10),
+    refId: DataTypes.UUID,
+  },
+  { sequelize, modelName: 'GymSubscriptionInvoiceLine', tableName: 'gym_subscription_invoice_lines', updatedAt: false }
+);
+
+class GymFeeOverride extends Model {}
+GymFeeOverride.init(
+  {
+    id,
+    scopeType: enumOf(['owner', 'gym']),
+    scopeId: req(DataTypes.UUID),
+    ownerId: req(DataTypes.UUID),
+    key: enumOf(['fees.gym_referral_poisha', 'fees.gym_pct']),
+    value: {
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: false,
+      get() {
+        const v = this.getDataValue('value');
+        return v === null || v === undefined ? null : Number(v);
+      },
+    },
+    reason: req(DataTypes.STRING(300)),
+    validFrom: req(DataTypes.DATE(3)),
+    validTo: DataTypes.DATE(3),
+    status: enumOf(['active', 'ended'], { defaultValue: 'active' }),
+    setBy: req(DataTypes.UUID),
+    endedBy: DataTypes.UUID,
+    endedAt: DataTypes.DATE(3),
+    endReason: DataTypes.STRING(300),
+  },
+  { sequelize, modelName: 'GymFeeOverride', tableName: 'gym_fee_overrides' }
+);
+
+class GymReferral extends Model {}
+GymReferral.init(
+  {
+    id,
+    gymId: req(DataTypes.UUID),
+    ownerId: req(DataTypes.UUID),
+    memberId: req(DataTypes.UUID),
+    linkRequestId: DataTypes.UUID,
+    firstFeePaymentId: req(DataTypes.UUID),
+    amountPoisha: poisha('amountPoisha'),
+    source: enumOf(['setting', 'owner_override', 'gym_override']),
+    overrideId: DataTypes.UUID,
+    settingVersion: DataTypes.INTEGER,
+    status: enumOf(['pending', 'invoiced', 'void'], { defaultValue: 'pending' }),
+    invoiceId: DataTypes.UUID,
+    voidedAt: DataTypes.DATE(3),
+    voidReason: DataTypes.STRING(40),
+  },
+  { sequelize, modelName: 'GymReferral', tableName: 'gym_referrals' }
+);
+
+module.exports = {
+  GymManageSettings,
+  GymMember,
+  GymLinkRequest,
+  GymMembership,
+  GymFreeze,
+  GymDue,
+  GymFeePayment,
+  GymAttendance,
+  GymMemberNote,
+  GymImport,
+  GymOwnerSubscription,
+  GymPaymentLink,
+  GymReminder,
+  GymActiveMemberCount,
+  GymSubscriptionInvoice,
+  GymSubscriptionInvoiceLine,
+  GymFeeOverride,
+  GymReferral,
+};
