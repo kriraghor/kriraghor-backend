@@ -16,6 +16,9 @@
  * payoutSchedule (M07 §6.1) says which payout run sweeps the money released to payees: 'daily',
  * 'ground_weekly', 'shop_weekly', or 'withdraw' (esports prizes wait in the payable until the winner
  * withdraws them, M07 v3 note; never swept).
+ *
+ * site (M24-FR-104): the web app that hosts the pay page and its result page for the purpose: 'gym'
+ * (gym.kriraghor.com, GYM_APP_URL) or, when absent, the main site (kriraghor.com).
  */
 const config = require('../../config');
 
@@ -43,10 +46,17 @@ const PURPOSES = {
   // M20 gym packages (day, month, quarter passes): held per pass, released to the gym owner at the
   // first admission or when an unused pass expires (Q110), with fees.gym_pct; paid out with the
   // venue owners' weekly run.
-  gym_package: { vertical: 'gym', escrowAccount: 'escrow:gym_package', pooled: false, testOnly: false, payoutSchedule: 'ground_weekly' },
+  gym_package: { vertical: 'gym', escrowAccount: 'escrow:gym_package', pooled: false, testOnly: false, payoutSchedule: 'ground_weekly', site: 'gym' },
   // M20 trainer monthly subscriptions: one payment per month, released to the trainer after the
   // month (and the dispute window) with fees.gym_pct; paid out daily like other pros.
-  trainer_subscription: { vertical: 'gym', escrowAccount: 'escrow:trainer_subscription', pooled: false, testOnly: false, payoutSchedule: 'daily' },
+  trainer_subscription: { vertical: 'gym', escrowAccount: 'escrow:trainer_subscription', pooled: false, testOnly: false, payoutSchedule: 'daily', site: 'gym' },
+  // M24 online membership fees (§6.3, M24-FR-40 to FR-46): no Kriraghor margin (vertical gym_fee has no
+  // fee setting), held per payment and released by gym-manage to the gym owner after
+  // gym_manage.online_fee_release_hours with the provider's charge recovered at cost; weekly payout run.
+  gym_membership_fee: { vertical: 'gym_fee', escrowAccount: 'escrow:gym_membership_fee', pooled: false, testOnly: false, payoutSchedule: 'ground_weekly', site: 'gym' },
+  // M24 the gym owner's monthly subscription invoice (M24-FR-85): grouped by the invoice (no payee),
+  // captured, then collected straight to fee_revenue:gym_saas (the M22 fee_invoice pattern).
+  gym_saas_invoice: { vertical: 'gym_saas', escrowAccount: 'escrow:gym_saas_invoice', pooled: true, testOnly: false, payoutSchedule: null, site: 'gym' },
   // M14 physical-sport entry fees: held per registration (payee: the organisation owner), released in
   // two tranches (after the first result, at completion) with fees.tournament_pct; weekly payout run.
   tournament_entry: { vertical: 'tournaments', escrowAccount: 'escrow:tournament_entry', pooled: false, testOnly: false, payoutSchedule: 'ground_weekly' },

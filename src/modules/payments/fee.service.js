@@ -6,7 +6,8 @@
  * the escrow hold; later setting changes never re-price it (§12 #10).
  *
  * Esports has no percentage fee: platform revenue is the pool remainder after prizes (v3 rules), so
- * its snapshot is 0 bps.
+ * its snapshot is 0 bps. M24 online membership fees (gym_fee) carry no Kriraghor margin (M24-FR-45), and
+ * the gym owner's subscription invoices (gym_saas) are revenue in full: both snapshot 0 bps.
  */
 const settings = require('../settings').settings;
 const { pctToBps } = require('../../common/money');
@@ -24,7 +25,7 @@ const FEE_KEYS = {
   esports_saas: 'fees.esports_saas_pct',
   test: 'payments.test_charge_fee_pct',
 };
-const NO_FEE = new Set(['esports']);
+const NO_FEE = new Set(['esports', 'gym_fee', 'gym_saas']);
 
 /** { feeBps, settingKey, settingsVersion } for a vertical, as of now. */
 function snapshot(vertical) {

@@ -102,6 +102,7 @@ const serializeItem = (i) => ({
   ledgerEntryId: i.ledgerEntryId,
   gross: i.grossPoisha,
   fee: i.feePoisha,
+  providerCharge: i.providerChargePoisha ?? 0,
   net: i.netPoisha,
   description: i.description,
   status: i.status,
@@ -147,7 +148,7 @@ async function eligibleByPayee({ upTo, payeeIds = null, transaction }) {
     if (used.has(e.entryId)) continue;
     const schedule = SCHEDULE_FOR(e.purpose);
     if (!schedule || schedule === 'withdraw') continue;
-    const v = rules.itemValues({ credit: e.credit, debit: e.debit, fee: e.fee });
+    const v = rules.itemValues({ credit: e.credit, debit: e.debit, fee: e.fee, providerCharge: e.providerCharge ?? 0 });
     const item = {
       entry: e,
       schedule,
@@ -198,7 +199,7 @@ async function buildForPayee(batch, payeeId, items, limits, now) {
       );
       const rows = [];
       for (const i of kept) {
-        rows.push({ payoutId: payout.id, sourceType: i.sourceType, sourceId: i.sourceId, ledgerEntryId: i.ledgerEntryId, grossPoisha: i.gross, feePoisha: i.fee, netPoisha: i.net, description: await describe(i.entry) });
+        rows.push({ payoutId: payout.id, sourceType: i.sourceType, sourceId: i.sourceId, ledgerEntryId: i.ledgerEntryId, grossPoisha: i.gross, feePoisha: i.fee, providerChargePoisha: i.providerCharge ?? 0, netPoisha: i.net, description: await describe(i.entry) });
       }
       if (t.netting > 0) {
         rows.push({ payoutId: payout.id, sourceType: 'fee_netting', sourceId: payeeId, ledgerEntryId: null, grossPoisha: 0, feePoisha: 0, netPoisha: -t.netting, description: 'Fees you owe (venue cash and walk-ins), netted' });
@@ -681,7 +682,8 @@ async function summary(userId, now = new Date()) {
 async function statementCsv(userId, id, locale = 'en') {
   const d = await meGet(userId, id);
   const bn = locale === 'bn';
-  const head = bn ? ['বিবরণ', 'মোট (৳)', 'ফি (৳)', 'নিট (৳)'] : ['Description', 'Gross (৳)', 'Fee (৳)', 'Net (৳)'];
+  // M24-FR-46: the provider's charge passed through at cost (online gym fees) has its own column.
+  const head = bn ? ['বিবরণ', 'মোট (৳)', 'ফি (৳)', 'প্রোভাইডার চার্জ (৳)', 'নিট (৳)'] : ['Description', 'Gross (৳)', 'Fee (৳)', 'Provider charge (৳)', 'Net (৳)'];
   const rows = [
     [bn ? 'পেআউট' : 'Payout', d.code],
     [bn ? 'অবস্থা' : 'Status', d.status],
@@ -689,9 +691,9 @@ async function statementCsv(userId, id, locale = 'en') {
     [bn ? 'রেফারেন্স' : 'Reference', d.providerRef ?? ''],
     [],
     head,
-    ...d.items.filter((i) => i.status === 'included').map((i) => [i.description, taka(i.gross), taka(i.fee), taka(i.net)]),
+    ...d.items.filter((i) => i.status === 'included').map((i) => [i.description, taka(i.gross), taka(i.fee), taka(i.providerCharge), taka(i.net)]),
     [],
-    [bn ? 'পরিশোধিত' : 'Paid', '', '', taka(d.amount)],
+    [bn ? 'পরিশোধিত' : 'Paid', '', '', '', taka(d.amount)],
   ];
   return { filename: `${d.code}.csv`, body: rules.csv(rows) };
 }

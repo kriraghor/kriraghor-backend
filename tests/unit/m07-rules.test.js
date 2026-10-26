@@ -44,9 +44,13 @@ describe('M07 payout accounts (§4.1)', () => {
 
 describe('M07 items and amounts (§6.2, FR-03, FR-04)', () => {
   it('turns a payable credit into an item with the release fee, and a debit into a negative item', () => {
-    expect(R.itemValues({ credit: 9500, fee: 500 })).toEqual({ gross: 10000, fee: 500, net: 9500 });
-    expect(R.itemValues({ credit: 15000 })).toEqual({ gross: 15000, fee: 0, net: 15000 });
-    expect(R.itemValues({ debit: 2000 })).toEqual({ gross: 0, fee: 0, net: -2000 });
+    expect(R.itemValues({ credit: 9500, fee: 500 })).toEqual({ gross: 10000, fee: 500, providerCharge: 0, net: 9500 });
+    expect(R.itemValues({ credit: 15000 })).toEqual({ gross: 15000, fee: 0, providerCharge: 0, net: 15000 });
+    expect(R.itemValues({ debit: 2000 })).toEqual({ gross: 0, fee: 0, providerCharge: 0, net: -2000 });
+    // M24-FR-46: an online gym fee of ৳1,500 by bKash: ৳30 provider charge, ৳1,470 net, no platform fee.
+    expect(R.itemValues({ credit: 147000, providerCharge: 3000 })).toEqual({ gross: 150000, fee: 0, providerCharge: 3000, net: 147000 });
+    expect(R.itemValues({ debit: 500, providerCharge: 30 })).toEqual({ gross: 0, fee: 0, providerCharge: 0, net: -500 });
+    expect(() => R.itemValues({ credit: 1, providerCharge: -1 })).toThrow(TypeError);
     expect(() => R.itemValues({})).toThrow(TypeError);
     expect(() => R.itemValues({ credit: 1, debit: 1 })).toThrow(TypeError);
     expect(() => R.itemValues({ credit: -1 })).toThrow(TypeError);
@@ -59,6 +63,11 @@ describe('M07 items and amounts (§6.2, FR-03, FR-04)', () => {
       { gross: 72000, fee: 3600, net: 68400 },
     ];
     expect(R.totals(items, { feeReceivable: 48000 })).toEqual({ gross: 426000, deductions: 62600, net: 363400, netting: 48000, adjustments: 0, amount: 315400 });
+  });
+
+  it('counts the provider charge as a deduction (M24-FR-46)', () => {
+    const items = [{ gross: 150000, fee: 0, providerCharge: 3000, net: 147000 }, { gross: 10000, fee: 500, net: 9500 }];
+    expect(R.totals(items)).toEqual({ gross: 160000, deductions: 3500, net: 156500, netting: 0, adjustments: 0, amount: 156500 });
   });
 
   it('nets at most what the items bring in, and never a negative receivable', () => {

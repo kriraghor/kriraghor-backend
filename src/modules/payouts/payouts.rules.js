@@ -42,25 +42,28 @@ const maskAccount = (type, last4) => `${WALLET_LABELS[type] ?? type} ••• $
 /**
  * One payable ledger entry as a payout item. A credit (an escrow release or a prize) adds its net and
  * carries the fee M06 took at release; a debit on the payable (a reversal or forfeit) takes money away.
- * M07 never recalculates a percentage: the fee comes from the release posting.
+ * M07 never recalculates a percentage: the fee comes from the release posting. M24-FR-46: the
+ * provider's charge passed through at cost in the same release (providerCharge) is shown apart:
+ * gross = net + fee + providerCharge.
  */
-function itemValues({ credit = 0, debit = 0, fee = 0 }) {
+function itemValues({ credit = 0, debit = 0, fee = 0, providerCharge = 0 }) {
   assertPoisha(credit, 'credit');
   assertPoisha(debit, 'debit');
   assertPoisha(fee, 'fee');
+  assertPoisha(providerCharge, 'provider charge');
   if ((credit > 0) === (debit > 0)) throw new TypeError('A payable entry has exactly one positive side');
-  if (credit > 0) return { gross: credit + fee, fee, net: credit };
-  return { gross: 0, fee: 0, net: -debit };
+  if (credit > 0) return { gross: credit + fee + providerCharge, fee, providerCharge, net: credit };
+  return { gross: 0, fee: 0, providerCharge: 0, net: -debit };
 }
 
 /**
- * payout.gross = Σ items.gross; deductions = Σ items.fee;
+ * payout.gross = Σ items.gross; deductions = Σ (items.fee + items.providerCharge);
  * netting = min(fee receivable owed, Σ items.net) (never below 0); amount = Σ net − netting + adjustments.
  */
 function totals(items, { feeReceivable = 0, adjustments = 0 } = {}) {
   const net = items.reduce((s, i) => s + i.net, 0);
   const gross = sum(items.map((i) => assertPoisha(i.gross, 'item gross')));
-  const deductions = sum(items.map((i) => assertPoisha(i.fee, 'item fee')));
+  const deductions = sum(items.map((i) => assertPoisha(i.fee, 'item fee') + assertPoisha(i.providerCharge ?? 0, 'item provider charge')));
   const netting = Math.max(0, Math.min(feeReceivable, net));
   return { gross, deductions, net, netting, adjustments, amount: net - netting + adjustments };
 }

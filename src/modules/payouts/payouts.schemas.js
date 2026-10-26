@@ -115,6 +115,7 @@ const Item = z.object({
   ledgerEntryId: z.number().int().nullable(),
   gross: poisha,
   fee: poisha,
+  providerCharge: poisha.meta({ description: 'The payment provider’s charge passed through at cost (online gym membership fees, M24-FR-46); 0 otherwise. gross = fee + providerCharge + net' }),
   net: signed,
   description: z.string(),
   status: z.enum(['included', 'returned']),

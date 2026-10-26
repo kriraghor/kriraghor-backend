@@ -110,11 +110,18 @@ async function openHolds(payment, { transaction, capturedAt }) {
 /** The single hold of a payment (kept for callers that open one). */
 const openHold = async (payment, opts) => (await openHolds(payment, opts))[0];
 
-/** FR-13: release (all or part) to the payee, inside `transaction`, on a locked hold. */
-async function releaseInTx(hold, { amount, feeBase = null, actor = null, transaction, kind = 'escrow.release' }) {
+/**
+ * FR-13: release (all or part) to the payee, inside `transaction`, on a locked hold.
+ * M24 §6.3: `providerCharge` (poisha) is the provider's charge passed through at cost: it leaves the
+ * payee's share for provider_fee_expense (never fee_revenue), capped at what is left after the fee.
+ * `kind` keeps the escrow.release prefix (M07's payout items and the earnings queries match it).
+ */
+async function releaseInTx(hold, { amount, feeBase = null, actor = null, transaction, kind = 'escrow.release', providerCharge = 0 }) {
   const block = rules.releaseBlock(hold);
   if (block) throw blocked(block);
-  const { gross, fee, net } = rules.release(hold, amount, feeBase);
+  const { gross, fee, net: beforeCharge } = rules.release(hold, amount, feeBase);
+  const charge = Math.min(providerCharge, beforeCharge);
+  const net = beforeCharge - charge;
   const def = purposes.get(hold.purpose);
   const n = hold.releaseCount + 1;
   const posted = await ledger.post(
@@ -123,7 +130,7 @@ async function releaseInTx(hold, { amount, feeBase = null, actor = null, transac
       refType: 'escrow_hold',
       refId: hold.id,
       idempotencyKey: `escrow.release:${hold.id}:${n}`,
-      lines: lrules.releaseLines({ escrowAccount: def.escrowAccount, holdId: hold.id, payeeId: hold.payeeId, vertical: hold.vertical, gross, fee }),
+      lines: lrules.releaseLines({ escrowAccount: def.escrowAccount, holdId: hold.id, payeeId: hold.payeeId, vertical: hold.vertical, gross, fee, providerCharge: charge }),
       memo: feeBase === null ? `Release ${n} of hold ${hold.id}` : `Release ${n} of hold ${hold.id} (fee on ${feeBase})`,
       postedBy: actor?.id ?? null,
     },
@@ -138,10 +145,10 @@ async function releaseInTx(hold, { amount, feeBase = null, actor = null, transac
     name: 'escrow.released',
     aggregateType: 'escrow_hold',
     aggregateId: hold.id,
-    payload: { holdId: hold.id, purpose: hold.purpose, purposeId: hold.purposeId, gross, fee, net, payeeId: hold.payeeId, transactionId: posted.id },
+    payload: { holdId: hold.id, purpose: hold.purpose, purposeId: hold.purposeId, gross, fee, net, payeeId: hold.payeeId, transactionId: posted.id, ...(charge ? { providerCharge: charge } : {}) },
     actor,
   });
-  return { gross, fee, net, transactionId: posted.id };
+  return { gross, fee, net, providerCharge: charge, transactionId: posted.id };
 }
 
 /** POST /admin/escrow/:id/release (master + step-up escrow.manage) — manual release with a reason. */

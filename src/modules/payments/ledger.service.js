@@ -265,6 +265,8 @@ async function transactionsFor(refs) {
  *   source   escrow_hold (a release, or its reversal) | pool (esports pool settlement) | other
  *   purpose  the payment purpose of the source (M07 reads payments.purposes payoutSchedule)
  *   fee      the platform fee M06 took in the same release posting (0 for pools and debits)
+ *   providerCharge  the provider charge passed through at cost in the same release posting (M24 §6.3:
+ *            credited to provider_fee_expense; 0 for every other purpose, pools and debits)
  * Optionally only for some payees. Oldest first.
  */
 async function payableEntries({ upTo, payeeIds = null, transaction } = {}) {
@@ -273,7 +275,9 @@ async function payableEntries({ upTo, payeeIds = null, transaction } = {}) {
       'COALESCE(o.ref_type, t.ref_type) AS "srcType", COALESCE(o.ref_id, t.ref_id) AS "srcId", ' +
       'COALESCE(h.purpose, (SELECT g.purpose FROM escrow_holds g WHERE g.group_ref = COALESCE(o.ref_id, t.ref_id) LIMIT 1)) AS purpose, ' +
       "CASE WHEN t.kind LIKE 'escrow.release%' AND e.credit_poisha > 0 THEN (SELECT COALESCE(SUM(f.credit_poisha), 0) FROM ledger_entries f " +
-      "JOIN ledger_accounts fa ON fa.id = f.account_id WHERE f.txn_id = t.id AND fa.code LIKE 'fee_revenue:%') ELSE 0 END AS fee " +
+      "JOIN ledger_accounts fa ON fa.id = f.account_id WHERE f.txn_id = t.id AND fa.code LIKE 'fee_revenue:%') ELSE 0 END AS fee, " +
+      "CASE WHEN t.kind LIKE 'escrow.release%' AND e.credit_poisha > 0 THEN (SELECT COALESCE(SUM(f.credit_poisha), 0) FROM ledger_entries f " +
+      "JOIN ledger_accounts fa ON fa.id = f.account_id WHERE f.txn_id = t.id AND fa.code = 'provider_fee_expense') ELSE 0 END AS \"providerCharge\" " +
       'FROM ledger_entries e JOIN ledger_accounts a ON a.id = e.account_id JOIN ledger_transactions t ON t.id = e.txn_id ' +
       'LEFT JOIN ledger_transactions o ON o.id = t.reverses_txn_id ' +
       "LEFT JOIN escrow_holds h ON COALESCE(o.ref_type, t.ref_type) = 'escrow_hold' AND h.id = COALESCE(o.ref_id, t.ref_id) " +
@@ -293,6 +297,7 @@ async function payableEntries({ upTo, payeeIds = null, transaction } = {}) {
     sourceId: r.srcId,
     purpose: r.purpose ?? null,
     fee: toPoisha(r.fee),
+    providerCharge: toPoisha(r.providerCharge),
   }));
 }
 
