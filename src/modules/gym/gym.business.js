@@ -2,7 +2,7 @@
 
 /**
  * Round B3 business adapter for gyms (`gym`): what business-members may know about a gym (owner,
- * name, status). The front desk has no to-do of its own (admissions happen as members walk in).
+ * name, status). Staff to-dos come from gym-manage (M24: dues due today and overdue).
  * Registered once per process (registry.registerAll), through gym/index.js.
  */
 const { Op } = require('sequelize');
@@ -17,7 +17,8 @@ const adapter = {
     const rows = await Gym.findAll({ where: { ownerId, status: { [Op.ne]: 'removed' } }, attributes: ['id', 'name', 'status'], order: [['createdAt', 'ASC']] });
     return rows.map((g) => ({ id: g.id, name: g.name, status: g.status }));
   },
-  staffActions: async () => [],
+  // M24 (§2.1, M19): the gym's to-dos for its staff come from gym-manage (dues due today and overdue for fees.collect).
+  staffActions: (gymId, permissions, now) => require('../gym-manage').reads.staffActions(gymId, permissions, now),
 };
 
 function register() {

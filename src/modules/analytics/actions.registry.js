@@ -28,7 +28,8 @@ const PROVIDERS = {
   // M13: orders to accept and to ship.
   shop_owner: [(p) => require('../market').reads.pendingActions(p), (p) => require('../orders').reads.pendingActions(p, 'shop_owner')],
   // M20: gyms with changes requested.
-  gym_owner: [(p) => require('../gym').reads.pendingActions(p, 'gym_owner')],
+  // M24: overdue dues, invoices to pay, the restricted panel and link requests waiting (gym-manage).
+  gym_owner: [(p) => require('../gym').reads.pendingActions(p, 'gym_owner'), (p) => require('../gym-manage').reads.pendingActions(p)],
   // M14 (Round B2): per sports organisation the caller belongs to, registrations waiting for approval
   // (owners and admins) and entry fees not paid yet.
   organiser: [(p) => require('../tournaments').reads.pendingActions(p)],
