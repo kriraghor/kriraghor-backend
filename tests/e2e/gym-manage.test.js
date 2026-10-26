@@ -537,6 +537,13 @@ describe('the staff route matrix (FR-03 to FR-06, FR-106)', () => {
     const a = await gm.addMember(owner, gym.id, { displayName: 'Rafiq Hasan', membership: { packageId: pkg('month').id, startsOn: gm.today() } });
     const as = (who) => gm.manage(who, gym.id);
 
+    // Packages for the desk (members.view): only desk and both channels (FR-25).
+    expect((await as(none).get('/packages').expect(403)).body.permission).toBe('members.view');
+    const deskPackages = (await as(desk).get('/packages').expect(200)).body;
+    conforms(s.Packages, deskPackages);
+    expect(deskPackages.items.map((x) => x.id)).toContain(pkg('month').id);
+    expect(deskPackages.items.every((x) => x.channel !== 'online')).toBe(true);
+    expect((await as(foreign).get('/packages').expect(404)).body.code).toBe('NOT_FOUND');
     // Members: list and profile (members.view); amounts only with fees.collect.
     expect((await as(none).get('/members').expect(403)).body).toMatchObject({ code: 'PERMISSION_REQUIRED', permission: 'members.view' });
     expect((await as(foreign).get('/members').expect(404)).body.code).toBe('NOT_FOUND');

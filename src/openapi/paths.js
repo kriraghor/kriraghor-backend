@@ -1137,6 +1137,7 @@ function register(registry) {
   const gp = (method, path, summary, extra) => p({ method, path: `/manage/gyms/{gymId}${path}`, tags: gmTag, summary, security: bearer, ...extra });
   p({ method: 'get', path: '/manage/gyms', tags: gmTag, summary: 'My gyms (owner) and the gyms I work at (staff), with the plan, features and restriction state (gate work_gym)', security: bearer, responses: { 200: json(gmS.ManageGyms), ...errors(COMMON_AUTH) } });
   gp('get', '/overview', 'Dashboard tiles: check-ins today, members, new this month, expiring this week, not seen, requests, dues today; money tiles only for the owner and reports.view (M24-FR-70)', { request: gmG, responses: { 200: json(gmS.Overview), ...errors(GM) } });
+  gp('get', '/packages', 'Active packages sold at the desk (channel desk or both), for adding members and memberships (members.view, M24-FR-25)', { request: gmG, responses: { 200: json(gmS.Packages), ...errors(GM) } });
   gp('get', '/settings', 'The gym’s management settings (owner)', { request: gmG, responses: { 200: json(gmS.Settings), ...errors(GM) } });
   gp('patch', '/settings', 'Change the settings (owner). The first call must carry the short code (2–6 capital letters, unique among the owner’s gyms) and creates the settings (M24-FR-09)', {
     request: { ...gmG, ...body(gmS.settingsPatch) },

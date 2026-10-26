@@ -11,6 +11,7 @@ const { E } = require('../../common/errors');
 const { sequelize, GymManageSettings, GymMember } = require('../../models');
 const settingsFacade = require('../settings').settings;
 const gymFacade = require('../gym').gyms;
+const packagesFacade = require('../gym').packages;
 const rules = require('./gym-manage.rules');
 const c = require('./gym-manage.common');
 
@@ -110,6 +111,17 @@ async function overview(principal, gymId) {
   return c.shown(a, { gymId, date: today, setupDone: Boolean(s), ...(await planOf(a.gym.ownerId)), tiles });
 }
 
+/**
+ * GET /manage/gyms/:gymId/packages (members.view): the active packages sold at the desk (channel desk or
+ * both), so staff can add members and assign or change memberships without the owner's listing editor
+ * (M24-FR-25). Prices are the gym's own, not a staff-hidden fee.
+ */
+async function packages(principal, gymId) {
+  const a = await c.gymAccess(principal, gymId, 'members.view');
+  const items = (await packagesFacade.forGym(gymId)).filter((p) => p.channel !== 'online');
+  return c.shown(a, { items });
+}
+
 /** The settings as the owner sees them (defaults before the first setup step). */
 function settingsView(gym, s) {
   return {
@@ -180,4 +192,4 @@ async function memberFacts(memberId) {
   return m ? { memberCode: m.memberCode, gymId: m.gymId } : null;
 }
 
-module.exports = { planOf, listMine, overview, settingsView, getSettings, patchSettings, memberFacts };
+module.exports = { planOf, listMine, overview, packages, settingsView, getSettings, patchSettings, memberFacts };

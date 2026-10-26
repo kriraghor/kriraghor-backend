@@ -62,6 +62,7 @@ manageRouter.use('/gyms/:gymId', work, params(s.gymParam), g);
 const P = (req) => req.params.gymId;
 
 g.get('/overview', async (req, res) => res.json(await gyms.overview(req.user, P(req))));
+g.get('/packages', async (req, res) => res.json(await gyms.packages(req.user, P(req))));
 g.get('/settings', async (req, res) => res.json(await gyms.getSettings(req.user, P(req))));
 g.patch('/settings', validate(s.settingsPatch), async (req, res) => res.json(await gyms.patchSettings(req.user, P(req), req.body, req)));
 

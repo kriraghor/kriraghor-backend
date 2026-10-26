@@ -372,6 +372,25 @@ const Overview = z
     }),
   })
   .meta({ id: 'GymOverview' });
+const Packages = z
+  .object({
+    items: z.array(
+      z.object({
+        id,
+        gymId: id,
+        kind: z.enum(['day', 'month', 'quarter', 'half_year', 'year', 'custom']),
+        title: z.string(),
+        pricePoisha: poisha,
+        days: z.number().int(),
+        admissionFeePoisha: poisha,
+        channel: z.enum(['desk', 'online', 'both']),
+        visitLimit: z.number().int().nullable(),
+        sort: z.number().int(),
+        status: z.string(),
+      })
+    ),
+  })
+  .meta({ id: 'GymManagePackages' });
 const Settings = z
   .object({
     gymId: id,
@@ -570,6 +589,7 @@ module.exports = {
   CheckinDay,
   ManageGyms,
   Overview,
+  Packages,
   Settings,
   Pricing,
   Billing,

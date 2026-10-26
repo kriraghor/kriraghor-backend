@@ -26238,6 +26238,86 @@
           "tiles"
         ]
       },
+      "GymManagePackages": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "gymId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "day",
+                    "month",
+                    "quarter",
+                    "half_year",
+                    "year",
+                    "custom"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "pricePoisha": {
+                  "type": "integer"
+                },
+                "days": {
+                  "type": "integer"
+                },
+                "admissionFeePoisha": {
+                  "type": "integer"
+                },
+                "channel": {
+                  "type": "string",
+                  "enum": [
+                    "desk",
+                    "online",
+                    "both"
+                  ]
+                },
+                "visitLimit": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "sort": {
+                  "type": "integer"
+                },
+                "status": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "gymId",
+                "kind",
+                "title",
+                "pricePoisha",
+                "days",
+                "admissionFeePoisha",
+                "channel",
+                "visitLimit",
+                "sort",
+                "status"
+              ]
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
       "GymManageSettings": {
         "type": "object",
         "properties": {
@@ -84293,6 +84373,82 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GymOverview"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/packages": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Active packages sold at the desk (channel desk or both), for adding members and memberships (members.view, M24-FR-25)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymManagePackages"
                 }
               }
             }
