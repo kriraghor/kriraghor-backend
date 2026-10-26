@@ -43,6 +43,13 @@ const gmDue = z.object({ dueId: uuid, memberId: uuid, gymId: uuid });
 const gmMethod = z.enum(['cash', 'owner_bkash', 'owner_nagad', 'card_counter', 'other', 'online', 'opening']);
 const gmTier = z.enum(['free', 'basic', 'standard', 'pro']);
 const gmImport = z.object({ importId: uuid, gymId: uuid, rowsOk: z.number().int().nonnegative(), rowsFailed: z.number().int().nonnegative(), by: uuid.nullable() });
+// M24 prompt 2: SMS (add-on, prompt 3b) only when an event carries { billingRef } (§6.7); counts, subscriptions, invoices, referrals, overrides.
+const gmSms = z.object({ billingRef: uuid }).nullable();
+const gmCount = z.number().int().nonnegative();
+const gmSub = z.object({ subscriptionId: uuid, ownerId: uuid, invoiceId: uuid.nullable(), number: z.string().max(24).nullable() });
+const gmInvoice = z.object({ invoiceId: uuid, number: z.string().max(24), ownerId: uuid, total: poisha, dueAt: iso, period: z.string().regex(/^\d{4}-\d{2}$/).nullable() });
+const gmReferral = z.object({ referralId: uuid, gymId: uuid, ownerId: uuid, memberId: uuid, amount: poisha, source: z.enum(['setting', 'owner_override', 'gym_override']) });
+const gmOverride = z.object({ overrideId: uuid, scopeType: z.enum(['owner', 'gym']), scopeId: uuid, ownerId: uuid, key: z.enum(['fees.gym_referral_poisha', 'fees.gym_pct']), value: z.number().nonnegative(), validFrom: iso, validTo: iso.nullable() });
 const trainerSubEvent = z.object({ subscriptionId: uuid, code: z.string().max(20), memberId: uuid, trainerId: uuid, price: poisha });
 const orgEvent = z.object({ organisationId: uuid, ownerId: uuid });
 const qualEvent = z.object({ qualificationId: uuid, eventId: uuid, finalTournamentId: uuid });
@@ -144,7 +151,7 @@ const EVENTS = {
   'escrow.released': {
     module: 'M06',
     version: 1,
-    schema: z.object({ holdId: uuid, purpose: z.string(), purposeId: uuid, gross: poisha, fee: poisha, net: poisha, payeeId: uuid, transactionId: uuid }),
+    schema: z.object({ holdId: uuid, purpose: z.string(), purposeId: uuid, gross: poisha, fee: poisha, net: poisha, payeeId: uuid, transactionId: uuid, providerCharge: poisha.optional() }),
   },
   'escrow.pool_settled': {
     module: 'M06',
@@ -519,6 +526,44 @@ const EVENTS = {
   'gym_import.previewed': { module: 'M24', version: 1, schema: gmImport },
   'gym_import.applied': { module: 'M24', version: 1, schema: gmImport },
   'gym_import.undone': { module: 'M24', version: 1, schema: gmImport },
+
+  // ---------------- M24 Gym management, prompt 2 (§2.2): online fees, reminders, billing. Names the
+  // past-tense rule (FR-19) refuses are built as: gym_membership.expiring → renewal_reminded,
+  // .ends_today → end_reminded, gym_owner.morning_summary → summary_prepared, .monthly_report →
+  // report_prepared, gym_subscription.past_due → past_due_marked, gym_invoice.overdue → overdue_marked.
+  // The expired reminder (§6.9, the day after the end, once) is gym_membership.expiry_reminded.
+  'gym_payment_link.created': {
+    module: 'M24',
+    version: 1,
+    schema: gmDue.extend({ linkId: uuid, ownerId: uuid, amount: poisha, expiresAt: iso, origin: z.enum(['staff', 'member']), channels: z.array(z.enum(['in_app', 'email', 'sms'])), sms: gmSms }),
+  },
+  'gym_membership.renewal_reminded': { module: 'M24', version: 1, schema: gmMembership.extend({ endsOn: day, outstanding: poisha, linkId: uuid.nullable(), sms: gmSms }) },
+  'gym_membership.end_reminded': { module: 'M24', version: 1, schema: gmMembership.extend({ endsOn: day, sms: gmSms }) },
+  'gym_membership.expiry_reminded': { module: 'M24', version: 1, schema: gmMembership.extend({ endsOn: day }) },
+  'gym_due.overdue_reminded': { module: 'M24', version: 1, schema: gmDue.extend({ outstanding: poisha, dueOn: day, daysOverdue: z.number().int().positive(), linkId: uuid.nullable(), sms: gmSms }) },
+  'gym_owner.summary_prepared': {
+    module: 'M24',
+    version: 1,
+    schema: z.object({ gymId: uuid, ownerId: uuid, localDate: day, expiringToday: gmCount, overdue: gmCount, notSeen: gmCount, requestsWaiting: gmCount }),
+  },
+  'gym_owner.report_prepared': {
+    module: 'M24',
+    version: 1,
+    schema: z.object({ gymId: uuid, ownerId: uuid, month: z.string().regex(/^\d{4}-\d{2}$/), collected: z.number().int(), outstanding: poisha, newMembers: gmCount, left: gmCount }),
+  },
+  'gym_active_members.counted': { module: 'M24', version: 1, schema: z.object({ ownerId: uuid, localDate: day, count: gmCount, gymsCount: gmCount, tierLimit: z.number().int().nullable(), chosenTier: gmTier, notice: z.boolean() }) },
+  'gym_subscription.past_due_marked': { module: 'M24', version: 1, schema: gmSub },
+  'gym_subscription.restricted': { module: 'M24', version: 1, schema: gmSub },
+  'gym_subscription.restored': { module: 'M24', version: 1, schema: gmSub },
+  'gym_invoice.issued': { module: 'M24', version: 1, schema: gmInvoice },
+  'gym_invoice.paid': { module: 'M24', version: 1, schema: gmInvoice },
+  'gym_invoice.overdue_marked': { module: 'M24', version: 1, schema: gmInvoice.extend({ restrictOn: day }) },
+  'gym_invoice.voided': { module: 'M24', version: 1, schema: gmInvoice },
+  'gym_invoice.reminded': { module: 'M24', version: 1, schema: gmInvoice.extend({ offsetKey: z.enum(['d-3', 'd0']) }) },
+  'gym_referral.charged': { module: 'M24', version: 1, schema: gmReferral },
+  'gym_referral.voided': { module: 'M24', version: 1, schema: gmReferral.extend({ reason: z.string().max(40) }) },
+  'gym_fee_override.set': { module: 'M24', version: 1, schema: gmOverride },
+  'gym_fee_override.ended': { module: 'M24', version: 1, schema: gmOverride.extend({ reason: z.string().max(40) }) },
 };
 /** FR-19: `<aggregate>.<past_tense_verb>`, snake_case. Irregular past tenses are listed. */
 const IRREGULAR = new Set(['sent', 'paid', 'held', 'won', 'lost', 'made', 'begun', 'done', 'drawn', 'shown', 'thrown', 'given', 'taken', 'built', 'set', 'put', 'cut', 'withdrawn', 'chosen', 'written', 'frozen', 'unfrozen', 'undone', 'seen', 'broken', 'sold', 'told', 'found', 'left', 'met', 'read', 'run', 'spent', 'struck', 'hidden', 'unhidden']);

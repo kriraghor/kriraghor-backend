@@ -18,6 +18,7 @@ const events = require('../events').events;
 const audit = require('../audit').audit;
 const access = require('../business-members').access;
 const gymFacade = require('../gym').gyms;
+const directory = require('../users').directory;
 const rules = require('./gym-manage.rules');
 
 const ERRORS = {
@@ -50,6 +51,16 @@ const ERRORS = {
   FILE_TYPE_NOT_ALLOWED: [415, 'Upload a JPEG, PNG or WebP photo'],
   FILE_TYPE_MISMATCH: [415, 'The file is not the type it says it is'],
   VERSION_CONFLICT: [409, 'Someone changed this member. Reload and try again'],
+  // Prompt 2 (§9.4): online fees, billing, founding partners and fee overrides.
+  GYM_ONLINE_FEES_UNAVAILABLE: [403, 'This gym cannot take fees online right now'],
+  GYM_PAY_LINK_OPEN: [409, 'This due already has an open payment link'],
+  GYM_PAY_LINK_EXPIRED: [410, 'This link has expired. Ask the gym for a new one'],
+  GYM_REFUND_WINDOW_CLOSED: [409, 'This payment was already released to the gym; return the money directly and record a reversal'],
+  GYM_REFUND_EXCEEDS_PAID: [422, 'That is more than can still be refunded on this payment'],
+  GYM_INVOICE_STATE: [409, 'The invoice cannot do that in its current status'],
+  GYM_FOUNDING_FULL: [409, 'All founding partner places are taken'],
+  GYM_OVERRIDE_ACTIVE: [409, 'End the current override for this scope and fee first'],
+  GYM_OVERRIDE_OUT_OF_BOUNDS: [422, 'The value is outside the fee setting’s bounds'],
 };
 const fail = (code, meta, detail) => new AppError(ERRORS[code][0], code, ERRORS[code][1], { ...(meta ? { meta } : {}), ...(detail ? { detail } : {}) });
 
@@ -72,6 +83,28 @@ const cfg = () => ({
   importConsentDays: settings.get('gym_manage.import_consent_days'),
   importRetentionDays: settings.get('gym_manage.import_file_retention_days'),
   photoMaxBytes: settings.get('ground.photo_max_bytes'),
+  // Prompt 2: reminders, payment links, online fees, referrals (§6.12).
+  remindBeforeDays: settings.get('gym_manage.remind_before_days'),
+  overdueRemindDays: settings.get('gym_manage.overdue_remind_days'),
+  morningSummaryTime: settings.get('gym_manage.morning_summary_time'),
+  reminderLogDays: settings.get('gym_manage.reminder_log_days'),
+  payLinkHours: settings.get('gym_manage.pay_link_hours'),
+  onlineFeeReleaseHours: settings.get('gym_manage.online_fee_release_hours'),
+  providerPassthrough: settings.get('gym_manage.online_fee_provider_passthrough'),
+  providerBps: settings.get('gym_manage.online_fee_provider_bps'),
+  referralMatchDays: settings.get('gym_manage.referral_match_days'),
+});
+
+/** The owner's invoices, founding partners and VAT (§6.6, §6.12). */
+const saasCfg = () => ({
+  invoiceDueDays: settings.get('gym_saas.invoice_due_days'),
+  graceDays: settings.get('gym_saas.grace_days'),
+  foundingLimit: settings.get('gym_saas.founding_partner_limit'),
+  foundingFreeMonths: settings.get('gym_saas.founding_free_months'),
+  foundingDiscountPct: settings.get('gym_saas.founding_discount_pct'),
+  foundingDiscountMonths: settings.get('gym_saas.founding_discount_months'),
+  vatEnabled: settings.get('gym_saas.vat_enabled'),
+  vatPct: settings.get('gym_saas.vat_pct'),
 });
 
 /** The plans (§3.5, §6.6): member limits, prices and the lowest plan of each feature. */
@@ -219,6 +252,46 @@ async function nextReceiptNo(gymId, transaction, now = new Date()) {
   return rules.receiptNo(s.shortCode, next.receiptYear, next.receiptSeq);
 }
 
+// ---------------------------------------------------------------- online fees (M24-FR-02, FR-40)
+
+/**
+ * Can this gym take fees online now? The owner's gym_owner role is active (documents approved, gate
+ * list_gym), the plan has online_fees, the subscription is not restricted and the gym is not suspended.
+ * → { ok, reason: role | tier | restricted | null }.
+ */
+async function onlineFees(gym, { sub = null } = {}) {
+  const s = sub ?? (await subscriptionOf(gym.ownerId));
+  const reason = rules.onlineFeesBlock({
+    ownerRoleActive: (await directory.roleStatus(gym.ownerId, 'gym_owner')) === 'active',
+    hasOnlineFees: rules.hasFeature(s.chosenTier, 'online_fees', tierCfg().featureMinTiers),
+    restricted: s.status === 'restricted',
+    gymSuspended: gym.status === 'suspended',
+  });
+  return { ok: !reason, reason };
+}
+
+/** 403 GYM_ONLINE_FEES_UNAVAILABLE { reason } unless the gym can take fees online. */
+async function requireOnlineFees(gym, opts) {
+  const r = await onlineFees(gym, opts);
+  if (!r.ok) throw fail('GYM_ONLINE_FEES_UNAVAILABLE', { reason: r.reason });
+}
+
+// ---------------------------------------------------------------- the "sent once" reminder log (M24-FR-56)
+
+/**
+ * Insert the gym_reminders once-key first (ON CONFLICT DO NOTHING) and say whether this caller won it:
+ * only the winner publishes. Runs in the caller's transaction.
+ */
+async function claimReminder(transaction, { ownerId, gymId = null, kind, subjectType, subjectId, offsetKey, memberId = null, channels = [], status = 'published', skipReason = null }) {
+  const [rows] = await sequelize.query(
+    `INSERT INTO gym_reminders (id, owner_id, gym_id, kind, subject_type, subject_id, offset_key, member_id, channels, status, skip_reason, created_at)
+     VALUES (:id, :ownerId, :gymId, :kind, :subjectType, :subjectId, :offsetKey, :memberId, CAST(:channels AS jsonb), :status, :skipReason, NOW())
+     ON CONFLICT (kind, subject_id, offset_key) DO NOTHING RETURNING id`,
+    { replacements: { id: uuid7(), ownerId, gymId, kind, subjectType, subjectId, offsetKey, memberId, channels: JSON.stringify(channels), status, skipReason }, transaction }
+  );
+  return rows.length > 0;
+}
+
 // ---------------------------------------------------------------- cursors
 
 const cursorOf = (values) => Buffer.from(JSON.stringify(values)).toString('base64url');
@@ -236,7 +309,11 @@ module.exports = {
   ERRORS,
   fail,
   cfg,
+  saasCfg,
   tierCfg,
+  onlineFees,
+  requireOnlineFees,
+  claimReminder,
   iso,
   today,
   phoneHash,

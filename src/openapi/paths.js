@@ -1231,6 +1231,58 @@ function register(registry) {
   p({ method: 'post', path: '/admin/gym-manage/gyms/{gymId}/imports', tags: gmTag, summary: 'Upload a member list for an owner (manage_gyms, while the owner’s consent lasts); preview only, the owner applies (M24-FR-79)', security: adminBearer,
     request: { params: gmS.gymParam, query: gmS.importQuery, body: gmFile('The file itself') }, responses: { 201: json(gmS.Import, 'Previewed'), ...errors({ ...ADMIN_AUTH, 403: [...ADMIN_AUTH[403], 'GYM_IMPORT_CONSENT_REQUIRED'], 404: ['NOT_FOUND'], 422: ['GYM_IMPORT_INVALID'] }) } });
 
+  // ------------------------------------------------------------------ M24 gym management, prompt 2 (online money, reminders and billing)
+  const gmL = { params: gmS.linkParam };
+  const gmInv = { params: gmS.invoiceParam };
+  const gmOwner = { params: gmS.ownerParam };
+  const ONLINE = { 403: [...GM[403], 'GYM_ONLINE_FEES_UNAVAILABLE'] };
+  const gmCsv = { description: 'CSV (UTF-8 with a byte-order mark; taka with two decimals; +06:00 times)', content: { 'text/csv': { schema: z.string() } } };
+  const stepUp = (scope) => ({ headers: stepUpHeader.meta({ description: `Step-up scope ${scope}` }) });
+  gp('get', '/payment-links', 'Payment links of the gym, newest first (fees.collect; filters dueId, status)', { request: { ...gmG, query: gmS.linksQuery }, responses: { 200: json(gmS.PaymentLinkList), ...errors(GM) } });
+  gp('post', '/dues/{dueId}/payment-links', 'Create a payment link for a due (fees.collect; the owner’s gym_owner role, plan online_fees, not restricted): up to the outstanding, open for gym_manage.pay_link_hours, one open link per due; sent in-app, by push and by email when channels are chosen; the url is also the QR payload (M24-FR-40)', {
+    request: { ...gmD, headers: idem, ...body(gmS.linkBody) },
+    responses: { 201: json(gmS.PaymentLink, 'Created'), ...errors({ ...GM, ...ONLINE, 409: ['GYM_PAY_LINK_OPEN', 'GYM_DUE_STATE', 'GYM_MEMBER_STATE'], 422: ['VALIDATION_FAILED', 'GYM_PAYMENT_EXCEEDS_DUE'], 400: ['IDEMPOTENCY_KEY_REQUIRED'] }) },
+  });
+  gp('post', '/payment-links/{linkId}/cancel', 'Cancel an open payment link (fees.collect)', { request: gmL, responses: { 200: json(gmS.PaymentLink), ...errors({ ...GM, 410: ['GYM_PAY_LINK_EXPIRED'] }) } });
+  gp('post', '/fee-payments/{feePaymentId}/refund', 'Refund an online fee from the hold before its release (owner; gym_owner role active): once per payment, up to the amount; M06 refunds it and the reversal row follows on refund.succeeded. After the release time → 409 GYM_REFUND_WINDOW_CLOSED (M24-FR-44)', {
+    request: { ...gmF, headers: idem, ...body(gmS.refundBody) },
+    responses: { 201: json(gmS.RefundResult, 'Refund requested'), ...errors({ ...GM, ...ONLINE, 409: ['GYM_REFUND_WINDOW_CLOSED', 'GYM_PAYMENT_NOT_REVERSIBLE'], 422: ['VALIDATION_FAILED', 'GYM_REFUND_EXCEEDS_PAID'] }) },
+  });
+  gp('get', '/reminders', 'The reminders page (owner): kinds on or off, offsets from settings, members reachable only by SMS, the log of the last gym_manage.reminder_log_days (no text, no phone) (M24-FR-59, FR-61)', { request: gmG, responses: { 200: json(gmS.RemindersPage), ...errors(GM) } });
+  gp('get', '/reports', 'Members, money and attendance for a month or a period (reports.view, plan feature reports) (M24-FR-71)', { request: { ...gmG, query: gmS.reportQuery }, responses: { 200: json(gmS.GymReport), ...errors({ ...GM, 403: [...GM[403], 'GYM_TIER_REQUIRED'] }) } });
+  gp('get', '/reports/absent', 'Members not seen for the gym’s absent days (members.view; no money) (M24-FR-53)', { request: gmG, responses: { 200: json(gmS.AbsentList), ...errors(GM) } });
+  gp('get', '/reports/export', 'CSV export (owner, plan feature reports): members (with the full phone), payments or check-ins for a period; at most analytics.export_sync_max_rows rows and analytics.exports_per_hour; audited (M24-FR-73)', {
+    request: { ...gmG, query: gmS.exportQuery },
+    responses: { 200: gmCsv, ...errors({ ...GM, 403: [...GM[403], 'GYM_TIER_REQUIRED'], 422: ['VALIDATION_FAILED', 'EXPORT_TOO_LARGE'], 429: ['EXPORT_LIMIT'] }) },
+  });
+  p({ method: 'get', path: '/manage/billing/invoices', tags: gmTag, summary: 'My gym plan invoices, newest first (gate run_gym)', security: bearer, responses: { 200: json(gmS.InvoiceList), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'ROLE_SUSPENDED'] }) } });
+  p({ method: 'get', path: '/manage/billing/invoices/{invoiceId}', tags: gmTag, summary: 'One invoice with its lines (gate run_gym; print to PDF from the page)', security: bearer, request: gmInv, responses: { 200: json(gmS.Invoice), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'ROLE_SUSPENDED'], 404: ['NOT_FOUND'] }) } });
+  p({ method: 'post', path: '/manage/billing/invoices/{invoiceId}/pay', tags: gmTag, summary: 'Pay an issued or overdue invoice: an M06 payment (purpose gym_saas_invoice) → the gym app’s pay page (M24-FR-85)', security: bearer,
+    request: { ...gmInv, headers: idem }, responses: { 201: json(gmS.InvoicePayResult, 'Created'), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'ROLE_SUSPENDED'], 404: ['NOT_FOUND'], 409: ['GYM_INVOICE_STATE'], 400: ['IDEMPOTENCY_KEY_REQUIRED'] }) } });
+  p({ method: 'get', path: '/manage/reports', tags: gmTag, summary: 'All my gyms together (gate run_gym, plan feature reports); side by side with multi_gym; pass sales are M19’s gym dashboard (M24-FR-74)', security: bearer,
+    request: { query: gmS.reportQuery }, responses: { 200: json(gmS.AllGymsReport), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'ROLE_SUSPENDED', 'GYM_TIER_REQUIRED'], ...VALIDATION }) } });
+  p({ method: 'get', path: '/gym-pay/{token}', tags: gmTag, summary: 'A payment link’s page (public, noindex, no-store): the gym, package, amount, member code and first name, status; for a signed-in viewer whether they may link; the receipt once paid', security: [{}, ...bearer],
+    request: { params: gmS.tokenParam }, responses: { 200: json(gmS.PayLinkSummary), ...errors({ 404: ['NOT_FOUND'], ...VALIDATION }) } });
+  p({ method: 'post', path: '/gym-pay/{token}/pay', tags: gmTag, summary: 'Pay a link (gate join_gym: anyone signed in with a verified phone); linkAccount links the membership when the payer’s phone is the member’s (M24-FR-41)', security: bearer,
+    request: { params: gmS.tokenParam, headers: idem, ...body(gmS.payLinkBody) },
+    responses: { 201: json(gmS.PayStart, 'Created'), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'GYM_ONLINE_FEES_UNAVAILABLE'], 404: ['NOT_FOUND'], 409: ['GYM_DUE_STATE'], 410: ['GYM_PAY_LINK_EXPIRED'], 400: ['IDEMPOTENCY_KEY_REQUIRED'] }) } });
+  p({ method: 'get', path: '/me/gym-dues', tags: gmTag, summary: 'My outstanding dues across gyms, whether each gym takes fees online, and its open link', security: bearer, responses: { 200: json(gmS.MyDues), ...errors(COMMON_AUTH) } });
+  p({ method: 'post', path: '/me/gym-dues/{dueId}/pay', tags: gmTag, summary: 'Pay one of my dues (gate join_gym): reuses the due’s open link or makes one for the outstanding (M24-FR-41)', security: bearer,
+    request: { params: gmS.meDueParam, headers: idem }, responses: { 201: json(gmS.PayStart, 'Created'), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'GYM_ONLINE_FEES_UNAVAILABLE'], 404: ['NOT_FOUND'], 409: ['GYM_DUE_STATE', 'GYM_PAY_LINK_OPEN'], 400: ['IDEMPOTENCY_KEY_REQUIRED'] }) } });
+  const GMA = { ...ADMIN_AUTH, 404: ['NOT_FOUND'], ...VALIDATION };
+  p({ method: 'get', path: '/admin/gym-manage/owners', tags: gmTag, summary: 'Owners on the gym system (manage_gyms or view_payouts): plan, status, gyms, active members, last invoice; never member data', security: adminBearer, request: { query: gmS.adminOwnersQuery }, responses: { 200: json(gmS.AdminOwners), ...errors(GMA) } });
+  p({ method: 'get', path: '/admin/gym-manage/owners/{ownerId}', tags: gmTag, summary: 'One owner: subscription, gyms (counts only), invoices, overrides, imports, fees that apply (manage_gyms or view_payouts)', security: adminBearer, request: gmOwner, responses: { 200: json(gmS.AdminOwnerDetail), ...errors(GMA) } });
+  p({ method: 'put', path: '/admin/gym-manage/owners/{ownerId}/founding-partner', tags: gmTag, summary: 'Founding partner on or off (master, step-up settings.write; up to gym_saas.founding_partner_limit) (M24-FR-88)', security: adminBearer,
+    request: { ...gmOwner, ...stepUp('settings.write'), ...body(gmS.foundingBody) }, responses: { 200: json(gmS.Subscription), ...errors({ ...GMA, 403: [...ADMIN_AUTH[403], 'STEP_UP_REQUIRED'], 409: ['GYM_FOUNDING_FULL'] }) } });
+  p({ method: 'get', path: '/admin/gym-manage/invoices', tags: gmTag, summary: 'All gym plan invoices with totals per status (manage_gyms or view_payouts)', security: adminBearer, request: { query: gmS.adminInvoicesQuery }, responses: { 200: json(gmS.AdminInvoices), ...errors(GMA) } });
+  p({ method: 'post', path: '/admin/gym-manage/invoices/{invoiceId}/void', tags: gmTag, summary: 'Void an unpaid invoice (master, step-up escrow.manage): referral lines return to pending; the owner is restored when nothing is overdue (M24-FR-89)', security: adminBearer,
+    request: { ...gmInv, ...stepUp('escrow.manage'), ...body(gmS.reasonBody) }, responses: { 200: json(gmS.Invoice), ...errors({ ...GMA, 403: [...ADMIN_AUTH[403], 'STEP_UP_REQUIRED'], 409: ['GYM_INVOICE_STATE'] }) } });
+  p({ method: 'get', path: '/admin/gym-manage/fee-overrides', tags: gmTag, summary: 'Per-owner and per-gym fee overrides (manage_gyms)', security: adminBearer, request: { query: gmS.overridesQuery }, responses: { 200: json(gmS.FeeOverrideList), ...errors(GMA) } });
+  p({ method: 'post', path: '/admin/gym-manage/fee-overrides', tags: gmTag, summary: 'Set an override of fees.gym_referral_poisha or fees.gym_pct for an owner or a gym (master, step-up settings.write): one active per scope and key, inside the setting’s bounds; the owner is told (M24-FR-94)', security: adminBearer,
+    request: { ...stepUp('settings.write'), ...body(gmS.overrideBody) }, responses: { 201: json(gmS.FeeOverride, 'Created'), ...errors({ ...GMA, 403: [...ADMIN_AUTH[403], 'STEP_UP_REQUIRED'], 409: ['GYM_OVERRIDE_ACTIVE'], 422: ['VALIDATION_FAILED', 'GYM_OVERRIDE_OUT_OF_BOUNDS'] }) } });
+  p({ method: 'post', path: '/admin/gym-manage/fee-overrides/{overrideId}/end', tags: gmTag, summary: 'End an override now (master, step-up settings.write)', security: adminBearer,
+    request: { params: gmS.overrideParam, ...stepUp('settings.write'), ...body(gmS.reasonBody) }, responses: { 200: json(gmS.FeeOverride), ...errors({ ...GMA, 403: [...ADMIN_AUTH[403], 'STEP_UP_REQUIRED'], 409: ['GYM_OVERRIDE_ENDED'] }) } });
+
   // ------------------------------------------------------------------ M14 lite organisations and M22 organiser SaaS (step 1)
   const orgP = { params: saS.orgParam };
   const orgIdP = { params: saS.orgIdParam };

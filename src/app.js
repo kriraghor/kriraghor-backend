@@ -111,6 +111,7 @@ function createApp() {
   api.use('/me/gym-requests', gymManageRoutes.meRequests);
   api.use('/me/gym-memberships', gymManageRoutes.meMemberships);
   api.use('/me/gym-receipts', gymManageRoutes.meReceipts);
+  api.use('/me/gym-dues', gymManageRoutes.meDues);
   api.use('/me', teamRoutes.meRouter);
   api.use('/teams', teamRoutes.teamsRouter);
   api.use('/', teamRoutes.publicRouter);
@@ -153,6 +154,7 @@ function createApp() {
   api.use('/manage', gymManageRoutes.manageRouter);
   api.use('/gym-manage', gymManageRoutes.pricingRouter);
   api.use('/gym-receipts', gymManageRoutes.receiptRouter);
+  api.use('/gym-pay', gymManageRoutes.payRouter);
   // M14 lite and the M22 organiser console (scoped by membership of :orgId).
   api.use('/me/organisations', saasRoutes.meOrgs);
   api.use('/org/:orgId/sports', tournamentRoutes.consoleRouter);

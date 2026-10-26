@@ -16,12 +16,14 @@
  */
 const { Op, QueryTypes, UniqueConstraintError } = require('sequelize');
 const { E } = require('../../common/errors');
-const { sequelize, GymDue, GymFeePayment, GymMember, GymMembership } = require('../../models');
+const { sequelize, GymDue, GymFeePayment, GymMember, GymMembership, GymPaymentLink } = require('../../models');
 const directory = require('../users').directory;
 const gymFacade = require('../gym').gyms;
 const rules = require('./gym-manage.rules');
 const c = require('./gym-manage.common');
 const view = require('./gym-manage.serializer');
+const notices = require('./notices.service');
+const fees = require('./fees.service');
 
 const { fail } = c;
 /** M24-FR-33: a counter payment is at least ৳1 (a spec constant). Opening balances from an import may be smaller. */
@@ -30,21 +32,53 @@ const MIN_PAYMENT_POISHA = 100;
 const lockDue = (gymId, dueId, transaction) => GymDue.findOne({ where: { id: dueId, gymId }, transaction, lock: transaction.LOCK.UPDATE });
 
 /**
+ * Cancel the open payment links of a due that no longer need them (M24 §8.5: the due was paid, waived or
+ * voided another way, or its outstanding fell below the link's amount), except `keep`. In the caller's
+ * transaction.
+ */
+async function cancelLinksIn(transaction, { dueId, outstanding = 0, keep = null }) {
+  const open = await GymPaymentLink.findAll({ where: { dueId, status: 'open' }, transaction, lock: transaction.LOCK.UPDATE });
+  for (const l of open) if (l.id !== keep && l.amountPoisha > outstanding) await l.update({ status: 'cancelled' }, { transaction });
+}
+
+/**
  * Record one positive payment on a due the caller has locked. Returns { payment, due, outstandingAfter }.
  * Publishes gym_fee.recorded (and gym_due.paid when the outstanding reaches 0).
+ * Online payments (M24-FR-42, FR-43) carry the M06 payment, the link, the payer and the provider charge
+ * snapshot (`online`), and have no receiver. A platform member's first payment charges the referral
+ * fee (M24-FR-91). The receipt notice is logged once (M24-FR-55; never for import opening balances,
+ * FR-78). Open links the due no longer needs are cancelled (§8.5).
  */
-async function recordIn(transaction, { gym, member, due, amount, method, paidOn, note = null, receivedBy, actor, importId = null, now = new Date(), min = MIN_PAYMENT_POISHA }) {
+async function recordIn(transaction, { gym, member, due, amount, method, paidOn, note = null, receivedBy, actor, importId = null, now = new Date(), min = MIN_PAYMENT_POISHA, online = null }) {
   const state = rules.dueState({ amount: due.amountPoisha, paid: due.paidPoisha, waived: due.waivedPoisha, voided: due.status === 'void' });
   const block = rules.paymentBlock({ status: state.status, outstanding: state.outstanding, amount, min });
   if (block) throw fail(block, block === 'GYM_PAYMENT_EXCEEDS_DUE' ? { outstanding: state.outstanding } : { status: state.status });
   const receiptNo = await c.nextReceiptNo(gym.id, transaction, now);
   const payment = await GymFeePayment.create(
-    { dueId: due.id, memberId: member.id, gymId: gym.id, ownerId: gym.ownerId, amountPoisha: amount, method, paidOn, receiptNo, note, receivedBy, importId },
+    {
+      dueId: due.id,
+      memberId: member.id,
+      gymId: gym.id,
+      ownerId: gym.ownerId,
+      amountPoisha: amount,
+      method,
+      paidOn,
+      receiptNo,
+      note,
+      receivedBy,
+      importId,
+      ...(online
+        ? { payerUserId: online.payerUserId, linkId: online.linkId, paymentId: online.paymentId, providerChargeBps: online.providerChargeBps, providerChargePoisha: online.providerChargePoisha, providerSettingVersion: online.providerSettingVersion }
+        : {}),
+    },
     { transaction }
   );
   const paid = due.paidPoisha + amount;
   const next = rules.dueState({ amount: due.amountPoisha, paid, waived: due.waivedPoisha });
   await due.update({ paidPoisha: paid, status: next.status }, { transaction });
+  await cancelLinksIn(transaction, { dueId: due.id, outstanding: next.outstanding, keep: online?.linkId ?? null });
+  await fees.chargeReferralIn(transaction, { gym, member, payment, actor, now });
+  if (method !== 'opening') await notices.logImmediate(transaction, { kind: 'receipt', member, gym, subjectType: 'fee_payment', subjectId: payment.id });
   await c.publish(
     transaction,
     'gym_fee.recorded',
@@ -113,6 +147,7 @@ async function waive(principal, gymId, dueId, { amountPoisha, reason }, req) {
     const next = rules.dueState({ amount: due.amountPoisha, paid: due.paidPoisha, waived });
     const before = { waived: due.waivedPoisha, status: due.status };
     await due.update({ waivedPoisha: waived, status: next.status, waiveReason: due.waiveReason ? `${due.waiveReason}; ${reason}`.slice(0, 300) : reason }, { transaction });
+    await cancelLinksIn(transaction, { dueId: due.id, outstanding: next.outstanding });
     if (next.outstanding === 0) {
       const name = next.status === 'paid' ? 'gym_due.paid' : 'gym_due.waived';
       await c.publish(transaction, name, 'gym_due', due.id, { dueId: due.id, memberId: due.memberId, gymId, amount: due.amountPoisha }, a.actor);
@@ -146,16 +181,34 @@ async function reverse(principal, gymId, feePaymentId, { reason }, req) {
   return c.shown(a, { reversal: view.paymentView(reversal, { names: await names([reversal]) }), due: await dueBody(await GymDue.findByPk(original.dueId), { today }) });
 }
 
-/** The negative row of a reversal on a locked due (staff reversal, import undo); publishes gym_fee.reversed. */
-async function reverseIn(transaction, { gym, due, original, reason, by, actor, today, importId = null }) {
+/**
+ * The negative row of a reversal on a locked due (staff reversal, import undo, an online refund: then
+ * `amount` is what was refunded and `online` the refund's payment); publishes gym_fee.reversed. A
+ * pending referral charged on the original payment is voided (M24-FR-91).
+ */
+async function reverseIn(transaction, { gym, due, original, reason, by, actor, today, importId = null, amount = original.amountPoisha, online = null }) {
   const row = await GymFeePayment.create(
-    { dueId: due.id, memberId: original.memberId, gymId: gym.id, ownerId: gym.ownerId, amountPoisha: -original.amountPoisha, method: original.method, paidOn: today, reversesId: original.id, reason, receivedBy: by, importId },
+    {
+      dueId: due.id,
+      memberId: original.memberId,
+      gymId: gym.id,
+      ownerId: gym.ownerId,
+      amountPoisha: -amount,
+      method: original.method,
+      paidOn: today,
+      reversesId: original.id,
+      reason,
+      receivedBy: by,
+      importId,
+      ...(online ? { paymentId: online.paymentId, linkId: original.linkId, payerUserId: original.payerUserId } : {}),
+    },
     { transaction }
   );
-  const paid = due.paidPoisha - original.amountPoisha;
+  await fees.voidReferralForPaymentIn(transaction, { feePaymentId: original.id, actor });
+  const paid = due.paidPoisha - amount;
   const next = rules.dueState({ amount: due.amountPoisha, paid, waived: due.waivedPoisha, voided: due.status === 'void' });
   await due.update({ paidPoisha: paid, ...(due.status === 'void' ? {} : { status: next.status }) }, { transaction });
-  await c.publish(transaction, 'gym_fee.reversed', 'gym_fee_payment', row.id, { feePaymentId: row.id, reversesId: original.id, dueId: due.id, memberId: original.memberId, gymId: gym.id, amount: original.amountPoisha, reason: String(reason).slice(0, 300) }, actor);
+  await c.publish(transaction, 'gym_fee.reversed', 'gym_fee_payment', row.id, { feePaymentId: row.id, reversesId: original.id, dueId: due.id, memberId: original.memberId, gymId: gym.id, amount, reason: String(reason).slice(0, 300) }, actor);
   return row;
 }
 
@@ -265,4 +318,4 @@ async function cashClosing(principal, gymId, { date } = {}) {
   });
 }
 
-module.exports = { MIN_PAYMENT_POISHA, lockDue, recordIn, reverseIn, paidOnFor, dueBody, pay, waive, reverse, list, receiptOf, receipt, publicReceipt, cashClosing };
+module.exports = { MIN_PAYMENT_POISHA, lockDue, cancelLinksIn, recordIn, reverseIn, paidOnFor, dueBody, pay, waive, reverse, list, receiptOf, receipt, publicReceipt, cashClosing };

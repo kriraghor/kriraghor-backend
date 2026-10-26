@@ -14,4 +14,6 @@ const lazy = (file, names, values = []) => {
 
 module.exports = {
   notify: lazy('./notify.service', ['sendOtp']),
+  /** M24 §11.1: a module registers how to reach people without an account (email only, resolved at delivery). */
+  recipients: lazy('./notify.recipients', ['register']),
 };

@@ -49,9 +49,16 @@ const lockPayment = async (id, transaction) => {
  * the same key is refused. The fee is snapshotted now, at obligation time (FR-07).
  */
 async function createIntent(
-  { purpose, purposeId, payerId, amount, title, payeeId = null, groupRef = null, releaseRule = { type: 'manual' }, expiresAt, idempotencyKey, splits = null },
+  { purpose, purposeId, payerId, amount, title, payeeId = null, groupRef = null, releaseRule = { type: 'manual' }, expiresAt, idempotencyKey, splits = null, fee = null, purposeData = null },
   { transaction } = {}
 ) {
+  // `fee` (M24-FR-95): a purpose that resolves its own rate (an M24 per-gym or per-owner override of
+  // fees.gym_pct) passes the snapshot { feeBps, settingKey, settingsVersion, overrideId? } instead of the
+  // setting; it is stored on the payment and the hold exactly like the setting snapshot.
+  // `purposeData` (M24-FR-41): a small flat object of the purpose's own (booleans, short strings, ids),
+  // kept on the payment's escrow instructions and read back by the purpose's onCaptured hook, such as
+  // the payer's consent to link a gym membership. Never personal data.
+  if (purposeData !== null && (typeof purposeData !== 'object' || Array.isArray(purposeData) || JSON.stringify(purposeData).length > 500)) throw new Error('Invalid purpose data');
   const def = purposes.get(purpose);
   if (!Number.isSafeInteger(amount) || amount <= 0) throw new AppError(422, 'AMOUNT_INVALID', 'The amount must be a whole number of poisha above zero');
   // M13: a basket split into parts, one escrow hold each ({ ref, payeeId, amount }); they add up to the amount.
@@ -59,6 +66,8 @@ async function createIntent(
     if (!splits.length || splits.some((s) => !s.ref || !s.payeeId || !Number.isSafeInteger(s.amount) || s.amount <= 0) || new Set(splits.map((s) => s.ref)).size !== splits.length) throw new Error('Invalid payment splits');
     if (splits.reduce((n, s) => n + s.amount, 0) !== amount) throw new Error('Payment splits must add up to the amount');
   } else if (!def.pooled && !payeeId) throw new Error(`Purpose ${purpose} needs a payee`);
+  if (fee && (!Number.isSafeInteger(fee.feeBps) || fee.feeBps < 0 || fee.feeBps > 10000 || !fee.settingKey)) throw new Error('Invalid fee snapshot');
+  const feeSnapshot = fee ? { feeBps: fee.feeBps, settingKey: fee.settingKey, settingsVersion: fee.settingsVersion ?? 0, ...(fee.overrideId ? { overrideId: fee.overrideId } : {}) } : fees.snapshot(def.vertical);
   const run = async (t) => {
     const existing = await Payment.findOne({ where: { payerId, idempotencyKey }, transaction: t });
     if (existing) {
@@ -77,7 +86,7 @@ async function createIntent(
         payeeHintId: payeeId ?? splits?.[0]?.payeeId ?? null,
         amountPoisha: amount,
         title: title.slice(0, 120),
-        escrow: { payeeId, groupRef, releaseRule, fee: fees.snapshot(def.vertical), ...(splits ? { splits: splits.map((s) => ({ ref: s.ref, payeeId: s.payeeId, amount: s.amount })) } : {}) },
+        escrow: { payeeId, groupRef, releaseRule, fee: feeSnapshot, ...(purposeData ? { purposeData } : {}), ...(splits ? { splits: splits.map((s) => ({ ref: s.ref, payeeId: s.payeeId, amount: s.amount })) } : {}) },
         expiresAt: expiresAt ?? new Date(Date.now() + ttl * 60000),
         idempotencyKey,
       },
@@ -109,7 +118,7 @@ async function createTestCharge(actor, { payerId, payeeId, amount, title }, idem
       { action: 'payment.test_charge_created', actor, entityType: 'payment', entityId: payment.id, entityCode: payment.code, after: { amount, payerId, payeeId }, req },
       { transaction }
     );
-    return { payment: serialize(payment), payUrl: payUrl(payment.id) };
+    return { payment: serialize(payment), payUrl: payUrl(payment.id, payment.purpose) };
   });
 }
 
@@ -317,12 +326,14 @@ async function handleIpn(body) {
  * The gateway sends the payer back here (POST from SSLCommerz, GET from the simulator). Verify if we
  * can, then send the browser to the result page, which reads the status from the API (never from
  * this redirect): the website's, or the mobile app's (APP_RETURN_URL) for attempts started with
- * returnTo 'app'. Only these two configured targets exist, so the return can never be an open redirect.
+ * returnTo 'app'. Only these configured targets exist, so the return can never be an open redirect.
+ * A gym purpose returns to the gym app's result page (M24-FR-104); the mobile app's return is unchanged.
  */
 async function handleReturn({ pid, tranId, valId }) {
   const attempt = await attemptByTranId(tranId);
   const paymentId = attempt?.paymentId ?? (/^[0-9a-f-]{36}$/i.test(String(pid ?? '')) ? pid : null);
-  const base = attempt?.returnTo === 'app' ? config.apps.payReturn : `${config.apps.web}/pay`;
+  const purpose = paymentId ? (await Payment.findByPk(paymentId, { attributes: ['purpose'] }))?.purpose ?? null : null;
+  const base = attempt?.returnTo === 'app' ? config.apps.payReturn : `${payBase(purpose)}/pay`;
   const target = (id) => (id ? `${base}/${id}/result` : `${config.apps.web}/me/payments`);
   if (!attempt) return target(paymentId);
   try {
@@ -533,9 +544,15 @@ async function payeeRefundStats(payeeId, since, { reasonCodes = [] } = {}) {
   return { payments: row.payments, refunded: row.refunded };
 }
 
-/** Where the payer completes a payment: the kriraghor.com pay page (every product links here). */
-function payUrl(paymentId) {
-  return `${config.apps.web}/pay/${paymentId}`;
+/**
+ * The web app that hosts the pay page of a purpose (M24-FR-104): gym purposes (passes, trainer months,
+ * membership fees, subscription invoices) pay on gym.kriraghor.com; everything else on kriraghor.com.
+ */
+const payBase = (purpose) => (purposes.PURPOSES[purpose]?.site === 'gym' ? config.apps.gym : config.apps.web);
+
+/** Where the payer completes a payment: `/pay/:id` on the purpose's site (kriraghor.com unless a gym purpose). */
+function payUrl(paymentId, purpose = null) {
+  return `${payBase(purpose)}/pay/${paymentId}`;
 }
 
 module.exports = {

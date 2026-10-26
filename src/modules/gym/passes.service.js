@@ -39,7 +39,7 @@ async function result(pass, viewer) {
   const holder = viewer === pass.holderId;
   return {
     pass: c.passView(pass, { gym: await gymRef(pass.gymId), withSecrets: holder }),
-    payment: holder && pass.status === 'pending_payment' && pass.paymentId ? { id: pass.paymentId, payUrl: payUrl(pass.paymentId) } : null,
+    payment: holder && pass.status === 'pending_payment' && pass.paymentId ? { id: pass.paymentId, payUrl: payUrl(pass.paymentId, 'gym_package') } : null,
   };
 }
 
@@ -87,13 +87,16 @@ async function buy(principal, { packageId, validFrom }, idempotencyKey, req) {
         },
         { transaction }
       );
+      // M24-FR-95: the pass commission is fees.gym_pct as it applies to this gym (a master's per-gym or
+      // per-owner override wins over the setting), resolved by gym-manage and snapshotted on the payment.
+      const fee = await require('../gym-manage').fees.passFee({ gymId: g.id, ownerId: g.ownerId, at: now, transaction });
       const p = await payments.createIntent(
-        { purpose: 'gym_package', purposeId: row.id, payerId: principal.id, payeeId: g.ownerId, amount: pkg.price, title: `${pkg.title} · ${g.liveSnapshot.name}`, expiresAt: payBy, idempotencyKey: `gym_pass:${row.id}` },
+        { purpose: 'gym_package', purposeId: row.id, payerId: principal.id, payeeId: g.ownerId, amount: pkg.price, title: `${pkg.title} · ${g.liveSnapshot.name}`, expiresAt: payBy, idempotencyKey: `gym_pass:${row.id}`, fee },
         { transaction }
       );
       // The fee rate is the one M06 snapshotted on the payment, so the release matches it.
       const m = rules.money(pkg.price, p.escrow.fee.feeBps);
-      await row.update({ paymentId: p.id, feeBps: p.escrow.fee.feeBps, feePoisha: m.fee, netPoisha: m.net }, { transaction });
+      await row.update({ paymentId: p.id, feeBps: p.escrow.fee.feeBps, feePoisha: m.fee, netPoisha: m.net, feeOverrideId: p.escrow.fee.overrideId ?? null }, { transaction });
       await audit.record({ action: 'gym_pass.created', actor: principal, entityType: 'gym_pass', entityId: row.id, entityCode: row.code, after: { kind: row.kind, validFrom: row.validFrom, price: row.pricePoisha }, req }, { transaction });
       return row;
     });

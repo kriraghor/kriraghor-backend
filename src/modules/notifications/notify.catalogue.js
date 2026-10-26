@@ -59,6 +59,20 @@ const gymUrl = (p) => `${config.apps.gym}${p}`;
 const gymFacts = (id) => require('../gym').gyms.facts(id);
 // M24: a gym member's code (the gym's own record; never the name or phone).
 const gmMemberFacts = (id) => require('../gym-manage').facts.member(id);
+// M24 prompt 2 (§11.1): a member notice goes to the linked account (user id) or, for an unlinked member
+// with an email in the gym's record, by email through the recipient adapter `gym_member`. gym-manage
+// decides (the owner's plan has reminders, not restricted, the kind switched on).
+const gmTargets = (kind) => (e) => require('../gym-manage').notices.memberTargets(e.payload, kind);
+const gmUsers = (kind) => async (e) => (await gmTargets(kind)(e)).userIds;
+const gmExternal = (kind) => async (e) => (await gmTargets(kind)(e)).external;
+const gmFacts = () => require('../gym-manage').facts;
+const gymName = async (id) => (await gymFacts(id))?.name ?? '';
+/** A Dhaka calendar date as the recipient reads it: "3 Nov 2026" / "৩ নভে, ২০২৬". */
+const dayText = (date, locale) => (date ? new Intl.DateTimeFormat(locale === 'bn' ? 'bn-BD' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${String(date).slice(0, 10)}T00:00:00Z`)) : '');
+const TIER_NAMES = { en: { free: 'Free', basic: 'Basic', standard: 'Standard', pro: 'Pro' }, bn: { free: 'ফ্রি', basic: 'বেসিক', standard: 'স্ট্যান্ডার্ড', pro: 'প্রো' } };
+const FEE_NAMES = { en: { 'fees.gym_referral_poisha': 'referral fee', 'fees.gym_pct': 'pass commission' }, bn: { 'fees.gym_referral_poisha': 'রেফারেল ফি', 'fees.gym_pct': 'পাস কমিশন' } };
+const pickLocale = (map, locale, key) => map[locale]?.[key] ?? map.en[key] ?? key;
+const gymOwnerAndCollectors = async (e) => [e.payload.ownerId, ...(await staffOf('gym', e.payload.gymId, 'fees.collect'))];
 // M14 lite and M22: the organisation (its name) and its admins (owner and admins get organiser news).
 const orgAdmins = (id) => require('../organisations').organisations.adminIds(id);
 // M14: tournament names, registrations and captains.
@@ -1551,6 +1565,242 @@ const CATALOGUE = [
     recipients: (e) => [e.payload.ownerId],
     values: async (e) => ({ memberCode: (await gmMemberFacts(e.payload.memberId))?.memberCode ?? '' }),
     link: (e) => gymUrl(`/manage/${e.payload.gymId}/members/${e.payload.memberId}`),
+  },
+  // ---------------- M24 gym management, prompt 2 (§11.2): member notices (paid tiers: in-app, push,
+  // email; an unlinked member by email), owner notices, and Kriraghor's own billing. No gym SMS until the
+  // add-on (prompt 3b); GYM_INVOICE_OVERDUE and GYM_ACCOUNT_RESTRICTED use the money category (G19).
+  {
+    code: 'GYM_MEMBERSHIP_STARTED',
+    events: ['gym_membership.started', 'gym_membership.renewed'],
+    category: 'gym',
+    channels: ['in_app', 'email'],
+    recipients: gmUsers(null),
+    external: gmExternal(null),
+    values: async (e, { locale }) => ({
+      gym: await gymName(e.payload.gymId),
+      package: (await gmFacts().membership(e.payload.membershipId))?.title ?? '',
+      startsOn: dayText(e.payload.startsOn, locale),
+      endsOn: dayText(e.payload.endsOn, locale),
+      link: gymUrl(`/me/memberships/${e.payload.memberId}`),
+    }),
+    link: (e) => gymUrl(`/me/memberships/${e.payload.memberId}`),
+  },
+  {
+    code: 'GYM_MEMBERSHIP_FROZEN',
+    events: ['gym_membership.frozen'],
+    category: 'gym',
+    channels: ['in_app'],
+    recipients: gmUsers(null),
+    values: async (e, { locale }) => ({ gym: await gymName(e.payload.gymId), fromOn: dayText(e.payload.fromOn, locale), toOn: dayText(e.payload.toOn, locale), endsOn: dayText(e.payload.endsOn, locale) }),
+    link: (e) => gymUrl(`/me/memberships/${e.payload.memberId}`),
+  },
+  {
+    code: 'GYM_RENEWAL_DUE',
+    events: ['gym_membership.renewal_reminded'],
+    category: 'gym',
+    channels: ['in_app', 'email'],
+    recipients: gmUsers('renewal_due'),
+    external: gmExternal('renewal_due'),
+    values: async (e, { locale }) => ({
+      gym: await gymName(e.payload.gymId),
+      endsOn: dayText(e.payload.endsOn, locale),
+      link: (await gmFacts().payLinkUrl(e.payload.linkId)) ?? gymUrl(`/me/memberships/${e.payload.memberId}`),
+    }),
+    link: (e) => gymUrl(`/me/memberships/${e.payload.memberId}`),
+  },
+  {
+    code: 'GYM_MEMBERSHIP_ENDS_TODAY',
+    events: ['gym_membership.end_reminded'],
+    category: 'gym',
+    channels: ['in_app', 'email'],
+    recipients: gmUsers('ends_today'),
+    external: gmExternal('ends_today'),
+    values: async (e) => ({ gym: await gymName(e.payload.gymId), link: gymUrl(`/me/memberships/${e.payload.memberId}`) }),
+    link: (e) => gymUrl(`/me/memberships/${e.payload.memberId}`),
+  },
+  {
+    code: 'GYM_FEE_OVERDUE',
+    events: ['gym_due.overdue_reminded'],
+    category: 'gym',
+    channels: ['in_app', 'email'],
+    recipients: gmUsers('overdue'),
+    external: gmExternal('overdue'),
+    values: async (e, { locale }) => ({
+      gym: await gymName(e.payload.gymId),
+      outstanding: e.payload.outstanding,
+      dueOn: dayText(e.payload.dueOn, locale),
+      link: (await gmFacts().payLinkUrl(e.payload.linkId)) ?? gymUrl('/me/dues'),
+    }),
+    link: () => gymUrl('/me/dues'),
+  },
+  {
+    code: 'GYM_MEMBERSHIP_EXPIRED',
+    events: ['gym_membership.expiry_reminded'],
+    category: 'gym',
+    channels: ['in_app'],
+    recipients: gmUsers('expired'),
+    values: async (e) => ({ gym: await gymName(e.payload.gymId) }),
+    link: (e) => gymUrl(`/me/memberships/${e.payload.memberId}`),
+  },
+  {
+    code: 'GYM_FEE_RECEIPT',
+    events: ['gym_fee.recorded'],
+    category: 'gym',
+    channels: ['in_app', 'email'],
+    // Opening balances of an import are never announced (M24-FR-78).
+    recipients: async (e) => (e.payload.method === 'opening' ? [] : gmUsers('receipt')(e)),
+    external: async (e) => (e.payload.method === 'opening' ? [] : gmExternal('receipt')(e)),
+    values: async (e) => ({ gym: await gymName(e.payload.gymId), amount: e.payload.amount, receiptNo: e.payload.receiptNo, outstandingAfter: e.payload.outstandingAfter, link: gmFacts().receiptUrl(e.payload.feePaymentId) }),
+    link: (e) => gmFacts().receiptUrl(e.payload.feePaymentId),
+  },
+  {
+    code: 'GYM_FEE_REVERSED',
+    events: ['gym_fee.reversed'],
+    category: 'gym',
+    channels: ['in_app', 'email'],
+    recipients: gmUsers('receipt'),
+    external: gmExternal('receipt'),
+    values: async (e) => {
+      const r = await gmFacts().reversedReceipt(e.payload.feePaymentId);
+      return { gym: await gymName(e.payload.gymId), receiptNo: r?.receiptNo ?? '', link: r?.url ?? gymUrl('/me/receipts') };
+    },
+    link: (e) => gmFacts().receiptUrl(e.payload.reversesId),
+  },
+  {
+    code: 'GYM_PAY_LINK',
+    events: ['gym_payment_link.created'],
+    category: 'gym',
+    channels: ['in_app', 'email'],
+    // Only when the gym chose to send it (an empty list: shown as a QR at the counter, or the member's own link).
+    recipients: async (e) => (e.payload.channels.length ? gmUsers('pay_link')(e) : []),
+    external: async (e) => (e.payload.channels.length ? gmExternal('pay_link')(e) : []),
+    values: async (e) => ({ gym: await gymName(e.payload.gymId), amount: e.payload.amount, link: (await gmFacts().payLinkUrl(e.payload.linkId)) ?? gymUrl('/me/dues') }),
+    link: () => gymUrl('/me/dues'),
+  },
+  {
+    code: 'GYM_ONLINE_FEE_PAID',
+    events: ['gym_fee.recorded'],
+    category: 'gym_business',
+    channels: ['in_app'],
+    recipients: async (e) => (e.payload.method === 'online' ? gymOwnerAndCollectors(e) : []),
+    values: async (e) => ({ memberCode: (await gmMemberFacts(e.payload.memberId))?.memberCode ?? '', amount: e.payload.amount, receiptNo: e.payload.receiptNo }),
+    link: (e) => gymUrl(`/manage/${e.payload.gymId}/members/${e.payload.memberId}`),
+  },
+  {
+    code: 'GYM_OWNER_MORNING',
+    events: ['gym_owner.summary_prepared'],
+    category: 'gym_business',
+    channels: ['in_app'],
+    recipients: gymOwnerAndCollectors,
+    values: async (e) => ({ gym: await gymName(e.payload.gymId), expiringToday: e.payload.expiringToday, overdue: e.payload.overdue, notSeen: e.payload.notSeen, requests: e.payload.requestsWaiting }),
+    link: (e) => gymUrl(`/manage/${e.payload.gymId}`),
+  },
+  {
+    code: 'GYM_OWNER_MONTHLY_REPORT',
+    events: ['gym_owner.report_prepared'],
+    category: 'gym_business',
+    channels: ['in_app', 'email'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e) => ({
+      gym: await gymName(e.payload.gymId),
+      month: e.payload.month,
+      collected: e.payload.collected,
+      outstanding: e.payload.outstanding,
+      newMembers: e.payload.newMembers,
+      left: e.payload.left,
+      link: gymUrl(`/manage/${e.payload.gymId}/reports?month=${e.payload.month}`),
+    }),
+    link: (e) => gymUrl(`/manage/${e.payload.gymId}/reports?month=${e.payload.month}`),
+  },
+  {
+    code: 'GYM_TIER_LIMIT_NEAR',
+    events: ['gym_active_members.counted'],
+    category: 'gym_business',
+    channels: ['in_app', 'email'],
+    recipients: (e) => (e.payload.notice ? [e.payload.ownerId] : []),
+    values: (e, { locale }) => ({ count: e.payload.count, tier: pickLocale(TIER_NAMES, locale, e.payload.chosenTier), limit: e.payload.tierLimit ?? 0, link: gymUrl('/manage/billing') }),
+    link: () => gymUrl('/manage/billing'),
+  },
+  {
+    code: 'GYM_INVOICE_ISSUED',
+    events: ['gym_invoice.issued'],
+    category: 'gym_business',
+    channels: ['in_app', 'email'],
+    recipients: (e) => [e.payload.ownerId],
+    values: (e, { locale }) => ({ number: e.payload.number, total: e.payload.total, dueAt: dayText(new Date(new Date(e.payload.dueAt).getTime() - 1 + 6 * 3600000).toISOString(), locale), link: gymUrl(`/manage/billing/invoices/${e.payload.invoiceId}`) }),
+    link: (e) => gymUrl(`/manage/billing/invoices/${e.payload.invoiceId}`),
+  },
+  {
+    code: 'GYM_INVOICE_DUE_SOON',
+    events: ['gym_invoice.reminded'],
+    category: 'gym_business',
+    channels: ['in_app', 'email'],
+    recipients: (e) => [e.payload.ownerId],
+    values: (e, { locale }) => ({ number: e.payload.number, total: e.payload.total, dueAt: dayText(new Date(new Date(e.payload.dueAt).getTime() - 1 + 6 * 3600000).toISOString(), locale), link: gymUrl(`/manage/billing/invoices/${e.payload.invoiceId}`) }),
+    link: (e) => gymUrl(`/manage/billing/invoices/${e.payload.invoiceId}`),
+  },
+  {
+    code: 'GYM_INVOICE_OVERDUE',
+    events: ['gym_invoice.overdue_marked'],
+    category: 'money',
+    channels: ['in_app', 'email', 'sms'],
+    recipients: (e) => [e.payload.ownerId],
+    values: (e, { locale }) => ({ number: e.payload.number, restrictOn: dayText(e.payload.restrictOn, locale), link: gymUrl(`/manage/billing/invoices/${e.payload.invoiceId}`) }),
+    link: (e) => gymUrl(`/manage/billing/invoices/${e.payload.invoiceId}`),
+  },
+  {
+    code: 'GYM_INVOICE_PAID',
+    events: ['gym_invoice.paid'],
+    category: 'gym_business',
+    channels: ['in_app', 'email'],
+    recipients: (e) => [e.payload.ownerId],
+    values: (e) => ({ number: e.payload.number, link: gymUrl('/manage/billing') }),
+    link: () => gymUrl('/manage/billing'),
+  },
+  {
+    code: 'GYM_ACCOUNT_RESTRICTED',
+    events: ['gym_subscription.restricted'],
+    category: 'money',
+    channels: ['in_app', 'email', 'sms'],
+    recipients: (e) => [e.payload.ownerId],
+    values: (e) => ({ number: e.payload.number ?? '', link: gymUrl('/manage/billing') }),
+    link: () => gymUrl('/manage/billing'),
+  },
+  {
+    code: 'GYM_ACCOUNT_RESTORED',
+    events: ['gym_subscription.restored'],
+    category: 'gym_business',
+    channels: ['in_app'],
+    recipients: (e) => [e.payload.ownerId],
+    values: () => ({}),
+    link: () => gymUrl('/manage'),
+  },
+  {
+    code: 'GYM_FEE_OVERRIDE_SET',
+    events: ['gym_fee_override.set'],
+    category: 'gym_business',
+    channels: ['in_app', 'email'],
+    recipients: (e) => [e.payload.ownerId],
+    values: (e, { locale }) => ({
+      feeName: pickLocale(FEE_NAMES, locale, e.payload.key),
+      value: e.payload.key === 'fees.gym_pct' ? `${e.payload.value}%` : formatValue('money', Math.round(e.payload.value), locale),
+      validTo: e.payload.validTo ? dayText(new Date(new Date(e.payload.validTo).getTime() + 6 * 3600000).toISOString(), locale) : locale === 'bn' ? 'পরবর্তী নোটিশ' : 'further notice',
+      link: gymUrl('/manage/billing'),
+    }),
+    link: () => gymUrl('/manage/billing'),
+  },
+  {
+    code: 'GYM_IMPORT_READY',
+    events: ['gym_import.previewed'],
+    category: 'gym_business',
+    channels: ['in_app', 'email'],
+    // Only a member list Kriraghor staff uploaded with the owner's consent (M24-FR-79).
+    recipients: async (e) => {
+      const f = await gmFacts().importUpload(e.payload.importId);
+      return f?.uploadedAs === 'staff' ? [f.ownerId] : [];
+    },
+    values: async (e) => ({ gym: await gymName(e.payload.gymId), rowsOk: e.payload.rowsOk, rowsFailed: e.payload.rowsFailed, link: gymUrl(`/manage/${e.payload.gymId}/import`) }),
+    link: (e) => gymUrl(`/manage/${e.payload.gymId}/import`),
   },
   // ---------------- M14 lite organisations and M22 organiser SaaS: the organisation's owner and admins
   {

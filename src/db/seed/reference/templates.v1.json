@@ -1,6 +1,6 @@
 {
-  "seedVersion": 23,
-  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code. v9: the M17 DISPUTE_*, REPORT_* and REVIEW_* codes. v10: the M18 RISK_*, PAYOUTS_*, DOCUMENTS_* and TRUST_LOW codes. v11: the M12 SHOP_*, PRODUCT_*, STOCK_*, SUPPLEMENT_EXPIRING and SAVED_* codes. v12: the M13 ORDER_* and SHOP_*ORDER* codes. v13: the M11 HIRE_* and JOB_* codes. v14 (M20): gyms (live, changes, rejected), passes (ready, cancelled) and trainer subscriptions (started, new subscriber, renewal due, lapsed, cancelled, paid). v15 (M14 lite, M22): organisations (verified, changes) and the organiser SaaS (contract active, suspended, ending; invoices issued, overdue, paid; prize fund received, returned). v18 adds the M14 tournament notices (approval, registrations, reserve offers, fixtures, reschedules, cancellation, too few teams, lots). v19 adds the M01 password-changed security alert. v20: user-facing words Grounds → Venues, Tournaments → Events, big events → Showcases (19 Oct 2026). v21 adds REVIEW_REPLIED (the author hears that the venue, pro, shop or gym replied; Round B1). v22 adds the Round B3 staff notices: TEAM_ADDED and TEAM_REMOVED (the staff member hears when an owner adds or removes them), and TEAM_BOOKING_NEW, TEAM_BOOKING_CANCELLED and TEAM_CHECKIN_SOON for venue staff (no fee, released or retained amounts). v23: the M24 gym management consent templates (prompt 1): GYM_LINK_INVITE (in-app and email, to the invited account) and GYM_LINK_ACCEPTED (in-app, to the owner), linking to gym.kriraghor.com.",
+  "seedVersion": 24,
+  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code. v9: the M17 DISPUTE_*, REPORT_* and REVIEW_* codes. v10: the M18 RISK_*, PAYOUTS_*, DOCUMENTS_* and TRUST_LOW codes. v11: the M12 SHOP_*, PRODUCT_*, STOCK_*, SUPPLEMENT_EXPIRING and SAVED_* codes. v12: the M13 ORDER_* and SHOP_*ORDER* codes. v13: the M11 HIRE_* and JOB_* codes. v14 (M20): gyms (live, changes, rejected), passes (ready, cancelled) and trainer subscriptions (started, new subscriber, renewal due, lapsed, cancelled, paid). v15 (M14 lite, M22): organisations (verified, changes) and the organiser SaaS (contract active, suspended, ending; invoices issued, overdue, paid; prize fund received, returned). v18 adds the M14 tournament notices (approval, registrations, reserve offers, fixtures, reschedules, cancellation, too few teams, lots). v19 adds the M01 password-changed security alert. v20: user-facing words Grounds → Venues, Tournaments → Events, big events → Showcases (19 Oct 2026). v21 adds REVIEW_REPLIED (the author hears that the venue, pro, shop or gym replied; Round B1). v22 adds the Round B3 staff notices: TEAM_ADDED and TEAM_REMOVED (the staff member hears when an owner adds or removes them), and TEAM_BOOKING_NEW, TEAM_BOOKING_CANCELLED and TEAM_CHECKIN_SOON for venue staff (no fee, released or retained amounts). v23: the M24 gym management consent templates (prompt 1): GYM_LINK_INVITE (in-app and email, to the invited account) and GYM_LINK_ACCEPTED (in-app, to the owner), linking to gym.kriraghor.com. v24: the M24 gym management prompt 2 templates (online money, reminders and billing): member notices (membership started, frozen, renewal due, ends today, fee overdue, expired, receipt, receipt corrected, payment link) in-app and by email, owner notices (online fee paid, morning summary, monthly report, plan limit near, invoice issued, due soon, paid, restored, special rate, member list ready), and the two money notices with SMS (invoice overdue, panel restricted, G19). Amounts use the money type (no literal ৳), dates are text in the recipient's language, links point to gym.kriraghor.com.",
   "templates": [
     {
       "code": "AUDIT_CRITICAL",
@@ -9829,6 +9829,1816 @@
           "name": "memberCode",
           "type": "text",
           "maxLen": 12
+        }
+      ]
+    },
+    {
+      "code": "GYM_MEMBERSHIP_STARTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Your package at {{gym}}",
+      "body": "Your {{package}} at {{gym}} runs from {{startsOn}} to {{endsOn}}.",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "package",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "startsOn",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "endsOn",
+          "type": "text",
+          "maxLen": 20
+        }
+      ]
+    },
+    {
+      "code": "GYM_MEMBERSHIP_STARTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "{{gym}}-এ আপনার প্যাকেজ",
+      "body": "{{gym}}-এ আপনার {{package}} চলবে {{startsOn}} থেকে {{endsOn}} পর্যন্ত।",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "package",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "startsOn",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "endsOn",
+          "type": "text",
+          "maxLen": 20
+        }
+      ]
+    },
+    {
+      "code": "GYM_MEMBERSHIP_STARTED",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Your package at {{gym}}",
+      "body": "Your {{package}} at {{gym}} runs from {{startsOn}} to {{endsOn}}.\n\n{{link}}",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "package",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "startsOn",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "endsOn",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_MEMBERSHIP_STARTED",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "{{gym}}-এ আপনার প্যাকেজ",
+      "body": "{{gym}}-এ আপনার {{package}} চলবে {{startsOn}} থেকে {{endsOn}} পর্যন্ত।\n\n{{link}}",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "package",
+          "type": "text",
+          "maxLen": 80
+        },
+        {
+          "name": "startsOn",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "endsOn",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_MEMBERSHIP_FROZEN",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Package paused at {{gym}}",
+      "body": "Your {{gym}} package is paused from {{fromOn}} to {{toOn}}. New end date: {{endsOn}}.",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "fromOn",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "toOn",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "endsOn",
+          "type": "text",
+          "maxLen": 20
+        }
+      ]
+    },
+    {
+      "code": "GYM_MEMBERSHIP_FROZEN",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "{{gym}}-এ প্যাকেজ বিরতিতে",
+      "body": "{{gym}}-এ আপনার প্যাকেজ {{fromOn}} থেকে {{toOn}} পর্যন্ত বিরতিতে। নতুন শেষ তারিখ: {{endsOn}}।",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "fromOn",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "toOn",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "endsOn",
+          "type": "text",
+          "maxLen": 20
+        }
+      ]
+    },
+    {
+      "code": "GYM_RENEWAL_DUE",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Renew at {{gym}}",
+      "body": "Your {{gym}} package ends on {{endsOn}}. Renew to keep training.",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "endsOn",
+          "type": "text",
+          "maxLen": 20
+        }
+      ]
+    },
+    {
+      "code": "GYM_RENEWAL_DUE",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "{{gym}}-এ নবায়ন করুন",
+      "body": "{{gym}}-এ আপনার প্যাকেজ {{endsOn}} তারিখে শেষ হবে। চালিয়ে যেতে নবায়ন করুন।",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "endsOn",
+          "type": "text",
+          "maxLen": 20
+        }
+      ]
+    },
+    {
+      "code": "GYM_RENEWAL_DUE",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Renew at {{gym}}",
+      "body": "Your {{gym}} package ends on {{endsOn}}. Renew to keep training.\n\n{{link}}",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "endsOn",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_RENEWAL_DUE",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "{{gym}}-এ নবায়ন করুন",
+      "body": "{{gym}}-এ আপনার প্যাকেজ {{endsOn}} তারিখে শেষ হবে। চালিয়ে যেতে নবায়ন করুন।\n\n{{link}}",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "endsOn",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_MEMBERSHIP_ENDS_TODAY",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Package ends today",
+      "body": "Your {{gym}} package ends today.",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "GYM_MEMBERSHIP_ENDS_TODAY",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "প্যাকেজ আজ শেষ",
+      "body": "{{gym}}-এ আপনার প্যাকেজ আজ শেষ হচ্ছে।",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "GYM_MEMBERSHIP_ENDS_TODAY",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Package ends today",
+      "body": "Your {{gym}} package ends today.\n\n{{link}}",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_MEMBERSHIP_ENDS_TODAY",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "প্যাকেজ আজ শেষ",
+      "body": "{{gym}}-এ আপনার প্যাকেজ আজ শেষ হচ্ছে।\n\n{{link}}",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_FEE_OVERDUE",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Fee due at {{gym}}",
+      "body": "{{outstanding}} is due at {{gym}} since {{dueOn}}.",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "outstanding",
+          "type": "money"
+        },
+        {
+          "name": "dueOn",
+          "type": "text",
+          "maxLen": 20
+        }
+      ]
+    },
+    {
+      "code": "GYM_FEE_OVERDUE",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "{{gym}}-এ ফি বাকি",
+      "body": "{{gym}}-এ {{dueOn}} থেকে {{outstanding}} বাকি আছে।",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "dueOn",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "outstanding",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "GYM_FEE_OVERDUE",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Fee due at {{gym}}",
+      "body": "{{outstanding}} is due at {{gym}} since {{dueOn}}.\n\n{{link}}",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "outstanding",
+          "type": "money"
+        },
+        {
+          "name": "dueOn",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_FEE_OVERDUE",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "{{gym}}-এ ফি বাকি",
+      "body": "{{gym}}-এ {{dueOn}} থেকে {{outstanding}} বাকি আছে।\n\n{{link}}",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "dueOn",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "outstanding",
+          "type": "money"
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_MEMBERSHIP_EXPIRED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Package ended",
+      "body": "Your {{gym}} package has ended. Talk to the front desk to renew.",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "GYM_MEMBERSHIP_EXPIRED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "প্যাকেজ শেষ",
+      "body": "{{gym}}-এ আপনার প্যাকেজ শেষ হয়েছে। নবায়নের জন্য কাউন্টারে কথা বলুন।",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "GYM_FEE_RECEIPT",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Receipt {{receiptNo}}",
+      "body": "Received {{amount}} at {{gym}}. Receipt {{receiptNo}}. Still due: {{outstandingAfter}}.",
+      "variables": [
+        {
+          "name": "receiptNo",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "outstandingAfter",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "GYM_FEE_RECEIPT",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "রসিদ {{receiptNo}}",
+      "body": "{{gym}}-এ {{amount}} গ্রহণ করা হয়েছে। রসিদ {{receiptNo}}। বাকি: {{outstandingAfter}}।",
+      "variables": [
+        {
+          "name": "receiptNo",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "outstandingAfter",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "GYM_FEE_RECEIPT",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Receipt {{receiptNo}}",
+      "body": "Received {{amount}} at {{gym}}. Receipt {{receiptNo}}. Still due: {{outstandingAfter}}.\n\n{{link}}",
+      "variables": [
+        {
+          "name": "receiptNo",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "outstandingAfter",
+          "type": "money"
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_FEE_RECEIPT",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "রসিদ {{receiptNo}}",
+      "body": "{{gym}}-এ {{amount}} গ্রহণ করা হয়েছে। রসিদ {{receiptNo}}। বাকি: {{outstandingAfter}}।\n\n{{link}}",
+      "variables": [
+        {
+          "name": "receiptNo",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "outstandingAfter",
+          "type": "money"
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_FEE_REVERSED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Receipt {{receiptNo}} corrected",
+      "body": "Receipt {{receiptNo}} at {{gym}} was corrected. Open it to see the details.",
+      "variables": [
+        {
+          "name": "receiptNo",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "GYM_FEE_REVERSED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "রসিদ {{receiptNo}} সংশোধন",
+      "body": "{{gym}}-এর রসিদ {{receiptNo}} সংশোধন করা হয়েছে। বিস্তারিত দেখতে খুলুন।",
+      "variables": [
+        {
+          "name": "receiptNo",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        }
+      ]
+    },
+    {
+      "code": "GYM_FEE_REVERSED",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Receipt {{receiptNo}} corrected",
+      "body": "Receipt {{receiptNo}} at {{gym}} was corrected. Open it to see the details.\n\n{{link}}",
+      "variables": [
+        {
+          "name": "receiptNo",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_FEE_REVERSED",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "রসিদ {{receiptNo}} সংশোধন",
+      "body": "{{gym}}-এর রসিদ {{receiptNo}} সংশোধন করা হয়েছে। বিস্তারিত দেখতে খুলুন।\n\n{{link}}",
+      "variables": [
+        {
+          "name": "receiptNo",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_PAY_LINK",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Payment link from {{gym}}",
+      "body": "{{gym}} sent a payment link for {{amount}}. Pay by bKash, Nagad or card.",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "amount",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "GYM_PAY_LINK",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "{{gym}} থেকে পেমেন্ট লিংক",
+      "body": "{{gym}} {{amount}} পরিশোধের লিংক পাঠিয়েছে। বিকাশ, নগদ বা কার্ডে দিন।",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "amount",
+          "type": "money"
+        }
+      ]
+    },
+    {
+      "code": "GYM_PAY_LINK",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Payment link from {{gym}}",
+      "body": "{{gym}} sent a payment link for {{amount}}. Pay by bKash, Nagad or card.\n\n{{link}}",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_PAY_LINK",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "{{gym}} থেকে পেমেন্ট লিংক",
+      "body": "{{gym}} {{amount}} পরিশোধের লিংক পাঠিয়েছে। বিকাশ, নগদ বা কার্ডে দিন।\n\n{{link}}",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_ONLINE_FEE_PAID",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Online fee received",
+      "body": "Member {{memberCode}} paid {{amount}} online. Receipt {{receiptNo}}.",
+      "variables": [
+        {
+          "name": "memberCode",
+          "type": "text",
+          "maxLen": 12
+        },
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "receiptNo",
+          "type": "text",
+          "maxLen": 24
+        }
+      ]
+    },
+    {
+      "code": "GYM_ONLINE_FEE_PAID",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "অনলাইনে ফি পাওয়া গেছে",
+      "body": "সদস্য {{memberCode}} অনলাইনে {{amount}} দিয়েছেন। রসিদ {{receiptNo}}।",
+      "variables": [
+        {
+          "name": "memberCode",
+          "type": "text",
+          "maxLen": 12
+        },
+        {
+          "name": "amount",
+          "type": "money"
+        },
+        {
+          "name": "receiptNo",
+          "type": "text",
+          "maxLen": 24
+        }
+      ]
+    },
+    {
+      "code": "GYM_OWNER_MORNING",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "{{gym}} today",
+      "body": "{{gym}} today: {{expiringToday}} packages end, {{overdue}} overdue, {{notSeen}} not seen, {{requests}} requests.",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "expiringToday",
+          "type": "number"
+        },
+        {
+          "name": "overdue",
+          "type": "number"
+        },
+        {
+          "name": "notSeen",
+          "type": "number"
+        },
+        {
+          "name": "requests",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "GYM_OWNER_MORNING",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "{{gym}} আজ",
+      "body": "{{gym}} আজ: {{expiringToday}}টি প্যাকেজ শেষ, {{overdue}}টি বাকি, {{notSeen}} জন অনেকদিন আসেননি, {{requests}}টি অনুরোধ।",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "expiringToday",
+          "type": "number"
+        },
+        {
+          "name": "overdue",
+          "type": "number"
+        },
+        {
+          "name": "notSeen",
+          "type": "number"
+        },
+        {
+          "name": "requests",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "GYM_OWNER_MONTHLY_REPORT",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "{{gym}} in {{month}}",
+      "body": "{{gym}} in {{month}}: collected {{collected}}, due {{outstanding}}, {{newMembers}} new, {{left}} left.",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "month",
+          "type": "text",
+          "maxLen": 7
+        },
+        {
+          "name": "collected",
+          "type": "money"
+        },
+        {
+          "name": "outstanding",
+          "type": "money"
+        },
+        {
+          "name": "newMembers",
+          "type": "number"
+        },
+        {
+          "name": "left",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "GYM_OWNER_MONTHLY_REPORT",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "{{month}}-এ {{gym}}",
+      "body": "{{month}}-এ {{gym}}: আদায় {{collected}}, বাকি {{outstanding}}, নতুন {{newMembers}} জন, ছেড়ে গেছেন {{left}} জন।",
+      "variables": [
+        {
+          "name": "month",
+          "type": "text",
+          "maxLen": 7
+        },
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "collected",
+          "type": "money"
+        },
+        {
+          "name": "outstanding",
+          "type": "money"
+        },
+        {
+          "name": "newMembers",
+          "type": "number"
+        },
+        {
+          "name": "left",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "GYM_OWNER_MONTHLY_REPORT",
+      "channel": "email",
+      "locale": "en",
+      "subject": "{{gym}} in {{month}}",
+      "body": "{{gym}} in {{month}}: collected {{collected}}, due {{outstanding}}, {{newMembers}} new, {{left}} left.\n\n{{link}}",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "month",
+          "type": "text",
+          "maxLen": 7
+        },
+        {
+          "name": "collected",
+          "type": "money"
+        },
+        {
+          "name": "outstanding",
+          "type": "money"
+        },
+        {
+          "name": "newMembers",
+          "type": "number"
+        },
+        {
+          "name": "left",
+          "type": "number"
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_OWNER_MONTHLY_REPORT",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "{{month}}-এ {{gym}}",
+      "body": "{{month}}-এ {{gym}}: আদায় {{collected}}, বাকি {{outstanding}}, নতুন {{newMembers}} জন, ছেড়ে গেছেন {{left}} জন।\n\n{{link}}",
+      "variables": [
+        {
+          "name": "month",
+          "type": "text",
+          "maxLen": 7
+        },
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "collected",
+          "type": "money"
+        },
+        {
+          "name": "outstanding",
+          "type": "money"
+        },
+        {
+          "name": "newMembers",
+          "type": "number"
+        },
+        {
+          "name": "left",
+          "type": "number"
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_TIER_LIMIT_NEAR",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Active members near your plan limit",
+      "body": "You have {{count}} active members; your {{tier}} plan covers {{limit}}. Next month's bill uses the plan that fits.",
+      "variables": [
+        {
+          "name": "count",
+          "type": "number"
+        },
+        {
+          "name": "tier",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "limit",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "GYM_TIER_LIMIT_NEAR",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "সক্রিয় সদস্য প্যাকেজের সীমার কাছে",
+      "body": "আপনার সক্রিয় সদস্য {{count}} জন; {{tier}} প্যাকেজে {{limit}} জন পর্যন্ত। পরের মাসের বিলে উপযুক্ত প্যাকেজের দাম ধরা হবে।",
+      "variables": [
+        {
+          "name": "count",
+          "type": "number"
+        },
+        {
+          "name": "tier",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "limit",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "GYM_TIER_LIMIT_NEAR",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Active members near your plan limit",
+      "body": "You have {{count}} active members; your {{tier}} plan covers {{limit}}. Next month's bill uses the plan that fits.\n\n{{link}}",
+      "variables": [
+        {
+          "name": "count",
+          "type": "number"
+        },
+        {
+          "name": "tier",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "limit",
+          "type": "number"
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_TIER_LIMIT_NEAR",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "সক্রিয় সদস্য প্যাকেজের সীমার কাছে",
+      "body": "আপনার সক্রিয় সদস্য {{count}} জন; {{tier}} প্যাকেজে {{limit}} জন পর্যন্ত। পরের মাসের বিলে উপযুক্ত প্যাকেজের দাম ধরা হবে।\n\n{{link}}",
+      "variables": [
+        {
+          "name": "count",
+          "type": "number"
+        },
+        {
+          "name": "tier",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "limit",
+          "type": "number"
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_INVOICE_ISSUED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Invoice {{number}}",
+      "body": "Invoice {{number}} for {{total}} is ready. Please pay by {{dueAt}}.",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "dueAt",
+          "type": "text",
+          "maxLen": 20
+        }
+      ]
+    },
+    {
+      "code": "GYM_INVOICE_ISSUED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "চালান {{number}}",
+      "body": "চালান {{number}}, {{total}}। {{dueAt}}-এর মধ্যে পরিশোধ করুন।",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "dueAt",
+          "type": "text",
+          "maxLen": 20
+        }
+      ]
+    },
+    {
+      "code": "GYM_INVOICE_ISSUED",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Invoice {{number}}",
+      "body": "Invoice {{number}} for {{total}} is ready. Please pay by {{dueAt}}.\n\n{{link}}",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "dueAt",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_INVOICE_ISSUED",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "চালান {{number}}",
+      "body": "চালান {{number}}, {{total}}। {{dueAt}}-এর মধ্যে পরিশোধ করুন।\n\n{{link}}",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "dueAt",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_INVOICE_DUE_SOON",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Invoice {{number}} is due soon",
+      "body": "Invoice {{number}} ({{total}}) is due on {{dueAt}}.",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "dueAt",
+          "type": "text",
+          "maxLen": 20
+        }
+      ]
+    },
+    {
+      "code": "GYM_INVOICE_DUE_SOON",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "চালান {{number}} শিগগিরই দিতে হবে",
+      "body": "চালান {{number}} ({{total}}) {{dueAt}}-এর মধ্যে দিতে হবে।",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "dueAt",
+          "type": "text",
+          "maxLen": 20
+        }
+      ]
+    },
+    {
+      "code": "GYM_INVOICE_DUE_SOON",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Invoice {{number}} is due soon",
+      "body": "Invoice {{number}} ({{total}}) is due on {{dueAt}}.\n\n{{link}}",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "dueAt",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_INVOICE_DUE_SOON",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "চালান {{number}} শিগগিরই দিতে হবে",
+      "body": "চালান {{number}} ({{total}}) {{dueAt}}-এর মধ্যে দিতে হবে।\n\n{{link}}",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "total",
+          "type": "money"
+        },
+        {
+          "name": "dueAt",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_INVOICE_OVERDUE",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Invoice {{number}} is overdue",
+      "body": "Invoice {{number}} is overdue. Pay by {{restrictOn}} to keep the full panel.",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "restrictOn",
+          "type": "text",
+          "maxLen": 20
+        }
+      ]
+    },
+    {
+      "code": "GYM_INVOICE_OVERDUE",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "চালান {{number}}-এর সময় পেরিয়েছে",
+      "body": "চালান {{number}}-এর সময় পেরিয়ে গেছে। পুরো প্যানেল চালু রাখতে {{restrictOn}}-এর মধ্যে দিন।",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "restrictOn",
+          "type": "text",
+          "maxLen": 20
+        }
+      ]
+    },
+    {
+      "code": "GYM_INVOICE_OVERDUE",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Invoice {{number}} is overdue",
+      "body": "Invoice {{number}} is overdue. Pay by {{restrictOn}} to keep the full panel.\n\n{{link}}",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "restrictOn",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_INVOICE_OVERDUE",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "চালান {{number}}-এর সময় পেরিয়েছে",
+      "body": "চালান {{number}}-এর সময় পেরিয়ে গেছে। পুরো প্যানেল চালু রাখতে {{restrictOn}}-এর মধ্যে দিন।\n\n{{link}}",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "restrictOn",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_INVOICE_OVERDUE",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: gym invoice {{number}} is overdue. Pay by {{restrictOn}} to keep the full panel.",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "restrictOn",
+          "type": "text",
+          "maxLen": 20
+        }
+      ]
+    },
+    {
+      "code": "GYM_INVOICE_OVERDUE",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: চালান {{number}}-এর সময় পেরিয়ে গেছে। পুরো প্যানেল চালু রাখতে {{restrictOn}}-এর মধ্যে দিন।",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "restrictOn",
+          "type": "text",
+          "maxLen": 20
+        }
+      ]
+    },
+    {
+      "code": "GYM_INVOICE_PAID",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Invoice {{number}} paid",
+      "body": "Thank you. Invoice {{number}} is paid.",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        }
+      ]
+    },
+    {
+      "code": "GYM_INVOICE_PAID",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "চালান {{number}} পরিশোধিত",
+      "body": "ধন্যবাদ। চালান {{number}} পরিশোধ হয়েছে।",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        }
+      ]
+    },
+    {
+      "code": "GYM_INVOICE_PAID",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Invoice {{number}} paid",
+      "body": "Thank you. Invoice {{number}} is paid.\n\n{{link}}",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_INVOICE_PAID",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "চালান {{number}} পরিশোধিত",
+      "body": "ধন্যবাদ। চালান {{number}} পরিশোধ হয়েছে।\n\n{{link}}",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_ACCOUNT_RESTRICTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Gym panel is read-only",
+      "body": "Your gym panel is read-only until invoice {{number}} is paid. Check-ins and cash fees still work.",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        }
+      ]
+    },
+    {
+      "code": "GYM_ACCOUNT_RESTRICTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "জিম প্যানেল শুধু দেখার জন্য",
+      "body": "চালান {{number}} পরিশোধ না হওয়া পর্যন্ত প্যানেল শুধু দেখার জন্য। চেক-ইন ও নগদ ফি লেখা চালু আছে।",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        }
+      ]
+    },
+    {
+      "code": "GYM_ACCOUNT_RESTRICTED",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Gym panel is read-only",
+      "body": "Your gym panel is read-only until invoice {{number}} is paid. Check-ins and cash fees still work.\n\n{{link}}",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_ACCOUNT_RESTRICTED",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "জিম প্যানেল শুধু দেখার জন্য",
+      "body": "চালান {{number}} পরিশোধ না হওয়া পর্যন্ত প্যানেল শুধু দেখার জন্য। চেক-ইন ও নগদ ফি লেখা চালু আছে।\n\n{{link}}",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_ACCOUNT_RESTRICTED",
+      "channel": "sms",
+      "locale": "en",
+      "body": "Kriraghor: your gym panel is read-only until invoice {{number}} is paid. Check-ins and cash fees still work.",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        }
+      ]
+    },
+    {
+      "code": "GYM_ACCOUNT_RESTRICTED",
+      "channel": "sms",
+      "locale": "bn",
+      "body": "ক্রীড়াঘর: চালান {{number}} পরিশোধ না হওয়া পর্যন্ত প্যানেল শুধু দেখার জন্য। চেক-ইন ও নগদ ফি চালু।",
+      "variables": [
+        {
+          "name": "number",
+          "type": "text",
+          "maxLen": 24
+        }
+      ]
+    },
+    {
+      "code": "GYM_ACCOUNT_RESTORED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Gym panel working again",
+      "body": "Your gym panel is fully working again.",
+      "variables": []
+    },
+    {
+      "code": "GYM_ACCOUNT_RESTORED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "জিম প্যানেল আবার চালু",
+      "body": "আপনার জিম প্যানেল আবার পুরোপুরি চালু।",
+      "variables": []
+    },
+    {
+      "code": "GYM_FEE_OVERRIDE_SET",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "A special rate applies to you",
+      "body": "A special rate applies to you: {{feeName}} {{value}} until {{validTo}}.",
+      "variables": [
+        {
+          "name": "feeName",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "validTo",
+          "type": "text",
+          "maxLen": 20
+        }
+      ]
+    },
+    {
+      "code": "GYM_FEE_OVERRIDE_SET",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আপনার জন্য বিশেষ হার",
+      "body": "আপনার জন্য বিশেষ হার: {{feeName}} {{value}}, {{validTo}} পর্যন্ত।",
+      "variables": [
+        {
+          "name": "feeName",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "validTo",
+          "type": "text",
+          "maxLen": 20
+        }
+      ]
+    },
+    {
+      "code": "GYM_FEE_OVERRIDE_SET",
+      "channel": "email",
+      "locale": "en",
+      "subject": "A special rate applies to you",
+      "body": "A special rate applies to you: {{feeName}} {{value}} until {{validTo}}.\n\n{{link}}",
+      "variables": [
+        {
+          "name": "feeName",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "validTo",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_FEE_OVERRIDE_SET",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "আপনার জন্য বিশেষ হার",
+      "body": "আপনার জন্য বিশেষ হার: {{feeName}} {{value}}, {{validTo}} পর্যন্ত।\n\n{{link}}",
+      "variables": [
+        {
+          "name": "feeName",
+          "type": "text",
+          "maxLen": 40
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "validTo",
+          "type": "text",
+          "maxLen": 20
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_IMPORT_READY",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Member list ready",
+      "body": "Kriraghor uploaded your member list for {{gym}}: {{rowsOk}} rows ready, {{rowsFailed}} with errors. Check and apply.",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "rowsOk",
+          "type": "number"
+        },
+        {
+          "name": "rowsFailed",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "GYM_IMPORT_READY",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "সদস্য তালিকা প্রস্তুত",
+      "body": "ক্রীড়াঘর {{gym}}-এর সদস্য তালিকা আপলোড করেছে: {{rowsOk}}টি সারি প্রস্তুত, {{rowsFailed}}টিতে ভুল। দেখে নিশ্চিত করুন।",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "rowsOk",
+          "type": "number"
+        },
+        {
+          "name": "rowsFailed",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "GYM_IMPORT_READY",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Member list ready",
+      "body": "Kriraghor uploaded your member list for {{gym}}: {{rowsOk}} rows ready, {{rowsFailed}} with errors. Check and apply.\n\n{{link}}",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "rowsOk",
+          "type": "number"
+        },
+        {
+          "name": "rowsFailed",
+          "type": "number"
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_IMPORT_READY",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "সদস্য তালিকা প্রস্তুত",
+      "body": "ক্রীড়াঘর {{gym}}-এর সদস্য তালিকা আপলোড করেছে: {{rowsOk}}টি সারি প্রস্তুত, {{rowsFailed}}টিতে ভুল। দেখে নিশ্চিত করুন।\n\n{{link}}",
+      "variables": [
+        {
+          "name": "gym",
+          "type": "text",
+          "maxLen": 120
+        },
+        {
+          "name": "rowsOk",
+          "type": "number"
+        },
+        {
+          "name": "rowsFailed",
+          "type": "number"
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
         }
       ]
     }

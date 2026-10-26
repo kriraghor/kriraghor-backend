@@ -173,7 +173,7 @@ async function subView(s, viewer, { transaction } = {}) {
     renew: s.renew,
     current: current ? periodView(current) : null,
     next: next ? periodView(next) : null,
-    payment: viewer === s.memberId && next?.paymentId ? { id: next.paymentId, payUrl: payUrl(next.paymentId) } : null,
+    payment: viewer === s.memberId && next?.paymentId ? { id: next.paymentId, payUrl: payUrl(next.paymentId, 'trainer_subscription') } : null,
     can: {
       pay: viewer === s.memberId && Boolean(next) && s.status !== 'void',
       cancel: viewer === s.memberId && ['pending_payment', 'active'].includes(s.status),

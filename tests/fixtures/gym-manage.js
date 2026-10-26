@@ -61,4 +61,24 @@ async function addMember(who, gymId, body = {}, status = 201) {
   ).body;
 }
 
-module.exports = { PACKAGES, key, today, inDays, privateGym, hire, manage, addMember };
+/**
+ * M24 prompt 2: the owner's gym_owner role active (documents approved, gate list_gym), so the gym can take
+ * fees online (M24-FR-02). Written directly, like helpers.verifyMember; the session is refreshed.
+ */
+async function listOwner(owner) {
+  await h.models.UserRole.destroy({ where: { userId: owner.user.id, role: 'gym_owner' } });
+  await h.models.UserRole.create({ userId: owner.user.id, role: 'gym_owner', status: 'active', activatedAt: new Date() });
+  await h.models.User.increment('authzVersion', { where: { id: owner.user.id } });
+  await f.refresh(owner);
+  return owner;
+}
+
+/** Invite a member to link `who`'s account by their phone and accept it (M24-FR-14, FR-15). */
+async function linkMember(owner, gymId, memberId, who) {
+  await manage(owner, gymId).post(`/members/${memberId}/invite`, { phone: who.phone }).expect(201);
+  const mine = (await api().get(`${P}/me/gym-requests`).set(h.bearer(who)).expect(200)).body;
+  const req = mine.items[0];
+  await api().post(`${P}/me/gym-requests/${req.id}/accept`).set(h.bearer(who)).expect(200);
+}
+
+module.exports = { PACKAGES, key, today, inDays, privateGym, hire, manage, addMember, listOwner, linkMember };

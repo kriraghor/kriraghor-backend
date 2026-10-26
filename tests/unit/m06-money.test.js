@@ -136,6 +136,19 @@ describe('ledger rules (§6.2, FR-12)', () => {
       { account: 'fee_revenue:v', credit: 100 },
     ]);
     expect(() => L.releaseLines({ escrowAccount: 'escrow:e', holdId: 'h', payeeId: 'p', vertical: 'v', gross: 100, fee: 101 })).toThrow(L.LedgerError);
+    // M24 §6.3 (M24-FR-43, FR-45): ৳1,500 by bKash at 200 bps → ৳30 to provider_fee_expense, ৳1,470 to the owner, no fee_revenue.
+    expect(L.releaseLines({ escrowAccount: 'escrow:gym_membership_fee', holdId: 'h', payeeId: 'o', vertical: 'gym_fee', gross: 150000, fee: 0, providerCharge: 3000 })).toEqual([
+      { account: 'escrow:gym_membership_fee', debit: 150000, holdId: 'h' },
+      { account: 'payable:user:o', credit: 147000 },
+      { account: 'provider_fee_expense', credit: 3000 },
+    ]);
+    expect(L.releaseLines({ escrowAccount: 'escrow:e', holdId: 'h', payeeId: 'p', vertical: 'v', gross: 100, fee: 10, providerCharge: 90 })).toEqual([
+      { account: 'escrow:e', debit: 100, holdId: 'h' },
+      { account: 'fee_revenue:v', credit: 10 },
+      { account: 'provider_fee_expense', credit: 90 },
+    ]);
+    expect(() => L.releaseLines({ escrowAccount: 'escrow:e', holdId: 'h', payeeId: 'p', vertical: 'v', gross: 100, fee: 10, providerCharge: 91 })).toThrow(L.LedgerError);
+    expect(() => L.releaseLines({ escrowAccount: 'escrow:e', holdId: 'h', payeeId: 'p', vertical: 'v', gross: 100, fee: 0, providerCharge: -1 })).toThrow(TypeError);
     // M10: a ৳600 extension paid at the venue owes 5% = ৳30 (3000 poisha).
     expect(L.feeReceivableLines({ payeeId: 'o', vertical: 'grounds', amount: 3000 })).toEqual([
       { account: 'fee_receivable:user:o', debit: 3000 },

@@ -520,6 +520,36 @@ NotificationDelivery.init(
   { sequelize, modelName: 'NotificationDelivery', tableName: 'notification_deliveries' }
 );
 
+/**
+ * M08 (M24 prompt 2, §11.1): email to someone without an account (a gym's unlinked member). The
+ * recipient is a reference an adapter resolves at delivery time; no address is stored.
+ */
+class NotificationExternalDelivery extends Model {}
+NotificationExternalDelivery.init(
+  {
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: () => uuid7() },
+    code: { type: DataTypes.STRING(60), allowNull: false },
+    category: { type: DataTypes.STRING(30), allowNull: false },
+    recipientType: { type: DataTypes.ENUM('gym_member'), allowNull: false },
+    recipientId: { type: DataTypes.UUID, allowNull: false },
+    channel: { type: DataTypes.ENUM('email'), allowNull: false },
+    locale: { type: DataTypes.ENUM('en', 'bn'), allowNull: false },
+    values: { type: DataTypes.JSONB, allowNull: false, defaultValue: {} },
+    link: DataTypes.STRING(500),
+    templateVersion: DataTypes.INTEGER,
+    sourceEventId: DataTypes.UUID,
+    dedupeKey: { type: DataTypes.STRING(200), allowNull: false },
+    status: { type: DataTypes.ENUM('queued', 'deferred', 'sent', 'delivered', 'failed', 'suppressed'), allowNull: false, defaultValue: 'queued' },
+    deliverAt: { type: DataTypes.DATE(3), allowNull: false },
+    attempts: { type: DataTypes.SMALLINT, allowNull: false, defaultValue: 0 },
+    provider: DataTypes.STRING(30),
+    providerMessageId: DataTypes.STRING(200),
+    sentAt: DataTypes.DATE(3),
+    errorCode: DataTypes.STRING(60),
+  },
+  { sequelize, modelName: 'NotificationExternalDelivery', tableName: 'notification_external_deliveries' }
+);
+
 class SmsLog extends Model {}
 SmsLog.init(
   {
@@ -929,6 +959,8 @@ PayoutItem.init(
     },
     grossPoisha: poisha('grossPoisha', { defaultValue: undefined }),
     feePoisha: poisha('feePoisha'),
+    // M24-FR-46: the provider's charge passed through at cost (online gym membership fees); 0 otherwise.
+    providerChargePoisha: poisha('providerChargePoisha', { defaultValue: 0 }),
     netPoisha: signedPoisha('netPoisha'),
     description: { type: DataTypes.STRING(200), allowNull: false },
     status: { type: DataTypes.ENUM('included', 'returned'), allowNull: false, defaultValue: 'included' },
@@ -1297,6 +1329,7 @@ module.exports = {
   NotificationPref,
   MessageTemplate,
   NotificationDelivery,
+  NotificationExternalDelivery,
   SmsLog,
   PushSubscription,
   PushReceipt,

@@ -383,7 +383,285 @@ function validateImportRows(rows, { map, packages, existingHashes = new Set(), e
   });
 }
 
+// ================================================================ prompt 2: online money, reminders, billing
+
+// ---------------------------------------------------------------- months (Dhaka calendar)
+
+/** Whole months from the month of `from` to the month of `to` (both YYYY-MM-DD). */
+const monthsBetween = (from, to) => (yearOf(to) - yearOf(from)) * 12 + (Number(to.slice(5, 7)) - Number(from.slice(5, 7)));
+/** The first day of the month `n` months after the month of `date`. */
+function addMonths(date, n) {
+  const total = yearOf(date) * 12 + Number(date.slice(5, 7)) - 1 + n;
+  return `${String(Math.floor(total / 12)).padStart(4, '0')}-${String((total % 12) + 1).padStart(2, '0')}-01`;
+}
+const lastOfMonth = (date) => addDays(addMonths(date, 1), -1);
+const daysInMonth = (date) => daysBetween(firstOfMonth(date), addMonths(date, 1));
+/** The month before the one `today` is in: { start, end, month: 'YYYY-MM' } (invoices and the monthly report run in arrears). */
+function previousMonth(today) {
+  const start = addMonths(today, -1);
+  return { start, end: lastOfMonth(start), month: monthOf(start) };
+}
+
+// ---------------------------------------------------------------- §6.3 provider charge
+
+/** Provider charge methods M06 reports; an unknown method uses the highest configured rate (never under-recovers). */
+const PROVIDER_METHODS = Object.freeze(['bkash', 'nagad', 'card']);
+
+/**
+ * charge = passthrough ? round_half_up(amount × bps(method) ÷ 10,000) : 0 (M24-FR-43). The bps used is
+ * returned too, for the snapshot on the fee payment row (0 when the pass-through is off).
+ */
+function providerCharge({ amount, method, passthrough, bpsMap }) {
+  if (!passthrough) return { bps: 0, charge: 0 };
+  const rates = bpsMap ?? {};
+  const bps = Number.isInteger(rates[method]) ? rates[method] : Math.max(0, ...Object.values(rates).filter(Number.isInteger));
+  return { bps, charge: mulDivRound(amount, bps, 10000) };
+}
+
+// ---------------------------------------------------------------- §6.5 effective fee and overrides
+
+/** Is an override active at `at`? status active ∧ valid_from ≤ at ∧ (valid_to IS NULL ∨ at < valid_to). */
+const overrideActive = (o, at) => o.status === 'active' && new Date(o.validFrom).getTime() <= at.getTime() && (!o.validTo || at.getTime() < new Date(o.validTo).getTime());
+
+/**
+ * effective(key, { gymId, ownerId, at }) = gym override ?? owner override ?? setting (M24-FR-94).
+ * `overrides` are the candidate rows (any status); `setting` is { value, version }.
+ * → { value, source: gym_override | owner_override | setting, overrideId, settingVersion, validTo }
+ */
+function effectiveFee({ key, gymId = null, ownerId, at, overrides = [], setting }) {
+  const live = overrides.filter((o) => o.key === key && overrideActive(o, at));
+  const gym = gymId ? live.find((o) => o.scopeType === 'gym' && o.scopeId === gymId) : null;
+  const owner = live.find((o) => o.scopeType === 'owner' && o.scopeId === ownerId);
+  const o = gym ?? owner;
+  if (o) return { value: Number(o.value), source: gym ? 'gym_override' : 'owner_override', overrideId: o.id, settingVersion: null, validTo: o.validTo ?? null };
+  return { value: setting.value, source: 'setting', overrideId: null, settingVersion: setting.version, validTo: null };
+}
+
+/** An override value outside the setting's bounds (M24-FR-94) → 'GYM_OVERRIDE_OUT_OF_BOUNDS', else null. */
+const overrideBlock = ({ value, min, max }) => (value < min || value > max ? 'GYM_OVERRIDE_OUT_OF_BOUNDS' : null);
+
+// ---------------------------------------------------------------- §6.6 the owner's subscription
+
+/** The tier that fits an owner's month (§6.6, G18): Pro with gym_saas.pro_min_gyms gyms with members, else by the peak. */
+const ownerFitTier = ({ peak, gymsWithMembers, cfg }) => (gymsWithMembers >= cfg.proMinGyms ? 'pro' : fitTier(peak, cfg));
+
+/** billed tier = max(highest tier chosen during the month, fit tier) (M24-FR-82, FR-87, G20). */
+const billedTier = ({ monthMaxTier, fit }) => higherTier(monthMaxTier, fit);
+
+/** The founding partner month index of a period: 1 for the first month on a paid tier. */
+const foundingMonthIndex = ({ paidTierSince, periodStart }) => monthsBetween(firstOfMonth(paidTierSince), periodStart) + 1;
+
+/** freeUntil and discountUntil (last days) of a founding partner, or nulls (the billing page, M24-FR-88). */
+function foundingWindow({ foundingPartner, paidTierSince, freeMonths, discountMonths }) {
+  if (!foundingPartner || !paidTierSince) return { freeUntil: null, discountUntil: null };
+  return {
+    freeUntil: freeMonths > 0 ? lastOfMonth(addMonths(paidTierSince, freeMonths - 1)) : null,
+    discountUntil: discountMonths > 0 ? lastOfMonth(addMonths(paidTierSince, freeMonths + discountMonths - 1)) : null,
+  };
+}
+
+const TIER_LABELS = { free: ['Free', 'ফ্রি'], basic: ['Basic', 'বেসিক'], standard: ['Standard', 'স্ট্যান্ডার্ড'], pro: ['Pro', 'প্রো'] };
+
+/**
+ * The monthly invoice of an owner for a period, in arrears (§6.6, M24-FR-84):
+ *   tier line   = price(billed tier)
+ *   first month = round(tier line × days on the subscription in the month ÷ days in the month)
+ *   founding    = month index ≤ free months → − base; ≤ free + discount months → − round(base × pct ÷ 100)
+ *                 (base = the tier line after the first-month proration)
+ *   referrals   = one line per referral amount, quantity × amount
+ *   vat         = enabled ? round(subtotal × pct ÷ 100) : 0
+ *   total       = max(0, subtotal) + vat; 0 → no invoice
+ * Lines carry kind, EN and BN descriptions, quantity, unit and amount (discounts negative).
+ */
+function invoiceLines({ periodStart, periodEnd, tier, prices, startedOn, founding, referrals = [], vat }) {
+  const lines = [];
+  const price = tier === 'free' ? 0 : prices[tier];
+  let base = 0;
+  if (price > 0) {
+    const [en, bn] = TIER_LABELS[tier];
+    lines.push({ kind: 'tier', descriptionEn: `Plan: ${en}`, descriptionBn: `প্যাকেজ: ${bn}`, quantity: 1, unitPoisha: price, amountPoisha: price });
+    base = price;
+    if (startedOn > periodStart && startedOn <= periodEnd) {
+      const days = daysBetween(startedOn, periodEnd) + 1;
+      base = mulDivRound(price, days, daysInMonth(periodStart));
+      lines.push({ kind: 'proration', descriptionEn: `First month: ${days} of ${daysInMonth(periodStart)} days`, descriptionBn: `প্রথম মাস: ${daysInMonth(periodStart)} দিনের ${days} দিন`, quantity: 1, unitPoisha: base - price, amountPoisha: base - price });
+    }
+    if (founding?.partner && founding.paidTierSince) {
+      const index = foundingMonthIndex({ paidTierSince: founding.paidTierSince, periodStart });
+      if (index >= 1 && index <= founding.freeMonths) {
+        lines.push({ kind: 'founding_free', descriptionEn: 'Founding partner: free month', descriptionBn: 'ফাউন্ডিং পার্টনার: বিনামূল্যের মাস', quantity: 1, unitPoisha: -base, amountPoisha: -base });
+      } else if (index >= 1 && index <= founding.freeMonths + founding.discountMonths && founding.discountPct > 0) {
+        const off = mulDivRound(base, founding.discountPct, 100);
+        lines.push({ kind: 'founding_discount', descriptionEn: `Founding partner discount ${founding.discountPct}%`, descriptionBn: `ফাউন্ডিং পার্টনার ছাড় ${founding.discountPct}%`, quantity: 1, unitPoisha: -off, amountPoisha: -off });
+      }
+    }
+  }
+  const byAmount = new Map();
+  for (const r of referrals) byAmount.set(r.amount, (byAmount.get(r.amount) ?? 0) + 1);
+  for (const [amount, n] of [...byAmount].sort((a, b) => b[0] - a[0])) {
+    lines.push({ kind: 'referral', descriptionEn: `Referral fee × ${n}`, descriptionBn: `রেফারেল ফি × ${n}`, quantity: n, unitPoisha: amount, amountPoisha: amount * n });
+  }
+  const subtotal = Math.max(0, lines.reduce((s, l) => s + l.amountPoisha, 0));
+  const vatPoisha = vat?.enabled ? Math.round((subtotal * vat.pct) / 100) : 0;
+  if (vatPoisha > 0) lines.push({ kind: 'vat', descriptionEn: `VAT ${vat.pct}%`, descriptionBn: `ভ্যাট ${vat.pct}%`, quantity: 1, unitPoisha: vatPoisha, amountPoisha: vatPoisha });
+  return { lines, subtotal, vat: vatPoisha, total: subtotal + vatPoisha };
+}
+
+// ---------------------------------------------------------------- dunning (M24-FR-86, §8.6, §8.7)
+
+/** The due date (Dhaka) of an invoice issued on `issuedOn`, and the instant it turns overdue (the next day starts). */
+function invoiceDue({ issuedOn, dueDays }) {
+  const dueOn = addDays(issuedOn, dueDays);
+  return { dueOn, dueAt: instantOf(addDays(dueOn, 1)) };
+}
+
+/** The last day before restriction: the due date + gym_saas.grace_days; restricted from the next day. */
+const restrictOn = ({ dueAt, graceDays }) => addDays(dhakaDate(new Date(new Date(dueAt).getTime() - 1)), graceDays);
+
+/** Is the overdue invoice past its grace (restrict the subscription)? */
+const pastGrace = ({ dueAt, graceDays, now }) => now.getTime() >= new Date(dueAt).getTime() + graceDays * DAY_MS;
+
+/** The invoice reminder due today, if any (§10): 'd-3' from 3 days before the due date, 'd0' on it. */
+function invoiceReminderKey({ dueAt, today }) {
+  const dueOn = dhakaDate(new Date(new Date(dueAt).getTime() - 1));
+  if (today === dueOn) return 'd0';
+  if (today >= addDays(dueOn, -3) && today < dueOn) return 'd-3';
+  return null;
+}
+
+/**
+ * The subscription status after dunning (§8.6): restricted when an overdue invoice is past its grace,
+ * past_due when any invoice is overdue, active otherwise (closed stays closed).
+ */
+function subscriptionStatus({ status, invoices, now, graceDays }) {
+  if (status === 'closed') return 'closed';
+  const overdue = invoices.filter((i) => i.status === 'overdue');
+  if (overdue.some((i) => pastGrace({ dueAt: i.dueAt, graceDays, now }))) return 'restricted';
+  return overdue.length ? 'past_due' : 'active';
+}
+
+// ---------------------------------------------------------------- §6.9 reminder schedule
+
+/**
+ * The once-key of a scheduled member reminder due `today`, or null (§6.9, M24-FR-55, FR-56):
+ *   renewal_due  remind_before_days before ends_on   'd-3'
+ *   ends_today   on ends_on                          'd0'
+ *   expired      the day after ends_on               'd+1'
+ *   overdue      each overdue_remind_days after due_on  'd+3'
+ */
+function reminderKey(kind, { today, endsOn = null, dueOn = null, remindBeforeDays = 0, overdueDays = [] }) {
+  if (kind === 'renewal_due') return endsOn && addDays(endsOn, -remindBeforeDays) === today ? `d-${remindBeforeDays}` : null;
+  if (kind === 'ends_today') return endsOn === today ? 'd0' : null;
+  if (kind === 'expired') return endsOn && addDays(endsOn, 1) === today ? 'd+1' : null;
+  const late = dueOn ? daysBetween(dueOn, today) : 0;
+  return overdueDays.includes(late) ? `d+${late}` : null;
+}
+
+/** "HH:MM" Dhaka has been reached at `now` (the morning summary, §6.9). */
+function timeReached({ now, time }) {
+  const local = new Date(now.getTime() + DHAKA_MS);
+  const [h, m] = time.split(':').map(Number);
+  return local.getUTCHours() * 60 + local.getUTCMinutes() >= h * 60 + m;
+}
+
+// ---------------------------------------------------------------- online fees (§5.5)
+
+/** Why the gym cannot take online fees (M24-FR-02, FR-40, edge case 15): role, tier or restricted; null when it can. */
+function onlineFeesBlock({ ownerRoleActive, hasOnlineFees, restricted, gymSuspended }) {
+  if (!ownerRoleActive) return 'role';
+  if (!hasOnlineFees) return 'tier';
+  if (restricted || gymSuspended) return 'restricted';
+  return null;
+}
+
+/** The link amount (M24-FR-40): up to the outstanding, all of it by default. */
+function linkAmount({ requested = null, status, outstanding }) {
+  if (!['unpaid', 'partial'].includes(status) || outstanding <= 0) return { block: 'GYM_DUE_STATE' };
+  const amount = requested ?? outstanding;
+  if (amount < 1 || amount > outstanding) return { block: 'GYM_PAYMENT_EXCEEDS_DUE' };
+  return { amount };
+}
+
+/**
+ * What a captured fee payment does (M24-FR-42, edge cases 11 and 12): recorded when the due still needs
+ * at least the amount (a link that expired meanwhile still counts), otherwise refunded whole.
+ */
+function captureDecision({ dueStatus, outstanding, amount, linkStatus }) {
+  if (!['open', 'expired'].includes(linkStatus)) return 'refund';
+  if (!['unpaid', 'partial'].includes(dueStatus) || outstanding < amount) return 'refund';
+  return 'record';
+}
+
+/**
+ * Why an owner refund of an online fee is refused (M24-FR-44): after release (or once its release time
+ * has come) GYM_REFUND_WINDOW_CLOSED; once per payment; at most what is left of the amount.
+ */
+function refundBlock({ link, now, amount, alreadyRefunded }) {
+  if (link.releasedAt || !link.releaseAt || now.getTime() >= new Date(link.releaseAt).getTime()) return 'GYM_REFUND_WINDOW_CLOSED';
+  if (alreadyRefunded) return 'GYM_PAYMENT_NOT_REVERSIBLE';
+  if (amount < 1 || amount > link.amountPoisha - link.refundedPoisha) return 'GYM_REFUND_EXCEEDS_PAID';
+  return null;
+}
+
+/** The payment-link token (M24-FR-40, §7.3): v1.<linkId>.<nonce>.<sig>, HMAC domain `gym-pay:`. */
+const payLinkToken = ({ linkId, nonce }, sign) => `v1.${linkId}.${nonce}.${sign(`gym-pay:${linkId}:${nonce}`).slice(0, 32)}`;
+
+function parsePayLinkToken(token, { sign, equal = (a, b) => a === b }) {
+  const parts = String(token ?? '').trim().split('.');
+  if (parts.length !== 4 || parts[0] !== 'v1' || !UUID.test(parts[1]) || !/^[A-Za-z0-9_-]{8,24}$/.test(parts[2]) || !SIG.test(parts[3])) return null;
+  return equal(parts[3], sign(`gym-pay:${parts[1]}:${parts[2]}`).slice(0, 32)) ? { linkId: parts[1], nonce: parts[2] } : null;
+}
+
+/** "Rafiq" from "Rafiq Hasan": the only part of a name the public link page shows (M24-FR-41, §4.1). */
+const firstName = (name) => String(name ?? '').trim().split(/\s+/)[0];
+
+// ---------------------------------------------------------------- reports (§5.9)
+
+/** churn = left ÷ active at the start (M24-FR-71), 4 decimals; null when nobody was active. */
+const churn = ({ left, activeAtStart }) => (activeAtStart > 0 ? Math.round((left * 10000) / activeAtStart) / 10000 : null);
+
+/** A report period: 'YYYY-MM' (a month) or { from, to } dates; defaults to this month up to today. */
+function reportPeriod({ month = null, from = null, to = null, today }) {
+  if (month) {
+    const start = `${month}-01`;
+    return { from: start, to: lastOfMonth(start), month };
+  }
+  const f = from ?? firstOfMonth(today);
+  return { from: f, to: to ?? today, month: null };
+}
+
 module.exports = {
+  PROVIDER_METHODS,
+  monthsBetween,
+  addMonths,
+  lastOfMonth,
+  daysInMonth,
+  previousMonth,
+  providerCharge,
+  overrideActive,
+  effectiveFee,
+  overrideBlock,
+  ownerFitTier,
+  billedTier,
+  foundingMonthIndex,
+  foundingWindow,
+  invoiceLines,
+  invoiceDue,
+  restrictOn,
+  pastGrace,
+  invoiceReminderKey,
+  subscriptionStatus,
+  reminderKey,
+  timeReached,
+  onlineFeesBlock,
+  linkAmount,
+  captureDecision,
+  refundBlock,
+  payLinkToken,
+  parsePayLinkToken,
+  firstName,
+  churn,
+  reportPeriod,
   TIERS,
   FEATURES,
   METHODS,

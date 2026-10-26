@@ -10,6 +10,18 @@
  *                                              gym_due.overdue_marked
  *   gym-manage.requests-expire    every 15 min pending link requests past expires_at → expired
  *   gym-manage.import-housekeeping 03:00       raw import files past retention deleted; stale previews discarded
+ * Prompt 2 (online money, reminders and billing):
+ *   gym-manage.active-count       00:45        yesterday's active members per owner; the tier notice once a month
+ *   gym-manage.invoice-cycle      1st, 02:00   the owner invoices of the month before (in arrears)
+ *   gym-manage.reconcile          04:00        the M24 invariants (drift to the logs)
+ *   gym-manage.monthly-report     1st, 08:00   the owner's report of the month before, per gym
+ *   gym-manage.reminders          09:00        renewal due, ends today, expired, overdue (once each)
+ *   gym-manage.invoice-dunning    10:00        invoice reminders, overdue, past_due, restricted
+ *   gym-manage.morning-summary    every 15 min at or after gym_manage.morning_summary_time, once a day per gym
+ *   gym-manage.overrides-end      every 15 min fee overrides past valid_to → ended
+ *   gym-manage.links-expire       every 5 min  open payment links past expires_at → expired
+ *   gym-manage.online-fee-release every 5 min  paid links past release_at → M06 release with the provider charge
+ * (No absent-scan job: the dashboard and the morning summary count "not seen" live.)
  */
 const { Op } = require('sequelize');
 const { sequelize, GymMember, GymMembership, GymFreeze, GymDue } = require('../../models');
@@ -123,4 +135,16 @@ async function duesOverdue(now = new Date(), batch = 500) {
 const requestsExpire = async (now = new Date()) => ({ expired: await links.expireDue(now) });
 const importHousekeeping = (now = new Date()) => imports.housekeeping(now);
 
-module.exports = { daily, duesOverdue, requestsExpire, importHousekeeping };
+// ---------------------------------------------------------------- prompt 2
+const reminders = (now = new Date()) => require('./reminders.service').run(now);
+const morningSummary = (now = new Date()) => require('./reminders.service').morningSummary(now);
+const monthlyReport = (now = new Date()) => require('./reminders.service').monthlyReport(now);
+const activeCount = (now = new Date()) => require('./invoices.service').activeCount(now);
+const invoiceCycle = (now = new Date()) => require('./invoices.service').cycle(now);
+const invoiceDunning = (now = new Date()) => require('./invoices.service').dunning(now);
+const linksExpire = (now = new Date()) => require('./links-pay.service').expireLinks(now);
+const onlineFeeRelease = (now = new Date()) => require('./links-pay.service').releaseDue(now);
+const overridesEnd = (now = new Date()) => require('./fees.service').overridesEnd(now);
+const reconcile = () => require('./invariants').reconcile();
+
+module.exports = { daily, duesOverdue, requestsExpire, importHousekeeping, reminders, morningSummary, monthlyReport, activeCount, invoiceCycle, invoiceDunning, linksExpire, onlineFeeRelease, overridesEnd, reconcile };

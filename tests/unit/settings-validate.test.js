@@ -79,6 +79,11 @@ describe('shapeError per value type (M03-FR-14)', () => {
     expect(r.ok(() => undefined)).toBe(true);
   });
 
+  it('the M24 provider charge rule tolerates a missing value; the overdue days rule refuses an empty list', () => {
+    expect(CROSS_RULES.find((x) => x.id === 'gym_manage.provider_bps_range').ok(() => undefined)).toBe(true);
+    expect(CROSS_RULES.find((x) => x.id === 'gym_manage.overdue_remind_days_range').ok(() => undefined)).toBe(false);
+  });
+
   it('rejects an unknown type', () => {
     expect(shapeError(def('blob'), 1)).toBe('Unknown value type blob');
   });
@@ -163,6 +168,8 @@ describe('cross-key rules (§6.5)', () => {
     'gym_saas.tier_standard_price_poisha': 150000,
     'gym_saas.tier_pro_price_poisha': 250000,
     'gym_saas.feature_min_tiers': { attendance: 'basic', reminders: 'basic', online_fees: 'basic', reports: 'standard', trainers: 'standard', plans: 'standard', multi_gym: 'pro' },
+    'gym_manage.online_fee_provider_bps': { bkash: 200, nagad: 200, card: 250 },
+    'gym_manage.overdue_remind_days': [3],
   };
   const lookupWith = (over = {}) => (k) => (k in over ? over[k] : defaults[k]);
   const broken = (over, changed) => crossRuleViolations(lookupWith(over), changed).map((r) => r.id);
@@ -193,13 +200,19 @@ describe('cross-key rules (§6.5)', () => {
     ['gym_saas.tier_prices_order', { 'gym_saas.tier_basic_price_poisha': 150001 }],
     ['gym_saas.tier_prices_order', { 'gym_saas.tier_pro_price_poisha': 149999 }],
     ['gym_saas.feature_tiers_known', { 'gym_saas.feature_min_tiers': { attendance: 'gold' } }],
+    // M24 §6.12: provider charge per method 0 to 500 bps; one to three overdue reminders of 1 to 30 days.
+    ['gym_manage.provider_bps_range', { 'gym_manage.online_fee_provider_bps': { bkash: 501, nagad: 200, card: 250 } }],
+    ['gym_manage.provider_bps_range', { 'gym_manage.online_fee_provider_bps': { bkash: 200, nagad: 2.5, card: 250 } }],
+    ['gym_manage.overdue_remind_days_range', { 'gym_manage.overdue_remind_days': [3, 7, 14, 21] }],
+    ['gym_manage.overdue_remind_days_range', { 'gym_manage.overdue_remind_days': [0] }],
+    ['gym_manage.overdue_remind_days_range', { 'gym_manage.overdue_remind_days': [31] }],
   ])('%s is broken by %p', (id, over) => {
     expect(broken(over)).toContain(id);
   });
 
   it('every rule is covered by the cases above', () => {
     expect(CROSS_RULES.map((r) => r.id).sort()).toEqual(
-      ['booking.advance_order', 'booking.advance_covers_fee', 'booking.refund_tiers', 'booking.grid_order', 'ground.price_band', 'market.offer_order', 'market.return_window', 'market.photos_order', 'market.mto_default', 'market.qty_default', 'esports.checkin_order', 'esports.room_reveal', 'money.refund_below_payout_threshold', 'money.auto_release_below_payout_threshold', 'gym_saas.tier_limits_order', 'gym_saas.tier_prices_order', 'gym_saas.feature_tiers_known'].sort()
+      ['booking.advance_order', 'booking.advance_covers_fee', 'booking.refund_tiers', 'booking.grid_order', 'ground.price_band', 'market.offer_order', 'market.return_window', 'market.photos_order', 'market.mto_default', 'market.qty_default', 'esports.checkin_order', 'esports.room_reveal', 'money.refund_below_payout_threshold', 'money.auto_release_below_payout_threshold', 'gym_saas.tier_limits_order', 'gym_saas.tier_prices_order', 'gym_saas.feature_tiers_known', 'gym_manage.provider_bps_range', 'gym_manage.overdue_remind_days_range'].sort()
     );
   });
 

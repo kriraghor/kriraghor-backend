@@ -5891,6 +5891,11 @@
                   "type": "integer",
                   "minimum": 0
                 },
+                "providerCharge": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "The payment provider’s charge passed through at cost (online gym membership fees, M24-FR-46); 0 otherwise. gross = fee + providerCharge + net"
+                },
                 "net": {
                   "type": "integer"
                 },
@@ -5912,6 +5917,7 @@
                 "ledgerEntryId",
                 "gross",
                 "fee",
+                "providerCharge",
                 "net",
                 "description",
                 "status"
@@ -6470,6 +6476,11 @@
                   "type": "integer",
                   "minimum": 0
                 },
+                "providerCharge": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "The payment provider’s charge passed through at cost (online gym membership fees, M24-FR-46); 0 otherwise. gross = fee + providerCharge + net"
+                },
                 "net": {
                   "type": "integer"
                 },
@@ -6491,6 +6502,7 @@
                 "ledgerEntryId",
                 "gross",
                 "fee",
+                "providerCharge",
                 "net",
                 "description",
                 "status"
@@ -27513,6 +27525,45 @@
               "displayName"
             ]
           },
+          "paymentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Online payments: the M06 payment"
+          },
+          "linkId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Online payments: the payment link it paid"
+          },
+          "providerCharge": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "bps": {
+                "type": "integer"
+              },
+              "poisha": {
+                "type": "integer"
+              },
+              "netPoisha": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "bps",
+              "poisha",
+              "netPoisha"
+            ],
+            "description": "Online payments: the provider’s charge passed through at cost and what the gym receives (M24-FR-43). Round B3: business staff never receive this key; never shown to the member"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -29022,6 +29073,34 @@
               },
               "foundingPartner": {
                 "type": "boolean"
+              },
+              "foundingNo": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "freeUntil": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date"
+              },
+              "discountUntil": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date"
+              },
+              "restrictOn": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date",
+                "description": "Past due: the last day before the panel becomes read-only"
               }
             },
             "required": [
@@ -29031,7 +29110,11 @@
               "monthOf",
               "status",
               "startedOn",
-              "foundingPartner"
+              "foundingPartner",
+              "foundingNo",
+              "freeUntil",
+              "discountUntil",
+              "restrictOn"
             ]
           },
           "activeMembers": {
@@ -29039,6 +29122,10 @@
             "properties": {
               "today": {
                 "type": "integer"
+              },
+              "monthPeak": {
+                "type": "integer",
+                "description": "The highest daily count this month (the next invoice uses the tier that fits it)"
               },
               "limit": {
                 "type": [
@@ -29067,6 +29154,7 @@
             },
             "required": [
               "today",
+              "monthPeak",
               "limit",
               "fitTier",
               "gymsWithMembers",
@@ -29172,6 +29260,150 @@
                 "listingStatus"
               ]
             }
+          },
+          "fees": {
+            "type": "object",
+            "properties": {
+              "referral": {
+                "type": "object",
+                "properties": {
+                  "source": {
+                    "type": "string",
+                    "enum": [
+                      "setting",
+                      "owner_override",
+                      "gym_override"
+                    ]
+                  },
+                  "validTo": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "date-time",
+                    "description": "A special rate until this time; null for the standard rate"
+                  },
+                  "valuePoisha": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "source",
+                  "validTo",
+                  "valuePoisha"
+                ]
+              },
+              "passCommission": {
+                "type": "object",
+                "properties": {
+                  "source": {
+                    "type": "string",
+                    "enum": [
+                      "setting",
+                      "owner_override",
+                      "gym_override"
+                    ]
+                  },
+                  "validTo": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "date-time",
+                    "description": "A special rate until this time; null for the standard rate"
+                  },
+                  "pct": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "source",
+                  "validTo",
+                  "pct"
+                ]
+              }
+            },
+            "required": [
+              "referral",
+              "passCommission"
+            ],
+            "description": "The fees that apply to this owner: standard or a special rate until a date (M24-FR-90)"
+          },
+          "founding": {
+            "type": "object",
+            "properties": {
+              "partner": {
+                "type": "boolean"
+              },
+              "no": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "paidTierSince": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date"
+              },
+              "freeUntil": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date"
+              },
+              "discountUntil": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date"
+              },
+              "discountPct": {
+                "type": "integer"
+              },
+              "placesLeft": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "partner",
+              "no",
+              "paidTierSince",
+              "freeUntil",
+              "discountUntil",
+              "discountPct",
+              "placesLeft"
+            ]
+          },
+          "smsAddon": {
+            "type": "object",
+            "properties": {
+              "available": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "null"
+              },
+              "balance": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "available",
+              "status",
+              "balance"
+            ],
+            "description": "The SMS add-on (prompt 3b)"
+          },
+          "openInvoices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GymInvoice"
+            }
           }
         },
         "required": [
@@ -29179,7 +29411,206 @@
           "activeMembers",
           "features",
           "tiers",
-          "gyms"
+          "gyms",
+          "fees",
+          "founding",
+          "smsAddon",
+          "openInvoices"
+        ]
+      },
+      "GymInvoice": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "string",
+            "description": "GI-26-000123"
+          },
+          "ownerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "monthly",
+              "sms_bundle"
+            ]
+          },
+          "periodStart": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "periodEnd": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "period": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
+          },
+          "billedTier": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "free",
+              "basic",
+              "standard",
+              "pro",
+              null
+            ]
+          },
+          "peakActive": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "subtotalPoisha": {
+            "type": "integer"
+          },
+          "vatPoisha": {
+            "type": "integer"
+          },
+          "totalPoisha": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "issued",
+              "overdue",
+              "paid",
+              "void"
+            ]
+          },
+          "issuedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dueAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Overdue from this instant (the start of the day after dueOn)"
+          },
+          "dueOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "paidAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "paymentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "voidedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "voidReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "tier",
+                    "proration",
+                    "founding_free",
+                    "founding_discount",
+                    "referral",
+                    "sms_addon",
+                    "sms_bundle",
+                    "vat",
+                    "adjustment"
+                  ]
+                },
+                "descriptionEn": {
+                  "type": "string"
+                },
+                "descriptionBn": {
+                  "type": "string"
+                },
+                "quantity": {
+                  "type": "integer"
+                },
+                "unitPoisha": {
+                  "type": "integer"
+                },
+                "amountPoisha": {
+                  "type": "integer",
+                  "description": "Negative for discounts"
+                }
+              },
+              "required": [
+                "id",
+                "kind",
+                "descriptionEn",
+                "descriptionBn",
+                "quantity",
+                "unitPoisha",
+                "amountPoisha"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "ownerId",
+          "kind",
+          "periodStart",
+          "periodEnd",
+          "period",
+          "billedTier",
+          "peakActive",
+          "subtotalPoisha",
+          "vatPoisha",
+          "totalPoisha",
+          "status",
+          "issuedAt",
+          "dueAt",
+          "dueOn",
+          "paidAt",
+          "paymentId",
+          "voidedAt",
+          "voidReason"
         ]
       },
       "GymPricing": {
@@ -29469,7 +29900,7 @@
                 },
                 "onlineFees": {
                   "type": "boolean",
-                  "description": "Online fee payments (prompt 2); false in prompt 1"
+                  "description": "The gym takes fees online now (owner documents, plan, not restricted; M24-FR-41)"
                 },
                 "plans": {
                   "type": "null",
@@ -29785,6 +30216,2703 @@
                 "url",
                 "reversedOn"
               ]
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "GymPaymentLinkList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GymPaymentLink"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "GymPaymentLink": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "dueId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "memberId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amountPoisha": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "paid",
+              "expired",
+              "cancelled"
+            ],
+            "description": "An open link past expiresAt shows expired"
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "staff",
+              "member"
+            ]
+          },
+          "channels": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "in_app",
+                "email"
+              ]
+            }
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "url": {
+            "type": "string",
+            "description": "gym.kriraghor.com/p/{token}: the page the member pays from"
+          },
+          "qr": {
+            "type": "string",
+            "description": "The QR payload (the same URL)"
+          },
+          "paymentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "paidAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "releaseAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "paid_at + gym_manage.online_fee_release_hours; the owner can refund until then"
+          },
+          "releasedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "refundedPoisha": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "dueId",
+          "memberId",
+          "amountPoisha",
+          "status",
+          "origin",
+          "channels",
+          "expiresAt",
+          "url",
+          "qr",
+          "paymentId",
+          "paidAt",
+          "releaseAt",
+          "releasedAt",
+          "refundedPoisha",
+          "createdAt"
+        ]
+      },
+      "GymFeeRefundResult": {
+        "type": "object",
+        "properties": {
+          "refund": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "amountPoisha": {
+                "type": "integer"
+              },
+              "status": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "amountPoisha",
+              "status"
+            ]
+          },
+          "payment": {
+            "$ref": "#/components/schemas/GymFeePayment"
+          },
+          "link": {
+            "$ref": "#/components/schemas/GymPaymentLink"
+          }
+        },
+        "required": [
+          "refund",
+          "payment",
+          "link"
+        ]
+      },
+      "GymRemindersPage": {
+        "type": "object",
+        "properties": {
+          "gymId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "feature": {
+            "type": "object",
+            "properties": {
+              "reminders": {
+                "type": "boolean"
+              },
+              "minTier": {
+                "type": "string",
+                "enum": [
+                  "free",
+                  "basic",
+                  "standard",
+                  "pro"
+                ]
+              }
+            },
+            "required": [
+              "reminders",
+              "minTier"
+            ]
+          },
+          "restricted": {
+            "type": "boolean"
+          },
+          "kinds": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "renewal_due",
+                    "ends_today",
+                    "overdue",
+                    "expired",
+                    "receipt",
+                    "pay_link",
+                    "plan",
+                    "morning",
+                    "monthly"
+                  ]
+                },
+                "on": {
+                  "type": "boolean"
+                },
+                "member": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "on",
+                "member"
+              ]
+            }
+          },
+          "offsets": {
+            "type": "object",
+            "properties": {
+              "remindBeforeDays": {
+                "type": "integer"
+              },
+              "overdueRemindDays": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                }
+              },
+              "morningSummaryTime": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "remindBeforeDays",
+              "overdueRemindDays",
+              "morningSummaryTime"
+            ]
+          },
+          "sms": {
+            "type": "object",
+            "properties": {
+              "available": {
+                "type": "boolean",
+                "description": "The SMS add-on (prompt 3b); false in prompt 2"
+              },
+              "kinds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "available",
+              "kinds"
+            ]
+          },
+          "reachability": {
+            "type": "object",
+            "properties": {
+              "activeMembers": {
+                "type": "integer"
+              },
+              "smsOnly": {
+                "type": "integer",
+                "description": "Active members with no linked account and no email (reachable only by SMS, M24-FR-59)"
+              }
+            },
+            "required": [
+              "activeMembers",
+              "smsOnly"
+            ]
+          },
+          "log": {
+            "type": "object",
+            "properties": {
+              "days": {
+                "type": "integer"
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "date": {
+                      "type": "string",
+                      "format": "date"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "offsetKey": {
+                      "type": "string"
+                    },
+                    "channels": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "memberCode": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "published",
+                        "skipped"
+                      ]
+                    },
+                    "skipReason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "kind",
+                    "date",
+                    "createdAt",
+                    "offsetKey",
+                    "channels",
+                    "memberCode",
+                    "status",
+                    "skipReason"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "days",
+              "items"
+            ]
+          }
+        },
+        "required": [
+          "gymId",
+          "feature",
+          "restricted",
+          "kinds",
+          "offsets",
+          "sms",
+          "reachability",
+          "log"
+        ]
+      },
+      "GymReport": {
+        "type": "object",
+        "properties": {
+          "gymId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "period": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string",
+                "format": "date"
+              },
+              "to": {
+                "type": "string",
+                "format": "date"
+              },
+              "month": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
+              }
+            },
+            "required": [
+              "from",
+              "to",
+              "month"
+            ]
+          },
+          "members": {
+            "type": "object",
+            "properties": {
+              "activeAtStart": {
+                "type": "integer"
+              },
+              "activeAtEnd": {
+                "type": "integer"
+              },
+              "activeNow": {
+                "type": "integer"
+              },
+              "new": {
+                "type": "integer"
+              },
+              "renewals": {
+                "type": "integer"
+              },
+              "left": {
+                "type": "object",
+                "properties": {
+                  "total": {
+                    "type": "integer"
+                  },
+                  "byReason": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "required": [
+                  "total",
+                  "byReason"
+                ]
+              },
+              "churn": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "left ÷ active at the start, 4 decimals"
+              }
+            },
+            "required": [
+              "activeAtStart",
+              "activeAtEnd",
+              "activeNow",
+              "new",
+              "renewals",
+              "left",
+              "churn"
+            ]
+          },
+          "money": {
+            "type": "object",
+            "properties": {
+              "collectedPoisha": {
+                "type": "integer"
+              },
+              "onlinePoisha": {
+                "type": "integer"
+              },
+              "counterPoisha": {
+                "type": "integer"
+              },
+              "byMethod": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer"
+                }
+              },
+              "outstandingPoisha": {
+                "type": "integer"
+              },
+              "overduePoisha": {
+                "type": "integer"
+              },
+              "byPackage": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "title": {
+                      "type": "string"
+                    },
+                    "packageKind": {
+                      "type": "string",
+                      "enum": [
+                        "day",
+                        "month",
+                        "quarter",
+                        "half_year",
+                        "year",
+                        "custom"
+                      ]
+                    },
+                    "collectedPoisha": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "packageKind",
+                    "collectedPoisha"
+                  ]
+                }
+              },
+              "monthOverMonth": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "month": {
+                      "type": "string",
+                      "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
+                    },
+                    "collectedPoisha": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "month",
+                    "collectedPoisha"
+                  ]
+                }
+              },
+              "overdueList": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "memberId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "memberCode": {
+                      "type": "string"
+                    },
+                    "displayName": {
+                      "type": "string"
+                    },
+                    "dueId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "dueOn": {
+                      "type": "string",
+                      "format": "date"
+                    },
+                    "outstandingPoisha": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "memberId",
+                    "memberCode",
+                    "displayName",
+                    "dueId",
+                    "dueOn",
+                    "outstandingPoisha"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "collectedPoisha",
+              "onlinePoisha",
+              "counterPoisha",
+              "byMethod",
+              "outstandingPoisha",
+              "overduePoisha",
+              "byPackage",
+              "monthOverMonth"
+            ]
+          },
+          "attendance": {
+            "type": "object",
+            "properties": {
+              "visits": {
+                "type": "integer"
+              },
+              "daily": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "date": {
+                      "type": "string",
+                      "format": "date"
+                    },
+                    "visits": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "date",
+                    "visits"
+                  ]
+                }
+              },
+              "busiestHours": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "hour": {
+                      "type": "integer"
+                    },
+                    "visits": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "hour",
+                    "visits"
+                  ]
+                }
+              },
+              "averagePerActive": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "notSeen": {
+                "type": "integer"
+              },
+              "notSeenDays": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "visits",
+              "daily",
+              "busiestHours",
+              "averagePerActive",
+              "notSeen",
+              "notSeenDays"
+            ]
+          }
+        },
+        "required": [
+          "gymId",
+          "period",
+          "members",
+          "money",
+          "attendance"
+        ]
+      },
+      "GymAbsentList": {
+        "type": "object",
+        "properties": {
+          "gymId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "days": {
+            "type": "integer"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "memberCode": {
+                  "type": "string"
+                },
+                "displayName": {
+                  "type": "string"
+                },
+                "phoneLast4": {
+                  "type": "string"
+                },
+                "endsOn": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "lastCheckInOn": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date"
+                },
+                "daysSince": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "memberCode",
+                "displayName",
+                "phoneLast4",
+                "endsOn",
+                "lastCheckInOn",
+                "daysSince"
+              ]
+            }
+          }
+        },
+        "required": [
+          "gymId",
+          "days",
+          "items"
+        ]
+      },
+      "GymInvoiceList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GymInvoice"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "GymInvoicePayResult": {
+        "type": "object",
+        "properties": {
+          "invoice": {
+            "$ref": "#/components/schemas/GymInvoice"
+          },
+          "payment": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "payUrl": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "payUrl"
+            ]
+          }
+        },
+        "required": [
+          "invoice",
+          "payment"
+        ]
+      },
+      "GymAllReports": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string",
+                "format": "date"
+              },
+              "to": {
+                "type": "string",
+                "format": "date"
+              },
+              "month": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
+              }
+            },
+            "required": [
+              "from",
+              "to",
+              "month"
+            ]
+          },
+          "gyms": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "slug": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "slug"
+              ]
+            }
+          },
+          "totals": {
+            "type": "object",
+            "properties": {
+              "members": {
+                "type": "object",
+                "properties": {
+                  "activeAtStart": {
+                    "type": "integer"
+                  },
+                  "activeAtEnd": {
+                    "type": "integer"
+                  },
+                  "activeNow": {
+                    "type": "integer"
+                  },
+                  "new": {
+                    "type": "integer"
+                  },
+                  "renewals": {
+                    "type": "integer"
+                  },
+                  "left": {
+                    "type": "object",
+                    "properties": {
+                      "total": {
+                        "type": "integer"
+                      },
+                      "byReason": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "required": [
+                      "total",
+                      "byReason"
+                    ]
+                  },
+                  "churn": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "description": "left ÷ active at the start, 4 decimals"
+                  }
+                },
+                "required": [
+                  "activeAtStart",
+                  "activeAtEnd",
+                  "activeNow",
+                  "new",
+                  "renewals",
+                  "left",
+                  "churn"
+                ]
+              },
+              "money": {
+                "type": "object",
+                "properties": {
+                  "collectedPoisha": {
+                    "type": "integer"
+                  },
+                  "onlinePoisha": {
+                    "type": "integer"
+                  },
+                  "counterPoisha": {
+                    "type": "integer"
+                  },
+                  "byMethod": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "integer"
+                    }
+                  },
+                  "outstandingPoisha": {
+                    "type": "integer"
+                  },
+                  "overduePoisha": {
+                    "type": "integer"
+                  },
+                  "byPackage": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "title": {
+                          "type": "string"
+                        },
+                        "packageKind": {
+                          "type": "string",
+                          "enum": [
+                            "day",
+                            "month",
+                            "quarter",
+                            "half_year",
+                            "year",
+                            "custom"
+                          ]
+                        },
+                        "collectedPoisha": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "packageKind",
+                        "collectedPoisha"
+                      ]
+                    }
+                  },
+                  "monthOverMonth": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "month": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
+                        },
+                        "collectedPoisha": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "month",
+                        "collectedPoisha"
+                      ]
+                    }
+                  },
+                  "overdueList": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "memberId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "memberCode": {
+                          "type": "string"
+                        },
+                        "displayName": {
+                          "type": "string"
+                        },
+                        "dueId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "dueOn": {
+                          "type": "string",
+                          "format": "date"
+                        },
+                        "outstandingPoisha": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "memberId",
+                        "memberCode",
+                        "displayName",
+                        "dueId",
+                        "dueOn",
+                        "outstandingPoisha"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "collectedPoisha",
+                  "onlinePoisha",
+                  "counterPoisha",
+                  "byMethod",
+                  "outstandingPoisha",
+                  "overduePoisha",
+                  "byPackage",
+                  "monthOverMonth"
+                ]
+              },
+              "attendance": {
+                "type": "object",
+                "properties": {
+                  "visits": {
+                    "type": "integer"
+                  },
+                  "daily": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "date": {
+                          "type": "string",
+                          "format": "date"
+                        },
+                        "visits": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "date",
+                        "visits"
+                      ]
+                    }
+                  },
+                  "busiestHours": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "hour": {
+                          "type": "integer"
+                        },
+                        "visits": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "hour",
+                        "visits"
+                      ]
+                    }
+                  },
+                  "averagePerActive": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "notSeen": {
+                    "type": "integer"
+                  },
+                  "notSeenDays": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "visits",
+                  "daily",
+                  "busiestHours",
+                  "averagePerActive",
+                  "notSeen",
+                  "notSeenDays"
+                ]
+              }
+            },
+            "required": [
+              "members",
+              "money",
+              "attendance"
+            ]
+          },
+          "multiGym": {
+            "type": "boolean"
+          },
+          "perGym": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "object",
+              "properties": {
+                "gym": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "slug"
+                  ]
+                },
+                "members": {
+                  "type": "object",
+                  "properties": {
+                    "activeAtStart": {
+                      "type": "integer"
+                    },
+                    "activeAtEnd": {
+                      "type": "integer"
+                    },
+                    "activeNow": {
+                      "type": "integer"
+                    },
+                    "new": {
+                      "type": "integer"
+                    },
+                    "renewals": {
+                      "type": "integer"
+                    },
+                    "left": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer"
+                        },
+                        "byReason": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "integer"
+                          }
+                        }
+                      },
+                      "required": [
+                        "total",
+                        "byReason"
+                      ]
+                    },
+                    "churn": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "description": "left ÷ active at the start, 4 decimals"
+                    }
+                  },
+                  "required": [
+                    "activeAtStart",
+                    "activeAtEnd",
+                    "activeNow",
+                    "new",
+                    "renewals",
+                    "left",
+                    "churn"
+                  ]
+                },
+                "money": {
+                  "type": "object",
+                  "properties": {
+                    "collectedPoisha": {
+                      "type": "integer"
+                    },
+                    "onlinePoisha": {
+                      "type": "integer"
+                    },
+                    "counterPoisha": {
+                      "type": "integer"
+                    },
+                    "byMethod": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "integer"
+                      }
+                    },
+                    "outstandingPoisha": {
+                      "type": "integer"
+                    },
+                    "overduePoisha": {
+                      "type": "integer"
+                    },
+                    "byPackage": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "title": {
+                            "type": "string"
+                          },
+                          "packageKind": {
+                            "type": "string",
+                            "enum": [
+                              "day",
+                              "month",
+                              "quarter",
+                              "half_year",
+                              "year",
+                              "custom"
+                            ]
+                          },
+                          "collectedPoisha": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "title",
+                          "packageKind",
+                          "collectedPoisha"
+                        ]
+                      }
+                    },
+                    "monthOverMonth": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "month": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
+                          },
+                          "collectedPoisha": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "month",
+                          "collectedPoisha"
+                        ]
+                      }
+                    },
+                    "overdueList": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "memberId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "memberCode": {
+                            "type": "string"
+                          },
+                          "displayName": {
+                            "type": "string"
+                          },
+                          "dueId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "dueOn": {
+                            "type": "string",
+                            "format": "date"
+                          },
+                          "outstandingPoisha": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "memberId",
+                          "memberCode",
+                          "displayName",
+                          "dueId",
+                          "dueOn",
+                          "outstandingPoisha"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "collectedPoisha",
+                    "onlinePoisha",
+                    "counterPoisha",
+                    "byMethod",
+                    "outstandingPoisha",
+                    "overduePoisha",
+                    "byPackage",
+                    "monthOverMonth"
+                  ]
+                },
+                "attendance": {
+                  "type": "object",
+                  "properties": {
+                    "visits": {
+                      "type": "integer"
+                    },
+                    "daily": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "date": {
+                            "type": "string",
+                            "format": "date"
+                          },
+                          "visits": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "date",
+                          "visits"
+                        ]
+                      }
+                    },
+                    "busiestHours": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "hour": {
+                            "type": "integer"
+                          },
+                          "visits": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "hour",
+                          "visits"
+                        ]
+                      }
+                    },
+                    "averagePerActive": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "notSeen": {
+                      "type": "integer"
+                    },
+                    "notSeenDays": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "visits",
+                    "daily",
+                    "busiestHours",
+                    "averagePerActive",
+                    "notSeen",
+                    "notSeenDays"
+                  ]
+                }
+              },
+              "required": [
+                "gym",
+                "members",
+                "money",
+                "attendance"
+              ]
+            },
+            "description": "Side by side with the multi_gym feature (Pro)"
+          },
+          "passSales": {
+            "type": "object",
+            "properties": {
+              "available": {
+                "type": "boolean"
+              },
+              "dashboard": {
+                "type": "string",
+                "description": "M19’s gym dashboard (pass sales), for an active gym_owner role"
+              }
+            },
+            "required": [
+              "available",
+              "dashboard"
+            ]
+          }
+        },
+        "required": [
+          "period",
+          "gyms",
+          "totals",
+          "multiGym",
+          "perGym",
+          "passSales"
+        ]
+      },
+      "GymPayLinkSummary": {
+        "type": "object",
+        "properties": {
+          "link": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "open",
+                  "paid",
+                  "expired",
+                  "cancelled"
+                ]
+              },
+              "amountPoisha": {
+                "type": "integer"
+              },
+              "expiresAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "status",
+              "amountPoisha",
+              "expiresAt"
+            ]
+          },
+          "gym": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              },
+              "slug": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "slug"
+            ]
+          },
+          "member": {
+            "type": "object",
+            "properties": {
+              "memberCode": {
+                "type": "string"
+              },
+              "firstName": {
+                "type": "string",
+                "description": "The first word of the name only"
+              }
+            },
+            "required": [
+              "memberCode",
+              "firstName"
+            ]
+          },
+          "membership": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "packageKind": {
+                "type": "string",
+                "enum": [
+                  "day",
+                  "month",
+                  "quarter",
+                  "half_year",
+                  "year",
+                  "custom"
+                ]
+              },
+              "startsOn": {
+                "type": "string",
+                "format": "date"
+              },
+              "endsOn": {
+                "type": "string",
+                "format": "date"
+              }
+            },
+            "required": [
+              "title",
+              "packageKind",
+              "startsOn",
+              "endsOn"
+            ]
+          },
+          "dueOn": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "onlineFees": {
+            "type": "boolean",
+            "description": "false: the gym cannot take fees online now (pay at the counter)"
+          },
+          "receipt": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "receiptNo": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "receiptNo",
+              "url"
+            ]
+          },
+          "viewer": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "phoneMatches": {
+                "type": "boolean"
+              },
+              "linked": {
+                "type": "boolean"
+              },
+              "canLink": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "phoneMatches",
+              "linked",
+              "canLink"
+            ],
+            "description": "Signed-in viewers only: show the \"Link this membership\" tick when canLink"
+          }
+        },
+        "required": [
+          "link",
+          "gym",
+          "member",
+          "membership",
+          "dueOn",
+          "onlineFees",
+          "receipt",
+          "viewer"
+        ]
+      },
+      "GymPayStart": {
+        "type": "object",
+        "properties": {
+          "paymentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "payUrl": {
+            "type": "string",
+            "description": "gym.kriraghor.com/pay/{paymentId} (M24-FR-104)"
+          },
+          "amountPoisha": {
+            "type": "integer"
+          },
+          "willLink": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "paymentId",
+          "payUrl",
+          "amountPoisha",
+          "willLink"
+        ]
+      },
+      "MyGymDues": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "dueId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "memberId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "memberCode": {
+                  "type": "string"
+                },
+                "gym": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "slug"
+                  ]
+                },
+                "membership": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "properties": {
+                    "title": {
+                      "type": "string"
+                    },
+                    "packageKind": {
+                      "type": "string",
+                      "enum": [
+                        "day",
+                        "month",
+                        "quarter",
+                        "half_year",
+                        "year",
+                        "custom"
+                      ]
+                    },
+                    "startsOn": {
+                      "type": "string",
+                      "format": "date"
+                    },
+                    "endsOn": {
+                      "type": "string",
+                      "format": "date"
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "packageKind",
+                    "startsOn",
+                    "endsOn"
+                  ]
+                },
+                "amountPoisha": {
+                  "type": "integer"
+                },
+                "paidPoisha": {
+                  "type": "integer"
+                },
+                "outstandingPoisha": {
+                  "type": "integer"
+                },
+                "dueOn": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "unpaid",
+                    "partial"
+                  ]
+                },
+                "overdue": {
+                  "type": "boolean"
+                },
+                "onlineFees": {
+                  "type": "boolean"
+                },
+                "onlineFeesReason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "enum": [
+                    "role",
+                    "tier",
+                    "restricted",
+                    null
+                  ]
+                },
+                "openLink": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "amountPoisha": {
+                      "type": "integer"
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "amountPoisha",
+                    "expiresAt",
+                    "url"
+                  ]
+                }
+              },
+              "required": [
+                "dueId",
+                "memberId",
+                "memberCode",
+                "gym",
+                "membership",
+                "amountPoisha",
+                "paidPoisha",
+                "outstandingPoisha",
+                "dueOn",
+                "status",
+                "overdue",
+                "onlineFees",
+                "onlineFeesReason",
+                "openLink"
+              ]
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "GymAdminOwners": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "ownerId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "displayName": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "subscription": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "ownerId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "chosenTier": {
+                      "type": "string",
+                      "enum": [
+                        "free",
+                        "basic",
+                        "standard",
+                        "pro"
+                      ]
+                    },
+                    "monthMaxTier": {
+                      "type": "string",
+                      "enum": [
+                        "free",
+                        "basic",
+                        "standard",
+                        "pro"
+                      ]
+                    },
+                    "monthOf": {
+                      "type": "string",
+                      "format": "date"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "active",
+                        "past_due",
+                        "restricted",
+                        "closed"
+                      ]
+                    },
+                    "startedOn": {
+                      "type": "string",
+                      "format": "date"
+                    },
+                    "paidTierSince": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date"
+                    },
+                    "foundingPartner": {
+                      "type": "boolean"
+                    },
+                    "foundingNo": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "pastDueAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "restrictedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "ownerId",
+                    "chosenTier",
+                    "monthMaxTier",
+                    "monthOf",
+                    "status",
+                    "startedOn",
+                    "paidTierSince",
+                    "foundingPartner",
+                    "foundingNo",
+                    "pastDueAt",
+                    "restrictedAt"
+                  ]
+                },
+                "gyms": {
+                  "type": "integer",
+                  "description": "Gyms set up for management"
+                },
+                "activeMembers": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "properties": {
+                    "count": {
+                      "type": "integer"
+                    },
+                    "on": {
+                      "type": "string",
+                      "format": "date"
+                    }
+                  },
+                  "required": [
+                    "count",
+                    "on"
+                  ]
+                },
+                "lastInvoice": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "number": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "issued",
+                        "overdue",
+                        "paid",
+                        "void"
+                      ]
+                    },
+                    "totalPoisha": {
+                      "type": "integer"
+                    },
+                    "period": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "number",
+                    "status",
+                    "totalPoisha",
+                    "period"
+                  ]
+                }
+              },
+              "required": [
+                "ownerId",
+                "displayName",
+                "subscription",
+                "gyms",
+                "activeMembers",
+                "lastInvoice"
+              ]
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "GymAdminOwnerDetail": {
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "displayName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "gymOwnerRole": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "displayName",
+              "gymOwnerRole"
+            ]
+          },
+          "subscription": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "ownerId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "chosenTier": {
+                "type": "string",
+                "enum": [
+                  "free",
+                  "basic",
+                  "standard",
+                  "pro"
+                ]
+              },
+              "monthMaxTier": {
+                "type": "string",
+                "enum": [
+                  "free",
+                  "basic",
+                  "standard",
+                  "pro"
+                ]
+              },
+              "monthOf": {
+                "type": "string",
+                "format": "date"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "active",
+                  "past_due",
+                  "restricted",
+                  "closed"
+                ]
+              },
+              "startedOn": {
+                "type": "string",
+                "format": "date"
+              },
+              "paidTierSince": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date"
+              },
+              "foundingPartner": {
+                "type": "boolean"
+              },
+              "foundingNo": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "pastDueAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "restrictedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "ownerId",
+              "chosenTier",
+              "monthMaxTier",
+              "monthOf",
+              "status",
+              "startedOn",
+              "paidTierSince",
+              "foundingPartner",
+              "foundingNo",
+              "pastDueAt",
+              "restrictedAt"
+            ]
+          },
+          "activeMembers": {
+            "type": "object",
+            "properties": {
+              "today": {
+                "type": "integer"
+              },
+              "gymsWithMembers": {
+                "type": "integer"
+              },
+              "monthPeak": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "openInvoices": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/GymInvoice"
+                }
+              },
+              "restrictOn": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date"
+              },
+              "founding": {
+                "type": "object",
+                "properties": {
+                  "partner": {
+                    "type": "boolean"
+                  },
+                  "no": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "paidTierSince": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "date"
+                  },
+                  "freeUntil": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "date"
+                  },
+                  "discountUntil": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "date"
+                  },
+                  "discountPct": {
+                    "type": "integer"
+                  },
+                  "placesLeft": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "partner",
+                  "no",
+                  "paidTierSince",
+                  "freeUntil",
+                  "discountUntil",
+                  "discountPct",
+                  "placesLeft"
+                ]
+              },
+              "fees": {
+                "type": "object",
+                "properties": {
+                  "referral": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "enum": [
+                          "setting",
+                          "owner_override",
+                          "gym_override"
+                        ]
+                      },
+                      "validTo": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "format": "date-time",
+                        "description": "A special rate until this time; null for the standard rate"
+                      },
+                      "valuePoisha": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "source",
+                      "validTo",
+                      "valuePoisha"
+                    ]
+                  },
+                  "passCommission": {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "enum": [
+                          "setting",
+                          "owner_override",
+                          "gym_override"
+                        ]
+                      },
+                      "validTo": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "format": "date-time",
+                        "description": "A special rate until this time; null for the standard rate"
+                      },
+                      "pct": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "source",
+                      "validTo",
+                      "pct"
+                    ]
+                  }
+                },
+                "required": [
+                  "referral",
+                  "passCommission"
+                ]
+              }
+            },
+            "required": [
+              "today",
+              "gymsWithMembers",
+              "monthPeak",
+              "openInvoices",
+              "restrictOn",
+              "founding",
+              "fees"
+            ]
+          },
+          "gyms": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "listingStatus": {
+                  "type": "string"
+                },
+                "members": {
+                  "type": "integer"
+                },
+                "activeMembers": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "listingStatus",
+                "members",
+                "activeMembers"
+              ]
+            },
+            "description": "Counts only, never member data"
+          },
+          "invoices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GymInvoice"
+            }
+          },
+          "overrides": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GymFeeOverride"
+            }
+          },
+          "imports": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "gymId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "previewed",
+                    "applied",
+                    "undone",
+                    "discarded"
+                  ]
+                },
+                "rowsOk": {
+                  "type": "integer"
+                },
+                "rowsFailed": {
+                  "type": "integer"
+                },
+                "uploadedAs": {
+                  "type": "string",
+                  "enum": [
+                    "owner",
+                    "staff"
+                  ]
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "appliedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "undoneAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "gymId",
+                "status",
+                "rowsOk",
+                "rowsFailed",
+                "uploadedAs",
+                "createdAt",
+                "appliedAt",
+                "undoneAt"
+              ]
+            }
+          },
+          "smsAddon": {
+            "type": "object",
+            "properties": {
+              "available": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "null"
+              },
+              "balance": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "available",
+              "status",
+              "balance"
+            ]
+          }
+        },
+        "required": [
+          "owner",
+          "subscription",
+          "activeMembers",
+          "gyms",
+          "invoices",
+          "overrides",
+          "imports",
+          "smsAddon"
+        ]
+      },
+      "GymFeeOverride": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scopeType": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "gym"
+            ]
+          },
+          "scopeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ownerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string",
+            "enum": [
+              "fees.gym_referral_poisha",
+              "fees.gym_pct"
+            ]
+          },
+          "value": {
+            "type": "number"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "validFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "validTo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "ended"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "owner_override",
+              "gym_override"
+            ]
+          },
+          "setBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "endedBy": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "endedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "endReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "scopeType",
+          "scopeId",
+          "ownerId",
+          "key",
+          "value",
+          "reason",
+          "validFrom",
+          "validTo",
+          "status",
+          "source",
+          "setBy",
+          "endedBy",
+          "endedAt",
+          "endReason",
+          "createdAt"
+        ]
+      },
+      "GymAdminInvoices": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "number": {
+                  "type": "string",
+                  "description": "GI-26-000123"
+                },
+                "ownerId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "monthly",
+                    "sms_bundle"
+                  ]
+                },
+                "periodStart": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date"
+                },
+                "periodEnd": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date"
+                },
+                "period": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
+                },
+                "billedTier": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "enum": [
+                    "free",
+                    "basic",
+                    "standard",
+                    "pro",
+                    null
+                  ]
+                },
+                "peakActive": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "subtotalPoisha": {
+                  "type": "integer"
+                },
+                "vatPoisha": {
+                  "type": "integer"
+                },
+                "totalPoisha": {
+                  "type": "integer"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "issued",
+                    "overdue",
+                    "paid",
+                    "void"
+                  ]
+                },
+                "issuedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "dueAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "Overdue from this instant (the start of the day after dueOn)"
+                },
+                "dueOn": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "paidAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "paymentId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "uuid"
+                },
+                "voidedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "voidReason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "lines": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "tier",
+                          "proration",
+                          "founding_free",
+                          "founding_discount",
+                          "referral",
+                          "sms_addon",
+                          "sms_bundle",
+                          "vat",
+                          "adjustment"
+                        ]
+                      },
+                      "descriptionEn": {
+                        "type": "string"
+                      },
+                      "descriptionBn": {
+                        "type": "string"
+                      },
+                      "quantity": {
+                        "type": "integer"
+                      },
+                      "unitPoisha": {
+                        "type": "integer"
+                      },
+                      "amountPoisha": {
+                        "type": "integer",
+                        "description": "Negative for discounts"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "kind",
+                      "descriptionEn",
+                      "descriptionBn",
+                      "quantity",
+                      "unitPoisha",
+                      "amountPoisha"
+                    ]
+                  }
+                },
+                "ownerName": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "number",
+                "ownerId",
+                "kind",
+                "periodStart",
+                "periodEnd",
+                "period",
+                "billedTier",
+                "peakActive",
+                "subtotalPoisha",
+                "vatPoisha",
+                "totalPoisha",
+                "status",
+                "issuedAt",
+                "dueAt",
+                "dueOn",
+                "paidAt",
+                "paymentId",
+                "voidedAt",
+                "voidReason",
+                "ownerName"
+              ]
+            }
+          },
+          "totals": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "count": {
+                  "type": "integer"
+                },
+                "totalPoisha": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "count",
+                "totalPoisha"
+              ]
+            }
+          }
+        },
+        "required": [
+          "items",
+          "totals"
+        ]
+      },
+      "GymFeeOverrideList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GymFeeOverride"
             }
           }
         },
@@ -90513,6 +93641,2415 @@
           },
           "422": {
             "description": "Error. Codes: GYM_IMPORT_INVALID",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/payment-links": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Payment links of the gym, newest first (fees.collect; filters dueId, status)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "dueId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "paid",
+                "expired",
+                "cancelled"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymPaymentLinkList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/dues/{dueId}/payment-links": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Create a payment link for a due (fees.collect; the owner’s gym_owner role, plan online_fees, not restricted): up to the outstanding, open for gym_manage.pay_link_hours, one open link per due; sent in-app, by push and by email when channels are chosen; the url is also the QR payload (M24-FR-40)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "dueId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "8–80 letters, digits, - or _. Retries with the same key and body replay the first response"
+            },
+            "required": true,
+            "description": "8–80 letters, digits, - or _. Retries with the same key and body replay the first response",
+            "name": "idempotency-key",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "amountPoisha": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "description": "Up to the outstanding; default all of it (M24-FR-40)"
+                  },
+                  "channels": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "in_app",
+                        "email"
+                      ]
+                    },
+                    "maxItems": 2,
+                    "description": "Send the link in-app (and by push) and by email; default both. [] only shows the QR. SMS needs the add-on (prompt 3b)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymPaymentLink"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error. Codes: IDEMPOTENCY_KEY_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, GYM_ONLINE_FEES_UNAVAILABLE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_PAY_LINK_OPEN, GYM_DUE_STATE, GYM_MEMBER_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, GYM_PAYMENT_EXCEEDS_DUE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/payment-links/{linkId}/cancel": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Cancel an open payment link (fees.collect)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "linkId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymPaymentLink"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Error. Codes: GYM_PAY_LINK_EXPIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/fee-payments/{feePaymentId}/refund": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Refund an online fee from the hold before its release (owner; gym_owner role active): once per payment, up to the amount; M06 refunds it and the reversal row follows on refund.succeeded. After the release time → 409 GYM_REFUND_WINDOW_CLOSED (M24-FR-44)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "feePaymentId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "8–80 letters, digits, - or _. Retries with the same key and body replay the first response"
+            },
+            "required": true,
+            "description": "8–80 letters, digits, - or _. Retries with the same key and body replay the first response",
+            "name": "idempotency-key",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "amountPoisha": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "amountPoisha",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Refund requested",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymFeeRefundResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, GYM_ONLINE_FEES_UNAVAILABLE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_REFUND_WINDOW_CLOSED, GYM_PAYMENT_NOT_REVERSIBLE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, GYM_REFUND_EXCEEDS_PAID",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/reminders": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "The reminders page (owner): kinds on or off, offsets from settings, members reachable only by SMS, the log of the last gym_manage.reminder_log_days (no text, no phone) (M24-FR-59, FR-61)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymRemindersPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/reports": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Members, money and attendance for a month or a period (reports.view, plan feature reports) (M24-FR-71)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+              "description": "A calendar month (YYYY-MM); otherwise from and to"
+            },
+            "required": false,
+            "description": "A calendar month (YYYY-MM); otherwise from and to",
+            "name": "month",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "required": false,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "required": false,
+            "name": "to",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymReport"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, GYM_TIER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/reports/absent": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Members not seen for the gym’s absent days (members.view; no money) (M24-FR-53)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymAbsentList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/reports/export": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "CSV export (owner, plan feature reports): members (with the full phone), payments or check-ins for a period; at most analytics.export_sync_max_rows rows and analytics.exports_per_hour; audited (M24-FR-73)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+              "description": "A calendar month (YYYY-MM); otherwise from and to"
+            },
+            "required": false,
+            "description": "A calendar month (YYYY-MM); otherwise from and to",
+            "name": "month",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "required": false,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "required": false,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "members",
+                "payments",
+                "attendance"
+              ]
+            },
+            "required": true,
+            "name": "dataset",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CSV (UTF-8 with a byte-order mark; taka with two decimals; +06:00 times)",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, GYM_TIER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, EXPORT_TOO_LARGE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error. Codes: EXPORT_LIMIT",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/billing/invoices": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "My gym plan invoices, newest first (gate run_gym)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymInvoiceList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PHONE_REQUIRED, ROLE_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/billing/invoices/{invoiceId}": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "One invoice with its lines (gate run_gym; print to PDF from the page)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "invoiceId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymInvoice"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PHONE_REQUIRED, ROLE_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/billing/invoices/{invoiceId}/pay": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Pay an issued or overdue invoice: an M06 payment (purpose gym_saas_invoice) → the gym app’s pay page (M24-FR-85)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "invoiceId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "8–80 letters, digits, - or _. Retries with the same key and body replay the first response"
+            },
+            "required": true,
+            "description": "8–80 letters, digits, - or _. Retries with the same key and body replay the first response",
+            "name": "idempotency-key",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymInvoicePayResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error. Codes: IDEMPOTENCY_KEY_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PHONE_REQUIRED, ROLE_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_INVOICE_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/reports": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "All my gyms together (gate run_gym, plan feature reports); side by side with multi_gym; pass sales are M19’s gym dashboard (M24-FR-74)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+              "description": "A calendar month (YYYY-MM); otherwise from and to"
+            },
+            "required": false,
+            "description": "A calendar month (YYYY-MM); otherwise from and to",
+            "name": "month",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "required": false,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "required": false,
+            "name": "to",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymAllReports"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PHONE_REQUIRED, ROLE_SUSPENDED, GYM_TIER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/gym-pay/{token}": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "A payment link’s page (public, noindex, no-store): the gym, package, amount, member code and first name, status; for a signed-in viewer whether they may link; the receipt once paid",
+        "security": [
+          {},
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "token",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymPayLinkSummary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/gym-pay/{token}/pay": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Pay a link (gate join_gym: anyone signed in with a verified phone); linkAccount links the membership when the payer’s phone is the member’s (M24-FR-41)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "token",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "8–80 letters, digits, - or _. Retries with the same key and body replay the first response"
+            },
+            "required": true,
+            "description": "8–80 letters, digits, - or _. Retries with the same key and body replay the first response",
+            "name": "idempotency-key",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "linkAccount": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Link this membership to my account (only when my verified phone is the member’s; M24-FR-41)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymPayStart"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error. Codes: IDEMPOTENCY_KEY_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PHONE_REQUIRED, GYM_ONLINE_FEES_UNAVAILABLE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_DUE_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Error. Codes: GYM_PAY_LINK_EXPIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/gym-dues": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "My outstanding dues across gyms, whether each gym takes fees online, and its open link",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyGymDues"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/gym-dues/{dueId}/pay": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Pay one of my dues (gate join_gym): reuses the due’s open link or makes one for the outstanding (M24-FR-41)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "dueId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "8–80 letters, digits, - or _. Retries with the same key and body replay the first response"
+            },
+            "required": true,
+            "description": "8–80 letters, digits, - or _. Retries with the same key and body replay the first response",
+            "name": "idempotency-key",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymPayStart"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error. Codes: IDEMPOTENCY_KEY_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PHONE_REQUIRED, GYM_ONLINE_FEES_UNAVAILABLE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_DUE_STATE, GYM_PAY_LINK_OPEN",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/gym-manage/owners": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Owners on the gym system (manage_gyms or view_payouts): plan, status, gyms, active members, last invoice; never member data",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "free",
+                "basic",
+                "standard",
+                "pro"
+              ]
+            },
+            "required": false,
+            "name": "tier",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "past_due",
+                "restricted",
+                "closed"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "required": false,
+            "name": "founding",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymAdminOwners"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/gym-manage/owners/{ownerId}": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "One owner: subscription, gyms (counts only), invoices, overrides, imports, fees that apply (manage_gyms or view_payouts)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "ownerId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymAdminOwnerDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/gym-manage/owners/{ownerId}/founding-partner": {
+      "put": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Founding partner on or off (master, step-up settings.write; up to gym_saas.founding_partner_limit) (M24-FR-88)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "ownerId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Single-use step-up token from POST /auth/step-up"
+            },
+            "required": true,
+            "description": "Single-use step-up token from POST /auth/step-up",
+            "name": "x-step-up",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "on": {
+                    "type": "boolean"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "on",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "ownerId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "chosenTier": {
+                      "type": "string",
+                      "enum": [
+                        "free",
+                        "basic",
+                        "standard",
+                        "pro"
+                      ]
+                    },
+                    "monthMaxTier": {
+                      "type": "string",
+                      "enum": [
+                        "free",
+                        "basic",
+                        "standard",
+                        "pro"
+                      ]
+                    },
+                    "monthOf": {
+                      "type": "string",
+                      "format": "date"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "active",
+                        "past_due",
+                        "restricted",
+                        "closed"
+                      ]
+                    },
+                    "startedOn": {
+                      "type": "string",
+                      "format": "date"
+                    },
+                    "paidTierSince": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date"
+                    },
+                    "foundingPartner": {
+                      "type": "boolean"
+                    },
+                    "foundingNo": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "pastDueAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    },
+                    "restrictedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "ownerId",
+                    "chosenTier",
+                    "monthMaxTier",
+                    "monthOf",
+                    "status",
+                    "startedOn",
+                    "paidTierSince",
+                    "foundingPartner",
+                    "foundingNo",
+                    "pastDueAt",
+                    "restrictedAt"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED, STEP_UP_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_FOUNDING_FULL",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/gym-manage/invoices": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "All gym plan invoices with totals per status (manage_gyms or view_payouts)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "issued",
+                "overdue",
+                "paid",
+                "void"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
+            },
+            "required": false,
+            "name": "period",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "ownerId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymAdminInvoices"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/gym-manage/invoices/{invoiceId}/void": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Void an unpaid invoice (master, step-up escrow.manage): referral lines return to pending; the owner is restored when nothing is overdue (M24-FR-89)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "invoiceId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Single-use step-up token from POST /auth/step-up"
+            },
+            "required": true,
+            "description": "Single-use step-up token from POST /auth/step-up",
+            "name": "x-step-up",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymInvoice"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED, STEP_UP_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_INVOICE_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/gym-manage/fee-overrides": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Per-owner and per-gym fee overrides (manage_gyms)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "ownerId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "ended"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymFeeOverrideList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Set an override of fees.gym_referral_poisha or fees.gym_pct for an owner or a gym (master, step-up settings.write): one active per scope and key, inside the setting’s bounds; the owner is told (M24-FR-94)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Single-use step-up token from POST /auth/step-up"
+            },
+            "required": true,
+            "description": "Single-use step-up token from POST /auth/step-up",
+            "name": "x-step-up",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "scopeType": {
+                    "type": "string",
+                    "enum": [
+                      "owner",
+                      "gym"
+                    ]
+                  },
+                  "scopeId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "The owner’s user id, or the gym id"
+                  },
+                  "key": {
+                    "type": "string",
+                    "enum": [
+                      "fees.gym_referral_poisha",
+                      "fees.gym_pct"
+                    ]
+                  },
+                  "value": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Poisha for the referral fee, percent for fees.gym_pct; inside the setting’s bounds"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 300
+                  },
+                  "validFrom": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Default now"
+                  },
+                  "validTo": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "date-time",
+                    "description": "Ended by the job at this time; null runs until a master ends it"
+                  }
+                },
+                "required": [
+                  "scopeType",
+                  "scopeId",
+                  "key",
+                  "value",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymFeeOverride"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED, STEP_UP_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_OVERRIDE_ACTIVE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, GYM_OVERRIDE_OUT_OF_BOUNDS",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/gym-manage/fee-overrides/{overrideId}/end": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "End an override now (master, step-up settings.write)",
+        "security": [
+          {
+            "adminBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "overrideId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Single-use step-up token from POST /auth/step-up"
+            },
+            "required": true,
+            "description": "Single-use step-up token from POST /auth/step-up",
+            "name": "x-step-up",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymFeeOverride"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_STAFF, TWO_FACTOR_REQUIRED, ACCOUNT_SUSPENDED, ACCOUNT_BANNED, PERMISSION_REQUIRED, MASTER_REQUIRED, STEP_UP_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_OVERRIDE_ENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
             "content": {
               "application/problem+json": {
                 "schema": {

@@ -194,6 +194,23 @@ const CROSS_RULES = [
     keys: ['gym_saas.feature_min_tiers'],
     ok: (v) => Object.values(v('gym_saas.feature_min_tiers') ?? {}).every((t) => GYM_TIERS.includes(t)),
   },
+  {
+    // M24 §6.12 (G13): the provider charge passed through on online gym fees, per method, 0 to 5%.
+    id: 'gym_manage.provider_bps_range',
+    text: 'every gym_manage.online_fee_provider_bps value is between 0 and 500',
+    keys: ['gym_manage.online_fee_provider_bps'],
+    ok: (v) => Object.values(v('gym_manage.online_fee_provider_bps') ?? {}).every((b) => Number.isInteger(b) && b >= 0 && b <= 500),
+  },
+  {
+    // M24 §6.9: up to three overdue reminders, each 1 to 30 days after the due date.
+    id: 'gym_manage.overdue_remind_days_range',
+    text: 'gym_manage.overdue_remind_days has 1 to 3 values, each between 1 and 30',
+    keys: ['gym_manage.overdue_remind_days'],
+    ok: (v) => {
+      const days = v('gym_manage.overdue_remind_days') ?? [];
+      return days.length >= 1 && days.length <= 3 && days.every((d) => d >= 1 && d <= 30);
+    },
+  },
 ];
 
 /**

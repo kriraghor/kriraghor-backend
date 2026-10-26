@@ -213,6 +213,11 @@ const FeePayment = z
     reason: nullable(z.string()),
     note: nullable(z.string()),
     receivedBy: nullable(z.object({ id, displayName: nullable(z.string()) })),
+    paymentId: nullable(id).optional().meta({ description: 'Online payments: the M06 payment' }),
+    linkId: nullable(id).optional().meta({ description: 'Online payments: the payment link it paid' }),
+    providerCharge: nullable(z.object({ bps: z.number().int(), poisha, netPoisha: poisha }))
+      .optional()
+      .meta({ description: 'Online payments: the provider’s charge passed through at cost and what the gym receives (M24-FR-43). Round B3: business staff never receive this key; never shown to the member' }),
     createdAt: dateTime,
   })
   .meta({ id: 'GymFeePayment' });
@@ -411,13 +416,315 @@ const Settings = z
   .meta({ id: 'GymManageSettings' });
 const Tier = z.object({ key: z.enum(rules.TIERS), maxMembers: nullable(z.number().int()), pricePoisha: poisha, features: z.array(z.enum(FEATURES)), minGyms: z.number().int().optional() });
 const Pricing = z.object({ currency: z.literal('BDT'), tiers: z.array(Tier), featureMinTiers: z.record(z.string(), z.enum(rules.TIERS)), activeWindowDays: z.number().int(), noticePct: z.number().int() }).meta({ id: 'GymPricing' });
+// ---------------- prompt 2 (online money, reminders and billing)
+const LINK_CHANNELS = ['in_app', 'email'];
+const LINK_STATUSES = ['open', 'paid', 'expired', 'cancelled'];
+const INVOICE_STATUSES = ['issued', 'overdue', 'paid', 'void'];
+const SUB_STATUSES = ['active', 'past_due', 'restricted', 'closed'];
+const OVERRIDE_KEYS = ['fees.gym_referral_poisha', 'fees.gym_pct'];
+const FEE_SOURCES = ['setting', 'owner_override', 'gym_override'];
+const linkParam = z.object({ gymId: id, linkId: id });
+const meDueParam = z.object({ dueId: id });
+const invoiceParam = z.object({ invoiceId: id });
+const ownerParam = z.object({ ownerId: id });
+const overrideParam = z.object({ overrideId: id });
+const linkBody = z.object({
+  amountPoisha: z.number().int().positive().optional().meta({ description: 'Up to the outstanding; default all of it (M24-FR-40)' }),
+  channels: z.array(z.enum(LINK_CHANNELS)).max(2).optional().meta({ description: 'Send the link in-app (and by push) and by email; default both. [] only shows the QR. SMS needs the add-on (prompt 3b)' }),
+});
+const linksQuery = z.object({ dueId: id.optional(), status: z.enum(LINK_STATUSES).optional() });
+const refundBody = z.object({ amountPoisha: z.number().int().positive(), reason: text(2, 300) });
+const payLinkBody = z.object({ linkAccount: z.boolean().default(false).meta({ description: 'Link this membership to my account (only when my verified phone is the member’s; M24-FR-41)' }) });
+const periodFields = {
+  month: month.optional().meta({ description: 'A calendar month (YYYY-MM); otherwise from and to' }),
+  from: date.optional(),
+  to: date.optional(),
+};
+const periodCheck = (q) => !q.from || !q.to || (q.from <= q.to && rules.daysBetween(q.from, q.to) <= 366);
+const reportQuery = z.object(periodFields).refine(periodCheck, { message: 'from must be before to, at most 366 days apart', path: ['to'] });
+const exportQuery = z.object({ ...periodFields, dataset: z.enum(['members', 'payments', 'attendance']) }).refine(periodCheck, { message: 'from must be before to, at most 366 days apart', path: ['to'] });
+const adminOwnersQuery = z.object({ tier: z.enum(rules.TIERS).optional(), status: z.enum(SUB_STATUSES).optional(), founding: bool.optional() });
+const adminInvoicesQuery = z.object({ status: z.enum(INVOICE_STATUSES).optional(), period: month.optional(), ownerId: id.optional() });
+const overridesQuery = z.object({ ownerId: id.optional(), status: z.enum(['active', 'ended']).optional() });
+const foundingBody = z.object({ on: z.boolean(), reason: text(2, 300) });
+const overrideBody = z
+  .object({
+    scopeType: z.enum(['owner', 'gym']),
+    scopeId: id.meta({ description: 'The owner’s user id, or the gym id' }),
+    key: z.enum(OVERRIDE_KEYS),
+    value: z.number().nonnegative().meta({ description: 'Poisha for the referral fee, percent for fees.gym_pct; inside the setting’s bounds' }),
+    reason: text(2, 300),
+    validFrom: dateTime.optional().meta({ description: 'Default now' }),
+    validTo: nullable(dateTime).optional().meta({ description: 'Ended by the job at this time; null runs until a master ends it' }),
+  })
+  .refine((b) => b.key !== 'fees.gym_referral_poisha' || Number.isInteger(b.value), { message: 'A referral fee is a whole number of poisha', path: ['value'] });
+
+const PaymentLink = z
+  .object({
+    id,
+    dueId: id,
+    memberId: id,
+    amountPoisha: poisha,
+    status: z.enum(LINK_STATUSES).meta({ description: 'An open link past expiresAt shows expired' }),
+    origin: z.enum(['staff', 'member']),
+    channels: z.array(z.enum(LINK_CHANNELS)),
+    expiresAt: dateTime,
+    url: z.string().meta({ description: 'gym.kriraghor.com/p/{token}: the page the member pays from' }),
+    qr: z.string().meta({ description: 'The QR payload (the same URL)' }),
+    paymentId: nullable(id),
+    paidAt: nullable(dateTime),
+    releaseAt: nullable(dateTime).meta({ description: 'paid_at + gym_manage.online_fee_release_hours; the owner can refund until then' }),
+    releasedAt: nullable(dateTime),
+    refundedPoisha: poisha,
+    createdAt: dateTime,
+  })
+  .meta({ id: 'GymPaymentLink' });
+const PaymentLinkList = z.object({ items: z.array(PaymentLink) }).meta({ id: 'GymPaymentLinkList' });
+const PayLinkSummary = z
+  .object({
+    link: z.object({ id, status: z.enum(LINK_STATUSES), amountPoisha: poisha, expiresAt: dateTime }),
+    gym: nullable(z.object({ id, name: z.string(), slug: z.string() })),
+    member: z.object({ memberCode: z.string(), firstName: z.string().meta({ description: 'The first word of the name only' }) }),
+    membership: nullable(z.object({ title: z.string(), packageKind: z.enum(KINDS), startsOn: date, endsOn: date })),
+    dueOn: nullable(date),
+    onlineFees: z.boolean().meta({ description: 'false: the gym cannot take fees online now (pay at the counter)' }),
+    receipt: nullable(z.object({ receiptNo: z.string(), url: z.string() })),
+    viewer: nullable(z.object({ phoneMatches: z.boolean(), linked: z.boolean(), canLink: z.boolean() })).meta({ description: 'Signed-in viewers only: show the "Link this membership" tick when canLink' }),
+  })
+  .meta({ id: 'GymPayLinkSummary' });
+const PayStart = z.object({ paymentId: id, payUrl: z.string().meta({ description: 'gym.kriraghor.com/pay/{paymentId} (M24-FR-104)' }), amountPoisha: poisha, willLink: z.boolean() }).meta({ id: 'GymPayStart' });
+const MyDues = z
+  .object({
+    items: z.array(
+      z.object({
+        dueId: id,
+        memberId: id,
+        memberCode: z.string(),
+        gym: nullable(z.object({ id, name: z.string(), slug: z.string() })),
+        membership: nullable(z.object({ title: z.string(), packageKind: z.enum(KINDS), startsOn: date, endsOn: date })),
+        amountPoisha: poisha,
+        paidPoisha: poisha,
+        outstandingPoisha: poisha,
+        dueOn: date,
+        status: z.enum(['unpaid', 'partial']),
+        overdue: z.boolean(),
+        onlineFees: z.boolean(),
+        onlineFeesReason: nullable(z.enum(['role', 'tier', 'restricted'])),
+        openLink: nullable(z.object({ id, amountPoisha: poisha, expiresAt: dateTime, url: z.string() })),
+      })
+    ),
+  })
+  .meta({ id: 'MyGymDues' });
+const RefundResult = z
+  .object({ refund: z.object({ id, amountPoisha: poisha, status: z.string() }), payment: z.lazy(() => FeePayment), link: PaymentLink })
+  .meta({ id: 'GymFeeRefundResult' });
+const RemindersPage = z
+  .object({
+    gymId: id,
+    feature: z.object({ reminders: z.boolean(), minTier: z.enum(rules.TIERS) }),
+    restricted: z.boolean(),
+    kinds: z.array(z.object({ kind: z.enum(REMINDER_KINDS), on: z.boolean(), member: z.boolean() })),
+    offsets: z.object({ remindBeforeDays: z.number().int(), overdueRemindDays: z.array(z.number().int()), morningSummaryTime: z.string() }),
+    sms: z.object({ available: z.boolean().meta({ description: 'The SMS add-on (prompt 3b); false in prompt 2' }), kinds: z.array(z.string()) }),
+    reachability: z.object({ activeMembers: z.number().int(), smsOnly: z.number().int().meta({ description: 'Active members with no linked account and no email (reachable only by SMS, M24-FR-59)' }) }),
+    log: z.object({
+      days: z.number().int(),
+      items: z.array(
+        z.object({
+          id,
+          kind: z.string(),
+          date,
+          createdAt: dateTime,
+          offsetKey: z.string(),
+          channels: z.array(z.string()),
+          memberCode: nullable(z.string()),
+          status: z.enum(['published', 'skipped']),
+          skipReason: nullable(z.string()),
+        })
+      ),
+    }),
+  })
+  .meta({ id: 'GymRemindersPage' });
+const ReportPeriod = z.object({ from: date, to: date, month: nullable(month) });
+const ReportFigures = {
+  members: z.object({
+    activeAtStart: z.number().int(),
+    activeAtEnd: z.number().int(),
+    activeNow: z.number().int(),
+    new: z.number().int(),
+    renewals: z.number().int(),
+    left: z.object({ total: z.number().int(), byReason: z.record(z.string(), z.number().int()) }),
+    churn: nullable(z.number()).meta({ description: 'left ÷ active at the start, 4 decimals' }),
+  }),
+  money: z.object({
+    collectedPoisha: poisha,
+    onlinePoisha: poisha,
+    counterPoisha: poisha,
+    byMethod: z.record(z.string(), poisha),
+    outstandingPoisha: poisha,
+    overduePoisha: poisha,
+    byPackage: z.array(z.object({ title: z.string(), packageKind: z.enum(KINDS), collectedPoisha: poisha })),
+    monthOverMonth: z.array(z.object({ month, collectedPoisha: poisha })),
+    overdueList: z.array(z.object({ memberId: id, memberCode: z.string(), displayName: z.string(), dueId: id, dueOn: date, outstandingPoisha: poisha })).optional(),
+  }),
+  attendance: z.object({
+    visits: z.number().int(),
+    daily: z.array(z.object({ date, visits: z.number().int() })),
+    busiestHours: z.array(z.object({ hour: z.number().int(), visits: z.number().int() })),
+    averagePerActive: nullable(z.number()),
+    notSeen: z.number().int(),
+    notSeenDays: z.number().int(),
+  }),
+};
+const GymReport = z.object({ gymId: id, period: ReportPeriod, ...ReportFigures }).meta({ id: 'GymReport' });
+const AbsentList = z
+  .object({ gymId: id, days: z.number().int(), items: z.array(z.object({ id, memberCode: z.string(), displayName: z.string(), phoneLast4: z.string(), endsOn: date, lastCheckInOn: nullable(date), daysSince: nullable(z.number().int()) })) })
+  .meta({ id: 'GymAbsentList' });
+const AllGymsReport = z
+  .object({
+    period: ReportPeriod,
+    gyms: z.array(z.object({ id, name: z.string(), slug: z.string() })),
+    totals: z.object(ReportFigures),
+    multiGym: z.boolean(),
+    perGym: nullable(z.array(z.object({ gym: z.object({ id, name: z.string(), slug: z.string() }), ...ReportFigures }))).meta({ description: 'Side by side with the multi_gym feature (Pro)' }),
+    passSales: z.object({ available: z.boolean(), dashboard: z.string().meta({ description: 'M19’s gym dashboard (pass sales), for an active gym_owner role' }) }),
+  })
+  .meta({ id: 'GymAllReports' });
+const InvoiceLine = z.object({ id, kind: z.enum(['tier', 'proration', 'founding_free', 'founding_discount', 'referral', 'sms_addon', 'sms_bundle', 'vat', 'adjustment']), descriptionEn: z.string(), descriptionBn: z.string(), quantity: z.number().int(), unitPoisha: poisha, amountPoisha: poisha.meta({ description: 'Negative for discounts' }) });
+const Invoice = z
+  .object({
+    id,
+    number: z.string().meta({ description: 'GI-26-000123' }),
+    ownerId: id,
+    kind: z.enum(['monthly', 'sms_bundle']),
+    periodStart: nullable(date),
+    periodEnd: nullable(date),
+    period: nullable(month),
+    billedTier: nullable(z.enum(rules.TIERS)),
+    peakActive: nullable(z.number().int()),
+    subtotalPoisha: poisha,
+    vatPoisha: poisha,
+    totalPoisha: poisha,
+    status: z.enum(INVOICE_STATUSES),
+    issuedAt: dateTime,
+    dueAt: dateTime.meta({ description: 'Overdue from this instant (the start of the day after dueOn)' }),
+    dueOn: date,
+    paidAt: nullable(dateTime),
+    paymentId: nullable(id),
+    voidedAt: nullable(dateTime),
+    voidReason: nullable(z.string()),
+    lines: z.array(InvoiceLine).optional(),
+  })
+  .meta({ id: 'GymInvoice' });
+const InvoiceList = z.object({ items: z.array(Invoice) }).meta({ id: 'GymInvoiceList' });
+const InvoicePayResult = z.object({ invoice: Invoice, payment: z.object({ id, payUrl: z.string() }) }).meta({ id: 'GymInvoicePayResult' });
+const FeeThatApplies = z.object({ source: z.enum(FEE_SOURCES), validTo: nullable(dateTime).meta({ description: 'A special rate until this time; null for the standard rate' }) });
+const Fees = z.object({ referral: FeeThatApplies.extend({ valuePoisha: z.number() }), passCommission: FeeThatApplies.extend({ pct: z.number() }) });
+const Founding = z.object({
+  partner: z.boolean(),
+  no: nullable(z.number().int()),
+  paidTierSince: nullable(date),
+  freeUntil: nullable(date),
+  discountUntil: nullable(date),
+  discountPct: z.number().int(),
+  placesLeft: z.number().int(),
+});
+const Subscription = z.object({
+  id,
+  ownerId: id,
+  chosenTier: z.enum(rules.TIERS),
+  monthMaxTier: z.enum(rules.TIERS),
+  monthOf: date,
+  status: z.enum(SUB_STATUSES),
+  startedOn: date,
+  paidTierSince: nullable(date),
+  foundingPartner: z.boolean(),
+  foundingNo: nullable(z.number().int()),
+  pastDueAt: nullable(dateTime),
+  restrictedAt: nullable(dateTime),
+});
+const FeeOverride = z
+  .object({
+    id,
+    scopeType: z.enum(['owner', 'gym']),
+    scopeId: id,
+    ownerId: id,
+    key: z.enum(OVERRIDE_KEYS),
+    value: z.number(),
+    reason: z.string(),
+    validFrom: dateTime,
+    validTo: nullable(dateTime),
+    status: z.enum(['active', 'ended']),
+    source: z.enum(['owner_override', 'gym_override']),
+    setBy: id,
+    endedBy: nullable(id),
+    endedAt: nullable(dateTime),
+    endReason: nullable(z.string()),
+    createdAt: dateTime,
+  })
+  .meta({ id: 'GymFeeOverride' });
+const FeeOverrideList = z.object({ items: z.array(FeeOverride) }).meta({ id: 'GymFeeOverrideList' });
+const AdminOwners = z
+  .object({
+    items: z.array(
+      z.object({
+        ownerId: id,
+        displayName: nullable(z.string()),
+        subscription: Subscription,
+        gyms: z.number().int().meta({ description: 'Gyms set up for management' }),
+        activeMembers: nullable(z.object({ count: z.number().int(), on: date })),
+        lastInvoice: nullable(z.object({ id, number: z.string(), status: z.enum(INVOICE_STATUSES), totalPoisha: poisha, period: nullable(month) })),
+      })
+    ),
+  })
+  .meta({ id: 'GymAdminOwners' });
+const AdminOwnerDetail = z
+  .object({
+    owner: z.object({ id, displayName: nullable(z.string()), gymOwnerRole: nullable(z.string()) }),
+    subscription: Subscription,
+    activeMembers: z.object({ today: z.number().int(), gymsWithMembers: z.number().int(), monthPeak: nullable(z.number().int()), openInvoices: z.array(Invoice), restrictOn: nullable(date), founding: Founding, fees: Fees }),
+    gyms: z.array(z.object({ id, name: z.string(), listingStatus: z.string(), members: z.number().int(), activeMembers: z.number().int() })).meta({ description: 'Counts only, never member data' }),
+    invoices: z.array(Invoice),
+    overrides: z.array(FeeOverride),
+    imports: z.array(z.object({ id, gymId: id, status: z.enum(IMPORT_STATUSES), rowsOk: z.number().int(), rowsFailed: z.number().int(), uploadedAs: z.enum(['owner', 'staff']), createdAt: dateTime, appliedAt: nullable(dateTime), undoneAt: nullable(dateTime) })),
+    smsAddon: z.object({ available: z.boolean(), status: z.null(), balance: z.number().int() }),
+  })
+  .meta({ id: 'GymAdminOwnerDetail' });
+const AdminInvoices = z
+  .object({ items: z.array(Invoice.extend({ ownerName: nullable(z.string()) })), totals: z.record(z.string(), z.object({ count: z.number().int(), totalPoisha: poisha })) })
+  .meta({ id: 'GymAdminInvoices' });
+
 const Billing = z
   .object({
-    subscription: z.object({ id, chosenTier: z.enum(rules.TIERS), monthMaxTier: z.enum(rules.TIERS), monthOf: date, status: z.enum(['active', 'past_due', 'restricted', 'closed']), startedOn: date, foundingPartner: z.boolean() }),
-    activeMembers: z.object({ today: z.number().int(), limit: nullable(z.number().int()), fitTier: z.enum(rules.TIERS), gymsWithMembers: z.number().int(), windowDays: z.number().int(), noticePct: z.number().int() }),
+    subscription: z.object({
+      id,
+      chosenTier: z.enum(rules.TIERS),
+      monthMaxTier: z.enum(rules.TIERS),
+      monthOf: date,
+      status: z.enum(SUB_STATUSES),
+      startedOn: date,
+      foundingPartner: z.boolean(),
+      foundingNo: nullable(z.number().int()),
+      freeUntil: nullable(date),
+      discountUntil: nullable(date),
+      restrictOn: nullable(date).meta({ description: 'Past due: the last day before the panel becomes read-only' }),
+    }),
+    activeMembers: z.object({
+      today: z.number().int(),
+      monthPeak: z.number().int().meta({ description: 'The highest daily count this month (the next invoice uses the tier that fits it)' }),
+      limit: nullable(z.number().int()),
+      fitTier: z.enum(rules.TIERS),
+      gymsWithMembers: z.number().int(),
+      windowDays: z.number().int(),
+      noticePct: z.number().int(),
+    }),
     features: z.record(z.enum(FEATURES), z.boolean()),
     tiers: z.array(Tier),
     gyms: z.array(z.object({ id, name: z.string(), listingStatus: z.string() })),
+    fees: Fees.meta({ description: 'The fees that apply to this owner: standard or a special rate until a date (M24-FR-90)' }),
+    founding: Founding,
+    smsAddon: z.object({ available: z.boolean(), status: z.null(), balance: z.number().int() }).meta({ description: 'The SMS add-on (prompt 3b)' }),
+    openInvoices: z.array(Invoice),
   })
   .meta({ id: 'GymBilling' });
 const Request = z
@@ -513,7 +820,7 @@ const MyMemberships = z
         linked: z.boolean().meta({ description: 'false: a past link (read-only receipts)' }),
         current: nullable(z.object({ title: z.string(), packageKind: z.enum(KINDS), startsOn: date, endsOn: date, daysLeft: z.number().int(), frozen: z.boolean() })),
         outstandingPoisha: poisha,
-        onlineFees: z.boolean().meta({ description: 'Online fee payments (prompt 2); false in prompt 1' }),
+        onlineFees: z.boolean().meta({ description: 'The gym takes fees online now (owner documents, plan, not restricted; M24-FR-41)' }),
         plans: z.null().meta({ description: 'Workout plans and diet charts (prompt 3)' }),
       })
     ),
@@ -614,4 +921,39 @@ module.exports = {
   MyReceipts,
   CheckinToken,
   HealthNote,
+  linkParam,
+  meDueParam,
+  invoiceParam,
+  ownerParam,
+  overrideParam,
+  linkBody,
+  linksQuery,
+  refundBody,
+  payLinkBody,
+  reportQuery,
+  exportQuery,
+  adminOwnersQuery,
+  adminInvoicesQuery,
+  overridesQuery,
+  foundingBody,
+  overrideBody,
+  PaymentLink,
+  PaymentLinkList,
+  PayLinkSummary,
+  PayStart,
+  MyDues,
+  RefundResult,
+  RemindersPage,
+  GymReport,
+  AbsentList,
+  AllGymsReport,
+  Invoice,
+  InvoiceList,
+  InvoicePayResult,
+  FeeOverride,
+  FeeOverrideList,
+  AdminOwners,
+  AdminOwnerDetail,
+  AdminInvoices,
+  Subscription,
 };

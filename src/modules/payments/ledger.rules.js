@@ -89,11 +89,19 @@ function captureSplitLines({ provider, escrowAccount, holds }) {
 /** Edge case 3: money captured with the wrong amount waits in suspense until refunded. */
 const mismatchLines = ({ provider, amount }) => [dr(`provider_clearing:${provider}`, amount), cr('suspense', amount)];
 
-/** FR-13: escrow → payee (net) + platform fee. A zero fee posts no fee line. */
-function releaseLines({ escrowAccount, holdId, payeeId, vertical, gross, fee }) {
+/**
+ * FR-13: escrow → payee (net) + platform fee. A zero fee posts no fee line.
+ * M24 §6.3: `providerCharge` is the payment provider's charge passed through to the payee at cost; it
+ * is credited to provider_fee_expense (a recovery of what Kriraghor pays the gateway) and never to
+ * fee_revenue, so the payee receives gross − fee − providerCharge.
+ */
+function releaseLines({ escrowAccount, holdId, payeeId, vertical, gross, fee, providerCharge = 0 }) {
   if (fee > gross) throw new LedgerError('The fee cannot exceed the released amount');
-  const lines = [dr(escrowAccount, gross, holdId), cr(`payable:user:${payeeId}`, gross - fee)];
+  assertPoisha(providerCharge, 'provider charge');
+  if (fee + providerCharge > gross) throw new LedgerError('The fee and provider charge cannot exceed the released amount');
+  const lines = [dr(escrowAccount, gross, holdId), cr(`payable:user:${payeeId}`, gross - fee - providerCharge)];
   if (fee > 0) lines.push(cr(`fee_revenue:${vertical}`, fee));
+  if (providerCharge > 0) lines.push(cr('provider_fee_expense', providerCharge));
   return lines.filter((l) => (l.debit ?? l.credit) > 0);
 }
 

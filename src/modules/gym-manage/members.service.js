@@ -23,6 +23,7 @@ const rules = require('./gym-manage.rules');
 const c = require('./gym-manage.common');
 const view = require('./gym-manage.serializer');
 const memberships = require('./memberships.service');
+const fees = require('./fees.service');
 
 const { fail } = c;
 const SEE = ['members.view', 'members.trainer'];
@@ -104,8 +105,10 @@ async function add(principal, gymId, input, req) {
   const today = c.today(now);
   const made = await sequelize.transaction(async (transaction) => {
     const settings = await c.requireSetup(gymId, { transaction, lock: true });
-    const member = await createIn(transaction, { gym: a.gym, settings, input, source: 'desk', actor: a.actor, today });
-    await c.record({ action: 'gym_member.added', actor: a.actor, entityType: 'gym_member', entityId: member.id, entityCode: member.memberCode, after: { displayName: member.displayName, phone: 'set', source: 'desk' }, meta: { gymId }, req }, transaction);
+    // M24-FR-92: the same person as a recent declined, expired or cancelled join request is a referral.
+    const source = (await fees.matchesJoinRequest({ gymId, phoneHash: c.phoneHash(phoneOf(input.phone)), now, transaction })) ? 'platform' : 'desk';
+    const member = await createIn(transaction, { gym: a.gym, settings, input, source, actor: a.actor, today });
+    await c.record({ action: 'gym_member.added', actor: a.actor, entityType: 'gym_member', entityId: member.id, entityCode: member.memberCode, after: { displayName: member.displayName, phone: 'set', source }, meta: { gymId }, req }, transaction);
     const out = { member };
     if (input.membership) Object.assign(out, await memberships.assignIn(transaction, a, member, { ...input.membership, payment: input.payment }, { now }));
     return out;
@@ -357,7 +360,9 @@ async function removeIn(transaction, { m, reason, actor, by, today }) {
   if (paid) throw fail('GYM_MEMBER_STATE', { reason: 'has_payments' });
   const open = await GymMembership.findAll({ where: { memberId: m.id, status: memberships.OPEN }, transaction, lock: transaction.LOCK.UPDATE });
   for (const ms of open) await memberships.cancelIn(transaction, { ms, member: m, reason: 'member_removed', today, actor, by });
+  const openDues = await GymDue.findAll({ where: { memberId: m.id, status: ['unpaid', 'partial'] }, attributes: ['id'], transaction });
   await GymDue.update({ status: 'void', voidedAt: new Date(), voidReason: 'member_removed' }, { where: { memberId: m.id, status: ['unpaid', 'partial'] }, transaction });
+  for (const d of openDues) await require('./dues.service').cancelLinksIn(transaction, { dueId: d.id });
   await GymLinkRequest.update({ status: 'cancelled', decidedAt: new Date(), decidedBy: by }, { where: { memberId: m.id, status: 'pending' }, transaction });
   await m.reload({ transaction });
   await m.update({ status: 'removed', removedAt: new Date(), removedReason: reason, leftOn: null, leftReason: null, version: m.version + 1, updatedBy: by }, { transaction });

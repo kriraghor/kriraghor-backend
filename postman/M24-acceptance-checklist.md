@@ -79,3 +79,75 @@ Prompt 1 lets a pilot gym run a full day without a paper register: a phone sign-
 |---|---|---|
 | 7.1 | **Runner: run the daily jobs twice** | the second run of `gym-manage.daily` and `gym-manage.dues-overdue` changes nothing (FR-31, FR-39) |
 | 7.2 | Freezes start and end, renewals start, expiry, requests expire 🤖 | each once, with its event |
+
+---
+
+# M24 prompt 2 · Money and billing: Acceptance Checklist
+
+Request names refer to the **"Kriraghor API: M24 prompt 2 · Money and billing"** collection (`postman/kriraghor-gym-manage-money.postman_collection.json`, rebuilt with `node postman/build-collection-m24-money.js`). 🤖 marks cases only the jest suites cover (`tests/e2e/gym-manage-money.test.js`, `tests/unit/gym-manage-money-rules.test.js`).
+
+Prompt 2 adds Kriraghor's first gym revenue and the money members ask for: online fee payments through M06 with no margin (the provider's charge passed through at cost), automatic reminders, reports, the owner's monthly invoice with dunning, referral fees and per-gym or per-owner fee overrides.
+
+## P2.0 Setup
+- [ ] `npm run release` applies three migrations:
+  - `20261114000001-payout-items-provider-charge` (M07): `payout_items.provider_charge_poisha` (default 0).
+  - `20261114000002-create-notification-external-deliveries` (M08): email to unlinked gym members through the recipient adapter `gym_member`; no address stored.
+  - `20261114000003-gym-manage-money` (M24): `gym_payment_links`, `gym_reminders`, `gym_active_member_counts`, `gym_subscription_invoices`, `gym_subscription_invoice_lines` (append-only), `gym_referrals`, `gym_fee_overrides`, and the foreign key `gym_fee_payments.link_id`.
+- [ ] Settings v31 (349 settings: `fees.gym_referral_poisha`, the online-fee, reminder and referral `gym_manage.*` keys, the invoice, founding partner and VAT `gym_saas.*` keys) and templates v24 (the §11.2 templates except the SMS add-on ones).
+- [ ] `node postman/run-m24-money.js` → **0 failed**. The runner resets the test database (set `DB_NAME`), makes a gym owner with the `gym_owner` role and a Basic gym, the member Rafiq Hasan with a ৳3,500 due whose own account pays, staff with `members.view` and `fees.collect`, master A and Kriraghor staff with `manage_gyms`, and serves `{{controlUrl}}` (`/pay`, `/drain`, `/release`, `/refunds`, `/reminders`, `/payout`, `/cycle`, `/stepup`).
+
+## P2.1 A payment link
+| # | Do | Expect |
+|---|---|---|
+| P2.1.1 | **The billing page** | Basic; the fees that apply (referral ৳200 and pass commission 5%, both `setting`); no open invoices (FR-90) |
+| P2.1.2 | **More than is due / a link for ৳1,500 / a second open link** | 422 `GYM_PAYMENT_EXCEEDS_DUE`; 201 `open` with the gym app `/p/` URL (also the QR payload); 409 `GYM_PAY_LINK_OPEN` naming the open link (FR-40) |
+| P2.1.3 | Private owner (no documents) / Free plan 🤖 | 403 `GYM_ONLINE_FEES_UNAVAILABLE` `reason: role` / `tier` (FR-02) |
+| P2.1.4 | **Staff list the links / the public page / signed in as the member / a tampered token** | the open link; first name and member code only, `noindex`, no phone; `viewer.canLink`; 404 |
+
+## P2.2 Paying online, the hold and the release
+| # | Do | Expect |
+|---|---|---|
+| P2.2.1 | **Pay and link my membership / Runner: pay by bKash** | `payUrl` and the return on `gym.kriraghor.com/pay/{id}` and `/pay/{id}/result` (FR-104); the member is linked (same phone, FR-41) |
+| P2.2.2 | **The link page shows the receipt / pay again** | `paid` with the receipt number; 409 `GYM_DUE_STATE` |
+| P2.2.3 | **Owner / staff / member views** | the owner sees `providerCharge` 200 bps = ৳30, net ৳1,470; staff never receive the key; the member sees `null` (FR-43) |
+| P2.2.4 | **Runner: release after 73 hours** | escrow 0, the owner's payable ৳1,470, `provider_fee_expense` ৳30, `fee_revenue:gym_fee` 0; invariants pass (FR-44, FR-45) |
+| P2.2.5 | **A refund after the release** | 409 `GYM_REFUND_WINDOW_CLOSED` |
+| P2.2.6 | **Runner: the weekly payout / the payout line** | gross ৳1,500, fee 0, provider charge ৳30, net ৳1,470; the statement CSV has a "Provider charge" column (FR-46) |
+| P2.2.7 | Cash recorded while the member is on the pay page 🤖 | the link is cancelled; the capture is refunded in full (late capture); the due keeps only the cash (FR-42) |
+| P2.2.8 | Pass-through off 🤖 | the owner receives ৳1,500; Kriraghor bears the charge |
+
+## P2.3 The member area and a refund from the hold
+| # | Do | Expect |
+|---|---|---|
+| P2.3.1 | **My dues / pay it from the member area / Runner: pay by Nagad** | ৳2,000 outstanding, the gym takes fees online; a member-origin link for the outstanding (an open link is reused 🤖) |
+| P2.3.2 | **Staff refund / owner refunds ৳500 / a second refund** | 403 `owner.only`; 201, the link remembers ৳500; 409 `GYM_PAYMENT_NOT_REVERSIBLE` (once per payment) |
+| P2.3.3 | **Runner: settle the refund / the reversal row** | `refund.succeeded` writes −৳500 (method online); the due is partial again (FR-44) |
+
+## P2.4 Reminders and reports
+| # | Do | Expect |
+|---|---|---|
+| P2.4.1 | **The reminders page / staff** | offsets from settings (3 days before, overdue after 3), the log with the payment link and receipt notices, no phone; staff 403 (FR-59, FR-61) |
+| P2.4.2 | **Runner: the reminder jobs twice** | the second runs send nothing (FR-56) |
+| P2.4.3 | A fake-clock week 🤖 | renewal due, overdue and expired once each; "ends today" switched off sends nothing (FR-55); the unlinked member with an email gets one email (external delivery), the member nobody can reach is logged `no_contact` |
+| P2.4.4 | Morning summary and monthly report 🤖 | once a day after `gym_manage.morning_summary_time` to the owner and `fees.collect` staff (FR-60); the month before on the 1st for Standard (FR-72) |
+| P2.4.5 | **Reports on Basic / choose Standard / the month report** | 403 `GYM_TIER_REQUIRED` `reports` `standard`; online money shown apart (৳3,000), six months of history (FR-71) |
+| P2.4.6 | **Not seen / export the payments / staff export / all my gyms** | 200; CSV with a BOM and the provider charge column, audited `gym_manage.exported`; staff 403 `owner.only`; totals, no side-by-side on Standard (FR-73, FR-74) |
+
+## P2.5 The owner invoice and dunning
+| # | Do | Expect |
+|---|---|---|
+| P2.5.1 | **Runner: the invoice cycle / my invoices / the invoice** | one `GI-26-…` invoice in arrears; Standard was chosen this month, so the tier line is ৳1,500 (FR-82, FR-84) |
+| P2.5.2 | **The billing page / pay / Runner: pay by card / paid / pay again** | the open invoice; the gym app pay page; `paid`; 409 `GYM_INVOICE_STATE` (FR-85) |
+| P2.5.3 | The §6.6 November example 🤖 | Standard (peak 142 over Basic's 100) ৳1,500 − founding 25% ৳375 + 2 referrals ৳400 = **৳1,525** |
+| P2.5.4 | Dunning 🤖 | reminders 3 days before and on the due date; overdue → `past_due`; restricted after `gym_saas.grace_days` (no new members; cash and check-ins still work); paying restores at once; the overdue and restricted notices go by SMS (`money`, G19) |
+| P2.5.5 | Referrals 🤖 | a desk member matching a declined join request is `platform`; one referral on the first payment, never again; a reversal before invoicing voids it (FR-91, FR-92) |
+
+## P2.6 The admin desk
+| # | Do | Expect |
+|---|---|---|
+| P2.6.1 | **Owners / owner detail / invoices (manage_gyms)** | counts only, never member data; paid totals |
+| P2.6.2 | **Founding partner by staff / by a master without step-up / with step-up** | 403 `MASTER_REQUIRED`; 403 `STEP_UP_REQUIRED`; founding partner no. 1 (FR-88); places full → 409 `GYM_FOUNDING_FULL` 🤖 |
+| P2.6.3 | **Referral override ৳150 / a second one / a pass commission of 26%** | 201 `owner_override`; 409 `GYM_OVERRIDE_ACTIVE`; 422 `GYM_OVERRIDE_OUT_OF_BOUNDS` (FR-94) |
+| P2.6.4 | **The owner sees the special rate / overrides / end it** | `owner_override` on the billing page (FR-90); listed; ended |
+| P2.6.5 | A gym override of 3% on a pass purchase 🤖 | the pass snapshots `fee_bps` 300 and `fee_override_id` (FR-95); the job ends overrides at `valid_to` |
+| P2.6.6 | **Voiding a paid invoice** | 409 `GYM_INVOICE_STATE`; an unpaid one is voided and its referrals return to pending 🤖 (FR-89) |
