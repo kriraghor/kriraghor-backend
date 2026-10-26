@@ -1,11 +1,14 @@
 'use strict';
 
 /**
- * M24 consumers of prompt 1 (§2.3), registered once per process (registry.registerAll). Each runs in
- * the inbox transaction, so a duplicate delivery is skipped and every handler is idempotent anyway:
+ * M24 consumers (§2.3), registered once per process (registry.registerAll). Each runs in the inbox
+ * transaction, so a duplicate delivery is skipped and every handler is idempotent anyway:
  *  - gym_pass.redeemed (M20): a linked member admitted on a pass gets a `pass` check-in (M24-FR-52);
  *  - user.phone_verified and user.registered (M01): gym invites waiting for that phone attach to the
- *    account and are announced (M24-FR-14).
+ *    account and are announced (M24-FR-14);
+ *  - refund.succeeded (M06, prompt 2): the reversal row of a refunded online fee (M24-FR-44).
+ * Prompt 2 also loads the M06 purpose hooks (gym_membership_fee, gym_saas_invoice), registers the M08
+ * recipient adapter `gym_member` (email to unlinked members, §11.1) and the M24 ledger-side invariants.
  */
 const { onEvent } = require('../events').consumers;
 
@@ -13,6 +16,12 @@ function registerGymManageConsumers() {
   onEvent('gym_pass.redeemed', 'gym-manage.pass-checkin', (e, { transaction }) => require('./checkins.service').onPassRedeemed(e.payload, { transaction }));
   onEvent('user.phone_verified', 'gym-manage.attach-invites', (e, { transaction }) => require('./links.service').attachOnPhoneVerified(e.payload.userId, { transaction }));
   onEvent('user.registered', 'gym-manage.attach-invites-on-signup', (e, { transaction }) => require('./links.service').attachOnPhoneVerified(e.payload.userId, { transaction }));
+  onEvent('refund.succeeded', 'gym-manage.fee-refund-reversal', (e, { transaction }) => require('./links-pay.service').onRefundSucceeded(e.payload, { transaction }));
+  // M06 purpose hooks load with their services.
+  require('./links-pay.service');
+  require('./invoices.service');
+  require('./notices.service').registerRecipientAdapter();
+  require('./invariants').registerInvariants();
 }
 
 module.exports = { registerGymManageConsumers };

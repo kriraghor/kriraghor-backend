@@ -336,7 +336,10 @@ async function cancelIn(transaction, { ms, member, reason, today, actor = null, 
   const due = await GymDue.findOne({ where: { membershipId: ms.id }, transaction, lock: transaction.LOCK.UPDATE });
   const end = endOn ?? today;
   if (ms.status === 'upcoming' || ms.startsOn > end) {
-    if (due && due.paidPoisha === 0 && due.status !== 'void') await due.update({ status: 'void', voidedAt: new Date(), voidReason: 'membership_cancelled' }, { transaction });
+    if (due && due.paidPoisha === 0 && due.status !== 'void') {
+      await due.update({ status: 'void', voidedAt: new Date(), voidReason: 'membership_cancelled' }, { transaction });
+      await dues.cancelLinksIn(transaction, { dueId: due.id });
+    }
   } else {
     const running = await GymFreeze.findOne({ where: { membershipId: ms.id, status: 'active' }, transaction });
     if (running) await running.update({ status: 'done', ...(end >= running.fromOn && end < running.toOn ? { endedEarlyOn: end } : {}) }, { transaction });

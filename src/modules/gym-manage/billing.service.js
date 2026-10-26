@@ -1,10 +1,11 @@
 'use strict';
 
 /**
- * M24 the owner's plan, prompt 1 (§5.11, §6.6): one subscription per owner across their gyms (G3),
- * the tier the owner chooses (features unlock or lock at once, FR-82), today's active members against
- * the plan's limit (FR-83, G7), and the public pricing from settings (never hard-coded, §4.1). Invoices,
- * founding partners, referrals and the SMS add-on come in prompts 2 and 3b.
+ * M24 the owner's plan (§5.11, §6.6): one subscription per owner across their gyms (G3), the tier the
+ * owner chooses (features unlock or lock at once, FR-82), today's active members and this month's peak
+ * against the plan's limit (FR-83, G7), and the public pricing from settings (never hard-coded, §4.1).
+ * Prompt 2 adds to the billing page the open invoices, the founding partner status and the fees that
+ * apply to this owner (FR-88, FR-90; invoices.service). The SMS add-on comes in prompt 3b.
  */
 const { QueryTypes } = require('sequelize');
 const { AppError } = require('../../common/errors');
@@ -63,13 +64,38 @@ async function billingView(principal, gyms) {
   const t = c.tierCfg();
   const today = c.today();
   const counts = await activeCount(principal.id, today);
-  const fit = counts.gymsWithMembers >= t.proMinGyms ? 'pro' : rules.fitTier(counts.active, t);
+  const extras = await require('./invoices.service').billingExtras(principal.id, sub);
+  const peak = Math.max(extras.monthPeak ?? 0, counts.active);
   return {
-    subscription: { id: sub.id, chosenTier: sub.chosenTier, monthMaxTier: sub.monthOf === rules.firstOfMonth(today) ? sub.monthMaxTier : sub.chosenTier, monthOf: rules.firstOfMonth(today), status: sub.status, startedOn: sub.startedOn, foundingPartner: sub.foundingPartner },
-    activeMembers: { today: counts.active, limit: rules.tierLimit(sub.chosenTier, t), fitTier: fit, gymsWithMembers: counts.gymsWithMembers, windowDays: c.cfg().activeWindowDays, noticePct: t.noticePct },
+    subscription: {
+      id: sub.id,
+      chosenTier: sub.chosenTier,
+      monthMaxTier: sub.monthOf === rules.firstOfMonth(today) ? sub.monthMaxTier : sub.chosenTier,
+      monthOf: rules.firstOfMonth(today),
+      status: sub.status,
+      startedOn: sub.startedOn,
+      foundingPartner: sub.foundingPartner,
+      foundingNo: sub.foundingNo ?? null,
+      freeUntil: extras.founding.freeUntil,
+      discountUntil: extras.founding.discountUntil,
+      restrictOn: extras.restrictOn,
+    },
+    activeMembers: {
+      today: counts.active,
+      monthPeak: peak,
+      limit: rules.tierLimit(sub.chosenTier, t),
+      fitTier: counts.gymsWithMembers >= t.proMinGyms ? 'pro' : rules.fitTier(peak, t),
+      gymsWithMembers: counts.gymsWithMembers,
+      windowDays: c.cfg().activeWindowDays,
+      noticePct: t.noticePct,
+    },
     features: rules.featuresOf(sub.chosenTier, t.featureMinTiers),
     tiers: tiers(),
     gyms: gyms.map((g) => ({ id: g.id, name: g.name, listingStatus: g.status })),
+    fees: extras.fees,
+    founding: extras.founding,
+    smsAddon: { available: false, status: null, balance: 0 },
+    openInvoices: extras.openInvoices,
   };
 }
 

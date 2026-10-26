@@ -6,7 +6,10 @@
  * so requiring the index never changes load order and cannot create a require cycle at load time.
  *
  *   owners     M20 creates the owner's subscription row with their first gym (M24-FR-09, FR-81)
- *   facts      M08 template facts (a member's code; never a name or phone)
+ *   facts      M08 template facts (a member's code and link state, receipt and pay links; never a name or phone)
+ *   notices    M08: who receives a member notice (the owner's plan, the kind switched on, linked or by email)
+ *   fees       M20 pass purchase: fees.gym_pct as it applies to a gym, overrides included (M24-FR-95)
+ *   reads      M19 the gym owner's to-dos; M20's business adapter: a gym's staff to-dos
  *   consumers  registered by registry.registerAll
  */
 const lazy = (file, names, values = []) => {
@@ -17,6 +20,16 @@ const lazy = (file, names, values = []) => {
 
 module.exports = {
   owners: lazy('./gym-manage.common', ['ensureSubscription']),
-  facts: Object.freeze({ member: (...args) => require('./gyms.service').memberFacts(...args) }),
+  facts: Object.freeze({
+    member: (...args) => require('./gyms.service').memberFacts(...args),
+    membership: (...args) => require('./gyms.service').membershipFacts(...args),
+    receiptUrl: (...args) => require('./gym-manage.common').receiptUrlOf(...args),
+    payLinkUrl: (...args) => require('./gyms.service').payLinkUrl(...args),
+    importUpload: (...args) => require('./gyms.service').importFacts(...args),
+    reversedReceipt: (...args) => require('./gyms.service').reversedReceipt(...args),
+  }),
+  notices: lazy('./notices.service', ['memberTargets']),
+  fees: lazy('./fees.service', ['passFee']),
+  reads: lazy('./reads.service', ['pendingActions', 'staffActions']),
   consumers: lazy('./gym-manage.consumers', ['registerGymManageConsumers']),
 };

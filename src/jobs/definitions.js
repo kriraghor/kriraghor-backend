@@ -377,6 +377,83 @@ const JOBS = [
     tz: 'Asia/Dhaka',
     run: async () => gymManage.importHousekeeping(),
   },
+  // M24 prompt 2 (§10): online fees, reminders and billing, on the same gym queue.
+  {
+    // Yesterday's active members per owner (§6.6, M24-FR-83); the tier notice once a month.
+    name: 'gym-manage.active-count',
+    queue: QUEUES.GYM,
+    pattern: '45 0 * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => gymManage.activeCount(),
+  },
+  {
+    // The owners' invoices for the month before, in arrears (M24-FR-84); one per subscription and period.
+    name: 'gym-manage.invoice-cycle',
+    queue: QUEUES.GYM,
+    pattern: '0 2 1 * *',
+    tz: 'Asia/Dhaka',
+    run: async () => gymManage.invoiceCycle(),
+  },
+  {
+    // The M24 invariants: dues against their payments, due statuses, released fees against M06 releases.
+    name: 'gym-manage.reconcile',
+    queue: QUEUES.GYM,
+    pattern: '0 4 * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => gymManage.reconcile(),
+  },
+  {
+    // The owner's report of the month before, per gym (M24-FR-72); once per gym and month.
+    name: 'gym-manage.monthly-report',
+    queue: QUEUES.GYM,
+    pattern: '0 8 1 * *',
+    tz: 'Asia/Dhaka',
+    run: async () => gymManage.monthlyReport(),
+  },
+  {
+    // Renewal due, ends today, expired and overdue reminders (§6.9); the once-key first (M24-FR-56).
+    name: 'gym-manage.reminders',
+    queue: QUEUES.GYM,
+    pattern: '0 9 * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => gymManage.reminders(),
+  },
+  {
+    // Invoice reminders (3 days before, on the day), overdue, past_due and restricted (M24-FR-86).
+    name: 'gym-manage.invoice-dunning',
+    queue: QUEUES.GYM,
+    pattern: '0 10 * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => gymManage.invoiceDunning(),
+  },
+  {
+    // The owner's morning summary at or after gym_manage.morning_summary_time, once a day per gym (M24-FR-60).
+    name: 'gym-manage.morning-summary',
+    queue: QUEUES.GYM,
+    every: 15 * 60 * 1000,
+    run: async () => gymManage.morningSummary(),
+  },
+  {
+    // Fee overrides past valid_to → ended (M24-FR-94).
+    name: 'gym-manage.overrides-end',
+    queue: QUEUES.GYM,
+    every: 15 * 60 * 1000,
+    run: async () => gymManage.overridesEnd(),
+  },
+  {
+    // Open payment links past expires_at → expired (§8.5).
+    name: 'gym-manage.links-expire',
+    queue: QUEUES.GYM,
+    every: 5 * 60 * 1000,
+    run: async () => gymManage.linksExpire(),
+  },
+  {
+    // Online fees past gym_manage.online_fee_release_hours → released to the owner with the provider charge (M24-FR-44).
+    name: 'gym-manage.online-fee-release',
+    queue: QUEUES.GYM,
+    every: 5 * 60 * 1000,
+    run: async () => gymManage.onlineFeeRelease(),
+  },
   // ---------------- M22 organiser SaaS (§10). Idempotent: every step locks the row and re-checks its status.
   {
     // Flat-fee invoices per month or quarter (one per period), overdue invoices, contract expiry and

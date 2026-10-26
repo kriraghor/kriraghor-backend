@@ -41,7 +41,12 @@ async function list(principal) {
   const { current, past } = await myMembers(principal);
   const all = [...current.map((m) => ({ m, linked: true })), ...past.map((m) => ({ m, linked: false }))];
   const items = [];
+  const online = new Map();
   for (const { m, linked } of all) {
+    if (!online.has(m.gymId)) {
+      const g = await gymFacade.get(m.gymId);
+      online.set(m.gymId, g ? (await c.onlineFees(g)).ok : false);
+    }
     const [cur, open] = await Promise.all([GymMembership.findOne({ where: { memberId: m.id, status: ['active', 'frozen'] } }), GymDue.findAll({ where: { memberId: m.id, status: ['unpaid', 'partial'] } })]);
     items.push({
       memberId: m.id,
@@ -51,7 +56,8 @@ async function list(principal) {
       linked,
       current: cur ? { title: cur.title, packageKind: cur.packageKind, startsOn: cur.startsOn, endsOn: cur.endsOn, daysLeft: rules.daysLeft({ startsOn: cur.startsOn, endsOn: cur.endsOn, today }), frozen: cur.status === 'frozen' } : null,
       outstandingPoisha: linked ? open.reduce((s, d) => s + rules.dueState({ amount: d.amountPoisha, paid: d.paidPoisha, waived: d.waivedPoisha }).outstanding, 0) : 0,
-      onlineFees: false,
+      // M24-FR-41: the gym takes fees online now (owner documents, plan, not restricted).
+      onlineFees: linked && online.get(m.gymId),
       plans: null,
     });
   }
@@ -75,7 +81,7 @@ async function detail(principal, memberId) {
     dues: dueRows.map((d) => {
       const v = view.dueView(d, { today, payments: payments.filter((p) => p.dueId === d.id) });
       // The desk's internal note stays with the gym.
-      return { ...v, payments: v.payments.map((x) => ({ ...x, note: null })) };
+      return { ...v, payments: v.payments.map((x) => ({ ...x, note: null, providerCharge: null })) };
     }),
     receipts: payments.filter((p) => p.amountPoisha > 0).map((p) => receiptItem(p, reversedOn)),
   };

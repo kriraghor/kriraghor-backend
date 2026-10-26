@@ -72,6 +72,11 @@ function paymentView(p, { names = new Map(), reversedBy = null } = {}) {
     reason: p.reason ?? null,
     note: p.note ?? null,
     receivedBy: p.receivedBy ? { id: p.receivedBy, displayName: names.get(p.receivedBy) ?? null } : null,
+    // Online payments (M24-FR-42, FR-43): the M06 payment and link, and the provider charge passed through
+    // at cost; `providerCharge` is a staff-hidden key (the owner only; never the member).
+    paymentId: p.paymentId ?? null,
+    linkId: p.linkId ?? null,
+    providerCharge: p.method === 'online' && p.amountPoisha > 0 ? { bps: p.providerChargeBps ?? 0, poisha: p.providerChargePoisha ?? 0, netPoisha: p.amountPoisha - (p.providerChargePoisha ?? 0) } : null,
     createdAt: c.iso(p.createdAt),
   };
 }

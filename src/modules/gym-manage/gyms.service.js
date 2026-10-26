@@ -8,7 +8,7 @@
  */
 const { Op, QueryTypes, UniqueConstraintError } = require('sequelize');
 const { E } = require('../../common/errors');
-const { sequelize, GymManageSettings, GymMember } = require('../../models');
+const { sequelize, GymManageSettings, GymMember, GymMembership, GymPaymentLink, GymImport, GymFeePayment } = require('../../models');
 const settingsFacade = require('../settings').settings;
 const gymFacade = require('../gym').gyms;
 const packagesFacade = require('../gym').packages;
@@ -186,10 +186,35 @@ async function patchSettings(principal, gymId, input, req) {
   return settingsView(a.gym, await c.settingsOf(gymId));
 }
 
-/** M08 facts: a member's code (never the name or phone). */
+/** M08 facts: a member's code and link state (never the name or phone). */
 async function memberFacts(memberId) {
-  const m = memberId ? await GymMember.findByPk(memberId, { attributes: ['memberCode', 'gymId'] }) : null;
-  return m ? { memberCode: m.memberCode, gymId: m.gymId } : null;
+  const m = memberId ? await GymMember.findByPk(memberId, { attributes: ['memberCode', 'gymId', 'userId'] }) : null;
+  return m ? { memberCode: m.memberCode, gymId: m.gymId, userId: m.userId ?? null } : null;
 }
 
-module.exports = { planOf, listMine, overview, packages, settingsView, getSettings, patchSettings, memberFacts };
+/** M08 facts: the public /p/ URL of a payment link (M24 §11.2 {{link}}), or null. */
+async function payLinkUrl(linkId) {
+  const l = linkId ? await GymPaymentLink.findByPk(linkId) : null;
+  return l ? require('./links-pay.service').urlOf(l) : null;
+}
+
+/** M08 facts: a membership's package title and kind. */
+async function membershipFacts(membershipId) {
+  const ms = membershipId ? await GymMembership.findByPk(membershipId, { attributes: ['title', 'packageKind'] }) : null;
+  return ms ? { title: ms.title, packageKind: ms.packageKind } : null;
+}
+
+/** M08 facts: an import's owner and who uploaded it (GYM_IMPORT_READY goes to the owner for staff uploads). */
+async function importFacts(importId) {
+  const i = importId ? await GymImport.findByPk(importId, { attributes: ['ownerId', 'uploadedAs'] }) : null;
+  return i ? { ownerId: i.ownerId, uploadedAs: i.uploadedAs } : null;
+}
+
+/** M08 facts: the receipt a reversal row corrected (its number and signed link). */
+async function reversedReceipt(reversalId) {
+  const r = reversalId ? await GymFeePayment.findByPk(reversalId, { attributes: ['reversesId'] }) : null;
+  const o = r?.reversesId ? await GymFeePayment.findByPk(r.reversesId, { attributes: ['id', 'receiptNo'] }) : null;
+  return o ? { receiptNo: o.receiptNo, url: c.receiptUrlOf(o.id) } : null;
+}
+
+module.exports = { planOf, listMine, overview, packages, settingsView, getSettings, patchSettings, memberFacts, membershipFacts, payLinkUrl, importFacts, reversedReceipt };
