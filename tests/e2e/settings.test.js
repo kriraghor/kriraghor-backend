@@ -42,7 +42,7 @@ describe('GET /settings/public (M03-FR-18, FR-02)', () => {
     expect(r.headers['cache-control']).toBe('public, max-age=300');
     expect(r.body.booking).toMatchObject({ advancePctMin: 20, advancePctMax: 50, advancePctDefault: 30, allowFullPayment: true, advanceRefundable: false, windowDays: 7 });
     expect(r.body.market.deliveryFeeDhaka).toEqual({ amount: 8000, currency: 'BDT' });
-    expect(r.body.fees).toEqual({ groundBookingPct: 5 });
+    expect(r.body.fees).toEqual({ groundBookingPct: 5, gymReferral: { amount: 20000, currency: 'BDT' } }); // M24 §6.12: the gym referral fee is public (P)
     expect(r.body.esports).toMatchObject({ minWithdraw: { amount: 10000, currency: 'BDT' }, checkinOpenMinutes: 60 });
     // Not public: commissions, auth limits, risk thresholds, room reveal.
     expect(r.body.auth).toBeUndefined();
@@ -64,7 +64,7 @@ describe('admin reads (M03 §3)', () => {
     expect(fee.label.bn).toBeTruthy();
 
     const fees = await api().get(`${P}/admin/settings?category=fees`).set(h.bearer(master)).expect(200);
-    expect(fees.body.items.map((s) => s.key)).toEqual(['fees.ground_booking_pct', 'fees.shop_commission_pct', 'fees.used_gear_pct', 'fees.hire_pct', 'fees.tournament_pct', 'fees.gym_pct', 'fees.esports_saas_pct']);
+    expect(fees.body.items.map((s) => s.key)).toEqual(['fees.ground_booking_pct', 'fees.shop_commission_pct', 'fees.used_gear_pct', 'fees.hire_pct', 'fees.tournament_pct', 'fees.gym_pct', 'fees.gym_referral_poisha', 'fees.esports_saas_pct']);
 
     const catalogStaff = await setupStaff(master, ['manage_catalog']);
     await api().get(`${P}/admin/settings`).set(h.bearer(catalogStaff)).expect(200);
@@ -363,7 +363,7 @@ describe('boot check and seed (M03 §12, §15)', () => {
     await propose(master, [{ key: 'esports.room_reveal_minutes', to: 12 }]);
     expect(await seedReference()).toEqual({ settings: 0, esports: 0, templates: 0, kycRequirements: 0, moderation: 0, places: 0, items: 0, hire: 0, rules: 0 });
     expect((await models.PlatformSetting.findByPk('esports.room_reveal_minutes')).value).toBe(12);
-    expect(await models.PlatformSetting.count()).toBe(331); // 289 + the three notify.push_* settings (M08 push channel), esports.external_organisers_enabled (v23), four Round B1 keys (v24, v25), three Round B2 keys (v26), business.team_max_members (v27, Round B3), booking.checkin_due_soon_minutes and business.team_adds_per_hour (v28, Round B3 review), the 28 M24 prompt 1 keys (v30: gym.half_year_days, gym.year_days, gym_manage.*, gym_saas.*)
+    expect(await models.PlatformSetting.count()).toBe(349); // 289 + the three notify.push_* settings (M08 push channel), esports.external_organisers_enabled (v23), four Round B1 keys (v24, v25), three Round B2 keys (v26), business.team_max_members (v27, Round B3), booking.checkin_due_soon_minutes and business.team_adds_per_hour (v28, Round B3 review), the 28 M24 prompt 1 keys (v30: gym.half_year_days, gym.year_days, gym_manage.*, gym_saas.*), the 18 M24 prompt 2 keys (v31: fees.gym_referral_poisha, gym_manage.*, gym_saas.*)
     expect(await models.EsportsGame.count()).toBe(2);
   });
 });
