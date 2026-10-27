@@ -18,7 +18,6 @@ const s = require('../../src/modules/gym-manage/gym-manage.schemas');
 const ledger = require('../../src/modules/payments/ledger.service');
 const invariants = require('../../src/modules/payments/invariants.service');
 const payouts = require('../../src/modules/payouts/payouts.service');
-const crypto = require('../../src/common/crypto');
 const config = require('../../src/config');
 
 const { api, P, models } = h;
@@ -388,11 +387,21 @@ describe('reports and exports (M24-FR-70 to FR-74)', () => {
   });
 });
 
-/** A declined join request from this phone (prompt 3 creates them through the API), so the desk member is a referral (FR-92). */
-async function declinedJoinRequest(gym, owner, local) {
-  const user = await h.signupUser();
-  const now = new Date();
-  await models.GymLinkRequest.create({ gymId: gym.id, ownerId: owner.user.id, direction: 'join_request', userId: user.user.id, phoneHash: crypto.hmac(`phone:${h.e164(local)}`), status: 'declined', expiresAt: now, decidedAt: now });
+/**
+ * A join request through the API (M24 prompt 3, FR-16) that the owner declines, so the same phone added
+ * at the desk later is a referral (FR-92); returns that phone. A private gym takes no join requests, so it
+ * is shown as live for the request only (an M20 row written directly, like gm.listOwner writes the role).
+ */
+async function declinedJoinRequest(gym, owner) {
+  const person = await h.signupUser();
+  const row = await models.Gym.findByPk(gym.id);
+  const was = { status: row.status, liveSnapshot: row.liveSnapshot };
+  // chk_gyms_snapshot: a live gym has a public snapshot (unused by the join request).
+  if (was.status !== 'live') await row.update({ status: 'live', liveSnapshot: was.liveSnapshot ?? {} });
+  const r = await api().post(`${P}/me/gym-join-requests`).set(h.bearer(person)).send({ gymId: gym.id }).expect(201);
+  if (was.status !== 'live') await row.update(was);
+  await gm.manage(owner, gym.id).post(`/requests/${r.body.request.id}/decline`, {}).expect(200);
+  return person.phone;
 }
 
 describe('the owner invoice, dunning, referrals and founding partners (M24-FR-81 to FR-92)', () => {
@@ -401,8 +410,7 @@ describe('the owner invoice, dunning, referrals and founding partners (M24-FR-81
     const desk = gm.manage(owner, gym.id);
     // Two referred members (a declined join request, then the desk) pay their first fee.
     for (const name of ['Ref One', 'Ref Two']) {
-      const phone = h.nextPhone();
-      await declinedJoinRequest(gym, owner, phone);
+      const phone = await declinedJoinRequest(gym, owner);
       const r = await gm.addMember(owner, gym.id, { displayName: name, phone, membership: { packageId: pkg('month').id, startsOn: gm.today() }, payment: { amountPoisha: 100000, method: 'cash' } });
       expect(r.member.source).toBe('platform');
       // A second payment never charges again (FR-91).
@@ -499,8 +507,7 @@ describe('the owner invoice, dunning, referrals and founding partners (M24-FR-81
   it('M24-FR-89: a void returns its referrals to pending and restores the owner; M24-FR-88: founding places are limited; FR-91: a reversal voids a referral', async () => {
     const { owner, gym, pkg } = await gm.privateGym({ tier: 'free' });
     const desk = gm.manage(owner, gym.id);
-    const phone = h.nextPhone();
-    await declinedJoinRequest(gym, owner, phone);
+    const phone = await declinedJoinRequest(gym, owner);
     const r = await gm.addMember(owner, gym.id, { phone, membership: { packageId: pkg('month').id, startsOn: gm.today() }, payment: { amountPoisha: 100000, method: 'cash' } });
     // A reversal before invoicing voids the referral (FR-91).
     await desk.post(`/fee-payments/${r.payment.id}/reverse`, { reason: 'Wrong member' }, true).expect(201);
@@ -560,8 +567,7 @@ describe('fee overrides change a referral and a pass commission (M24-FR-93 to FR
 
     // FR-91 with the owner override: the referral snapshots ৳150 and the override.
     await api().patch(`${P}/manage/gyms/${live.id}/settings`).set(h.bearer(owner)).send({ shortCode: 'LV' }).expect(200);
-    const phone = h.nextPhone();
-    await declinedJoinRequest(live, owner, phone);
+    const phone = await declinedJoinRequest(live, owner);
     const pk = (await api().get(`${P}/manage/gyms/${live.id}/packages`).set(h.bearer(owner)).expect(200)).body.items.find((p) => p.kind === 'month') ?? (await api().get(`${P}/manage/gyms/${live.id}/packages`).set(h.bearer(owner)).expect(200)).body.items[0];
     await gm.addMember(owner, live.id, { phone, membership: { packageId: pk.id, startsOn: gm.today() }, payment: { amountPoisha: 100, method: 'cash' } });
     expect(await models.GymReferral.findOne()).toMatchObject({ amountPoisha: 15000, source: 'owner_override', overrideId: ref.id, settingVersion: null });

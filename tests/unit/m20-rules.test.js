@@ -222,3 +222,21 @@ describe('trainer subscriptions', () => {
     expect(r.planErrors({ price: 600000, where: 'home' }, lim)).toEqual([{ field: 'areaId', message: 'Choose the area you cover' }]);
   });
 });
+
+// M24 prompt 3 (§4.1): the directory's nearest sort and radius.
+describe('distance (M24 prompt 3)', () => {
+  it('haversine metres between two points; zero for the same point', () => {
+    const banani = { lat: 23.7937, lng: 90.4066 };
+    const gulshan = { lat: 23.7925, lng: 90.4078 };
+    expect(r.distanceM(banani, banani)).toBe(0);
+    expect(r.distanceM(banani, gulshan)).toBeGreaterThan(150);
+    expect(r.distanceM(banani, gulshan)).toBeLessThan(200);
+    expect(r.distanceM(banani, { lat: 23.8103, lng: 90.4125 })).toBe(r.distanceM({ lat: 23.8103, lng: 90.4125 }, banani));
+  });
+  it('a gym is at its pin, else at its area centre, else nowhere', () => {
+    expect(r.gymPoint({ lat: '23.79', lng: '90.40' }, { lat: 1, lng: 2 })).toEqual({ lat: 23.79, lng: 90.4 });
+    expect(r.gymPoint({ lat: null, lng: null }, { lat: '23.1', lng: '90.2' })).toEqual({ lat: 23.1, lng: 90.2 });
+    expect(r.gymPoint({ lat: 23.79 }, { lat: 23.1, lng: 90.2 })).toEqual({ lat: 23.1, lng: 90.2 });
+    expect(r.gymPoint({}, null)).toBeNull();
+  });
+});
