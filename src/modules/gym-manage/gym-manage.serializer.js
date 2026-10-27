@@ -105,14 +105,21 @@ function dueView(d, { today, payments = [], names = new Map(), money = true } = 
 
 const noteView = (n, names = new Map()) => ({ id: n.id, body: n.body, by: { id: n.byUser, displayName: names.get(n.byUser) ?? null }, createdAt: c.iso(n.createdAt) });
 
-/** A link request as the gym sees it (the invitee's account is never named). */
-const requestView = (r, { member = null } = {}) => ({
+/**
+ * A link request as the gym sees it. An invitee's account is never named; a join request shows who asks
+ * (their display name, account photo and the last 4 digits of their phone: they agreed the gym sees
+ * their name and phone, M24-FR-16), the package asked for and their note.
+ */
+const requestView = (r, { member = null, requester = null, pkg = null } = {}) => ({
   id: r.id,
   direction: r.direction,
   status: r.status,
   memberId: r.memberId ?? null,
   member: member ? { id: member.id, memberCode: member.memberCode, displayName: member.displayName, phoneLast4: member.phoneLast4 } : null,
   accountKnown: Boolean(r.userId),
+  requester: r.direction === 'join_request' ? { displayName: requester?.displayName ?? null, avatarUrl: requester?.avatarUrl ?? null, phoneLast4: requester?.phoneLast4 ?? null } : null,
+  package: r.direction === 'join_request' && pkg ? { id: pkg.id, title: pkg.title, kind: pkg.kind, pricePoisha: pkg.pricePoisha } : null,
+  note: r.direction === 'join_request' ? (r.note ?? null) : null,
   expiresAt: c.iso(r.expiresAt),
   decidedAt: c.iso(r.decidedAt),
   createdAt: c.iso(r.createdAt),
@@ -141,4 +148,43 @@ function receiptView({ payment, gym, settings, member, membership, receivedByNam
   };
 }
 
-module.exports = { photoPath, memberSummary, freezeView, membershipView, paymentView, dueView, noteView, requestView, receiptView };
+// ---------------------------------------------------------------- prompt 3: plans and diet charts
+
+/** "Given by {gym}, not medical advice" on every plan view (M24-FR-69). */
+const safetyLine = (gymName) => ({ en: `Given by ${gymName}, not medical advice`, bn: `${gymName} দিয়েছে, এটি চিকিৎসা পরামর্শ নয়` });
+
+const planView = (p, { activeAssignments = 0 } = {}) => ({
+  id: p.id,
+  gymId: p.gymId,
+  kind: p.kind,
+  title: p.title,
+  isTemplate: p.isTemplate,
+  source: p.source,
+  currentVersion: p.currentVersion,
+  status: p.status,
+  retiredAt: c.iso(p.retiredAt),
+  activeAssignments,
+  createdAt: c.iso(p.createdAt),
+  updatedAt: c.iso(p.updatedAt),
+});
+
+const versionView = (v, names = new Map()) => ({ id: v.id, version: v.version, content: v.content, createdAt: c.iso(v.createdAt), createdBy: { id: v.createdBy, displayName: names.get(v.createdBy) ?? null } });
+
+/** An assignment with its plan's title and the version it shows. */
+const assignmentView = (a, { plan, version }) => ({
+  id: a.id,
+  planId: a.planId,
+  kind: a.kind,
+  title: plan?.title ?? '',
+  version: version?.version ?? 1,
+  memberId: a.memberId,
+  startsOn: a.startsOn,
+  endsOn: a.endsOn ?? null,
+  status: a.status,
+  endedAt: c.iso(a.endedAt),
+  createdAt: c.iso(a.createdAt),
+});
+
+const logView = (l) => ({ id: l.id, assignmentId: l.assignmentId, localDate: l.localDate, itemRef: l.itemRef, done: l.done, note: l.note ?? null, createdAt: c.iso(l.createdAt) });
+
+module.exports = { photoPath, memberSummary, freezeView, membershipView, paymentView, dueView, noteView, requestView, receiptView, safetyLine, planView, versionView, assignmentView, logView };
