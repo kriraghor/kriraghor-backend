@@ -8,7 +8,8 @@
  *
  *   access      actFor and its helpers (Round B3): who acts for which venue, gym or shop
  *   businesses  the business port: venues, gyms and shops register their adapter at boot
- *   members     workplaces for the principal (M01), staff recipients (M08), the staff to-do (M19)
+ *   members     workplaces for the principal (M01), staff recipients (M08), the staff to-do (M19),
+ *               staff holding a permission (M24 trainers: staffWith)
  *   consumers   the owner-changed consumers (registry.registerAll)
  *   schemas     staffHidden(): marks a response key business staff never receive (OpenAPI)
  */
@@ -21,7 +22,7 @@ const lazy = (file, names, values = []) => {
 module.exports = {
   access: lazy('./business-members.rules', ['actFor', 'can', 'businessesWith', 'defaultWorkplace', 'forStaff', 'ownerLive', 'workplaceAt'], ['STAFF_HIDDEN_KEYS', 'OWNER_ONLY']),
   businesses: lazy('./businesses.port', ['register']),
-  members: lazy('./business-members.service', ['workplacesOf', 'staffRecipients', 'pendingActions', 'businessName']),
+  members: lazy('./business-members.service', ['workplacesOf', 'staffRecipients', 'staffWith', 'pendingActions', 'businessName']),
   consumers: lazy('./business-members.consumers', ['registerBusinessMemberConsumers']),
   schemas: lazy('./business-members.schemas', ['staffHidden']),
 };

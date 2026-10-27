@@ -71,6 +71,26 @@ async function staffRecipients(businessType, businessId, permission) {
   return rows.map((r) => r.memberId);
 }
 
+/**
+ * M24 trainers (M24-FR-21): the active staff of a business holding any of `permissions` (live owner,
+ * active account; the same rows as staffRecipients) → [{ businessMemberId, memberId, permissions }].
+ * The owner is never in the list.
+ */
+async function staffWith(businessType, businessId, permissions) {
+  const wanted = [].concat(permissions ?? []).filter(Boolean);
+  if (!businessId || !wanted.length) return [];
+  const rows = await sequelize.query(
+    `SELECT bm.id AS "businessMemberId", bm.member_id AS "memberId", bm.permissions
+       FROM business_members bm ${LIVE_OWNER}
+       JOIN users m ON m.id = bm.member_id AND m.status = 'active'
+      WHERE bm.business_type = :type AND bm.business_id = :businessId AND bm.status = 'active'
+        AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(bm.permissions) p WHERE p IN (:wanted))
+      ORDER BY bm.created_at ASC`,
+    { replacements: { type: businessType, businessId, wanted }, type: sequelize.QueryTypes.SELECT }
+  );
+  return rows.map((r) => ({ businessMemberId: r.businessMemberId, memberId: r.memberId, permissions: (Array.isArray(r.permissions) ? r.permissions : []).filter((x) => wanted.includes(x)) }));
+}
+
 // ---------------------------------------------------------------- the owner's team
 
 /** The caller's own business (404 otherwise: never reveals someone else's); the owner role must be live to change the team. */
@@ -254,4 +274,4 @@ async function bumpStaffOf(ownerId, { transaction } = {}) {
   return ids.length;
 }
 
-module.exports = { workplacesOf, staffRecipients, listTeam, add, updatePermissions, remove, workplaces, pendingActions, businessName, bumpStaffOf, ownBusiness };
+module.exports = { workplacesOf, staffRecipients, staffWith, listTeam, add, updatePermissions, remove, workplaces, pendingActions, businessName, bumpStaffOf, ownBusiness };
