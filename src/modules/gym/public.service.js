@@ -5,6 +5,8 @@
  * day pass price, rating or newest; a gym page (photos, address, weekly hours with women-only
  * windows, facilities, packages, open now); the fitness trainers (M11 profiles in role
  * fitness_trainer) with their active monthly plans. Only the public version (live_snapshot) is read.
+ * M24 prompt 3: the directory sorts by distance from a position sent with the query, filters by a radius
+ * and a monthly price cap, and the gym page says whether it takes join requests (gym-manage facade).
  */
 const { Op } = require('sequelize');
 const { E } = require('../../common/errors');
@@ -27,7 +29,7 @@ async function lookups(gyms) {
   return { areas: new Map(areas.map((a) => [a.id, named(a)])), facilities: new Map(facilities.map((f) => [f.id, { ...named(f), icon: f.icon ?? null }])) };
 }
 
-function card(g, { areas, facilities }, now = new Date()) {
+function card(g, { areas, facilities }, now = new Date(), distanceM = null) {
   const s = g.liveSnapshot;
   const price = (k) => s.packages.find((p) => p.kind === k)?.price ?? null;
   return {
@@ -45,26 +47,47 @@ function card(g, { areas, facilities }, now = new Date()) {
     ratingAvg: shownRating(g),
     ratingCount: g.ratingCount,
     taking: g.status === 'live',
+    distanceM,
   };
 }
 
 const SORTS = { price: [['publicDayPricePoisha', 'ASC']], rating: [['ratingAvg', 'DESC NULLS LAST'], ['ratingCount', 'DESC']], newest: [['firstLiveAt', 'DESC']] };
 
-/** GET /gym/gyms?areaId&facility&q&sort&cursor&limit. */
-async function list({ areaId, facility, q, sort = 'price', cursor, limit = 24 } = {}) {
+const monthPriceOf = (g) => g.liveSnapshot.packages.find((p) => p.kind === 'month')?.price ?? null;
+
+/**
+ * GET /gym/gyms?areaId&facility&q&priceMax&lat&lng&radiusKm&sort&cursor&limit (M24 prompt 3, §4.1).
+ * With a position each card carries distanceM (the gym's pin, else its area's centre: a gym with
+ * neither is last in the nearest sort and outside every radius); the default sort is then nearest, as
+ * on the venues page. priceMax caps the monthly package. The position is used for this answer only.
+ */
+async function list({ areaId, facility, q, priceMax, lat, lng, radiusKm, sort, cursor, limit = 24 } = {}) {
+  const near = lat !== undefined && lng !== undefined ? { lat, lng } : null;
+  const order = sort ?? (near ? 'nearest' : 'price');
   const where = {
     status: 'live',
     ...(areaId ? { publicAreaId: areaId } : {}),
     ...(q ? { publicName: { [Op.iLike]: `%${q}%` } } : {}),
   };
-  const rows = await Gym.findAll({ where, order: [...SORTS[sort], ['id', 'ASC']] });
-  const filtered = facility ? rows.filter((g) => (g.liveSnapshot.facilityIds ?? []).includes(facility)) : rows;
+  const rows = await Gym.findAll({ where, order: [...(SORTS[order] ?? SORTS.price), ['id', 'ASC']] });
+  let filtered = rows.filter((g) => (!facility || (g.liveSnapshot.facilityIds ?? []).includes(facility)) && (priceMax === undefined || (monthPriceOf(g) !== null && monthPriceOf(g) <= priceMax)));
+  const distance = new Map();
+  if (near) {
+    const centres = new Map((await Area.findAll({ where: { id: [...new Set(filtered.map((g) => g.liveSnapshot.areaId))] }, attributes: ['id', 'lat', 'lng'] })).map((a) => [a.id, a]));
+    for (const g of filtered) {
+      const at = rules.gymPoint({ lat: g.liveSnapshot.lat, lng: g.liveSnapshot.lng }, centres.get(g.liveSnapshot.areaId));
+      distance.set(g.id, at ? rules.distanceM(near, at) : null);
+    }
+    if (radiusKm) filtered = filtered.filter((g) => distance.get(g.id) !== null && distance.get(g.id) <= radiusKm * 1000);
+  }
   // The rating sort uses the shown rating, so a gym below reviews.min_count_display doesn't rank by a hidden average (M17-FR-35).
-  if (sort === 'rating') filtered.sort((a, b) => (shownRating(b) ?? -1) - (shownRating(a) ?? -1) || b.ratingCount - a.ratingCount || (a.id < b.id ? -1 : 1));
+  if (order === 'rating') filtered.sort((a, b) => (shownRating(b) ?? -1) - (shownRating(a) ?? -1) || b.ratingCount - a.ratingCount || (a.id < b.id ? -1 : 1));
+  if (order === 'nearest') filtered.sort((a, b) => (distance.get(a.id) ?? Infinity) - (distance.get(b.id) ?? Infinity) || (a.id < b.id ? -1 : 1));
   const offset = cursor ? Number(cursor) : 0;
   const page = filtered.slice(offset, offset + limit);
   const maps = await lookups(page);
-  return { items: page.map((g) => card(g, maps)), total: filtered.length, nextCursor: offset + limit < filtered.length ? String(offset + limit) : null };
+  const now = new Date();
+  return { items: page.map((g) => card(g, maps, now, distance.get(g.id) ?? null)), total: filtered.length, nextCursor: offset + limit < filtered.length ? String(offset + limit) : null };
 }
 
 /** GET /gym/gyms/:slug: the gym page (live or paused gyms; a paused gym sells nothing). */
@@ -85,6 +108,8 @@ async function detail(slug) {
     packages: s.packages,
     advanceDays: cfg.advanceDays,
     today: c.today(),
+    // M24-FR-16: whether "Join this gym" shows (gym-manage decides: live, managed, switched on).
+    joinRequestsOpen: await require('../gym-manage').joins.openFor(g.id),
   };
 }
 

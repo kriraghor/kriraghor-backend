@@ -18,6 +18,8 @@
  *    gym.subscription_renew_notice_days before the end and is accepted until the end of the grace
  *    days; the member may cancel the first gym.subscription_cancel_days of a period for a full refund;
  *    a period is released to the trainer disputes.window_trainer_hours after it ends.
+ *  - M24 prompt 3: the distance from the viewer to a gym (its pin, else its area's centre) for the
+ *    directory's nearest sort and radius.
  */
 const DHAKA_MS = 6 * 3600000;
 const DAY_MS = 86400000;
@@ -243,7 +245,27 @@ function planErrors(plan, { min, max }) {
   return errors;
 }
 
+// ---------------------------------------------------------------- M24 prompt 3: the directory by distance
+
+/** Great-circle distance in metres (the same haversine as grounds' distanceM; copied, no cross-module import). */
+function distanceM(a, b) {
+  const R = 6371000;
+  const rad = (d) => (d * Math.PI) / 180;
+  const dLat = rad(b.lat - a.lat);
+  const dLng = rad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return Math.round(2 * R * Math.asin(Math.sqrt(h)));
+}
+
+/** Where a gym is on the map: its own pin, else its area's centre, else nowhere (null). */
+function gymPoint({ lat, lng }, area) {
+  if (lat !== null && lat !== undefined && lng !== null && lng !== undefined) return { lat: Number(lat), lng: Number(lng) };
+  return area ? { lat: Number(area.lat), lng: Number(area.lng) } : null;
+}
+
 module.exports = {
+  distanceM,
+  gymPoint,
   KINDS,
   CHANNELS,
   soldOnline,

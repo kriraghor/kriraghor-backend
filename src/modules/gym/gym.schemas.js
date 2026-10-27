@@ -29,14 +29,22 @@ const slugParam = z.object({ slug: z.string().min(1).max(140) });
 const codeParam = z.object({ code: z.string().trim().min(6).max(36) });
 const idOrCodeParam = z.object({ id: z.string().trim().min(6).max(36).meta({ description: 'The id or the code (TS-26-000123)' }) });
 const photoParams = z.object({ id, photoId: id });
-const listQuery = z.object({
-  areaId: id.optional(),
-  facility: id.optional(),
-  q: z.string().trim().min(2).max(60).optional(),
-  sort: z.enum(['price', 'rating', 'newest']).default('price'),
-  cursor: z.string().regex(/^\d+$/).optional(),
-  limit: z.coerce.number().int().min(1).max(48).default(24),
-});
+const listQuery = z
+  .object({
+    areaId: id.optional(),
+    facility: id.optional(),
+    q: z.string().trim().min(2).max(60).optional(),
+    // M24 prompt 3 (§4.1): the viewer's position (never stored), a radius, the monthly price cap and the nearest sort.
+    lat: z.coerce.number().min(20).max(27).optional().meta({ description: 'The viewer’s position (with lng); used for this answer only' }),
+    lng: z.coerce.number().min(88).max(93).optional(),
+    radiusKm: z.coerce.number().min(1).max(50).optional().meta({ description: 'Only gyms within this distance (needs lat and lng)' }),
+    priceMax: z.coerce.number().int().min(0).optional().meta({ description: 'The monthly package costs at most this (poisha); gyms without a monthly package are left out' }),
+    sort: z.enum(['price', 'rating', 'newest', 'nearest']).optional().meta({ description: 'Default nearest with a position, else price (the day pass)' }),
+    cursor: z.string().regex(/^\d+$/).optional(),
+    limit: z.coerce.number().int().min(1).max(48).default(24),
+  })
+  .refine((q) => (q.lat === undefined) === (q.lng === undefined), { message: 'Send lat and lng together', path: ['lng'] })
+  .refine((q) => q.lat !== undefined || (q.radiusKm === undefined && q.sort !== 'nearest'), { message: 'The radius and the nearest sort need lat and lng', path: ['lat'] });
 const trainersQuery = z.object({ areaId: id.optional(), sort: z.enum(['rating', 'rate', 'jobs', 'experience']).default('rating'), cursor: z.string().regex(/^\d+$/).optional() });
 const gymFields = {
   name: text(3, 120),
@@ -134,6 +142,7 @@ const GymCard = z
     ratingAvg: nullable(z.number()),
     ratingCount: z.number().int(),
     taking: z.boolean(),
+    distanceM: nullable(z.number().int()).meta({ description: 'Metres from the position sent (the gym’s pin, else its area’s centre); null without a position' }),
   })
   .meta({ id: 'GymCard' });
 const GymList = z.object({ items: z.array(GymCard), total: z.number().int(), nextCursor: nullable(z.string()) }).meta({ id: 'GymList' });
@@ -147,6 +156,7 @@ const GymPage = GymCard.extend({
   packages: z.array(Package),
   advanceDays: z.number().int(),
   today: date,
+  joinRequestsOpen: z.boolean().meta({ description: 'M24: the gym takes join requests (live, managed on gym.kriraghor.com, switched on); show Join this gym' }),
 }).meta({ id: 'GymPage' });
 const OwnerGym = z
   .object({
