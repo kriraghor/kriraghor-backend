@@ -86,7 +86,7 @@ async function overview(principal, gymId) {
        (SELECT COUNT(*) FROM gym_members m WHERE m.gym_id = :gymId AND m.status = 'active'
            AND EXISTS (SELECT 1 FROM gym_memberships cm WHERE cm.member_id = m.id AND cm.status = 'active' AND cm.starts_on <= :seenSince)
            AND NOT EXISTS (SELECT 1 FROM gym_attendance a WHERE a.member_id = m.id AND a.counted AND a.local_date > :seenSince))::int AS "notSeen",
-       (SELECT COUNT(*) FROM gym_link_requests WHERE gym_id = :gymId AND status = 'pending')::int AS "requestsWaiting",
+       (SELECT COUNT(*) FROM gym_link_requests WHERE gym_id = :gymId AND status = 'pending' AND direction = 'join_request')::int AS "requestsWaiting",
        (SELECT COUNT(*) FROM gym_dues WHERE gym_id = :gymId AND status IN ('unpaid', 'partial') AND due_on = :today)::int AS "dueTodayCount",
        (SELECT COALESCE(SUM(amount_poisha - paid_poisha - waived_poisha), 0) FROM gym_dues WHERE gym_id = :gymId AND status IN ('unpaid', 'partial') AND due_on = :today)::bigint AS "dueTodayPoisha",
        (SELECT COUNT(*) FROM gym_dues WHERE gym_id = :gymId AND status IN ('unpaid', 'partial') AND due_on < :today)::int AS "overdueCount",
