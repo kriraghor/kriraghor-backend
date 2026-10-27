@@ -151,3 +151,56 @@ Prompt 2 adds Kriraghor's first gym revenue and the money members ask for: onlin
 | P2.6.4 | **The owner sees the special rate / overrides / end it** | `owner_override` on the billing page (FR-90); listed; ended |
 | P2.6.5 | A gym override of 3% on a pass purchase 🤖 | the pass snapshots `fee_bps` 300 and `fee_override_id` (FR-95); the job ends overrides at `valid_to` |
 | P2.6.6 | **Voiding a paid invoice** | 409 `GYM_INVOICE_STATE`; an unpaid one is voided and its referrals return to pending 🤖 (FR-89) |
+
+# M24 prompt 3 · Public and plans: Acceptance Checklist
+
+Request names refer to the **"Kriraghor API: M24 prompt 3 · Public and plans"** collection (`postman/kriraghor-gym-manage-plans.postman_collection.json`, rebuilt with `node postman/build-collection-m24-plans.js`). 🤖 marks cases only the jest suites cover (`tests/e2e/gym-manage-plans.test.js`, `tests/unit/gym-manage-plans-rules.test.js`, `tests/unit/m20-rules.test.js`).
+
+Prompt 3 opens the gym to members on the platform: join requests from a live gym's page (with the referral fee on the first payment), trainers assigned to members, workout plans and diet charts that members tick off, the entrance QR at the door, and a directory that sorts by distance.
+
+## P3.0 Setup
+- [ ] `npm run release` applies `20261115000001-gym-manage-plans` (M24): `gym_plans`, `gym_plan_versions` (append-only), `gym_plan_assignments` (one active workout plan and one diet chart per member), `gym_plan_logs` (append-only).
+- [ ] Settings v32 (353 settings: `gym_manage.entrance_qr_seconds`, `plan_max_items`, `diet_max_meals`, `plan_log_back_days`) and templates v25 (`GYM_JOIN_REQUEST_NEW`, `GYM_JOIN_ACCEPTED`, `GYM_JOIN_DECLINED`, `GYM_PLAN_ASSIGNED`, `GYM_PLAN_UPDATED`).
+- [ ] `node postman/run-m24-plans.js` → **0 failed** (68 requests, 110 assertions). The runner resets the test database (set `DB_NAME`), makes a gym owner with a live Standard gym at Gulshan's pin and a cheaper live gym at Uttara, the desk member Bashir, staff Coach Sabbir (`members.trainer`, `plans.manage`) and Cashier Mitu (`members.view`, `fees.collect`), three people who ask to join, and serves `{{controlUrl}}` (`/drain`, `/old-entrance-token`, `/daily`).
+
+## P3.1 The directory and the landing page
+| # | Do | Expect |
+|---|---|---|
+| P3.1.1 | **Nearest first / within 5 km / monthly at most ৳3,500** | every card has `distanceM`, nearest first (a gym without a pin uses its area's centre 🤖); the radius keeps the Banani gym; `priceMax` caps the monthly package (no position → `distanceM` null) |
+| P3.1.2 | **Nearest without a position** | 422 `VALIDATION_FAILED` (also a radius without `lat`/`lng`, or `lat` without `lng` 🤖) |
+| P3.1.3 | **The gym page / pricing** | `joinRequestsOpen` true (false once the owner switches joins off 🤖); 20 founding places, 2 free months, 25% for 12 months; 0 places hides the offer 🤖 |
+
+## P3.2 Join requests
+| # | Do | Expect |
+|---|---|---|
+| P3.2.1 | **Ask to join / asking again / the owner's own gym** | 201 pending with the package and note; 409 `GYM_LINK_REQUEST_PENDING`; 409 `GYM_JOIN_NOT_OPEN` `own_gym` (FR-16). A private, paused or switched-off gym → `not_live` / `closed` 🤖; an unverified phone → 403 `PHONE_REQUIRED` 🤖 |
+| P3.2.2 | **My requests / accepting my own request as an invite** | listed with the invites (`direction`, `canCancel`); 404 (accept and decline answer gym invites only) |
+| P3.2.3 | **The gym's requests / the dashboard** | the person's name and the last 4 digits of the phone, the package and the note, no full phone; `requestsWaiting` 1. The owner and `members.view` staff get `GYM_JOIN_REQUEST_NEW`; `members.edit` staff see the to-do `gym_requests_waiting` 🤖 |
+| P3.2.4 | **A cashier answers / no Idempotency-Key / accept with the package and ৳2,000 / again** | 403 `members.edit`; 400; a new `platform` member linked to the person, the membership and the receipt; 409 `GYM_LINK_REQUEST_STATE` (FR-17). The referral fee (৳200) charges once on that payment and names the request 🤖 (FR-91); the person gets `GYM_JOIN_ACCEPTED` 🤖 |
+| P3.2.5 | **My gyms** | linked; after an unlink the gym stays under Past 🤖 (FR-18); asking again links the existing record with the same phone (no new member, no second referral) 🤖 |
+| P3.2.6 | **Decline / ask again and cancel / cancel again** | declined (`GYM_JOIN_DECLINED` to the person 🤖); cancelled; 409. The same phone added at the desk later is `platform` and pays a referral 🤖 (FR-92). Expired requests: the job expires them once 🤖 |
+
+## P3.3 Trainers
+| # | Do | Expect |
+|---|---|---|
+| P3.3.1 | **Who can be picked / a cashier / give Bashir the coach** | staff with `members.trainer` or `plans.manage`; 422 `GYM_TRAINER_INVALID`; the trainer on the profile (FR-21). Basic → 403 `GYM_TIER_REQUIRED` `trainers` 🤖 |
+| P3.3.2 | **Members of the coach / the coach's own list** | the `trainerId` filter; a trainer-only caller sees their members only (FR-23) |
+| P3.3.3 | Consumers 🤖 | removing one of the two permissions keeps the assignment; removing both, or removing the staff member, clears it (`gym_member.trainer_assigned` with the reason) |
+
+## P3.4 Plans and diet charts
+| # | Do | Expect |
+|---|---|---|
+| P3.4.1 | **Invalid content / write a workout plan / a diet chart / templates** | 422 with paths (`source` ai refused, a `javascript:` link refused, an empty name) (FR-62, FR-68); version 1; the template filter. Over `gym_manage.plan_max_items` → 422 🤖; Basic → 403 `plans` 🤖 |
+| P3.4.2 | **The coach gives it to Ayesha / to Bashir / the owner to Ayesha / the diet chart** | 403 `GYM_PLAN_ASSIGN_SCOPE`; 201; 201 (FR-64); `GYM_PLAN_ASSIGNED` to the linked member 🤖 |
+| P3.4.3 | **My plans** | today's workout day by §6.10 (10 days into a 2-day plan → day 0), the week, today's meals, "Given by {gym}, not medical advice" (FR-65, FR-69) |
+| P3.4.4 | **Ticks: today, untick with a note, another day's item, 7 days back, 8 days back** | 201; 201 (the latest wins); 422 `itemRef`; 201; 422 `GYM_PLAN_LOG_WINDOW` (FR-65) |
+| P3.4.5 | **Version 2 for the members who have it / my plan** | `movedAssignments` 2, the members are told once (`GYM_PLAN_UPDATED` 🤖); with the box off they keep theirs 🤖 (FR-63); my plan shows v2 and v1 and my ticks |
+| P3.4.6 | **The owner / a cashier / a cashier lists plans** | content, ticks and the health note; titles only; 403 `plans.manage` (FR-66) |
+| P3.4.7 | **The plan page / end Bashir's plan / retire / assign a retired chart / the daily job** | adherence (last tick, done in 7 days); ended; retired; 409 `GYM_PLAN_STATE`; nothing past its end date. A new workout plan replaces the old (read-only) 🤖; past `ends_on` the job ends it once 🤖; unlinking makes my plans read-only 🤖 (FR-67); removing a member ends their plans 🤖 |
+
+## P3.5 The entrance QR
+| # | Do | Expect |
+|---|---|---|
+| P3.5.1 | **The tablet's code / a cashier** | `v1.ge.…`, 30 seconds, `no-store`; 403 `attendance.mark` (FR-51). Free → 403 `GYM_TIER_REQUIRED` 🤖 |
+| P3.5.2 | **Ayesha scans it / again** | 201 counted, method `entrance_qr`; 200 a repeat with the first time |
+| P3.5.3 | **An old code / someone not linked / block for a member with no membership** | 422 `GYM_CHECKIN_TOKEN_INVALID`; 403 `GYM_NOT_A_MEMBER`; 409 `GYM_ENTRY_BLOCKED` with the gym's message and no override; `warn` lets them in with the reasons 🤖 |
