@@ -10,6 +10,7 @@
  *   notices    M08: who receives a member notice (the owner's plan, the kind switched on, linked or by email)
  *   fees       M20 pass purchase: fees.gym_pct as it applies to a gym, overrides included (M24-FR-95)
  *   reads      M19 the gym owner's to-dos; M20's business adapter: a gym's staff to-dos
+ *   joins      M20's gym page: whether the gym takes join requests (prompt 3)
  *   consumers  registered by registry.registerAll
  */
 const lazy = (file, names, values = []) => {
@@ -27,9 +28,11 @@ module.exports = {
     payLinkUrl: (...args) => require('./gyms.service').payLinkUrl(...args),
     importUpload: (...args) => require('./gyms.service').importFacts(...args),
     reversedReceipt: (...args) => require('./gyms.service').reversedReceipt(...args),
+    plan: (...args) => require('./plans.service').planFacts(...args),
   }),
   notices: lazy('./notices.service', ['memberTargets']),
   fees: lazy('./fees.service', ['passFee']),
   reads: lazy('./reads.service', ['pendingActions', 'staffActions']),
+  joins: lazy('./joins.service', ['openFor']),
   consumers: lazy('./gym-manage.consumers', ['registerGymManageConsumers']),
 };

@@ -28,9 +28,20 @@ function tiers() {
 }
 
 /** GET /gym-manage/pricing (public). */
-function pricing() {
+async function pricing() {
   const t = c.tierCfg();
-  return { currency: 'BDT', tiers: tiers(), featureMinTiers: t.featureMinTiers, activeWindowDays: c.cfg().activeWindowDays, noticePct: t.noticePct };
+  // Prompt 3 (the landing page, §4.1): the founding partner offer shows while places are left (M24-FR-88).
+  const s = c.saasCfg();
+  const taken = await GymOwnerSubscription.count({ where: { foundingPartner: true } });
+  return {
+    currency: 'BDT',
+    tiers: tiers(),
+    featureMinTiers: t.featureMinTiers,
+    activeWindowDays: c.cfg().activeWindowDays,
+    noticePct: t.noticePct,
+    foundingPlacesLeft: Math.max(0, s.foundingLimit - taken),
+    founding: { limit: s.foundingLimit, freeMonths: s.foundingFreeMonths, discountPct: s.foundingDiscountPct, discountMonths: s.foundingDiscountMonths },
+  };
 }
 
 /**
