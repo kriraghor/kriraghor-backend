@@ -72,6 +72,7 @@ const dayText = (date, locale) => (date ? new Intl.DateTimeFormat(locale === 'bn
 const TIER_NAMES = { en: { free: 'Free', basic: 'Basic', standard: 'Standard', pro: 'Pro' }, bn: { free: 'ফ্রি', basic: 'বেসিক', standard: 'স্ট্যান্ডার্ড', pro: 'প্রো' } };
 const FEE_NAMES = { en: { 'fees.gym_referral_poisha': 'referral fee', 'fees.gym_pct': 'pass commission' }, bn: { 'fees.gym_referral_poisha': 'রেফারেল ফি', 'fees.gym_pct': 'পাস কমিশন' } };
 const pickLocale = (map, locale, key) => map[locale]?.[key] ?? map.en[key] ?? key;
+const PLAN_KINDS = { en: { workout: 'workout plan', diet: 'diet chart' }, bn: { workout: 'ওয়ার্কআউট প্ল্যান', diet: 'ডায়েট চার্ট' } };
 const gymOwnerAndCollectors = async (e) => [e.payload.ownerId, ...(await staffOf('gym', e.payload.gymId, 'fees.collect'))];
 // M14 lite and M22: the organisation (its name) and its admins (owner and admins get organiser news).
 const orgAdmins = (id) => require('../organisations').organisations.adminIds(id);
@@ -1562,9 +1563,58 @@ const CATALOGUE = [
     events: ['gym_member.linked'],
     category: 'gym_business',
     channels: ['in_app'],
-    recipients: (e) => [e.payload.ownerId],
+    // Prompt 3: not when the owner linked the record themselves (accepting a join request for a member already on the books).
+    recipients: (e) => (e.payload.by === e.payload.ownerId ? [] : [e.payload.ownerId]),
     values: async (e) => ({ memberCode: (await gmMemberFacts(e.payload.memberId))?.memberCode ?? '' }),
     link: (e) => gymUrl(`/manage/${e.payload.gymId}/members/${e.payload.memberId}`),
+  },
+  // ---------------- M24 gym management, prompt 3 (§11.2): join requests and their answers are consent
+  // messages (every tier, no SMS); plan notices follow the member-notice rules of kind `plan` (the owner's
+  // plan has reminders, not restricted, the kind on) and reach linked members in-app and by push.
+  {
+    code: 'GYM_JOIN_REQUEST_NEW',
+    events: ['gym_link.requested'],
+    category: 'gym_business',
+    channels: ['in_app'],
+    recipients: async (e) => (e.payload.direction === 'join_request' ? [e.payload.ownerId, ...(await staffOf('gym', e.payload.gymId, 'members.view'))] : []),
+    values: async (e) => ({ gym: await gymName(e.payload.gymId) }),
+    link: (e) => gymUrl(`/manage/${e.payload.gymId}/requests`),
+  },
+  {
+    code: 'GYM_JOIN_ACCEPTED',
+    events: ['gym_link.accepted'],
+    category: 'gym',
+    channels: ['in_app', 'email'],
+    recipients: (e) => (e.payload.direction === 'join_request' && e.payload.userId ? [e.payload.userId] : []),
+    values: async (e) => ({ gym: await gymName(e.payload.gymId), link: gymUrl(`/me/memberships/${e.payload.memberId}`) }),
+    link: (e) => gymUrl(`/me/memberships/${e.payload.memberId}`),
+  },
+  {
+    code: 'GYM_JOIN_DECLINED',
+    events: ['gym_link.declined'],
+    category: 'gym',
+    channels: ['in_app'],
+    recipients: (e) => (e.payload.direction === 'join_request' && e.payload.userId ? [e.payload.userId] : []),
+    values: async (e) => ({ gym: await gymName(e.payload.gymId) }),
+    link: () => gymUrl('/gyms'),
+  },
+  {
+    code: 'GYM_PLAN_ASSIGNED',
+    events: ['gym_plan.assigned'],
+    category: 'gym',
+    channels: ['in_app'],
+    recipients: gmUsers('plan'),
+    values: async (e, { locale }) => ({ gym: await gymName(e.payload.gymId), planKind: pickLocale(PLAN_KINDS, locale, e.payload.kind), planTitle: (await gmFacts().plan(e.payload.planId))?.title ?? '' }),
+    link: (e) => gymUrl(`/me/plans/${e.payload.assignmentId}`),
+  },
+  {
+    code: 'GYM_PLAN_UPDATED',
+    events: ['gym_plan.updated'],
+    category: 'gym',
+    channels: ['in_app'],
+    recipients: gmUsers('plan'),
+    values: async (e, { locale }) => ({ gym: await gymName(e.payload.gymId), planKind: pickLocale(PLAN_KINDS, locale, e.payload.kind) }),
+    link: (e) => gymUrl(`/me/plans/${e.payload.assignmentId}`),
   },
   // ---------------- M24 gym management, prompt 2 (§11.2): member notices (paid tiers: in-app, push,
   // email; an unlinked member by email), owner notices, and Kriraghor's own billing. No gym SMS until the
