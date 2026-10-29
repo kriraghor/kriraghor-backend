@@ -83,6 +83,7 @@ const membersQuery = z.object({
   notSeen: z.coerce.number().int().min(1).max(365).optional().meta({ description: 'Days without a counted check-in (members with a running membership)' }),
   packageId: id.optional(),
   linked: bool.optional(),
+  trainerId: id.optional().meta({ description: 'Members assigned to this trainer (the business_members id from GET …/trainers; feature trainers)' }),
   q: text(1, 80).optional().meta({ description: 'Name (contains or similar), member code (exact) or phone (exact)' }),
   cursor: z.string().max(400).optional(),
   limit,
@@ -144,7 +145,7 @@ const waiveBody = z.object({ amountPoisha: z.number().int().positive(), reason: 
 const importQuery = z.object({ fileName: z.string().trim().max(200).optional() });
 const consentBody = z.object({ grant: z.boolean() });
 const tierBody = z.object({ tier: z.enum(rules.TIERS) });
-const meRequestsQuery = z.object({ status: z.enum(REQUEST_STATUSES).optional() });
+const meRequestsQuery = z.object({ status: z.enum(REQUEST_STATUSES).optional(), direction: z.enum(['gym_invite', 'join_request']).optional().meta({ description: 'Default both: invites to me and my join requests' }) });
 const healthNoteBody = z.object({ text: nullable(z.string().max(500)) });
 
 // ---------------- responses
@@ -167,6 +168,7 @@ const MemberListItem = MemberSummary.extend({
   current: nullable(Current),
   flags: z.object({ due: z.boolean(), overdue: z.boolean() }),
   lastCheckInOn: nullable(date),
+  trainer: nullable(z.object({ businessMemberId: id, displayName: nullable(z.string()) })).meta({ description: 'The assigned trainer (M24-FR-21)' }),
   outstandingPoisha: money(poisha),
 }).meta({ id: 'GymMemberListItem' });
 const MemberList = z.object({ items: z.array(MemberListItem), nextCursor: nullable(z.string()) }).meta({ id: 'GymMemberList' });
@@ -255,11 +257,12 @@ const MemberProfile = z
       version: z.number().int(),
       createdAt: dateTime,
       notesCount: z.number().int(),
+      trainer: nullable(z.object({ businessMemberId: id, displayName: nullable(z.string()) })).meta({ description: 'The assigned trainer (M24-FR-21)' }),
     }),
     link: z.object({ linked: z.boolean(), linkedAt: nullable(dateTime), unlinkedAt: nullable(dateTime), pendingInvite: nullable(z.object({ id, expiresAt: dateTime, accountKnown: z.boolean() })) }),
     memberships: z.array(Membership),
     dues: z.array(Due),
-    can: z.object({ edit: z.boolean(), collect: z.boolean(), adjust: z.boolean(), revealPhone: z.boolean(), remove: z.boolean() }),
+    can: z.object({ edit: z.boolean(), collect: z.boolean(), adjust: z.boolean(), revealPhone: z.boolean(), remove: z.boolean(), assignTrainer: z.boolean(), plans: z.boolean() }),
   })
   .meta({ id: 'GymMemberProfile' });
 const PaymentRef = z.object({ id, receiptNo: z.string(), amountPoisha: poisha, receiptUrl: z.string() });
@@ -415,7 +418,17 @@ const Settings = z
   })
   .meta({ id: 'GymManageSettings' });
 const Tier = z.object({ key: z.enum(rules.TIERS), maxMembers: nullable(z.number().int()), pricePoisha: poisha, features: z.array(z.enum(FEATURES)), minGyms: z.number().int().optional() });
-const Pricing = z.object({ currency: z.literal('BDT'), tiers: z.array(Tier), featureMinTiers: z.record(z.string(), z.enum(rules.TIERS)), activeWindowDays: z.number().int(), noticePct: z.number().int() }).meta({ id: 'GymPricing' });
+const Pricing = z
+  .object({
+    currency: z.literal('BDT'),
+    tiers: z.array(Tier),
+    featureMinTiers: z.record(z.string(), z.enum(rules.TIERS)),
+    activeWindowDays: z.number().int(),
+    noticePct: z.number().int(),
+    foundingPlacesLeft: z.number().int().meta({ description: 'Founding partner places still open (0: hide the offer; M24-FR-88)' }),
+    founding: z.object({ limit: z.number().int(), freeMonths: z.number().int(), discountPct: z.number().int(), discountMonths: z.number().int() }).meta({ description: 'The founding partner terms from settings: free months on a paid plan, then the discount for its months' }),
+  })
+  .meta({ id: 'GymPricing' });
 // ---------------- prompt 2 (online money, reminders and billing)
 const LINK_CHANNELS = ['in_app', 'email'];
 const LINK_STATUSES = ['open', 'paid', 'expired', 'cancelled'];
@@ -735,6 +748,9 @@ const Request = z
     memberId: nullable(id),
     member: nullable(z.object({ id, memberCode: z.string(), displayName: z.string(), phoneLast4: z.string() })),
     accountKnown: z.boolean().meta({ description: 'Whether the invite reached a Kriraghor account yet (never which one)' }),
+    requester: nullable(z.object({ displayName: nullable(z.string()), avatarUrl: nullable(z.string()), phoneLast4: nullable(z.string()) })).meta({ description: 'Join requests: the person asking (they agreed the gym sees their name and phone; the full phone after accepting, through the reveal)' }),
+    package: nullable(z.object({ id, title: z.string(), kind: z.enum(KINDS), pricePoisha: poisha })).meta({ description: 'Join requests: the package asked for' }),
+    note: nullable(z.string()).meta({ description: 'Join requests: the note from the person asking' }),
     expiresAt: dateTime,
     decidedAt: nullable(dateTime),
     createdAt: dateTime,
@@ -801,6 +817,10 @@ const MyRequests = z
         memberCode: nullable(z.string()),
         displayName: nullable(z.string()).meta({ description: 'The name the gym typed' }),
         shares: z.array(z.string()).meta({ description: 'What the gym will see once linked (M24-FR-15)' }),
+        package: nullable(z.object({ id, title: z.string(), kind: z.enum(KINDS) })).meta({ description: 'Join requests: the package I asked for' }),
+        note: nullable(z.string()).meta({ description: 'Join requests: my note' }),
+        memberId: nullable(id).meta({ description: 'Join requests: my member record once the gym accepted' }),
+        canCancel: z.boolean().meta({ description: 'A pending join request of mine' }),
         expiresAt: dateTime,
         createdAt: dateTime,
       })
@@ -821,7 +841,7 @@ const MyMemberships = z
         current: nullable(z.object({ title: z.string(), packageKind: z.enum(KINDS), startsOn: date, endsOn: date, daysLeft: z.number().int(), frozen: z.boolean() })),
         outstandingPoisha: poisha,
         onlineFees: z.boolean().meta({ description: 'The gym takes fees online now (owner documents, plan, not restricted; M24-FR-41)' }),
-        plans: z.null().meta({ description: 'Workout plans and diet charts (prompt 3)' }),
+        plans: z.array(z.object({ assignmentId: id, kind: z.enum(['workout', 'diet']), title: z.string() })).meta({ description: 'Today’s workout plan and diet chart titles (active assignments; empty for a past link)' }),
       })
     ),
   })
@@ -839,7 +859,266 @@ const MyReceipts = z.object({ items: z.array(MyReceiptItem) }).meta({ id: 'MyGym
 const CheckinToken = z.object({ memberId: id, gymId: id, token: z.string(), expiresAt: dateTime.meta({ description: 'Show a new token before this; the desk accepts the previous one for one more window' }), seconds: z.number().int() }).meta({ id: 'GymCheckinToken' });
 const HealthNote = z.object({ memberId: id, healthNote: nullable(z.string()), healthNoteAt: nullable(dateTime) });
 
+// ---------------- prompt 3 (public site, member area, plans)
+const PLAN_KINDS = ['workout', 'diet'];
+const PLAN_STATUSES = ['active', 'retired'];
+const ASSIGNMENT_STATUSES = ['active', 'replaced', 'ended'];
+// Hard ceilings are the top of the settings' bounds (gym_manage.plan_max_items 50, diet_max_meals 12);
+// the live limits are checked in the service (M24-FR-62).
+const PLAN_ITEMS_CEILING = 50;
+const DIET_MEALS_CEILING = 12;
+const WORKOUT_DAYS = 7;
+const joinRequestBody = z.object({
+  gymId: id,
+  packageId: id.optional().meta({ description: 'The package I would like (an active package of the gym sold online)' }),
+  note: text(1, 300).optional(),
+});
+const joinAcceptBody = z
+  .object({
+    ...Object.fromEntries(Object.entries(assignFields).map(([k, v]) => [k, v.optional()])),
+    startsOn: date.optional().meta({ description: 'With packageId: default today (Dhaka)' }),
+    payment: paymentBody.optional().meta({ description: 'The first payment (needs packageId; fees.collect)' }),
+  })
+  .refine((b) => !b.payment || b.packageId, { message: 'A first payment needs a package', path: ['payment'] })
+  .default({});
+const joinDeclineBody = z.object({ reason: text(2, 300).optional().meta({ description: 'Kept with the gym; the requester is only told the gym could not accept' }) }).default({});
+const trainerBody = z.object({ businessMemberId: nullable(id).meta({ description: 'A staff member from GET …/trainers, or null to take the trainer off' }) });
+const planParam = z.object({ gymId: id, planId: id });
+const assignmentParam = z.object({ gymId: id, assignmentId: id });
+const mePlanParam = z.object({ assignmentId: id });
+const plansQuery = z.object({ kind: z.enum(PLAN_KINDS).optional(), status: z.enum(PLAN_STATUSES).optional().meta({ description: 'Default active' }), template: bool.optional() });
+
+const refText = z
+  .string()
+  .trim()
+  .regex(/^[A-Za-z0-9_-]{1,20}$/, '1 to 20 letters, digits, - or _')
+  .meta({ description: 'Stays the same across versions, so ticks stay attached (§6.10)' });
+const bilingual = (max) =>
+  z
+    .object({ en: nullable(text(1, max)).optional(), bn: nullable(text(1, max)).optional() })
+    .refine((n) => Boolean(n.en || n.bn), 'Write it in English or Bangla (or both)')
+    .meta({ description: 'English and Bangla side by side; at least one' });
+const httpsUrl = z.url({ protocol: /^https$/, hostname: z.regexes.domain }).max(500).meta({ description: 'https links only' });
+const Exercise = z.object({
+  ref: refText,
+  name: bilingual(80),
+  sets: nullable(z.number().int().min(1).max(50)).optional(),
+  reps: nullable(text(1, 20)).optional().meta({ description: '"8-10", "12" or "to failure"' }),
+  timeSec: nullable(z.number().int().min(1).max(7200)).optional(),
+  restSec: nullable(z.number().int().min(0).max(3600)).optional(),
+  weightNote: nullable(text(1, 80)).optional(),
+  note: nullable(text(1, 300)).optional(),
+  videoUrl: nullable(httpsUrl).optional(),
+});
+const WorkoutDay = z.object({ key: refText, name: bilingual(80), items: z.array(Exercise).max(PLAN_ITEMS_CEILING) });
+const Food = z.object({
+  ref: refText,
+  name: bilingual(80),
+  portion: nullable(text(1, 40)).optional(),
+  kcal: nullable(z.number().int().min(0).max(5000)).optional(),
+  proteinG: nullable(z.number().min(0).max(500)).optional(),
+  note: nullable(text(1, 300)).optional(),
+});
+const Meal = z.object({ ref: refText, name: bilingual(80), time: nullable(z.string().regex(/^([01][0-9]|2[0-3]):[0-5][0-9]$/, 'HH:MM')).optional(), items: z.array(Food).max(PLAN_ITEMS_CEILING) });
+const PlanContent = z
+  .discriminatedUnion('kind', [
+    z.object({ kind: z.literal('workout'), days: z.array(WorkoutDay).min(1).max(WORKOUT_DAYS) }).meta({ id: 'GymWorkoutContent' }),
+    z.object({ kind: z.literal('diet'), meals: z.array(Meal).min(1).max(DIET_MEALS_CEILING), notes: nullable(bilingual(500)).optional() }).meta({ id: 'GymDietContent' }),
+  ])
+  .meta({ id: 'GymPlanContent', description: 'M24 §6.10: up to 7 named days of exercises, or the meals of a diet chart; at most gym_manage.plan_max_items per day or meal and gym_manage.diet_max_meals meals' });
+const planBody = z
+  .object({
+    kind: z.enum(PLAN_KINDS),
+    title: text(2, 120),
+    isTemplate: z.boolean().default(false),
+    source: z.enum(['gym', 'ai', 'self']).default('gym').meta({ description: 'Only gym in M24: ai and self are kept for the later member subscription (M24-FR-68)' }),
+    content: PlanContent,
+  })
+  .refine((b) => b.source === 'gym', { message: 'Only gym plans can be written here', path: ['source'] })
+  .refine((b) => b.content.kind === b.kind, { message: 'The content must be of the plan’s kind', path: ['content', 'kind'] });
+const planPatch = z
+  .object({
+    title: text(2, 120).optional(),
+    isTemplate: z.boolean().optional(),
+    content: PlanContent.optional().meta({ description: 'A new version (n + 1)' }),
+    applyToAssigned: z.boolean().default(true).meta({ description: '"Update for the N members who have it": their active assignments move to the new version and they are told once (M24-FR-63)' }),
+  })
+  .refine((b) => b.title !== undefined || b.isTemplate !== undefined || b.content !== undefined, 'Nothing to change');
+const planAssignBody = z
+  .object({
+    memberIds: z.array(id).min(1).max(100),
+    startsOn: date.meta({ description: 'Day 1 of the plan; from gym_manage.backdate_days ago to 60 days ahead' }),
+    endsOn: nullable(date).optional(),
+  })
+  .refine((b) => !b.endsOn || b.endsOn >= b.startsOn, { message: 'Must be on or after startsOn', path: ['endsOn'] })
+  .refine((b) => new Set(b.memberIds).size === b.memberIds.length, { message: 'Each member once', path: ['memberIds'] });
+const planLogBody = z.object({
+  localDate: date.meta({ description: 'Today or up to gym_manage.plan_log_back_days back (Dhaka)' }),
+  itemRef: refText,
+  done: z.boolean(),
+  note: nullable(text(1, 300)).optional(),
+});
+const meCheckinBody = z.object({ token: z.string().trim().min(10).max(200).meta({ description: 'The entrance QR (v1.ge.…) scanned at the door' }) });
+
+const Bilingual = z.object({ en: z.string(), bn: z.string() });
+const Safety = Bilingual.meta({ description: '"Given by {gym}, not medical advice" (M24-FR-69): show it on every plan view' });
+const MyRequestItem = MyRequests.shape.items.element;
+const JoinRequestResult = z.object({ request: MyRequestItem }).meta({ id: 'MyGymJoinRequest' });
+const MyCancelResult = z.object({ request: z.object({ id, status: z.literal('cancelled') }) });
+const JoinAcceptResult = z
+  .object({ request: Request, member: MemberSummary, linkedExisting: z.boolean().meta({ description: 'An unlinked member with the same phone was linked instead of a new one' }), membership: nullable(Membership), due: nullable(Due), payment: nullable(PaymentRef) })
+  .meta({ id: 'GymJoinAcceptResult' });
+const Trainers = z
+  .object({
+    items: z.array(
+      z.object({
+        businessMemberId: id,
+        displayName: nullable(z.string()),
+        permissions: z.array(z.enum(['members.trainer', 'plans.manage'])).meta({ description: 'Which of the two trainer permissions they hold' }),
+        assignedMembers: z.number().int(),
+      })
+    ),
+  })
+  .meta({ id: 'GymTrainers' });
+const PlanSummary = z
+  .object({
+    id,
+    gymId: id,
+    kind: z.enum(PLAN_KINDS),
+    title: z.string(),
+    isTemplate: z.boolean(),
+    source: z.enum(['gym', 'ai', 'self']),
+    currentVersion: z.number().int(),
+    status: z.enum(PLAN_STATUSES),
+    retiredAt: nullable(dateTime),
+    activeAssignments: z.number().int(),
+    createdAt: dateTime,
+    updatedAt: dateTime,
+  })
+  .meta({ id: 'GymPlan' });
+const PlanList = z.object({ items: z.array(PlanSummary) }).meta({ id: 'GymPlanList' });
+const PlanVersion = z.object({ id, version: z.number().int(), content: PlanContent, createdAt: dateTime, createdBy: z.object({ id, displayName: nullable(z.string()) }) }).meta({ id: 'GymPlanVersion' });
+const Assignment = z
+  .object({
+    id,
+    planId: id,
+    kind: z.enum(PLAN_KINDS),
+    title: z.string(),
+    version: z.number().int(),
+    memberId: id,
+    startsOn: date,
+    endsOn: nullable(date),
+    status: z.enum(ASSIGNMENT_STATUSES),
+    endedAt: nullable(dateTime),
+    createdAt: dateTime,
+  })
+  .meta({ id: 'GymPlanAssignment' });
+const PlanAdherence = Assignment.extend({
+  member: MemberSummary,
+  lastTickOn: nullable(date),
+  doneLast7Days: z.number().int().meta({ description: 'Items ticked done in the last 7 days (the latest tick per item and date)' }),
+});
+const PlanDetail = PlanSummary.extend({
+  content: PlanContent.meta({ description: 'The current version' }),
+  versions: z.array(PlanVersion).meta({ description: 'Newest first' }),
+  assignments: z.array(PlanAdherence).meta({ description: 'Active assignments the caller can see, with adherence' }),
+  movedAssignments: z.number().int().optional().meta({ description: 'PATCH with a new version: assignments moved to it' }),
+}).meta({ id: 'GymPlanDetail' });
+const AssignResult = z.object({ assignments: z.array(Assignment), replaced: z.number().int().meta({ description: 'Earlier assignments of the same kind that were replaced' }) }).meta({ id: 'GymPlanAssignResult' });
+const AssignmentResult = z.object({ assignment: Assignment });
+const PlanLog = z.object({ id, assignmentId: id, localDate: date, itemRef: z.string(), done: z.boolean(), note: nullable(z.string()), createdAt: dateTime }).meta({ id: 'GymPlanLog' });
+const MemberPlans = z
+  .object({
+    memberId: id,
+    healthNote: nullable(z.string()).optional().meta({ description: 'plans.manage and the owner only: the member’s own health note' }),
+    items: z.array(
+      Assignment.extend({
+        content: PlanContent.optional().meta({ description: 'plans.manage and the owner only' }),
+        logs: z.array(PlanLog).optional().meta({ description: 'plans.manage and the owner only: the latest tick per item and date, newest first' }),
+      })
+    ),
+  })
+  .meta({ id: 'GymMemberPlans' });
+const MyPlanItem = z.object({
+  assignmentId: id,
+  memberId: id,
+  gym: GymRef,
+  kind: z.enum(PLAN_KINDS),
+  title: z.string(),
+  version: z.number().int(),
+  startsOn: date,
+  endsOn: nullable(date),
+  status: z.enum(ASSIGNMENT_STATUSES),
+  readOnly: z.boolean().meta({ description: 'Ended or replaced, or I left or unlinked: I can read it but not tick (M24-FR-67)' }),
+  content: PlanContent,
+  todayIndex: nullable(z.number().int()).meta({ description: 'Workout: today’s day in content.days (§6.10); null before the start or after the end. Diet: 0 when it runs today' }),
+  week: z.array(z.object({ date, index: nullable(z.number().int()) })).meta({ description: 'Today and the next 6 days with the workout day of each' }),
+  ticks: z.array(PlanLog).meta({ description: 'My latest tick per item for the days I can still tick' }),
+  safety: Safety,
+});
+const MyPlans = z
+  .object({
+    today: date,
+    logBackDays: z.number().int(),
+    items: z.array(MyPlanItem).meta({ description: 'Active plans first (today’s workout and meals), then the rest' }),
+  })
+  .meta({ id: 'MyGymPlans' });
+const MyPlanDetail = MyPlanItem.extend({
+  versions: z.array(z.object({ version: z.number().int(), createdAt: dateTime, content: PlanContent })).meta({ description: 'The versions given to me, newest first' }),
+  logs: z.array(PlanLog).meta({ description: 'Every tick I made (the latest per item and date), newest first' }),
+}).meta({ id: 'MyGymPlan' });
+const PlanLogResult = z.object({ log: PlanLog }).meta({ id: 'MyGymPlanLogResult' });
+const EntranceToken = z
+  .object({ gymId: id, gymName: z.string(), token: z.string(), expiresAt: dateTime.meta({ description: 'Show the next token before this; members may scan the previous one for one more window' }), seconds: z.number().int(), secondsLeft: z.number().int() })
+  .meta({ id: 'GymEntranceToken' });
+const EntranceCheckin = z
+  .object({
+    attendanceId: id,
+    counted: z.boolean().meta({ description: 'false: already checked in today (the first time is firstCheckInToday)' }),
+    checkedInAt: dateTime,
+    firstCheckInToday: nullable(dateTime),
+    method: z.literal('entrance_qr'),
+    gym: GymRef,
+    member: z.object({ id, memberCode: z.string() }),
+    membership: nullable(z.object({ title: z.string(), endsOn: date, daysLeft: z.number().int(), status: z.enum(['active', 'frozen']) })),
+    decision: z.enum(['allow', 'warn']),
+    reasons: z.array(z.enum(['expired', 'frozen', 'none', 'unpaid', 'visit_limit'])).meta({ description: 'warn: tell the member why (no amounts)' }),
+  })
+  .meta({ id: 'MyGymEntranceCheckin' });
+
 module.exports = {
+  joinRequestBody,
+  joinAcceptBody,
+  joinDeclineBody,
+  trainerBody,
+  planParam,
+  assignmentParam,
+  mePlanParam,
+  plansQuery,
+  PlanContent,
+  planBody,
+  planPatch,
+  planAssignBody,
+  planLogBody,
+  meCheckinBody,
+  JoinRequestResult,
+  MyCancelResult,
+  JoinAcceptResult,
+  Trainers,
+  PlanSummary,
+  PlanList,
+  PlanVersion,
+  Assignment,
+  PlanDetail,
+  AssignResult,
+  AssignmentResult,
+  PlanLog,
+  MemberPlans,
+  MyPlans,
+  MyPlanDetail,
+  PlanLogResult,
+  EntranceToken,
+  EntranceCheckin,
   gymParam,
   memberParam,
   membershipParam,

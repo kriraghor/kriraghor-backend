@@ -14,6 +14,9 @@
  *    M24-FR-50) and the receipt link (domain `gym-receipt:`, no expiry, M24-FR-37). The keyed hash is
  *    passed in (`sign`), so this file never reads a secret.
  *  - Import rows (M24-FR-75): the template's columns, dates, taka amounts and every row error.
+ *  - Prompt 3: the entrance tablet QR (domain `gym-entrance:`, current or previous window, M24-FR-51),
+ *    the plan day mapping (§6.10), the plan content limits from settings (M24-FR-62), the tick window
+ *    (M24-FR-65) and the latest tick per item and date.
  */
 const { normalizePhone } = require('../../common/identifiers');
 
@@ -630,7 +633,111 @@ function reportPeriod({ month = null, from = null, to = null, today }) {
   return { from: f, to: to ?? today, month: null };
 }
 
+// ---------------------------------------------------------------- prompt 3: the entrance QR (M24-FR-51)
+
+/** The entrance tablet QR payload: v1.ge.<gymId>.<window>.<sig> (HMAC domain gym-entrance:); no personal data. */
+const entranceToken = ({ gymId, window }, sign) => `v1.ge.${gymId}.${window}.${sign(`gym-entrance:${gymId}:${window}`).slice(0, 32)}`;
+
+/** { gymId } of a well-formed entrance token signed for the current or the previous window, else null. */
+function parseEntranceToken(token, { sign, equal = (a, b) => a === b, nowMs, seconds }) {
+  const parts = String(token ?? '').trim().split('.');
+  if (parts.length !== 5 || parts[0] !== 'v1' || parts[1] !== 'ge' || !UUID.test(parts[2]) || !/^\d{1,12}$/.test(parts[3]) || !SIG.test(parts[4])) return null;
+  const [, , gymId, w, sig] = parts;
+  const window = Number(w);
+  const current = windowOf(nowMs, seconds);
+  if (window !== current && window !== current - 1) return null;
+  return equal(sig, sign(`gym-entrance:${gymId}:${window}`).slice(0, 32)) ? { gymId } : null;
+}
+
+/** Seconds until the token of the current window is replaced (the tablet refreshes then). */
+const secondsLeft = (nowMs, seconds) => (windowOf(nowMs, seconds) + 1) * seconds - Math.floor(nowMs / 1000);
+
+// ---------------------------------------------------------------- prompt 3: plans and diet charts (§5.8, §6.10)
+
+const PLAN_KINDS = Object.freeze(['workout', 'diet']);
+
+/**
+ * §6.10: the workout day of a date is days[(date − starts_on) mod days.length]; null before the start,
+ * after the end or for an empty plan. A diet chart is the same every day.
+ */
+function dayIndexFor({ date, startsOn, endsOn = null, days }) {
+  if (!days || date < startsOn || (endsOn && date > endsOn)) return null;
+  return daysBetween(startsOn, date) % days;
+}
+
+/** The 7 days from `today` with the workout day index of each (null outside the assignment). */
+const weekOf = ({ today, startsOn, endsOn = null, days }) =>
+  Array.from({ length: 7 }, (_, i) => addDays(today, i)).map((date) => ({ date, index: dayIndexFor({ date, startsOn, endsOn, days }) }));
+
+/** Every item of a plan (workout: across the days; diet: across the meals). */
+const itemsOf = (content) => (content.kind === 'workout' ? content.days.flatMap((d) => d.items) : content.meals.flatMap((m) => m.items));
+
+/**
+ * Checks of the plan content that need the live settings (M24-FR-62): at most gym_manage.plan_max_items
+ * per workout day or meal, at most gym_manage.diet_max_meals meals, and day keys, meal refs and item
+ * refs unique in the plan (ticks stay attached to refs across versions). The shape is the zod schema's.
+ * → [{ field, message }].
+ */
+function planContentErrors(content, { maxItems, maxMeals }) {
+  const workout = content.kind === 'workout';
+  const groups = workout
+    ? content.days.map((d, i) => ({ path: `content.days[${i}]`, keyField: 'key', key: d.key, items: d.items }))
+    : content.meals.map((m, i) => ({ path: `content.meals[${i}]`, keyField: 'ref', key: m.ref, items: m.items }));
+  const errors = [];
+  if (!workout && groups.length > maxMeals) errors.push({ field: 'content.meals', message: `At most ${maxMeals} meals` });
+  const keys = new Set();
+  const refs = new Set();
+  for (const g of groups) {
+    if (keys.has(g.key)) errors.push({ field: `${g.path}.${g.keyField}`, message: 'Must be unique in the plan' });
+    keys.add(g.key);
+    if (g.items.length > maxItems) errors.push({ field: `${g.path}.items`, message: `At most ${maxItems} items` });
+    g.items.forEach((item, j) => {
+      if (refs.has(item.ref)) errors.push({ field: `${g.path}.items[${j}].ref`, message: 'Must be unique in the plan' });
+      refs.add(item.ref);
+    });
+  }
+  return errors;
+}
+
+/** The item refs a member may tick on a date: that day's exercises, or every item of the diet chart; null outside the assignment. */
+function itemRefsFor(content, { date, startsOn, endsOn = null }) {
+  if (content.kind === 'diet') return date < startsOn || (endsOn && date > endsOn) ? null : new Set(itemsOf(content).map((i) => i.ref));
+  const index = dayIndexFor({ date, startsOn, endsOn, days: content.days.length });
+  return index === null ? null : new Set(content.days[index].items.map((i) => i.ref));
+}
+
+/** M24-FR-65: a tick is for today or up to gym_manage.plan_log_back_days back, inside the assignment. */
+function logWindowBlock({ localDate, today, backDays, startsOn, endsOn = null }) {
+  if (localDate > today || localDate < addDays(today, -backDays) || localDate < startsOn || (endsOn && localDate > endsOn)) return 'GYM_PLAN_LOG_WINDOW';
+  return null;
+}
+
+/** The latest log per (date, item): rows newest first → Map('date|ref' → row) (append-only; the latest wins). */
+function latestLogs(rows) {
+  const out = new Map();
+  for (const r of rows) {
+    const k = `${r.localDate}|${r.itemRef}`;
+    if (!out.has(k)) out.set(k, r);
+  }
+  return out;
+}
+
+/** A member ticks only an active assignment of a gym they are still linked to and have not left (M24-FR-67). */
+const planReadOnly = ({ assignmentStatus, linked, memberStatus }) => assignmentStatus !== 'active' || !linked || ['left', 'removed'].includes(memberStatus);
+
 module.exports = {
+  entranceToken,
+  parseEntranceToken,
+  secondsLeft,
+  PLAN_KINDS,
+  dayIndexFor,
+  weekOf,
+  itemsOf,
+  planContentErrors,
+  itemRefsFor,
+  logWindowBlock,
+  latestLogs,
+  planReadOnly,
   PROVIDER_METHODS,
   monthsBetween,
   addMonths,

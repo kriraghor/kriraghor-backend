@@ -46,6 +46,7 @@ const gmImport = z.object({ importId: uuid, gymId: uuid, rowsOk: z.number().int(
 // M24 prompt 2: SMS (add-on, prompt 3b) only when an event carries { billingRef } (§6.7); counts, subscriptions, invoices, referrals, overrides.
 const gmSms = z.object({ billingRef: uuid }).nullable();
 const gmCount = z.number().int().nonnegative();
+const gmPlan = z.object({ assignmentId: uuid, planId: uuid, version: z.number().int().positive(), kind: z.enum(['workout', 'diet']), memberId: uuid, gymId: uuid, userId: uuid.nullable() });
 const gmSub = z.object({ subscriptionId: uuid, ownerId: uuid, invoiceId: uuid.nullable(), number: z.string().max(24).nullable() });
 const gmInvoice = z.object({ invoiceId: uuid, number: z.string().max(24), ownerId: uuid, total: poisha, dueAt: iso, period: z.string().regex(/^\d{4}-\d{2}$/).nullable() });
 const gmReferral = z.object({ referralId: uuid, gymId: uuid, ownerId: uuid, memberId: uuid, amount: poisha, source: z.enum(['setting', 'owner_override', 'gym_override']) });
@@ -564,6 +565,17 @@ const EVENTS = {
   'gym_referral.voided': { module: 'M24', version: 1, schema: gmReferral.extend({ reason: z.string().max(40) }) },
   'gym_fee_override.set': { module: 'M24', version: 1, schema: gmOverride },
   'gym_fee_override.ended': { module: 'M24', version: 1, schema: gmOverride.extend({ reason: z.string().max(40) }) },
+
+  // ---------------- M24 Gym management, prompt 3 (§2.2): plans and diet charts, trainer assignment.
+  // Join requests reuse gym_link.requested / .accepted / .declined / .cancelled / .expired (direction join_request).
+  'gym_plan.assigned': { module: 'M24', version: 1, schema: gmPlan },
+  'gym_plan.updated': { module: 'M24', version: 1, schema: gmPlan.extend({ previousVersion: z.number().int().positive() }) },
+  'gym_plan.ended': { module: 'M24', version: 1, schema: gmPlan.extend({ reason: z.enum(['replaced', 'ended', 'end_date', 'member_removed']) }) },
+  'gym_member.trainer_assigned': {
+    module: 'M24',
+    version: 1,
+    schema: gmMember.extend({ businessMemberId: uuid.nullable(), previousBusinessMemberId: uuid.nullable(), reason: z.enum(['assigned', 'cleared', 'staff_removed', 'permissions_removed']) }),
+  },
 };
 /** FR-19: `<aggregate>.<past_tense_verb>`, snake_case. Irregular past tenses are listed. */
 const IRREGULAR = new Set(['sent', 'paid', 'held', 'won', 'lost', 'made', 'begun', 'done', 'drawn', 'shown', 'thrown', 'given', 'taken', 'built', 'set', 'put', 'cut', 'withdrawn', 'chosen', 'written', 'frozen', 'unfrozen', 'undone', 'seen', 'broken', 'sold', 'told', 'found', 'left', 'met', 'read', 'run', 'spent', 'struck', 'hidden', 'unhidden']);

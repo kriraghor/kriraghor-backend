@@ -50,9 +50,10 @@ async function phoneTaken(gymId, hash, { exceptId = null, transaction } = {}) {
 
 /**
  * Create a member inside a transaction that holds the settings row lock (member codes). Used by the
- * desk add and the import. Publishes gym_member.added.
+ * desk add, the import and an accepted join request (source platform, already linked to the requester:
+ * `userId`, M24-FR-17). Publishes gym_member.added.
  */
-async function createIn(transaction, { gym, settings, input, source, actor, today, importId = null, code = null }) {
+async function createIn(transaction, { gym, settings, input, source, actor, today, importId = null, code = null, userId = null }) {
   const phone = phoneOf(input.phone);
   const hash = c.phoneHash(phone);
   const taken = await phoneTaken(gym.id, hash, { transaction });
@@ -76,6 +77,8 @@ async function createIn(transaction, { gym, settings, input, source, actor, toda
           emergencyContactEnc: input.emergencyContact ? c.enc(JSON.stringify(input.emergencyContact)) : null,
           source,
           status: 'new',
+          userId,
+          linkedAt: userId ? new Date() : null,
           joinedOn: input.joinedOn ?? today,
           importId,
           createdBy: actor?.id ?? null,
@@ -92,7 +95,7 @@ async function createIn(transaction, { gym, settings, input, source, actor, toda
     throw err;
   }
   if (input.notes) await GymMemberNote.create({ memberId: m.id, gymId: gym.id, body: input.notes, byUser: actor.id }, { transaction });
-  await c.publish(transaction, 'gym_member.added', 'gym_member', m.id, { memberId: m.id, gymId: gym.id, ownerId: gym.ownerId, source, linked: false, by: actor?.id ?? null }, actor);
+  await c.publish(transaction, 'gym_member.added', 'gym_member', m.id, { memberId: m.id, gymId: gym.id, ownerId: gym.ownerId, source, linked: Boolean(userId), by: actor?.id ?? null }, actor);
   return m;
 }
 
@@ -138,7 +141,7 @@ const LIST_SQL = `
   SELECT * FROM x WHERE %WHERE% ORDER BY display_name ASC, id ASC LIMIT :limit`;
 
 /** One list row (amounts only for callers who may collect fees). */
-function listItem(r, { today, money }) {
+function listItem(r, { today, money, trainers }) {
   const member = {
     id: r.id,
     gymId: r.gym_id,
@@ -159,15 +162,20 @@ function listItem(r, { today, money }) {
       : null,
     flags: { due: Number(r.outstanding) > 0, overdue: Boolean(r.overdue) },
     lastCheckInOn: r.last_date ?? null,
+    trainer: trainerRef(r.trainer_business_member_id, trainers),
     ...(money ? { outstandingPoisha: Number(r.outstanding) } : {}),
   };
 }
 
-/** GET /manage/gyms/:gymId/members?status&due&overdue&expiring&frozen&notSeen&packageId&linked&q&cursor&limit. */
+/** The assigned trainer as lists and profiles show it (a stale id, e.g. staff removed, still shows without a name). */
+const trainerRef = (businessMemberId, trainers) => (businessMemberId ? { businessMemberId, displayName: trainers.get(businessMemberId) ?? null } : null);
+const trainerNames = async (gymId) => new Map((await c.trainersOf(gymId)).map((x) => [x.businessMemberId, x.displayName]));
+
+/** GET /manage/gyms/:gymId/members?status&due&overdue&expiring&frozen&notSeen&packageId&linked&trainerId&q&cursor&limit. */
 async function list(principal, gymId, query = {}) {
   const a = await c.gymAccess(principal, gymId, null, { anyOf: SEE });
   const today = c.today();
-  const { status, due, overdue, expiring, frozen, notSeen, packageId, linked, q, cursor, limit = 25 } = query;
+  const { status, due, overdue, expiring, frozen, notSeen, packageId, linked, trainerId, q, cursor, limit = 25 } = query;
   const where = [];
   const rep = { gymId, today, limit: limit + 1 };
   if (status === 'removed' && !a.owner) c.needs(a, 'owner.only');
@@ -196,6 +204,11 @@ async function list(principal, gymId, query = {}) {
     rep.packageId = packageId;
   }
   if (linked !== undefined) where.push(linked ? 'user_id IS NOT NULL' : 'user_id IS NULL');
+  if (trainerId) {
+    // M24-FR-23: the trainer filter (a trainer-only caller is already scoped to themselves).
+    where.push('trainer_business_member_id = :trainerId');
+    rep.trainerId = trainerId;
+  }
   if (q) {
     const phone = normalizePhone(q);
     rep.q = q;
@@ -213,7 +226,8 @@ async function list(principal, gymId, query = {}) {
   const rows = await sequelize.query(LIST_SQL.replace('%WHERE%', where.join(' AND ')), { replacements: rep, type: QueryTypes.SELECT });
   const page = rows.slice(0, limit);
   const money = a.can('fees.collect');
-  return c.shown(a, { items: page.map((r) => listItem(r, { today, money })), nextCursor: rows.length > limit ? c.cursorOf([page.at(-1).display_name, page.at(-1).id]) : null });
+  const trainers = page.some((r) => r.trainer_business_member_id) ? await trainerNames(gymId) : new Map();
+  return c.shown(a, { items: page.map((r) => listItem(r, { today, money, trainers })), nextCursor: rows.length > limit ? c.cursorOf([page.at(-1).display_name, page.at(-1).id]) : null });
 }
 
 // ---------------------------------------------------------------- profile
@@ -247,11 +261,12 @@ async function profile(a, m, today) {
       version: m.version,
       createdAt: c.iso(m.createdAt),
       notesCount,
+      trainer: trainerRef(m.trainerBusinessMemberId, m.trainerBusinessMemberId ? await trainerNames(m.gymId) : new Map()),
     },
     link: { linked: Boolean(m.userId), linkedAt: c.iso(m.linkedAt), unlinkedAt: c.iso(m.unlinkedAt), pendingInvite: pending ? { id: pending.id, expiresAt: c.iso(pending.expiresAt), accountKnown: Boolean(pending.userId) } : null },
     memberships: mss.map((ms) => view.membershipView(ms, { today, freezes: freezes.filter((f) => f.membershipId === ms.id), dueId: dueByMs.get(ms.id) ?? null })),
     dues: dueRows.map((d) => view.dueView(d, { today, payments: payments.filter((p) => p.dueId === d.id), names, money })),
-    can: { edit, collect: money, adjust: a.can('fees.adjust'), revealPhone: edit, remove: a.owner },
+    can: { edit, collect: money, adjust: a.can('fees.adjust'), revealPhone: edit, remove: a.owner, assignTrainer: edit, plans: a.can('plans.manage') },
   };
 }
 
@@ -364,6 +379,8 @@ async function removeIn(transaction, { m, reason, actor, by, today }) {
   await GymDue.update({ status: 'void', voidedAt: new Date(), voidReason: 'member_removed' }, { where: { memberId: m.id, status: ['unpaid', 'partial'] }, transaction });
   for (const d of openDues) await require('./dues.service').cancelLinksIn(transaction, { dueId: d.id });
   await GymLinkRequest.update({ status: 'cancelled', decidedAt: new Date(), decidedBy: by }, { where: { memberId: m.id, status: 'pending' }, transaction });
+  // §8.8: a removed member's plans end (the logs stay with the gym).
+  await require('./plans.service').endForMemberIn(transaction, { member: m, reason: 'member_removed', actor });
   await m.reload({ transaction });
   await m.update({ status: 'removed', removedAt: new Date(), removedReason: reason, leftOn: null, leftReason: null, version: m.version + 1, updatedBy: by }, { transaction });
   await c.publish(transaction, 'gym_member.removed', 'gym_member', m.id, { memberId: m.id, gymId: m.gymId, ownerId: m.ownerId, by }, actor);

@@ -21,6 +21,14 @@
  *   meDues         /me/gym-dues              my outstanding dues and paying one (gate join_gym)
  *   adminRouter    owners, owner detail, invoices, void (step-up escrow.manage), founding partner and fee
  *                  overrides (master, step-up settings.write)
+ * Prompt 3 (public site, member area, plans):
+ *   manageRouter   join requests accept (IK) and decline; trainers and the member's trainer; plans and diet
+ *                  charts (list, create, read, edit, retire, assign, end) and a member's plans; the
+ *                  entrance tablet token (no-store)
+ *   meJoins        /me/gym-join-requests     ask to join a live gym (gate join_gym)
+ *   meRequests     … and cancel my pending join request
+ *   mePlans        /me/gym-plans             today's workout and meals, the week, one plan, ticks
+ *   meCheckins     /me/gym-checkins          scan the entrance QR (gate join_gym)
  */
 const express = require('express');
 const { Router } = express;
@@ -43,6 +51,9 @@ const reminders = require('./reminders.service');
 const reports = require('./reports.service');
 const invoices = require('./invoices.service');
 const fees = require('./fees.service');
+const joins = require('./joins.service');
+const trainers = require('./trainers.service');
+const plans = require('./plans.service');
 
 const params = (schema) => validate(schema, 'params');
 const query = (schema) => validate(schema, 'query');
@@ -92,6 +103,11 @@ g.post('/checkins', validate(s.checkinBody), async (req, res) => {
   res.status(r.status).json(r.body);
 });
 g.get('/checkins', query(s.dayQuery), async (req, res) => res.json(await checkins.day(req.user, P(req), req.validQuery)));
+// Prompt 3: the entrance tablet's rotating token (M24-FR-51).
+g.get('/entrance-token', async (req, res) => {
+  noStore(res);
+  res.json(await checkins.entranceToken(req.user, P(req)));
+});
 
 // Members.
 g.get('/members', query(s.membersQuery), async (req, res) => res.json(await members.list(req.user, P(req), req.validQuery)));
@@ -115,10 +131,28 @@ g.get('/members/:memberId/attendance', mp, query(s.monthQuery), async (req, res)
 g.put('/members/:memberId/photo', mp, raw, async (req, res) => res.json(await members.setPhoto(req.user, P(req), M(req), { contentType: req.get('content-type'), body: req.body }, req)));
 g.get('/members/:memberId/photo', mp, async (req, res) => sendFile(res, await members.getPhoto(req.user, P(req), M(req))));
 g.post('/members/:memberId/memberships', mp, validate(s.assignBody), ik('membership_assign'), async (req, res) => res.status(201).json(await ms.assign(req.user, P(req), M(req), req.body, req)));
+// Prompt 3: trainers (M24-FR-21) and a member's plans (FR-66).
+g.get('/trainers', async (req, res) => res.json(await trainers.list(req.user, P(req))));
+g.put('/members/:memberId/trainer', mp, validate(s.trainerBody), async (req, res) => res.json(await trainers.assign(req.user, P(req), M(req), req.body, req)));
+g.get('/members/:memberId/plans', mp, async (req, res) => res.json(await plans.memberPlans(req.user, P(req), M(req))));
 
-// Requests (gym invites; join requests in prompt 3).
+// Requests: join requests (prompt 3, M24-FR-16, FR-17) and gym invites.
+const rp = params(s.requestParam);
 g.get('/requests', query(s.requestsQuery), async (req, res) => res.json(await links.listForGym(req.user, P(req), req.validQuery)));
-g.post('/requests/:requestId/cancel', params(s.requestParam), async (req, res) => res.json(await links.cancel(req.user, P(req), req.params.requestId, req)));
+g.post('/requests/:requestId/accept', rp, validate(s.joinAcceptBody), ik('join_accept'), async (req, res) => res.json(await joins.accept(req.user, P(req), req.params.requestId, req.body, req)));
+g.post('/requests/:requestId/decline', rp, validate(s.joinDeclineBody), async (req, res) => res.json(await joins.decline(req.user, P(req), req.params.requestId, req.body, req)));
+g.post('/requests/:requestId/cancel', rp, async (req, res) => res.json(await links.cancel(req.user, P(req), req.params.requestId, req)));
+
+// Prompt 3: workout plans and diet charts (M24-FR-62 to FR-64).
+const pp = params(s.planParam);
+const PL = (req) => req.params.planId;
+g.get('/plans', query(s.plansQuery), async (req, res) => res.json(await plans.list(req.user, P(req), req.validQuery)));
+g.post('/plans', validate(s.planBody), async (req, res) => res.status(201).json(await plans.create(req.user, P(req), req.body, req)));
+g.get('/plans/:planId', pp, async (req, res) => res.json(await plans.get(req.user, P(req), PL(req))));
+g.patch('/plans/:planId', pp, validate(s.planPatch), async (req, res) => res.json(await plans.update(req.user, P(req), PL(req), req.body, req)));
+g.post('/plans/:planId/retire', pp, async (req, res) => res.json(await plans.retire(req.user, P(req), PL(req), req)));
+g.post('/plans/:planId/assign', pp, validate(s.planAssignBody), async (req, res) => res.status(201).json(await plans.assign(req.user, P(req), PL(req), req.body, req)));
+g.post('/plan-assignments/:assignmentId/end', params(s.assignmentParam), async (req, res) => res.json(await plans.end(req.user, P(req), req.params.assignmentId, req)));
 
 // Memberships.
 const msp = params(s.membershipParam);
@@ -165,7 +199,7 @@ g.put('/import-consent', validate(s.consentBody), async (req, res) => res.json(a
 
 // ---------------- public
 const pricingRouter = Router();
-pricingRouter.get('/pricing', (req, res) => res.json(billing.pricing()));
+pricingRouter.get('/pricing', async (req, res) => res.json(await billing.pricing()));
 
 const receiptRouter = Router();
 receiptRouter.get('/:token', params(s.tokenParam), async (req, res) => {
@@ -195,6 +229,28 @@ meRequests.use(authenticate);
 meRequests.get('/', query(s.meRequestsQuery), async (req, res) => res.json(await links.mine(req.user, req.validQuery)));
 meRequests.post('/:requestId/accept', requireGate('join_gym'), params(s.meRequestParam), async (req, res) => res.json(await links.accept(req.user, req.params.requestId, req)));
 meRequests.post('/:requestId/decline', params(s.meRequestParam), async (req, res) => res.json(await links.decline(req.user, req.params.requestId, req)));
+meRequests.post('/:requestId/cancel', params(s.meRequestParam), async (req, res) => res.json(await joins.cancelMine(req.user, req.params.requestId, req)));
+
+// Prompt 3: ask to join a gym (gate join_gym; M24-FR-16).
+const meJoins = Router();
+meJoins.use(authenticate);
+meJoins.post('/', requireGate('join_gym'), validate(s.joinRequestBody), async (req, res) => res.status(201).json(await joins.create(req.user, req.body, req)));
+
+// Prompt 3: my plans and diet charts (M24-FR-65 to FR-69).
+const mePlans = Router();
+mePlans.use(authenticate);
+const mpl = params(s.mePlanParam);
+mePlans.get('/', async (req, res) => res.json(await plans.myPlans(req.user)));
+mePlans.get('/:assignmentId', mpl, async (req, res) => res.json(await plans.myPlan(req.user, req.params.assignmentId)));
+mePlans.post('/:assignmentId/logs', mpl, validate(s.planLogBody), async (req, res) => res.status(201).json(await plans.addLog(req.user, req.params.assignmentId, req.body, req)));
+
+// Prompt 3: scan the entrance QR (gate join_gym; M24-FR-51).
+const meCheckins = Router();
+meCheckins.use(authenticate);
+meCheckins.post('/', requireGate('join_gym'), validate(s.meCheckinBody), async (req, res) => {
+  const r = await checkins.memberCheckIn(req.user, req.body, req);
+  res.status(r.status).json(r.body);
+});
 
 const meMemberships = Router();
 meMemberships.use(authenticate);
@@ -237,4 +293,4 @@ adminRouter.post('/fee-overrides/:overrideId/end', requireMaster, params(s.overr
   res.json(await fees.endOverride(req.user, req.params.overrideId, req.body, req))
 );
 
-module.exports = { manageRouter, pricingRouter, receiptRouter, payRouter, meDues, meRequests, meMemberships, meReceipts, adminRouter };
+module.exports = { manageRouter, pricingRouter, receiptRouter, payRouter, meDues, meRequests, meJoins, mePlans, meCheckins, meMemberships, meReceipts, adminRouter };

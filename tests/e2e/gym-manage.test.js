@@ -788,8 +788,8 @@ describe('jobs, run twice (FR-31, FR-39, §10)', () => {
     await bf.update({ fromOn: gm.inDays(-3), toOn: gm.inDays(-1) });
     await models.GymFreeze.update({ fromOn: gm.today() }, { where: { membershipId: c3.membership.id } });
     const first = await jobs.daily();
-    expect(first).toEqual({ freezesStarted: 1, freezesEnded: 1, expired: 1, started: 1 });
-    expect(await jobs.daily()).toEqual({ freezesStarted: 0, freezesEnded: 0, expired: 0, started: 0 });
+    expect(first).toEqual({ freezesStarted: 1, freezesEnded: 1, expired: 1, started: 1, plansEnded: 0 });
+    expect(await jobs.daily()).toEqual({ freezesStarted: 0, freezesEnded: 0, expired: 0, started: 0, plansEnded: 0 });
     expect((await models.GymMembership.findByPk(a.membership.id)).status).toBe('expired');
     expect((await models.GymMembership.findByPk(renewed.id)).status).toBe('active');
     expect((await models.GymMember.findByPk(a.member.id)).status).toBe('active');

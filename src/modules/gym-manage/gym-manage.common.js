@@ -17,6 +17,7 @@ const settings = require('../settings').settings;
 const events = require('../events').events;
 const audit = require('../audit').audit;
 const access = require('../business-members').access;
+const staffFacade = require('../business-members').members;
 const gymFacade = require('../gym').gyms;
 const directory = require('../users').directory;
 const rules = require('./gym-manage.rules');
@@ -24,7 +25,7 @@ const rules = require('./gym-manage.rules');
 const ERRORS = {
   GYM_MEMBER_PHONE_TAKEN: [409, 'Another member of this gym has this phone'],
   GYM_MEMBER_STATE: [409, 'The member cannot do that in their current state'],
-  GYM_LINK_REQUEST_PENDING: [409, 'A pending invite already exists for this member'],
+  GYM_LINK_REQUEST_PENDING: [409, 'A pending invite or join request already exists'],
   GYM_LINK_REQUEST_STATE: [409, 'This request is no longer pending'],
   GYM_ALREADY_LINKED: [409, 'This member or account is already linked'],
   GYM_PACKAGE_UNAVAILABLE: [422, 'Choose an active package sold at the desk'],
@@ -61,6 +62,12 @@ const ERRORS = {
   GYM_FOUNDING_FULL: [409, 'All founding partner places are taken'],
   GYM_OVERRIDE_ACTIVE: [409, 'End the current override for this scope and fee first'],
   GYM_OVERRIDE_OUT_OF_BOUNDS: [422, 'The value is outside the fee setting’s bounds'],
+  // Prompt 3 (§9.4): join requests, trainers, plans and diet charts.
+  GYM_JOIN_NOT_OPEN: [409, 'This gym is not taking join requests right now'],
+  GYM_TRAINER_INVALID: [422, 'Choose a staff member of this gym who trains members or writes plans'],
+  GYM_PLAN_ASSIGN_SCOPE: [403, 'You can only give plans to members you can see'],
+  GYM_PLAN_STATE: [409, 'The plan cannot do that in its current state'],
+  GYM_PLAN_LOG_WINDOW: [422, 'You can tick today and a few days back only'],
 };
 const fail = (code, meta, detail) => new AppError(ERRORS[code][0], code, ERRORS[code][1], { ...(meta ? { meta } : {}), ...(detail ? { detail } : {}) });
 
@@ -93,6 +100,11 @@ const cfg = () => ({
   providerPassthrough: settings.get('gym_manage.online_fee_provider_passthrough'),
   providerBps: settings.get('gym_manage.online_fee_provider_bps'),
   referralMatchDays: settings.get('gym_manage.referral_match_days'),
+  // Prompt 3: the entrance tablet QR and plans (§6.12).
+  entranceQrSeconds: settings.get('gym_manage.entrance_qr_seconds'),
+  planMaxItems: settings.get('gym_manage.plan_max_items'),
+  dietMaxMeals: settings.get('gym_manage.diet_max_meals'),
+  planLogBackDays: settings.get('gym_manage.plan_log_back_days'),
 });
 
 /** The owner's invoices, founding partners and VAT (§6.6, §6.12). */
@@ -139,7 +151,7 @@ const decJson = (v) => {
   }
 };
 
-// ---------------------------------------------------------------- tokens (M24-FR-37, FR-50)
+// ---------------------------------------------------------------- tokens (M24-FR-37, FR-50, FR-51)
 
 const sign = (text) => crypto.hmac(text);
 const equal = (a, b) => crypto.timingSafeEqualHex(a, b);
@@ -152,6 +164,13 @@ const memberTokenOf = (memberId, now = new Date()) => {
   return { token: rules.memberToken({ memberId, window }, sign), expiresAt: rules.memberTokenExpiry(window, seconds).toISOString(), seconds };
 };
 const parseMemberToken = (token, now = new Date()) => rules.parseMemberToken(token, { sign, equal, nowMs: now.getTime(), seconds: cfg().memberQrSeconds });
+/** The entrance tablet QR of a gym (M24-FR-51): rotates every gym_manage.entrance_qr_seconds. */
+const entranceTokenOf = (gymId, now = new Date()) => {
+  const seconds = cfg().entranceQrSeconds;
+  const window = rules.windowOf(now.getTime(), seconds);
+  return { token: rules.entranceToken({ gymId, window }, sign), expiresAt: rules.memberTokenExpiry(window, seconds).toISOString(), seconds, secondsLeft: rules.secondsLeft(now.getTime(), seconds) };
+};
+const parseEntranceToken = (token, now = new Date()) => rules.parseEntranceToken(token, { sign, equal, nowMs: now.getTime(), seconds: cfg().entranceQrSeconds });
 
 // ---------------------------------------------------------------- events and audit
 
@@ -209,6 +228,19 @@ async function gymAccess(principal, gymId, permission, { restricted = false, fea
   const workplace = ctx.staff ? access.workplaceAt(principal, 'gym', gymId) : null;
   const trainerOnly = ctx.staff && !can('members.view') && can('members.trainer');
   return { gym, ctx, sub, can, actor: ctx.actor, owner: ctx.as === 'owner', trainerScope: trainerOnly ? workplace?.id ?? null : undefined };
+}
+
+/** The two permissions that make a staff member a trainer (M24-FR-21, §3.1). */
+const TRAINER_PERMISSIONS = Object.freeze(['members.trainer', 'plans.manage']);
+
+/**
+ * The gym's trainers: active staff holding members.trainer or plans.manage (M01 staffWith), with their
+ * display names → [{ businessMemberId, memberId, displayName, permissions }].
+ */
+async function trainersOf(gymId) {
+  const rows = await staffFacade.staffWith('gym', gymId, TRAINER_PERMISSIONS);
+  const names = await directory.displayNames(rows.map((r) => r.memberId));
+  return rows.map((r) => ({ ...r, displayName: names.get(r.memberId) ?? null }));
 }
 
 /** Assert a further permission inside a route (e.g. a discount needs fees.adjust, M24-FR-26). */
@@ -326,6 +358,8 @@ module.exports = {
   parseReceipt,
   memberTokenOf,
   parseMemberToken,
+  entranceTokenOf,
+  parseEntranceToken,
   publish,
   record,
   ensureSubscription,
@@ -333,6 +367,8 @@ module.exports = {
   requireFeature,
   refuseRestricted,
   gymAccess,
+  TRAINER_PERMISSIONS,
+  trainersOf,
   needs,
   shown,
   settingsOf,

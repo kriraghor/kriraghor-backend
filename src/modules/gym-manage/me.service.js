@@ -5,7 +5,8 @@
  * and freezes, the check-in calendar, my rotating check-in QR (linked only, no-store, FR-50), my health
  * note (encrypted, shown to the owner and plans.manage staff) and my receipts across gyms.
  * After an unlink the gym appears under "Past" with read-only receipts (FR-18): the accepted invite
- * keeps who accepted it, so past links are found without keeping the account on the member row.
+ * (or, since prompt 3, the accepted join request, which keeps member_id) keeps who it linked, so past
+ * links are found without keeping the account on the member row. Each gym lists today's plan titles.
  */
 const { Op } = require('sequelize');
 const { E } = require('../../common/errors');
@@ -20,7 +21,7 @@ const members = require('./members.service');
 /** My member rows: { current: [rows linked to me], past: [rows I linked once and unlinked] }. */
 async function myMembers(principal) {
   const current = await GymMember.findAll({ where: { userId: principal.id, status: { [Op.ne]: 'removed' } }, order: [['createdAt', 'ASC']] });
-  const accepted = await GymLinkRequest.findAll({ where: { userId: principal.id, status: 'accepted', direction: 'gym_invite' }, attributes: ['memberId'] });
+  const accepted = await GymLinkRequest.findAll({ where: { userId: principal.id, status: 'accepted', direction: ['gym_invite', 'join_request'], memberId: { [Op.ne]: null } }, attributes: ['memberId'] });
   const pastIds = [...new Set(accepted.map((r) => r.memberId))].filter((id) => !current.some((m) => m.id === id));
   const past = pastIds.length ? await GymMember.findAll({ where: { id: pastIds, status: { [Op.ne]: 'removed' }, [Op.or]: [{ userId: null }, { userId: { [Op.ne]: principal.id } }] } }) : [];
   return { current, past };
@@ -42,6 +43,7 @@ async function list(principal) {
   const all = [...current.map((m) => ({ m, linked: true })), ...past.map((m) => ({ m, linked: false }))];
   const items = [];
   const online = new Map();
+  const titles = await require('./plans.service').todayTitles(current.map((m) => m.id));
   for (const { m, linked } of all) {
     if (!online.has(m.gymId)) {
       const g = await gymFacade.get(m.gymId);
@@ -58,7 +60,7 @@ async function list(principal) {
       outstandingPoisha: linked ? open.reduce((s, d) => s + rules.dueState({ amount: d.amountPoisha, paid: d.paidPoisha, waived: d.waivedPoisha }).outstanding, 0) : 0,
       // M24-FR-41: the gym takes fees online now (owner documents, plan, not restricted).
       onlineFees: linked && online.get(m.gymId),
-      plans: null,
+      plans: linked ? (titles.get(m.id) ?? []) : [],
     });
   }
   return { items };

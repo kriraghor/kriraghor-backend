@@ -9,7 +9,8 @@
  *  - The invitee accepts (gate join_gym) or declines in /me/gym-requests; the gym may cancel.
  *  - Unlink by the member or the gym: the record stays, user_id is cleared, unlinked_at set.
  *  - Pending requests past expires_at expire (job gym-manage.requests-expire).
- * Join requests from the gym's page (direction join_request) come in prompt 3.
+ * Join requests from the gym's page (direction join_request, prompt 3) live in joins.service; the gym's
+ * requests list and the member's /me/gym-requests here show both directions.
  */
 const { Op, UniqueConstraintError } = require('sequelize');
 const { E } = require('../../common/errors');
@@ -17,6 +18,7 @@ const { normalizePhone } = require('../../common/identifiers');
 const { sequelize, GymMember, GymLinkRequest } = require('../../models');
 const directory = require('../users').directory;
 const gymFacade = require('../gym').gyms;
+const packagesFacade = require('../gym').packages;
 const c = require('./gym-manage.common');
 const view = require('./gym-manage.serializer');
 
@@ -81,12 +83,33 @@ async function invite(principal, gymId, memberId, { phone, username } = {}, req)
   return { request: view.requestView(row.r, { member: row.m }) };
 }
 
-/** GET /manage/gyms/:gymId/requests?status&direction (members.view). */
+/** Packages by id (the join requests' "package asked for"). */
+async function packagesById(ids) {
+  const out = new Map();
+  for (const id of new Set(ids.filter(Boolean))) out.set(id, await packagesFacade.get(id));
+  return out;
+}
+
+/**
+ * The gym's view of requests: invites with the member they name; join requests with who asks (display
+ * name, account photo, last 4 digits of the verified phone), the package asked for and the note.
+ */
+async function gymViews(rows) {
+  const members = new Map((await GymMember.findAll({ where: { id: rows.map((r) => r.memberId).filter(Boolean) } })).map((m) => [m.id, m]));
+  const joinUsers = rows.filter((r) => r.direction === 'join_request').map((r) => r.userId);
+  const [names, contacts, pkgs] = await Promise.all([directory.publicNames(joinUsers), directory.contactFor(joinUsers), packagesById(rows.map((r) => r.packageId))]);
+  return rows.map((r) => {
+    const phone = contacts.get(r.userId)?.phone ?? null;
+    const requester = r.direction === 'join_request' ? { displayName: names.get(r.userId)?.displayName ?? null, avatarUrl: names.get(r.userId)?.avatarUrl ?? null, phoneLast4: phone ? phone.slice(-4) : null } : null;
+    return view.requestView(r, { member: members.get(r.memberId) ?? null, requester, pkg: pkgs.get(r.packageId) ?? null });
+  });
+}
+
+/** GET /manage/gyms/:gymId/requests?status&direction (members.view): join requests and gym invites. */
 async function listForGym(principal, gymId, { status, direction } = {}) {
   await c.gymAccess(principal, gymId, 'members.view');
   const rows = await GymLinkRequest.findAll({ where: { gymId, status: status ?? 'pending', ...(direction ? { direction } : {}) }, order: [['createdAt', 'DESC']], limit: 200 });
-  const members = new Map((await GymMember.findAll({ where: { id: rows.map((r) => r.memberId).filter(Boolean) } })).map((m) => [m.id, m]));
-  return { items: rows.map((r) => view.requestView(r, { member: members.get(r.memberId) ?? null })) };
+  return { items: await gymViews(rows) };
 }
 
 async function decide(r, status, by, transaction) {
@@ -132,23 +155,40 @@ async function unlinkByGym(principal, gymId, memberId, req) {
 
 // ---------------------------------------------------------------- the member's side (/me/gym-requests)
 
-/** GET /me/gym-requests?status: invites to me (pending by default), with what the gym will see. */
-async function mine(principal, { status } = {}) {
-  const rows = await GymLinkRequest.findAll({ where: { userId: principal.id, direction: 'gym_invite', status: status ?? 'pending' }, order: [['createdAt', 'DESC']], limit: 100 });
-  const members = new Map((await GymMember.findAll({ where: { id: rows.map((r) => r.memberId) }, attributes: ['id', 'memberCode', 'displayName'] })).map((m) => [m.id, m]));
-  const gyms = new Map();
-  for (const r of rows) if (!gyms.has(r.gymId)) gyms.set(r.gymId, await gymFacade.get(r.gymId));
+/** A request as its account sees it: an invite to me, or my own join request (M24-FR-15, FR-16). */
+function myView(r, { gym, member = null, pkg = null }) {
+  const join = r.direction === 'join_request';
   return {
-    items: rows.map((r) => {
-      const g = gyms.get(r.gymId);
-      const m = members.get(r.memberId);
-      return { id: r.id, direction: r.direction, status: r.status, gym: g ? { id: g.id, name: g.name, slug: g.slug } : null, memberCode: m?.memberCode ?? null, displayName: m?.displayName ?? null, shares: SHARES, expiresAt: c.iso(r.expiresAt), createdAt: c.iso(r.createdAt) };
-    }),
+    id: r.id,
+    direction: r.direction,
+    status: r.status,
+    gym: gym ? { id: gym.id, name: gym.name, slug: gym.slug } : null,
+    // An invite names the gym's record; a join request has none until the gym accepts.
+    memberCode: join ? null : (member?.memberCode ?? null),
+    displayName: join ? null : (member?.displayName ?? null),
+    shares: SHARES,
+    package: join && pkg ? { id: pkg.id, title: pkg.title, kind: pkg.kind } : null,
+    note: join ? (r.note ?? null) : null,
+    memberId: join ? (r.memberId ?? null) : null,
+    canCancel: join && r.status === 'pending',
+    expiresAt: c.iso(r.expiresAt),
+    createdAt: c.iso(r.createdAt),
   };
 }
 
+/** GET /me/gym-requests?status&direction: invites to me and my join requests (pending by default). */
+async function mine(principal, { status, direction } = {}) {
+  const rows = await GymLinkRequest.findAll({ where: { userId: principal.id, status: status ?? 'pending', ...(direction ? { direction } : {}) }, order: [['createdAt', 'DESC']], limit: 100 });
+  const members = new Map((await GymMember.findAll({ where: { id: rows.map((r) => r.memberId).filter(Boolean) }, attributes: ['id', 'memberCode', 'displayName'] })).map((m) => [m.id, m]));
+  const gyms = new Map();
+  for (const r of rows) if (!gyms.has(r.gymId)) gyms.set(r.gymId, await gymFacade.get(r.gymId));
+  const pkgs = await packagesById(rows.map((r) => r.packageId));
+  return { items: rows.map((r) => myView(r, { gym: gyms.get(r.gymId), member: members.get(r.memberId), pkg: pkgs.get(r.packageId) ?? null })) };
+}
+
+/** A pending invite to me (accept and decline answer the gym's invites only; my own join requests are cancelled instead). */
 async function myPending(principal, requestId, transaction) {
-  const r = await GymLinkRequest.findOne({ where: { id: requestId, userId: principal.id }, transaction, lock: transaction.LOCK.UPDATE });
+  const r = await GymLinkRequest.findOne({ where: { id: requestId, userId: principal.id, direction: 'gym_invite' }, transaction, lock: transaction.LOCK.UPDATE });
   if (!r) throw E.notFound('Request');
   if (r.status !== 'pending' || r.expiresAt <= new Date()) throw fail('GYM_LINK_REQUEST_STATE', { status: r.status === 'pending' ? 'expired' : r.status });
   return r;
@@ -244,4 +284,4 @@ async function inviteMany(transaction, { gym, members, actor, by, now = new Date
   return sent;
 }
 
-module.exports = { SHARES, invite, listForGym, cancel, unlinkIn, unlinkByGym, mine, accept, decline, unlinkByMember, attachOnPhoneVerified, expireDue, inviteMany };
+module.exports = { SHARES, packagesById, gymViews, myView, invite, listForGym, cancel, unlinkIn, unlinkByGym, mine, accept, decline, unlinkByMember, attachOnPhoneVerified, expireDue, inviteMany };

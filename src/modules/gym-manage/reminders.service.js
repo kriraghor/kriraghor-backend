@@ -181,7 +181,7 @@ async function morningCounts(gymId, today, absentDays) {
        (SELECT COUNT(*) FROM gym_members m WHERE m.gym_id = :gymId AND m.status = 'active'
            AND EXISTS (SELECT 1 FROM gym_memberships cm WHERE cm.member_id = m.id AND cm.status = 'active' AND cm.starts_on <= :seenSince)
            AND NOT EXISTS (SELECT 1 FROM gym_attendance a WHERE a.member_id = m.id AND a.counted AND a.local_date > :seenSince))::int AS "notSeen",
-       (SELECT COUNT(*) FROM gym_link_requests WHERE gym_id = :gymId AND status = 'pending')::int AS "requestsWaiting"`,
+       (SELECT COUNT(*) FROM gym_link_requests WHERE gym_id = :gymId AND status = 'pending' AND direction = 'join_request')::int AS "requestsWaiting"`,
     { replacements: { gymId, today, seenSince: rules.addDays(today, -absentDays) }, type: QueryTypes.SELECT }
   );
   return row;

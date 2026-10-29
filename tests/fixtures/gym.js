@@ -35,12 +35,12 @@ async function gymOwner(docsReviewer, name = 'Iron Yard Fitness') {
   return f.refresh(m);
 }
 
-/** A gym ready for review: basics, three photos, hours and packages. */
-async function readyGym(owner, { name = 'Iron Yard Banani', area = 'banani', hours = ALL_DAY, packages = IRON_YARD, capacity = null } = {}) {
+/** A gym ready for review: basics (a map pin with lat and lng, M24 prompt 3), three photos, hours and packages. */
+async function readyGym(owner, { name = 'Iron Yard Banani', area = 'banani', hours = ALL_DAY, packages = IRON_YARD, capacity = null, lat = null, lng = null } = {}) {
   const g = await api()
     .post(`${P}/me/gyms`)
     .set(h.bearer(owner))
-    .send({ name, areaId: await f.areaId(area), addressLine: 'House 9, Road 11, Banani, Dhaka', about: 'Free weights, squat racks and showers.', dailyCapacity: capacity })
+    .send({ name, areaId: await f.areaId(area), addressLine: 'House 9, Road 11, Banani, Dhaka', about: 'Free weights, squat racks and showers.', dailyCapacity: capacity, ...(lat !== null ? { lat, lng } : {}) })
     .expect(201);
   for (const [buf, type] of [
     [f.JPEG, 'image/jpeg'],

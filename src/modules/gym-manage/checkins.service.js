@@ -11,6 +11,10 @@
  *    override with a reason (audited gym_attendance.override).
  *  - Check-ins need the `attendance` feature (Basic and up, §3.5). Amounts show only with fees.collect.
  *  - `local_date` comes from the server clock, never the client (§12.23).
+ *  - Prompt 3, the entrance QR (M24-FR-51): the tablet at the door shows a token rotating every
+ *    gym_manage.entrance_qr_seconds; a linked member scans it (POST /me/gym-checkins, gate join_gym) and is
+ *    checked in with method entrance_qr under the same entry policy; `block` refuses with the gym's
+ *    message and no override. The desk and the entrance share one core (checkInCore).
  */
 const { Op } = require('sequelize');
 const { E } = require('../../common/errors');
@@ -18,6 +22,7 @@ const { normalizePhone } = require('../../common/identifiers');
 const { sequelize, GymMember, GymMembership, GymDue, GymAttendance } = require('../../models');
 const directory = require('../users').directory;
 const gymDesk = require('../gym').desk;
+const gymFacade = require('../gym').gyms;
 const rules = require('./gym-manage.rules');
 const c = require('./gym-manage.common');
 const view = require('./gym-manage.serializer');
@@ -104,6 +109,30 @@ async function memberFor(gymId, { memberId, token }, transaction) {
 const attendancePayload = (r) => ({ attendanceId: r.id, gymId: r.gymId, memberId: r.memberId, method: r.method, localDate: r.localDate });
 
 /**
+ * The shared check-in core (desk and entrance) on a locked member: the facts, the entry decision (a
+ * repeat the same Dhaka day is recorded, never refused again), the attendance row and its event.
+ * `block` throws 409 GYM_ENTRY_BLOCKED (built by `blocked`) unless `override` (the owner, with a
+ * reason) lets the member in; the entrance has no override and words it as the gym's message.
+ */
+async function checkInCore(transaction, { gymId, m, method, now, today, policy, byUser, actor, override = null, blocked }) {
+  if (m.status === 'left') throw fail('GYM_MEMBER_STATE', { reason: 'left' });
+  const f = await facts(m, today, { transaction });
+  const first = await GymAttendance.findOne({ where: { memberId: m.id, localDate: today, counted: true }, transaction });
+  const d = rules.entryDecision({ current: f.current, hadMembership: f.hadMembership, overdue: f.overdue, visits: f.visits, policy });
+  let decision = d.decision;
+  let overrideReason = null;
+  if (!first && decision === 'block') {
+    if (!override) throw blocked(d);
+    if (!override.reason) throw E.validation([{ field: 'reason', message: 'Say why you let this member in' }]);
+    decision = 'override';
+    overrideReason = override.reason;
+  } else if (decision === 'block') decision = first.decision;
+  const row = await GymAttendance.create({ gymId, memberId: m.id, localDate: today, checkedInAt: now, method, counted: !first, decision, reasons: d.reasons, overrideReason, byUser }, { transaction });
+  if (!first) await c.publish(transaction, 'gym_attendance.recorded', 'gym_attendance', row.id, attendancePayload(row), actor);
+  return { row, first, f, reasons: d.reasons, decision, overrideReason };
+}
+
+/**
  * POST /manage/gyms/:gymId/checkins { memberId | token, override?, reason? } (attendance.mark, feature
  * attendance; works while restricted). 201 with the desk card when counted; 200 with counted: false and
  * the first time for a repeat the same Dhaka day.
@@ -115,34 +144,86 @@ async function checkIn(principal, gymId, input, req) {
   const policy = await policyOf(gymId);
   return sequelize.transaction(async (transaction) => {
     const { m, method } = await memberFor(gymId, input, transaction);
-    if (m.status === 'left') throw fail('GYM_MEMBER_STATE', { reason: 'left' });
-    const f = await facts(m, today, { transaction });
-    const first = await GymAttendance.findOne({ where: { memberId: m.id, localDate: today, counted: true }, transaction });
-    let d = rules.entryDecision({ current: f.current, hadMembership: f.hadMembership, overdue: f.overdue, visits: f.visits, policy });
-    let decision = d.decision;
-    let overrideReason = null;
-    // A repeat the same day was already let in: it is recorded, never refused again.
-    if (!first && decision === 'block') {
-      if (!(input.override && a.owner)) throw fail('GYM_ENTRY_BLOCKED', { reasons: d.reasons, canOverride: a.owner }, `Entry refused: ${d.reasons.join(', ')}`);
-      if (!input.reason) throw E.validation([{ field: 'reason', message: 'Say why you let this member in' }]);
-      decision = 'override';
-      overrideReason = input.reason;
-    } else if (decision === 'block') decision = first.decision;
-    const row = await GymAttendance.create(
-      { gymId, memberId: m.id, localDate: today, checkedInAt: now, method, counted: !first, decision, reasons: d.reasons, overrideReason, byUser: principal.id },
-      { transaction }
-    );
-    if (!first) await c.publish(transaction, 'gym_attendance.recorded', 'gym_attendance', row.id, attendancePayload(row), a.actor);
+    const { row, first, f, reasons, decision, overrideReason } = await checkInCore(transaction, {
+      gymId,
+      m,
+      method,
+      now,
+      today,
+      policy,
+      byUser: principal.id,
+      actor: a.actor,
+      override: input.override && a.owner ? { reason: input.reason ?? null } : null,
+      blocked: (d) => fail('GYM_ENTRY_BLOCKED', { reasons: d.reasons, canOverride: a.owner }, `Entry refused: ${d.reasons.join(', ')}`),
+    });
     if (decision === 'override') {
-      await c.record({ action: 'gym_attendance.override', actor: a.actor, entityType: 'gym_member', entityId: m.id, entityCode: m.memberCode, after: { attendanceId: row.id, reasons: d.reasons }, reason: overrideReason, meta: { gymId }, req }, transaction);
+      await c.record({ action: 'gym_attendance.override', actor: a.actor, entityType: 'gym_member', entityId: m.id, entityCode: m.memberCode, after: { attendanceId: row.id, reasons }, reason: overrideReason, meta: { gymId }, req }, transaction);
     }
-    d = { reasons: d.reasons, decision: decision === 'override' ? 'allow' : decision };
     const body = await card(a, m, f, today, {
       policy,
-      decision: d,
+      decision: { reasons, decision: decision === 'override' ? 'allow' : decision },
       extra: { attendanceId: row.id, counted: !first, checkedInAt: c.iso(now), method, override: decision === 'override', firstCheckInToday: first ? c.iso(first.checkedInAt) : null },
     });
     return { status: first ? 200 : 201, body: c.shown(a, body) };
+  });
+}
+
+// ---------------------------------------------------------------- the entrance QR (M24-FR-51)
+
+/** GET /manage/gyms/:gymId/entrance-token (attendance.mark, feature attendance; no-store): the tablet's current token. */
+async function entranceToken(principal, gymId) {
+  const a = await c.gymAccess(principal, gymId, 'attendance.mark', { feature: 'attendance' });
+  await c.requireSetup(gymId);
+  return { gymId, gymName: a.gym.name, ...c.entranceTokenOf(gymId) };
+}
+
+/**
+ * POST /me/gym-checkins { token } (gate join_gym): a linked member scans the entrance QR. An unreadable,
+ * foreign or old code → 422 GYM_CHECKIN_TOKEN_INVALID; not a linked member of that gym → 403
+ * GYM_NOT_A_MEMBER; the gym's plan without check-ins → 403 GYM_TIER_REQUIRED; `block` → 409
+ * GYM_ENTRY_BLOCKED with the gym's message (no override). 201 counted, 200 a repeat the same day.
+ */
+async function memberCheckIn(principal, { token }, req) {
+  const now = new Date();
+  const parsed = c.parseEntranceToken(token, now);
+  const gym = parsed ? await gymFacade.get(parsed.gymId) : null;
+  if (!gym) throw fail('GYM_CHECKIN_TOKEN_INVALID');
+  const linked = await GymMember.findOne({ where: { gymId: gym.id, userId: principal.id, status: { [Op.ne]: 'removed' } }, attributes: ['id'] });
+  if (!linked) throw fail('GYM_NOT_A_MEMBER');
+  c.requireFeature(await c.subscriptionOf(gym.ownerId), 'attendance');
+  const today = c.today(now);
+  const policy = await policyOf(gym.id);
+  return sequelize.transaction(async (transaction) => {
+    const m = await GymMember.findByPk(linked.id, { transaction, lock: transaction.LOCK.UPDATE });
+    if (m.userId !== principal.id || m.status === 'removed') throw fail('GYM_NOT_A_MEMBER');
+    const { row, first, f, reasons, decision } = await checkInCore(transaction, {
+      gymId: gym.id,
+      m,
+      method: 'entrance_qr',
+      now,
+      today,
+      policy,
+      byUser: principal.id,
+      actor: principal,
+      blocked: (d) => fail('GYM_ENTRY_BLOCKED', { reasons: d.reasons, canOverride: false, gym: { id: gym.id, name: gym.name } }, `${gym.name}: please see the front desk.`),
+    });
+    await c.record({ action: 'gym_attendance.entrance', actor: principal, entityType: 'gym_member', entityId: m.id, entityCode: m.memberCode, after: { attendanceId: row.id, counted: !first, decision }, meta: { gymId: gym.id }, req }, transaction);
+    const cur = f.current;
+    return {
+      status: first ? 200 : 201,
+      body: {
+        attendanceId: row.id,
+        counted: !first,
+        checkedInAt: c.iso(now),
+        firstCheckInToday: first ? c.iso(first.checkedInAt) : null,
+        method: 'entrance_qr',
+        gym: { id: gym.id, name: gym.name, slug: gym.slug },
+        member: { id: m.id, memberCode: m.memberCode },
+        membership: cur ? { title: cur.title, endsOn: cur.endsOn, daysLeft: rules.daysLeft({ startsOn: cur.startsOn, endsOn: cur.endsOn, today }), status: cur.status } : null,
+        decision: decision === 'warn' ? 'warn' : 'allow',
+        reasons,
+      },
+    };
   });
 }
 
@@ -187,4 +268,4 @@ async function onPassRedeemed(payload, { transaction }) {
   return row.id;
 }
 
-module.exports = { facts, card, search, checkIn, day, onPassRedeemed };
+module.exports = { facts, card, search, checkInCore, checkIn, entranceToken, memberCheckIn, day, onPassRedeemed };

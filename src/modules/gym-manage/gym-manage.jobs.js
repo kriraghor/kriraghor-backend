@@ -5,7 +5,8 @@
  * worker serves M20 and M24). Every step re-reads its row under lock and re-checks the status, so a
  * second run the same day changes nothing (M24-FR-31, FR-39):
  *   gym-manage.daily              00:05 Dhaka  freezes start and end; upcoming → active; active → expired
- *                                              (an upcoming renewal then starts); member statuses follow
+ *                                              (an upcoming renewal then starts); member statuses follow;
+ *                                              plan assignments past ends_on → ended (prompt 3, §8.8)
  *   gym-manage.dues-overdue       00:15        unpaid or partial dues past due_on: overdue_at once and
  *                                              gym_due.overdue_marked
  *   gym-manage.requests-expire    every 15 min pending link requests past expires_at → expired
@@ -62,7 +63,7 @@ async function startUpcoming({ member, ms, transaction }, today) {
 /** gym-manage.daily: the day's membership transitions (FR-28, FR-31). */
 async function daily(now = new Date()) {
   const today = c.today(now);
-  const out = { freezesStarted: 0, freezesEnded: 0, expired: 0, started: 0 };
+  const out = { freezesStarted: 0, freezesEnded: 0, expired: 0, started: 0, plansEnded: 0 };
 
   // Freezes whose first day has come.
   for (const f of await GymFreeze.findAll({ where: { status: 'scheduled', fromOn: { [Op.lte]: today } }, attributes: ['id', 'membershipId'] })) {
@@ -109,6 +110,9 @@ async function daily(now = new Date()) {
   for (const row of await GymMembership.findAll({ where: { status: 'upcoming', startsOn: { [Op.lte]: today } }, attributes: ['id'] })) {
     if (await withMembership(row.id, (ctx) => startUpcoming(ctx, today))) out.started += 1;
   }
+
+  // Plan assignments past their end date (§8.8).
+  out.plansEnded = await require('./plans.service').endDue(now);
   return out;
 }
 

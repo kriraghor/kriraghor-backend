@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * M24 Gym Management, prompts 1 and 2 (migrations 20261113000002 and 20261114000003, §7.2): the gym's own books. Owned by the
+ * M24 Gym Management, prompts 1, 2 and 3 (migrations 20261113000002, 20261114000003 and 20261115000001, §7.2): the gym's own books. Owned by the
  * gym-manage module (gym group, ADR-007); index.js re-exports them. Encrypted columns (`*Enc`) hold
  * common/crypto.encrypt envelopes and never leave the module undecrypted except through its views.
  */
@@ -438,6 +438,64 @@ GymReferral.init(
   { sequelize, modelName: 'GymReferral', tableName: 'gym_referrals' }
 );
 
+// ---------------- prompt 3: workout plans and diet charts (§5.8, §6.10)
+class GymPlan extends Model {}
+GymPlan.init(
+  {
+    id,
+    gymId: DataTypes.UUID,
+    memberUserId: DataTypes.UUID,
+    kind: enumOf(['workout', 'diet']),
+    title: req(DataTypes.STRING(120)),
+    isTemplate: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    source: enumOf(['gym', 'ai', 'self'], { defaultValue: 'gym' }),
+    currentVersion: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
+    status: enumOf(['active', 'retired'], { defaultValue: 'active' }),
+    retiredAt: DataTypes.DATE(3),
+    ...by,
+  },
+  { sequelize, modelName: 'GymPlan', tableName: 'gym_plans' }
+);
+
+class GymPlanVersion extends Model {}
+GymPlanVersion.init(
+  { id, planId: req(DataTypes.UUID), version: req(DataTypes.INTEGER), content: req(DataTypes.JSONB), contentBytes: req(DataTypes.INTEGER), createdBy: req(DataTypes.UUID) },
+  { sequelize, modelName: 'GymPlanVersion', tableName: 'gym_plan_versions', updatedAt: false }
+);
+
+class GymPlanAssignment extends Model {}
+GymPlanAssignment.init(
+  {
+    id,
+    planId: req(DataTypes.UUID),
+    planVersionId: req(DataTypes.UUID),
+    kind: enumOf(['workout', 'diet']),
+    memberId: req(DataTypes.UUID),
+    gymId: req(DataTypes.UUID),
+    startsOn: req(DataTypes.DATEONLY),
+    endsOn: DataTypes.DATEONLY,
+    status: enumOf(['active', 'replaced', 'ended'], { defaultValue: 'active' }),
+    assignedBy: req(DataTypes.UUID),
+    endedAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'GymPlanAssignment', tableName: 'gym_plan_assignments' }
+);
+
+class GymPlanLog extends Model {}
+GymPlanLog.init(
+  {
+    id,
+    assignmentId: req(DataTypes.UUID),
+    planVersionId: req(DataTypes.UUID),
+    localDate: req(DataTypes.DATEONLY),
+    itemRef: req(DataTypes.STRING(20)),
+    done: req(DataTypes.BOOLEAN),
+    note: DataTypes.STRING(300),
+    byUser: req(DataTypes.UUID),
+  },
+  { sequelize, modelName: 'GymPlanLog', tableName: 'gym_plan_logs', updatedAt: false }
+);
+
 module.exports = {
   GymManageSettings,
   GymMember,
@@ -457,4 +515,8 @@ module.exports = {
   GymSubscriptionInvoiceLine,
   GymFeeOverride,
   GymReferral,
+  GymPlan,
+  GymPlanVersion,
+  GymPlanAssignment,
+  GymPlanLog,
 };

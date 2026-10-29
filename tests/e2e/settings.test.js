@@ -363,7 +363,7 @@ describe('boot check and seed (M03 §12, §15)', () => {
     await propose(master, [{ key: 'esports.room_reveal_minutes', to: 12 }]);
     expect(await seedReference()).toEqual({ settings: 0, esports: 0, templates: 0, kycRequirements: 0, moderation: 0, places: 0, items: 0, hire: 0, rules: 0 });
     expect((await models.PlatformSetting.findByPk('esports.room_reveal_minutes')).value).toBe(12);
-    expect(await models.PlatformSetting.count()).toBe(349); // 289 + the three notify.push_* settings (M08 push channel), esports.external_organisers_enabled (v23), four Round B1 keys (v24, v25), three Round B2 keys (v26), business.team_max_members (v27, Round B3), booking.checkin_due_soon_minutes and business.team_adds_per_hour (v28, Round B3 review), the 28 M24 prompt 1 keys (v30: gym.half_year_days, gym.year_days, gym_manage.*, gym_saas.*), the 18 M24 prompt 2 keys (v31: fees.gym_referral_poisha, gym_manage.*, gym_saas.*)
+    expect(await models.PlatformSetting.count()).toBe(353); // 289 + the three notify.push_* settings (M08 push channel), esports.external_organisers_enabled (v23), four Round B1 keys (v24, v25), three Round B2 keys (v26), business.team_max_members (v27, Round B3), booking.checkin_due_soon_minutes and business.team_adds_per_hour (v28, Round B3 review), the 28 M24 prompt 1 keys (v30: gym.half_year_days, gym.year_days, gym_manage.*, gym_saas.*), the 18 M24 prompt 2 keys (v31: fees.gym_referral_poisha, gym_manage.*, gym_saas.*), the 4 M24 prompt 3 keys (v32: gym_manage.entrance_qr_seconds, plan_max_items, diet_max_meals, plan_log_back_days)
     expect(await models.EsportsGame.count()).toBe(2);
   });
 });

@@ -23815,6 +23815,13 @@
           },
           "taking": {
             "type": "boolean"
+          },
+          "distanceM": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Metres from the position sent (the gym’s pin, else its area’s centre); null without a position"
           }
         },
         "required": [
@@ -23831,7 +23838,8 @@
           "openNow",
           "ratingAvg",
           "ratingCount",
-          "taking"
+          "taking",
+          "distanceM"
         ]
       },
       "GymPage": {
@@ -23952,6 +23960,13 @@
           },
           "taking": {
             "type": "boolean"
+          },
+          "distanceM": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Metres from the position sent (the gym’s pin, else its area’s centre); null without a position"
           },
           "addressLine": {
             "type": "string"
@@ -24086,6 +24101,10 @@
           "today": {
             "type": "string",
             "format": "date"
+          },
+          "joinRequestsOpen": {
+            "type": "boolean",
+            "description": "M24: the gym takes join requests (live, managed on gym.kriraghor.com, switched on); show Join this gym"
           }
         },
         "required": [
@@ -24103,6 +24122,7 @@
           "ratingAvg",
           "ratingCount",
           "taking",
+          "distanceM",
           "addressLine",
           "lat",
           "lng",
@@ -24111,7 +24131,8 @@
           "hours",
           "packages",
           "advanceDays",
-          "today"
+          "today",
+          "joinRequestsOpen"
         ]
       },
       "GymTrainerList": {
@@ -27076,6 +27097,29 @@
             ],
             "format": "date"
           },
+          "trainer": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "businessMemberId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "displayName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "businessMemberId",
+              "displayName"
+            ],
+            "description": "The assigned trainer (M24-FR-21)"
+          },
           "outstandingPoisha": {
             "type": "integer",
             "description": "Only for the owner and staff with fees.collect"
@@ -27094,7 +27138,8 @@
           "photoPath",
           "current",
           "flags",
-          "lastCheckInOn"
+          "lastCheckInOn",
+          "trainer"
         ]
       },
       "GymAddMemberResult": {
@@ -27754,6 +27799,29 @@
               },
               "notesCount": {
                 "type": "integer"
+              },
+              "trainer": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "businessMemberId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "displayName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "businessMemberId",
+                  "displayName"
+                ],
+                "description": "The assigned trainer (M24-FR-21)"
               }
             },
             "required": [
@@ -27775,7 +27843,8 @@
               "importId",
               "version",
               "createdAt",
-              "notesCount"
+              "notesCount",
+              "trainer"
             ]
           },
           "link": {
@@ -27859,6 +27928,12 @@
               },
               "remove": {
                 "type": "boolean"
+              },
+              "assignTrainer": {
+                "type": "boolean"
+              },
+              "plans": {
+                "type": "boolean"
               }
             },
             "required": [
@@ -27866,7 +27941,9 @@
               "collect",
               "adjust",
               "revealPhone",
-              "remove"
+              "remove",
+              "assignTrainer",
+              "plans"
             ]
           }
         },
@@ -27940,6 +28017,81 @@
             "type": "boolean",
             "description": "Whether the invite reached a Kriraghor account yet (never which one)"
           },
+          "requester": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "displayName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "avatarUrl": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "phoneLast4": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "displayName",
+              "avatarUrl",
+              "phoneLast4"
+            ],
+            "description": "Join requests: the person asking (they agreed the gym sees their name and phone; the full phone after accepting, through the reveal)"
+          },
+          "package": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "title": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "day",
+                  "month",
+                  "quarter",
+                  "half_year",
+                  "year",
+                  "custom"
+                ]
+              },
+              "pricePoisha": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "kind",
+              "pricePoisha"
+            ],
+            "description": "Join requests: the package asked for"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Join requests: the note from the person asking"
+          },
           "expiresAt": {
             "type": "string",
             "format": "date-time"
@@ -27963,6 +28115,9 @@
           "memberId",
           "member",
           "accountKnown",
+          "requester",
+          "package",
+          "note",
           "expiresAt",
           "decidedAt",
           "createdAt"
@@ -29689,6 +29844,34 @@
           },
           "noticePct": {
             "type": "integer"
+          },
+          "foundingPlacesLeft": {
+            "type": "integer",
+            "description": "Founding partner places still open (0: hide the offer; M24-FR-88)"
+          },
+          "founding": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": "integer"
+              },
+              "freeMonths": {
+                "type": "integer"
+              },
+              "discountPct": {
+                "type": "integer"
+              },
+              "discountMonths": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "limit",
+              "freeMonths",
+              "discountPct",
+              "discountMonths"
+            ],
+            "description": "The founding partner terms from settings: free months on a paid plan, then the discount for its months"
           }
         },
         "required": [
@@ -29696,7 +29879,9 @@
           "tiers",
           "featureMinTiers",
           "activeWindowDays",
-          "noticePct"
+          "noticePct",
+          "foundingPlacesLeft",
+          "founding"
         ]
       },
       "MyGymRequests": {
@@ -29771,6 +29956,57 @@
                   },
                   "description": "What the gym will see once linked (M24-FR-15)"
                 },
+                "package": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "day",
+                        "month",
+                        "quarter",
+                        "half_year",
+                        "year",
+                        "custom"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "kind"
+                  ],
+                  "description": "Join requests: the package I asked for"
+                },
+                "note": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Join requests: my note"
+                },
+                "memberId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "uuid",
+                  "description": "Join requests: my member record once the gym accepted"
+                },
+                "canCancel": {
+                  "type": "boolean",
+                  "description": "A pending join request of mine"
+                },
                 "expiresAt": {
                   "type": "string",
                   "format": "date-time"
@@ -29788,6 +30024,10 @@
                 "memberCode",
                 "displayName",
                 "shares",
+                "package",
+                "note",
+                "memberId",
+                "canCancel",
                 "expiresAt",
                 "createdAt"
               ]
@@ -29903,8 +30143,32 @@
                   "description": "The gym takes fees online now (owner documents, plan, not restricted; M24-FR-41)"
                 },
                 "plans": {
-                  "type": "null",
-                  "description": "Workout plans and diet charts (prompt 3)"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "assignmentId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "workout",
+                          "diet"
+                        ]
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "assignmentId",
+                      "kind",
+                      "title"
+                    ]
+                  },
+                  "description": "Today’s workout plan and diet chart titles (active assignments; empty for a past link)"
                 }
               },
               "required": [
@@ -32918,6 +33182,1707 @@
         },
         "required": [
           "items"
+        ]
+      },
+      "GymJoinAcceptResult": {
+        "type": "object",
+        "properties": {
+          "request": {
+            "$ref": "#/components/schemas/GymLinkRequest"
+          },
+          "member": {
+            "$ref": "#/components/schemas/GymMemberSummary"
+          },
+          "linkedExisting": {
+            "type": "boolean",
+            "description": "An unlinked member with the same phone was linked instead of a new one"
+          },
+          "membership": {
+            "$ref": "#/components/schemas/GymMembership"
+          },
+          "due": {
+            "$ref": "#/components/schemas/GymDue"
+          },
+          "payment": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "receiptNo": {
+                "type": "string"
+              },
+              "amountPoisha": {
+                "type": "integer"
+              },
+              "receiptUrl": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "receiptNo",
+              "amountPoisha",
+              "receiptUrl"
+            ]
+          }
+        },
+        "required": [
+          "request",
+          "member",
+          "linkedExisting",
+          "membership",
+          "due",
+          "payment"
+        ]
+      },
+      "GymTrainers": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "businessMemberId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "displayName": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "permissions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "members.trainer",
+                      "plans.manage"
+                    ]
+                  },
+                  "description": "Which of the two trainer permissions they hold"
+                },
+                "assignedMembers": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "businessMemberId",
+                "displayName",
+                "permissions",
+                "assignedMembers"
+              ]
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "GymMemberPlans": {
+        "type": "object",
+        "properties": {
+          "memberId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "healthNote": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "plans.manage and the owner only: the member’s own health note"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "planId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "workout",
+                    "diet"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "integer"
+                },
+                "memberId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "startsOn": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "endsOn": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "active",
+                    "replaced",
+                    "ended"
+                  ]
+                },
+                "endedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "content": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/GymWorkoutContent"
+                    },
+                    {
+                      "$ref": "#/components/schemas/GymDietContent"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "kind",
+                    "mapping": {
+                      "workout": "#/components/schemas/GymWorkoutContent",
+                      "diet": "#/components/schemas/GymDietContent"
+                    }
+                  },
+                  "description": "plans.manage and the owner only"
+                },
+                "logs": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GymPlanLog"
+                  },
+                  "description": "plans.manage and the owner only: the latest tick per item and date, newest first"
+                }
+              },
+              "required": [
+                "id",
+                "planId",
+                "kind",
+                "title",
+                "version",
+                "memberId",
+                "startsOn",
+                "endsOn",
+                "status",
+                "endedAt",
+                "createdAt"
+              ]
+            }
+          }
+        },
+        "required": [
+          "memberId",
+          "items"
+        ]
+      },
+      "GymWorkoutContent": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "workout"
+            ]
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,20}$",
+                  "description": "Stays the same across versions, so ticks stay attached (§6.10)"
+                },
+                "name": {
+                  "type": "object",
+                  "properties": {
+                    "en": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "bn": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "minLength": 1,
+                      "maxLength": 80
+                    }
+                  },
+                  "description": "English and Bangla side by side; at least one"
+                },
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "ref": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]{1,20}$",
+                        "description": "Stays the same across versions, so ticks stay attached (§6.10)"
+                      },
+                      "name": {
+                        "type": "object",
+                        "properties": {
+                          "en": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "bn": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 80
+                          }
+                        },
+                        "description": "English and Bangla side by side; at least one"
+                      },
+                      "sets": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ],
+                        "minimum": 1,
+                        "maximum": 50
+                      },
+                      "reps": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "minLength": 1,
+                        "maxLength": 20,
+                        "description": "\"8-10\", \"12\" or \"to failure\""
+                      },
+                      "timeSec": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ],
+                        "minimum": 1,
+                        "maximum": 7200
+                      },
+                      "restSec": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ],
+                        "minimum": 0,
+                        "maximum": 3600
+                      },
+                      "weightNote": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "minLength": 1,
+                        "maxLength": 80
+                      },
+                      "note": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "minLength": 1,
+                        "maxLength": 300
+                      },
+                      "videoUrl": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "maxLength": 500,
+                        "format": "uri",
+                        "description": "https links only"
+                      }
+                    },
+                    "required": [
+                      "ref",
+                      "name"
+                    ]
+                  },
+                  "maxItems": 50
+                }
+              },
+              "required": [
+                "key",
+                "name",
+                "items"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 7
+          }
+        },
+        "required": [
+          "kind",
+          "days"
+        ]
+      },
+      "GymDietContent": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "diet"
+            ]
+          },
+          "meals": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "ref": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,20}$",
+                  "description": "Stays the same across versions, so ticks stay attached (§6.10)"
+                },
+                "name": {
+                  "type": "object",
+                  "properties": {
+                    "en": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "bn": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "minLength": 1,
+                      "maxLength": 80
+                    }
+                  },
+                  "description": "English and Bangla side by side; at least one"
+                },
+                "time": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+                },
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "ref": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]{1,20}$",
+                        "description": "Stays the same across versions, so ticks stay attached (§6.10)"
+                      },
+                      "name": {
+                        "type": "object",
+                        "properties": {
+                          "en": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "bn": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 80
+                          }
+                        },
+                        "description": "English and Bangla side by side; at least one"
+                      },
+                      "portion": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "minLength": 1,
+                        "maxLength": 40
+                      },
+                      "kcal": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ],
+                        "minimum": 0,
+                        "maximum": 5000
+                      },
+                      "proteinG": {
+                        "type": [
+                          "number",
+                          "null"
+                        ],
+                        "minimum": 0,
+                        "maximum": 500
+                      },
+                      "note": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "minLength": 1,
+                        "maxLength": 300
+                      }
+                    },
+                    "required": [
+                      "ref",
+                      "name"
+                    ]
+                  },
+                  "maxItems": 50
+                }
+              },
+              "required": [
+                "ref",
+                "name",
+                "items"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 12
+          },
+          "notes": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "en": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "bn": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "minLength": 1,
+                "maxLength": 500
+              }
+            },
+            "description": "English and Bangla side by side; at least one"
+          }
+        },
+        "required": [
+          "kind",
+          "meals"
+        ]
+      },
+      "GymPlanLog": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assignmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "localDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "itemRef": {
+            "type": "string"
+          },
+          "done": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "assignmentId",
+          "localDate",
+          "itemRef",
+          "done",
+          "note",
+          "createdAt"
+        ]
+      },
+      "GymPlanList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GymPlan"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "GymPlan": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "gymId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "workout",
+              "diet"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "isTemplate": {
+            "type": "boolean"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "gym",
+              "ai",
+              "self"
+            ]
+          },
+          "currentVersion": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "retired"
+            ]
+          },
+          "retiredAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "activeAssignments": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "gymId",
+          "kind",
+          "title",
+          "isTemplate",
+          "source",
+          "currentVersion",
+          "status",
+          "retiredAt",
+          "activeAssignments",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "GymPlanDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "gymId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "workout",
+              "diet"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "isTemplate": {
+            "type": "boolean"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "gym",
+              "ai",
+              "self"
+            ]
+          },
+          "currentVersion": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "retired"
+            ]
+          },
+          "retiredAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "activeAssignments": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "content": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/GymWorkoutContent"
+              },
+              {
+                "$ref": "#/components/schemas/GymDietContent"
+              }
+            ],
+            "discriminator": {
+              "propertyName": "kind",
+              "mapping": {
+                "workout": "#/components/schemas/GymWorkoutContent",
+                "diet": "#/components/schemas/GymDietContent"
+              }
+            },
+            "description": "The current version"
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GymPlanVersion"
+            },
+            "description": "Newest first"
+          },
+          "assignments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "planId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "workout",
+                    "diet"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "integer"
+                },
+                "memberId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "startsOn": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "endsOn": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "active",
+                    "replaced",
+                    "ended"
+                  ]
+                },
+                "endedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "member": {
+                  "$ref": "#/components/schemas/GymMemberSummary"
+                },
+                "lastTickOn": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date"
+                },
+                "doneLast7Days": {
+                  "type": "integer",
+                  "description": "Items ticked done in the last 7 days (the latest tick per item and date)"
+                }
+              },
+              "required": [
+                "id",
+                "planId",
+                "kind",
+                "title",
+                "version",
+                "memberId",
+                "startsOn",
+                "endsOn",
+                "status",
+                "endedAt",
+                "createdAt",
+                "member",
+                "lastTickOn",
+                "doneLast7Days"
+              ]
+            },
+            "description": "Active assignments the caller can see, with adherence"
+          },
+          "movedAssignments": {
+            "type": "integer",
+            "description": "PATCH with a new version: assignments moved to it"
+          }
+        },
+        "required": [
+          "id",
+          "gymId",
+          "kind",
+          "title",
+          "isTemplate",
+          "source",
+          "currentVersion",
+          "status",
+          "retiredAt",
+          "activeAssignments",
+          "createdAt",
+          "updatedAt",
+          "content",
+          "versions",
+          "assignments"
+        ]
+      },
+      "GymPlanVersion": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "content": {
+            "$ref": "#/components/schemas/GymPlanContent"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdBy": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "displayName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "displayName"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "content",
+          "createdAt",
+          "createdBy"
+        ]
+      },
+      "GymPlanContent": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/GymWorkoutContent"
+          },
+          {
+            "$ref": "#/components/schemas/GymDietContent"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "kind",
+          "mapping": {
+            "workout": "#/components/schemas/GymWorkoutContent",
+            "diet": "#/components/schemas/GymDietContent"
+          }
+        },
+        "description": "M24 §6.10: up to 7 named days of exercises, or the meals of a diet chart; at most gym_manage.plan_max_items per day or meal and gym_manage.diet_max_meals meals"
+      },
+      "GymPlanAssignResult": {
+        "type": "object",
+        "properties": {
+          "assignments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GymPlanAssignment"
+            }
+          },
+          "replaced": {
+            "type": "integer",
+            "description": "Earlier assignments of the same kind that were replaced"
+          }
+        },
+        "required": [
+          "assignments",
+          "replaced"
+        ]
+      },
+      "GymPlanAssignment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "planId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "workout",
+              "diet"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "memberId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "startsOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "endsOn": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "replaced",
+              "ended"
+            ]
+          },
+          "endedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "planId",
+          "kind",
+          "title",
+          "version",
+          "memberId",
+          "startsOn",
+          "endsOn",
+          "status",
+          "endedAt",
+          "createdAt"
+        ]
+      },
+      "GymEntranceToken": {
+        "type": "object",
+        "properties": {
+          "gymId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "gymName": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Show the next token before this; members may scan the previous one for one more window"
+          },
+          "seconds": {
+            "type": "integer"
+          },
+          "secondsLeft": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "gymId",
+          "gymName",
+          "token",
+          "expiresAt",
+          "seconds",
+          "secondsLeft"
+        ]
+      },
+      "MyGymJoinRequest": {
+        "type": "object",
+        "properties": {
+          "request": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "direction": {
+                "type": "string",
+                "enum": [
+                  "gym_invite",
+                  "join_request"
+                ]
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "accepted",
+                  "declined",
+                  "expired",
+                  "cancelled"
+                ]
+              },
+              "gym": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "slug": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "slug"
+                ]
+              },
+              "memberCode": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "displayName": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The name the gym typed"
+              },
+              "shares": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "What the gym will see once linked (M24-FR-15)"
+              },
+              "package": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "day",
+                      "month",
+                      "quarter",
+                      "half_year",
+                      "year",
+                      "custom"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "title",
+                  "kind"
+                ],
+                "description": "Join requests: the package I asked for"
+              },
+              "note": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Join requests: my note"
+              },
+              "memberId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uuid",
+                "description": "Join requests: my member record once the gym accepted"
+              },
+              "canCancel": {
+                "type": "boolean",
+                "description": "A pending join request of mine"
+              },
+              "expiresAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "direction",
+              "status",
+              "gym",
+              "memberCode",
+              "displayName",
+              "shares",
+              "package",
+              "note",
+              "memberId",
+              "canCancel",
+              "expiresAt",
+              "createdAt"
+            ]
+          }
+        },
+        "required": [
+          "request"
+        ]
+      },
+      "MyGymPlans": {
+        "type": "object",
+        "properties": {
+          "today": {
+            "type": "string",
+            "format": "date"
+          },
+          "logBackDays": {
+            "type": "integer"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "assignmentId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "memberId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "gym": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "slug"
+                  ]
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "workout",
+                    "diet"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "integer"
+                },
+                "startsOn": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "endsOn": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "active",
+                    "replaced",
+                    "ended"
+                  ]
+                },
+                "readOnly": {
+                  "type": "boolean",
+                  "description": "Ended or replaced, or I left or unlinked: I can read it but not tick (M24-FR-67)"
+                },
+                "content": {
+                  "$ref": "#/components/schemas/GymPlanContent"
+                },
+                "todayIndex": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "description": "Workout: today’s day in content.days (§6.10); null before the start or after the end. Diet: 0 when it runs today"
+                },
+                "week": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "date": {
+                        "type": "string",
+                        "format": "date"
+                      },
+                      "index": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "date",
+                      "index"
+                    ]
+                  },
+                  "description": "Today and the next 6 days with the workout day of each"
+                },
+                "ticks": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GymPlanLog"
+                  },
+                  "description": "My latest tick per item for the days I can still tick"
+                },
+                "safety": {
+                  "type": "object",
+                  "properties": {
+                    "en": {
+                      "type": "string"
+                    },
+                    "bn": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "en",
+                    "bn"
+                  ],
+                  "description": "\"Given by {gym}, not medical advice\" (M24-FR-69): show it on every plan view"
+                }
+              },
+              "required": [
+                "assignmentId",
+                "memberId",
+                "gym",
+                "kind",
+                "title",
+                "version",
+                "startsOn",
+                "endsOn",
+                "status",
+                "readOnly",
+                "content",
+                "todayIndex",
+                "week",
+                "ticks",
+                "safety"
+              ]
+            },
+            "description": "Active plans first (today’s workout and meals), then the rest"
+          }
+        },
+        "required": [
+          "today",
+          "logBackDays",
+          "items"
+        ]
+      },
+      "MyGymPlan": {
+        "type": "object",
+        "properties": {
+          "assignmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "memberId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "gym": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              },
+              "slug": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "slug"
+            ]
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "workout",
+              "diet"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "startsOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "endsOn": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "replaced",
+              "ended"
+            ]
+          },
+          "readOnly": {
+            "type": "boolean",
+            "description": "Ended or replaced, or I left or unlinked: I can read it but not tick (M24-FR-67)"
+          },
+          "content": {
+            "$ref": "#/components/schemas/GymPlanContent"
+          },
+          "todayIndex": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Workout: today’s day in content.days (§6.10); null before the start or after the end. Diet: 0 when it runs today"
+          },
+          "week": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "index": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "date",
+                "index"
+              ]
+            },
+            "description": "Today and the next 6 days with the workout day of each"
+          },
+          "ticks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GymPlanLog"
+            },
+            "description": "My latest tick per item for the days I can still tick"
+          },
+          "safety": {
+            "type": "object",
+            "properties": {
+              "en": {
+                "type": "string"
+              },
+              "bn": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "en",
+              "bn"
+            ],
+            "description": "\"Given by {gym}, not medical advice\" (M24-FR-69): show it on every plan view"
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "integer"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "content": {
+                  "$ref": "#/components/schemas/GymPlanContent"
+                }
+              },
+              "required": [
+                "version",
+                "createdAt",
+                "content"
+              ]
+            },
+            "description": "The versions given to me, newest first"
+          },
+          "logs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GymPlanLog"
+            },
+            "description": "Every tick I made (the latest per item and date), newest first"
+          }
+        },
+        "required": [
+          "assignmentId",
+          "memberId",
+          "gym",
+          "kind",
+          "title",
+          "version",
+          "startsOn",
+          "endsOn",
+          "status",
+          "readOnly",
+          "content",
+          "todayIndex",
+          "week",
+          "ticks",
+          "safety",
+          "versions",
+          "logs"
+        ]
+      },
+      "MyGymPlanLogResult": {
+        "type": "object",
+        "properties": {
+          "log": {
+            "$ref": "#/components/schemas/GymPlanLog"
+          }
+        },
+        "required": [
+          "log"
+        ]
+      },
+      "MyGymEntranceCheckin": {
+        "type": "object",
+        "properties": {
+          "attendanceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "counted": {
+            "type": "boolean",
+            "description": "false: already checked in today (the first time is firstCheckInToday)"
+          },
+          "checkedInAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "firstCheckInToday": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "entrance_qr"
+            ]
+          },
+          "gym": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              },
+              "slug": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "slug"
+            ]
+          },
+          "member": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "memberCode": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "memberCode"
+            ]
+          },
+          "membership": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "endsOn": {
+                "type": "string",
+                "format": "date"
+              },
+              "daysLeft": {
+                "type": "integer"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "active",
+                  "frozen"
+                ]
+              }
+            },
+            "required": [
+              "title",
+              "endsOn",
+              "daysLeft",
+              "status"
+            ]
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "allow",
+              "warn"
+            ]
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "expired",
+                "frozen",
+                "none",
+                "unpaid",
+                "visit_limit"
+              ]
+            },
+            "description": "warn: tell the member why (no amounts)"
+          }
+        },
+        "required": [
+          "attendanceId",
+          "counted",
+          "checkedInAt",
+          "firstCheckInToday",
+          "method",
+          "gym",
+          "member",
+          "membership",
+          "decision",
+          "reasons"
         ]
       },
       "OrganisationList": {
@@ -83928,7 +85893,7 @@
         "tags": [
           "gym"
         ],
-        "summary": "Live gyms by area, facility and name; sorted by the day pass price, rating or newest",
+        "summary": "Live gyms by area, facility, name and monthly price; sorted by the day pass price, rating, newest or distance from a position sent with the query (never stored), within a radius",
         "parameters": [
           {
             "schema": {
@@ -83960,15 +85925,65 @@
           },
           {
             "schema": {
+              "type": "number",
+              "minimum": 20,
+              "maximum": 27,
+              "description": "The viewer’s position (with lng); used for this answer only"
+            },
+            "required": false,
+            "description": "The viewer’s position (with lng); used for this answer only",
+            "name": "lat",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "number",
+              "minimum": 88,
+              "maximum": 93
+            },
+            "required": false,
+            "name": "lng",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 50,
+              "description": "Only gyms within this distance (needs lat and lng)"
+            },
+            "required": false,
+            "description": "Only gyms within this distance (needs lat and lng)",
+            "name": "radiusKm",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "description": "The monthly package costs at most this (poisha); gyms without a monthly package are left out"
+            },
+            "required": false,
+            "description": "The monthly package costs at most this (poisha); gyms without a monthly package are left out",
+            "name": "priceMax",
+            "in": "query"
+          },
+          {
+            "schema": {
               "type": "string",
               "enum": [
                 "price",
                 "rating",
-                "newest"
+                "newest",
+                "nearest"
               ],
-              "default": "price"
+              "description": "Default nearest with a position, else price (the day pass)"
             },
             "required": false,
+            "description": "Default nearest with a position, else price (the day pass)",
             "name": "sort",
             "in": "query"
           },
@@ -88293,6 +90308,17 @@
           {
             "schema": {
               "type": "string",
+              "format": "uuid",
+              "description": "Members assigned to this trainer (the business_members id from GET …/trainers; feature trainers)"
+            },
+            "required": false,
+            "description": "Members assigned to this trainer (the business_members id from GET …/trainers; feature trainers)",
+            "name": "trainerId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
               "minLength": 1,
               "maxLength": 80,
               "description": "Name (contains or similar), member code (exact) or phone (exact)"
@@ -90273,7 +92299,7 @@
         "tags": [
           "gym-manage"
         ],
-        "summary": "Link requests of the gym (members.view; pending by default)",
+        "summary": "Join requests (who asks: name, photo, last 4 digits of the phone; the package asked for; the note) and gym invites (members.view; pending by default)",
         "security": [
           {
             "bearer": []
@@ -92727,7 +94753,7 @@
         "tags": [
           "gym-manage"
         ],
-        "summary": "The gym plans: member limits, prices and features from settings (public)",
+        "summary": "The gym plans: member limits, prices and features from settings, and the founding partner offer while places are left (public)",
         "responses": {
           "200": {
             "description": "OK",
@@ -92799,7 +94825,7 @@
         "tags": [
           "gym-manage"
         ],
-        "summary": "Gym invites to me (pending by default) with what the gym will see",
+        "summary": "Gym invites to me and my join requests (pending by default; filter direction) with what the gym will see",
         "security": [
           {
             "bearer": []
@@ -92819,6 +94845,20 @@
             },
             "required": false,
             "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "gym_invite",
+                "join_request"
+              ],
+              "description": "Default both: invites to me and my join requests"
+            },
+            "required": false,
+            "description": "Default both: invites to me and my join requests",
+            "name": "direction",
             "in": "query"
           }
         ],
@@ -96050,6 +98090,1949 @@
           },
           "422": {
             "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/requests/{requestId}/accept": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Accept a join request (members.edit; refused while restricted): a new member with source platform linked to the person (name and phone from the account), or the unlinked member with the same phone is linked; with packageId the membership (and an optional first payment, fees.collect) in the same call. The referral fee charges on the first positive payment (M24-FR-17, FR-91)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "requestId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "8–80 letters, digits, - or _. Retries with the same key and body replay the first response"
+            },
+            "required": true,
+            "description": "8–80 letters, digits, - or _. Retries with the same key and body replay the first response",
+            "name": "idempotency-key",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "packageId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "startsOn": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "With packageId: default today (Dhaka)"
+                  },
+                  "admissionFee": {
+                    "type": "boolean",
+                    "description": "Default true on the first membership and after a re-join; false there needs fees.adjust"
+                  },
+                  "discountPoisha": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Needs fees.adjust and a reason; at most the price"
+                  },
+                  "discountReason": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 200
+                  },
+                  "payment": {
+                    "type": "object",
+                    "properties": {
+                      "amountPoisha": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "cash",
+                          "owner_bkash",
+                          "owner_nagad",
+                          "card_counter",
+                          "other"
+                        ]
+                      },
+                      "paidOn": {
+                        "type": "string",
+                        "format": "date",
+                        "description": "Default today (Dhaka); earlier dates up to gym_manage.backdate_days need fees.adjust"
+                      },
+                      "note": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 300
+                      }
+                    },
+                    "required": [
+                      "amountPoisha",
+                      "method"
+                    ],
+                    "description": "The first payment (needs packageId; fees.collect)"
+                  }
+                },
+                "default": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymJoinAcceptResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error. Codes: IDEMPOTENCY_KEY_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, GYM_ACCOUNT_RESTRICTED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_SETUP_REQUIRED, GYM_LINK_REQUEST_STATE, GYM_ALREADY_LINKED, GYM_MEMBER_PHONE_TAKEN, GYM_MEMBERSHIP_OVERLAP, GYM_MEMBER_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, GYM_PACKAGE_UNAVAILABLE, GYM_DATE_OUT_OF_RANGE, GYM_PAYMENT_EXCEEDS_DUE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/requests/{requestId}/decline": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Decline a join request (members.edit): the person is told the gym could not accept; a reason stays with the gym",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "requestId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 300,
+                    "description": "Kept with the gym; the requester is only told the gym could not accept"
+                  }
+                },
+                "default": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "request": {
+                      "$ref": "#/components/schemas/GymLinkRequest"
+                    }
+                  },
+                  "required": [
+                    "request"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_LINK_REQUEST_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/trainers": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Who can be picked as a trainer (members.view or members.trainer; plan feature trainers): active staff with members.trainer or plans.manage, with their assigned members (M24-FR-21)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymTrainers"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, GYM_TIER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/members/{memberId}/trainer": {
+      "put": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Give the member a trainer, or take it off with null (members.edit; plan feature trainers; refused while restricted) → the profile (M24-FR-21)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "memberId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "businessMemberId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "uuid",
+                    "description": "A staff member from GET …/trainers, or null to take the trainer off"
+                  }
+                },
+                "required": [
+                  "businessMemberId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymMemberProfile"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, GYM_ACCOUNT_RESTRICTED, GYM_TIER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_MEMBER_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, GYM_TRAINER_INVALID",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/members/{memberId}/plans": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "A member’s plans and diet charts (whoever can see the member): titles for everyone; content, ticks and notes and the member’s health note for plans.manage and the owner (M24-FR-66)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "memberId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymMemberPlans"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/plans": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Plans and diet charts of the gym (plans.manage; plan feature plans): active by default, filters kind and template",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "workout",
+                "diet"
+              ]
+            },
+            "required": false,
+            "name": "kind",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "retired"
+              ],
+              "description": "Default active"
+            },
+            "required": false,
+            "description": "Default active",
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "required": false,
+            "name": "template",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymPlanList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, GYM_TIER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Write a workout plan or diet chart (plans.manage; plan feature plans; refused while restricted): version 1; content per §6.10 within gym_manage.plan_max_items and diet_max_meals; https video links only; source must be gym (M24-FR-62, FR-68)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "workout",
+                      "diet"
+                    ]
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "isTemplate": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "source": {
+                    "type": "string",
+                    "enum": [
+                      "gym",
+                      "ai",
+                      "self"
+                    ],
+                    "default": "gym",
+                    "description": "Only gym in M24: ai and self are kept for the later member subscription (M24-FR-68)"
+                  },
+                  "content": {
+                    "$ref": "#/components/schemas/GymPlanContent"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "title",
+                  "content"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymPlanDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, GYM_ACCOUNT_RESTRICTED, GYM_TIER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/plans/{planId}": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "One plan with its current content, every version and the active assignments the caller can see, with adherence (plans.manage)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "planId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymPlanDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Edit a plan (plans.manage; plan feature plans; refused while restricted): new content is version n + 1; applyToAssigned (default true) moves the active assignments to it and tells those members once (M24-FR-63)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "planId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "isTemplate": {
+                    "type": "boolean"
+                  },
+                  "content": {
+                    "oneOf": [
+                      {
+                        "$ref": "#/components/schemas/GymWorkoutContent"
+                      },
+                      {
+                        "$ref": "#/components/schemas/GymDietContent"
+                      }
+                    ],
+                    "discriminator": {
+                      "propertyName": "kind",
+                      "mapping": {
+                        "workout": "#/components/schemas/GymWorkoutContent",
+                        "diet": "#/components/schemas/GymDietContent"
+                      }
+                    },
+                    "description": "A new version (n + 1)"
+                  },
+                  "applyToAssigned": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "\"Update for the N members who have it\": their active assignments move to the new version and they are told once (M24-FR-63)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymPlanDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, GYM_ACCOUNT_RESTRICTED, GYM_TIER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_PLAN_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/plans/{planId}/retire": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Retire a plan (plans.manage): no new assignments; running ones keep going",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "planId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymPlanDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_PLAN_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/plans/{planId}/assign": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Give the plan to members the caller can see (plans.manage; plan feature plans; refused while restricted): members.view all, members.trainer their assigned members; one active workout plan and one diet chart per member, a new one replaces the old (M24-FR-64)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "planId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "memberIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "minItems": 1,
+                    "maxItems": 100
+                  },
+                  "startsOn": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "Day 1 of the plan; from gym_manage.backdate_days ago to 60 days ahead"
+                  },
+                  "endsOn": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "date"
+                  }
+                },
+                "required": [
+                  "memberIds",
+                  "startsOn"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Assigned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymPlanAssignResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, GYM_ACCOUNT_RESTRICTED, GYM_TIER_REQUIRED, GYM_PLAN_ASSIGN_SCOPE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_PLAN_STATE, GYM_MEMBER_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, GYM_DATE_OUT_OF_RANGE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/plan-assignments/{assignmentId}/end": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "End an assignment now (plans.manage; a member the caller can see); the member keeps reading it (M24-FR-67)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "assignmentId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "assignment": {
+                      "$ref": "#/components/schemas/GymPlanAssignment"
+                    }
+                  },
+                  "required": [
+                    "assignment"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_PLAN_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/entrance-token": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "The entrance tablet’s QR (attendance.mark; plan feature attendance; no-store): rotates every gym_manage.entrance_qr_seconds; members may scan the previous one for one more window (M24-FR-51)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymEntranceToken"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, GYM_TIER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_SETUP_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/gym-join-requests": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Ask to join a live gym (gate join_gym): the gym sees my name and phone; one pending request per gym; expires after gym_manage.request_expiry_days (M24-FR-16)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "gymId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "packageId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "The package I would like (an active package of the gym sold online)"
+                  },
+                  "note": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "gymId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyGymJoinRequest"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PHONE_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_JOIN_NOT_OPEN, GYM_LINK_REQUEST_PENDING, GYM_ALREADY_LINKED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, GYM_PACKAGE_UNAVAILABLE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/gym-requests/{requestId}/cancel": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Withdraw my pending join request",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "requestId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "request": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "cancelled"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "status"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "request"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_LINK_REQUEST_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/gym-plans": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "My plans and diet charts: the active ones first with today’s workout day (§6.10) and the week, then ended and replaced ones (read-only); my ticks for the days I can still tick; the safety line (M24-FR-65, FR-67, FR-69)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyGymPlans"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/gym-plans/{assignmentId}": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "One of my plans with the versions given to me and all my ticks",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "assignmentId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyGymPlan"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/gym-plans/{assignmentId}/logs": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Tick an item done (or not) with a note, for today or up to gym_manage.plan_log_back_days back; the latest tick per item and date wins (M24-FR-65)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "assignmentId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "localDate": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "Today or up to gym_manage.plan_log_back_days back (Dhaka)"
+                  },
+                  "itemRef": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{1,20}$",
+                    "description": "Stays the same across versions, so ticks stay attached (§6.10)"
+                  },
+                  "done": {
+                    "type": "boolean"
+                  },
+                  "note": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "localDate",
+                  "itemRef",
+                  "done"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyGymPlanLogResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_PLAN_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, GYM_PLAN_LOG_WINDOW",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/gym-checkins": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Check in by scanning the gym’s entrance QR (gate join_gym; a linked member of that gym): the gym’s entry policy applies; block shows the gym’s message and has no override (M24-FR-51)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 200,
+                    "description": "The entrance QR (v1.ge.…) scanned at the door"
+                  }
+                },
+                "required": [
+                  "token"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Already checked in today",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyGymEntranceCheckin"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Counted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyGymEntranceCheckin"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PHONE_REQUIRED, GYM_NOT_A_MEMBER, GYM_TIER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_ENTRY_BLOCKED, GYM_MEMBER_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, GYM_CHECKIN_TOKEN_INVALID",
             "content": {
               "application/problem+json": {
                 "schema": {

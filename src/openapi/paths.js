@@ -1070,7 +1070,7 @@ function register(registry) {
   // Round B3: the front desk (gate work_gym) also answers the gym's staff.
   const GYM_DESK = { ...GYM_OWNER, 403: [...GYM_OWNER[403], 'PERMISSION_REQUIRED', 'PHONE_REQUIRED', 'ROLE_SUSPENDED'] };
   const GYM_MEMBER = { ...COMMON_AUTH, 404: ['NOT_FOUND'] };
-  p({ method: 'get', path: '/gym/gyms', tags: ['gym'], summary: 'Live gyms by area, facility and name; sorted by the day pass price, rating or newest', request: { query: gyS.listQuery }, responses: { 200: json(gyS.GymList), ...errors(VALIDATION) } });
+  p({ method: 'get', path: '/gym/gyms', tags: ['gym'], summary: 'Live gyms by area, facility, name and monthly price; sorted by the day pass price, rating, newest or distance from a position sent with the query (never stored), within a radius', request: { query: gyS.listQuery }, responses: { 200: json(gyS.GymList), ...errors(VALIDATION) } });
   p({ method: 'get', path: '/gym/gyms/{slug}', tags: ['gym'], summary: 'A gym page: photos, address, weekly hours (women-only windows), facilities, packages, open now (ETag)', request: { params: gyS.slugParam }, responses: { 200: json(gyS.GymPage), 304: { description: 'Not modified' }, ...errors({ 404: ['NOT_FOUND'] }) } });
   p({ method: 'get', path: '/gym/trainers', tags: ['gym'], summary: 'Fitness trainers (M11 profiles in role fitness_trainer) with their monthly plans', request: { query: gyS.trainersQuery }, responses: { 200: json(gyS.TrainerList) } });
   p({ method: 'get', path: '/gym/trainers/{id}/plans', tags: ['gym'], summary: 'The active monthly plans of a trainer profile', request: gyId, responses: { 200: json(gyS.PlanOffer) } });
@@ -1177,7 +1177,7 @@ function register(registry) {
     request: { ...gmM, headers: idem, ...body(gmS.assignBody) },
     responses: { 201: json(gmS.MembershipResult, 'Created'), ...errors({ ...GMS, 409: ['GYM_SETUP_REQUIRED', 'GYM_MEMBERSHIP_OVERLAP', 'GYM_MEMBER_STATE'], 422: ['VALIDATION_FAILED', 'GYM_PACKAGE_UNAVAILABLE', 'GYM_DATE_OUT_OF_RANGE', 'GYM_PAYMENT_EXCEEDS_DUE'] }) },
   });
-  gp('get', '/requests', 'Link requests of the gym (members.view; pending by default)', { request: { ...gmG, query: gmS.requestsQuery }, responses: { 200: json(gmS.RequestList), ...errors(GM) } });
+  gp('get', '/requests', 'Join requests (who asks: name, photo, last 4 digits of the phone; the package asked for; the note) and gym invites (members.view; pending by default)', { request: { ...gmG, query: gmS.requestsQuery }, responses: { 200: json(gmS.RequestList), ...errors(GM) } });
   gp('post', '/requests/{requestId}/cancel', 'Cancel a pending gym invite (members.edit)', { request: { params: gmS.requestParam }, responses: { 200: json(gmS.RequestResult), ...errors({ ...GM, 409: ['GYM_LINK_REQUEST_STATE'] }) } });
   gp('post', '/memberships/{membershipId}/renew', 'Renew (members.edit): continuous within gym_manage.renew_grace_days, else from the chosen date; its own due; optional payment (M24-FR-27)', {
     request: { ...gmMs, headers: idem, ...body(gmS.renewBody) },
@@ -1215,9 +1215,9 @@ function register(registry) {
   gp('put', '/import-consent', 'Let Kriraghor staff upload a member list for gym_manage.import_consent_days, or withdraw it (owner; M24-FR-79)', { request: { ...gmG, ...body(gmS.consentBody) }, responses: { 200: json(gmS.ConsentResult), ...errors({ ...GM, 409: ['GYM_SETUP_REQUIRED'] }) } });
   p({ method: 'get', path: '/manage/billing', tags: gmTag, summary: 'My gym plan (gate run_gym, owner of a gym): the tier, today’s active members against its limit, the features, the plans', security: bearer, responses: { 200: json(gmS.Billing), ...errors({ ...COMMON_AUTH, 403: ['PERMISSION_REQUIRED', 'PHONE_REQUIRED', 'ROLE_SUSPENDED'] }) } });
   p({ method: 'put', path: '/manage/billing/tier', tags: gmTag, summary: 'Choose the plan: features change at once; the month is billed at the highest tier chosen in it (M24-FR-82)', security: bearer, request: body(gmS.tierBody), responses: { 200: json(gmS.Billing), ...errors({ ...COMMON_AUTH, 403: ['PERMISSION_REQUIRED', 'PHONE_REQUIRED', 'ROLE_SUSPENDED', 'GYM_ACCOUNT_RESTRICTED'], ...VALIDATION }) } });
-  p({ method: 'get', path: '/gym-manage/pricing', tags: gmTag, summary: 'The gym plans: member limits, prices and features from settings (public)', responses: { 200: json(gmS.Pricing) } });
+  p({ method: 'get', path: '/gym-manage/pricing', tags: gmTag, summary: 'The gym plans: member limits, prices and features from settings, and the founding partner offer while places are left (public)', responses: { 200: json(gmS.Pricing) } });
   p({ method: 'get', path: '/gym-receipts/{token}', tags: gmTag, summary: 'A receipt behind its signed link, no sign-in (noindex; a token for another receipt is 404)', request: { params: gmS.tokenParam }, responses: { 200: json(gmS.Receipt), ...errors({ 404: ['NOT_FOUND'], ...VALIDATION }) } });
-  p({ method: 'get', path: '/me/gym-requests', tags: gmTag, summary: 'Gym invites to me (pending by default) with what the gym will see', security: bearer, request: { query: gmS.meRequestsQuery }, responses: { 200: json(gmS.MyRequests), ...errors(COMMON_AUTH) } });
+  p({ method: 'get', path: '/me/gym-requests', tags: gmTag, summary: 'Gym invites to me and my join requests (pending by default; filter direction) with what the gym will see', security: bearer, request: { query: gmS.meRequestsQuery }, responses: { 200: json(gmS.MyRequests), ...errors(COMMON_AUTH) } });
   p({ method: 'post', path: '/me/gym-requests/{requestId}/accept', tags: gmTag, summary: 'Accept a gym invite (gate join_gym): my account is linked to the member (M24-FR-15)', security: bearer, request: { params: gmS.meRequestParam }, responses: { 200: json(gmS.AcceptResult), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED'], 404: ['NOT_FOUND'], 409: ['GYM_LINK_REQUEST_STATE', 'GYM_ALREADY_LINKED'] }) } });
   p({ method: 'post', path: '/me/gym-requests/{requestId}/decline', tags: gmTag, summary: 'Decline a gym invite (the record stays unlinked)', security: bearer, request: { params: gmS.meRequestParam }, responses: { 200: json(gmS.DeclineResult), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], 409: ['GYM_LINK_REQUEST_STATE'] }) } });
   p({ method: 'get', path: '/me/gym-memberships', tags: gmTag, summary: 'My gyms: current links and past ones (read-only receipts), the running membership and what is outstanding', security: bearer, responses: { 200: json(gmS.MyMemberships), ...errors(COMMON_AUTH) } });
@@ -1282,6 +1282,56 @@ function register(registry) {
     request: { ...stepUp('settings.write'), ...body(gmS.overrideBody) }, responses: { 201: json(gmS.FeeOverride, 'Created'), ...errors({ ...GMA, 403: [...ADMIN_AUTH[403], 'STEP_UP_REQUIRED'], 409: ['GYM_OVERRIDE_ACTIVE'], 422: ['VALIDATION_FAILED', 'GYM_OVERRIDE_OUT_OF_BOUNDS'] }) } });
   p({ method: 'post', path: '/admin/gym-manage/fee-overrides/{overrideId}/end', tags: gmTag, summary: 'End an override now (master, step-up settings.write)', security: adminBearer,
     request: { params: gmS.overrideParam, ...stepUp('settings.write'), ...body(gmS.reasonBody) }, responses: { 200: json(gmS.FeeOverride), ...errors({ ...GMA, 403: [...ADMIN_AUTH[403], 'STEP_UP_REQUIRED'], 409: ['GYM_OVERRIDE_ENDED'] }) } });
+
+  // ------------------------------------------------------------------ M24 gym management, prompt 3 (public site, member area, plans)
+  const gmR = { params: gmS.requestParam };
+  const gmPl = { params: gmS.planParam };
+  const gmMePl = { params: gmS.mePlanParam };
+  const TIER = { 403: [...GM[403], 'GYM_TIER_REQUIRED'] };
+  const TIERW = { 403: [...GMW[403], 'GYM_TIER_REQUIRED'] };
+  gp('post', '/requests/{requestId}/accept', 'Accept a join request (members.edit; refused while restricted): a new member with source platform linked to the person (name and phone from the account), or the unlinked member with the same phone is linked; with packageId the membership (and an optional first payment, fees.collect) in the same call. The referral fee charges on the first positive payment (M24-FR-17, FR-91)', {
+    request: { ...gmR, headers: idem, ...body(gmS.joinAcceptBody) },
+    responses: {
+      200: json(gmS.JoinAcceptResult),
+      ...errors({ ...GMS, 409: ['GYM_SETUP_REQUIRED', 'GYM_LINK_REQUEST_STATE', 'GYM_ALREADY_LINKED', 'GYM_MEMBER_PHONE_TAKEN', 'GYM_MEMBERSHIP_OVERLAP', 'GYM_MEMBER_STATE'], 422: ['VALIDATION_FAILED', 'GYM_PACKAGE_UNAVAILABLE', 'GYM_DATE_OUT_OF_RANGE', 'GYM_PAYMENT_EXCEEDS_DUE'], 400: ['IDEMPOTENCY_KEY_REQUIRED'] }),
+    },
+  });
+  gp('post', '/requests/{requestId}/decline', 'Decline a join request (members.edit): the person is told the gym could not accept; a reason stays with the gym', { request: { ...gmR, ...body(gmS.joinDeclineBody) }, responses: { 200: json(gmS.RequestResult), ...errors({ ...GM, 409: ['GYM_LINK_REQUEST_STATE'] }) } });
+  gp('get', '/trainers', 'Who can be picked as a trainer (members.view or members.trainer; plan feature trainers): active staff with members.trainer or plans.manage, with their assigned members (M24-FR-21)', { request: gmG, responses: { 200: json(gmS.Trainers), ...errors({ ...GM, ...TIER }) } });
+  gp('put', '/members/{memberId}/trainer', 'Give the member a trainer, or take it off with null (members.edit; plan feature trainers; refused while restricted) → the profile (M24-FR-21)', {
+    request: { ...gmM, ...body(gmS.trainerBody) },
+    responses: { 200: json(gmS.MemberProfile), ...errors({ ...GMW, ...TIERW, 409: ['GYM_MEMBER_STATE'], 422: ['VALIDATION_FAILED', 'GYM_TRAINER_INVALID'] }) },
+  });
+  gp('get', '/members/{memberId}/plans', 'A member’s plans and diet charts (whoever can see the member): titles for everyone; content, ticks and notes and the member’s health note for plans.manage and the owner (M24-FR-66)', { request: gmM, responses: { 200: json(gmS.MemberPlans), ...errors(GM) } });
+  gp('get', '/plans', 'Plans and diet charts of the gym (plans.manage; plan feature plans): active by default, filters kind and template', { request: { ...gmG, query: gmS.plansQuery }, responses: { 200: json(gmS.PlanList), ...errors({ ...GM, ...TIER }) } });
+  gp('post', '/plans', 'Write a workout plan or diet chart (plans.manage; plan feature plans; refused while restricted): version 1; content per §6.10 within gym_manage.plan_max_items and diet_max_meals; https video links only; source must be gym (M24-FR-62, FR-68)', {
+    request: { ...gmG, ...body(gmS.planBody) },
+    responses: { 201: json(gmS.PlanDetail, 'Created'), ...errors({ ...GMW, ...TIERW }) },
+  });
+  gp('get', '/plans/{planId}', 'One plan with its current content, every version and the active assignments the caller can see, with adherence (plans.manage)', { request: gmPl, responses: { 200: json(gmS.PlanDetail), ...errors(GM) } });
+  gp('patch', '/plans/{planId}', 'Edit a plan (plans.manage; plan feature plans; refused while restricted): new content is version n + 1; applyToAssigned (default true) moves the active assignments to it and tells those members once (M24-FR-63)', {
+    request: { ...gmPl, ...body(gmS.planPatch) },
+    responses: { 200: json(gmS.PlanDetail), ...errors({ ...GMW, ...TIERW, 409: ['GYM_PLAN_STATE'] }) },
+  });
+  gp('post', '/plans/{planId}/retire', 'Retire a plan (plans.manage): no new assignments; running ones keep going', { request: gmPl, responses: { 200: json(gmS.PlanDetail), ...errors({ ...GM, 409: ['GYM_PLAN_STATE'] }) } });
+  gp('post', '/plans/{planId}/assign', 'Give the plan to members the caller can see (plans.manage; plan feature plans; refused while restricted): members.view all, members.trainer their assigned members; one active workout plan and one diet chart per member, a new one replaces the old (M24-FR-64)', {
+    request: { ...gmPl, ...body(gmS.planAssignBody) },
+    responses: { 201: json(gmS.AssignResult, 'Assigned'), ...errors({ ...GMW, 403: [...TIERW[403], 'GYM_PLAN_ASSIGN_SCOPE'], 409: ['GYM_PLAN_STATE', 'GYM_MEMBER_STATE'], 422: ['VALIDATION_FAILED', 'GYM_DATE_OUT_OF_RANGE'] }) },
+  });
+  gp('post', '/plan-assignments/{assignmentId}/end', 'End an assignment now (plans.manage; a member the caller can see); the member keeps reading it (M24-FR-67)', { request: { params: gmS.assignmentParam }, responses: { 200: json(gmS.AssignmentResult), ...errors({ ...GM, 409: ['GYM_PLAN_STATE'] }) } });
+  gp('get', '/entrance-token', 'The entrance tablet’s QR (attendance.mark; plan feature attendance; no-store): rotates every gym_manage.entrance_qr_seconds; members may scan the previous one for one more window (M24-FR-51)', { request: gmG, responses: { 200: json(gmS.EntranceToken), ...errors({ ...GM, ...TIER, 409: ['GYM_SETUP_REQUIRED'] }) } });
+  p({ method: 'post', path: '/me/gym-join-requests', tags: gmTag, summary: 'Ask to join a live gym (gate join_gym): the gym sees my name and phone; one pending request per gym; expires after gym_manage.request_expiry_days (M24-FR-16)', security: bearer,
+    request: body(gmS.joinRequestBody),
+    responses: { 201: json(gmS.JoinRequestResult, 'Created'), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED'], 404: ['NOT_FOUND'], 409: ['GYM_JOIN_NOT_OPEN', 'GYM_LINK_REQUEST_PENDING', 'GYM_ALREADY_LINKED'], 422: ['VALIDATION_FAILED', 'GYM_PACKAGE_UNAVAILABLE'] }) } });
+  p({ method: 'post', path: '/me/gym-requests/{requestId}/cancel', tags: gmTag, summary: 'Withdraw my pending join request', security: bearer, request: { params: gmS.meRequestParam }, responses: { 200: json(gmS.MyCancelResult), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], 409: ['GYM_LINK_REQUEST_STATE'] }) } });
+  p({ method: 'get', path: '/me/gym-plans', tags: gmTag, summary: 'My plans and diet charts: the active ones first with today’s workout day (§6.10) and the week, then ended and replaced ones (read-only); my ticks for the days I can still tick; the safety line (M24-FR-65, FR-67, FR-69)', security: bearer, responses: { 200: json(gmS.MyPlans), ...errors(COMMON_AUTH) } });
+  p({ method: 'get', path: '/me/gym-plans/{assignmentId}', tags: gmTag, summary: 'One of my plans with the versions given to me and all my ticks', security: bearer, request: gmMePl, responses: { 200: json(gmS.MyPlanDetail), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'] }) } });
+  p({ method: 'post', path: '/me/gym-plans/{assignmentId}/logs', tags: gmTag, summary: 'Tick an item done (or not) with a note, for today or up to gym_manage.plan_log_back_days back; the latest tick per item and date wins (M24-FR-65)', security: bearer,
+    request: { ...gmMePl, ...body(gmS.planLogBody) },
+    responses: { 201: json(gmS.PlanLogResult, 'Created'), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], 409: ['GYM_PLAN_STATE'], 422: ['VALIDATION_FAILED', 'GYM_PLAN_LOG_WINDOW'] }) } });
+  p({ method: 'post', path: '/me/gym-checkins', tags: gmTag, summary: 'Check in by scanning the gym’s entrance QR (gate join_gym; a linked member of that gym): the gym’s entry policy applies; block shows the gym’s message and has no override (M24-FR-51)', security: bearer,
+    request: body(gmS.meCheckinBody),
+    responses: { 201: json(gmS.EntranceCheckin, 'Counted'), 200: json(gmS.EntranceCheckin, 'Already checked in today'), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'GYM_NOT_A_MEMBER', 'GYM_TIER_REQUIRED'], 409: ['GYM_ENTRY_BLOCKED', 'GYM_MEMBER_STATE'], 422: ['VALIDATION_FAILED', 'GYM_CHECKIN_TOKEN_INVALID'] }) } });
 
   // ------------------------------------------------------------------ M14 lite organisations and M22 organiser SaaS (step 1)
   const orgP = { params: saS.orgParam };
