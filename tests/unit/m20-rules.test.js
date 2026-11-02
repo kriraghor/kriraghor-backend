@@ -105,8 +105,8 @@ describe('buying a pass (FR-03)', () => {
 describe('the front desk (FR-05)', () => {
   const pass = { gymId: 'g1', kind: 'day', status: 'active', validFrom: '2026-10-22', validTo: '2026-10-22', firstRedeemedAt: null, lastRedeemedAt: null };
   const at = dhaka('2026-10-22', '07:42');
-  const check = (over = {}, more = {}) => r.redeemBlock({ pass: { ...pass, ...over }, gymId: 'g1', today: '2026-10-22', at, hours: HOURS, ...more });
-  it('admits an active pass of this gym, valid today, while open', () => {
+  const check = (over = {}, more = {}) => r.redeemBlock({ pass: { ...pass, ...over }, gymId: 'g1', today: '2026-10-22', ...more });
+  it('admits an active pass of this gym, valid today', () => {
     expect(check()).toBeNull();
   });
   it('says why not, the wrong gym first', () => {
@@ -116,7 +116,6 @@ describe('the front desk (FR-05)', () => {
     expect(check({ validFrom: '2026-10-23', validTo: '2026-10-23' })).toMatchObject({ code: 'PASS_NOT_VALID_TODAY' });
     expect(check({ validFrom: '2026-09-22', validTo: '2026-10-21' })).toMatchObject({ code: 'PASS_NOT_VALID_TODAY' });
     expect(check({ kind: 'month', validFrom: '2026-10-01', validTo: '2026-10-30' }, { usedTodayAt: at })).toEqual({ code: 'PASS_ALREADY_REDEEMED', at });
-    expect(check({}, { at: dhaka('2026-10-22', '05:00') })).toEqual({ code: 'GYM_CLOSED_NOW' });
   });
   it('a day pass is used up; the first admission releases the money', () => {
     expect(r.admission({ kind: 'day', firstRedeemedAt: null })).toEqual({ status: 'redeemed', release: true });

@@ -131,15 +131,15 @@ function validity({ days, from, today, advanceDays }) {
 
 /**
  * Why a pass cannot be admitted now, or null. The wrong gym comes first, so a desk learns nothing
- * about another gym's passes; `usedTodayAt` is the earlier admission today, if any.
+ * about another gym's passes; `usedTodayAt` is the earlier admission today, if any. The hour does not
+ * matter: the desk admits a pass valid today whenever someone is at the desk (M20-FR-05, 3 Nov 2026).
  */
-function redeemBlock({ pass, gymId, today, at, hours, usedTodayAt = null }) {
+function redeemBlock({ pass, gymId, today, usedTodayAt = null }) {
   if (pass.gymId !== gymId) return { code: 'PASS_WRONG_GYM' };
   if (pass.status === 'redeemed') return { code: 'PASS_ALREADY_REDEEMED', at: pass.lastRedeemedAt };
   if (pass.status !== 'active') return { code: 'PASS_NOT_ACTIVE', status: pass.status };
   if (today < pass.validFrom || today > pass.validTo) return { code: 'PASS_NOT_VALID_TODAY', validFrom: pass.validFrom, validTo: pass.validTo };
   if (usedTodayAt) return { code: 'PASS_ALREADY_REDEEMED', at: usedTodayAt };
-  if (!openWindowAt(hours, at)) return { code: 'GYM_CLOSED_NOW' };
   return null;
 }
 

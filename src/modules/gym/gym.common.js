@@ -38,7 +38,6 @@ const ERRORS = {
   PASS_WRONG_GYM: [409, 'This pass is for another gym'],
   PASS_NOT_VALID_TODAY: [409, 'This pass is not valid today'],
   PASS_ALREADY_REDEEMED: [409, 'This pass was already used today'],
-  GYM_CLOSED_NOW: [409, 'The gym is closed now'],
   INVALID_PASS_TOKEN: [422, 'This code is not a Kriraghor pass'],
   NOT_A_FITNESS_TRAINER: [403, 'Monthly plans are for live fitness trainer profiles'],
   PLAN_NOT_AVAILABLE: [409, 'This plan is not open for new members'],
