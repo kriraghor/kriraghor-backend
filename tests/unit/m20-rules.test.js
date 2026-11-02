@@ -62,15 +62,16 @@ describe('opening hours', () => {
 describe('packages', () => {
   const lim = { dayMin: 10000, dayMax: 300000 };
   it('knows the days of each kind', () => {
-    expect([r.daysOf('day', { monthDays: 30, quarterDays: 90 }), r.daysOf('month', { monthDays: 30 }), r.daysOf('quarter', { quarterDays: 90 })]).toEqual([1, 30, 90]);
+    expect([r.daysOf('month', { monthDays: 30 }), r.daysOf('quarter', { quarterDays: 90 })]).toEqual([30, 90]);
   });
   it('M24-FR-24: 6 and 12 months from settings, custom days as chosen', () => {
     const cfg = { monthDays: 30, quarterDays: 90, halfYearDays: 180, yearDays: 365 };
     expect([r.daysOf('half_year', cfg), r.daysOf('year', cfg), r.daysOf('custom', cfg, 45), r.daysOf('custom', cfg)]).toEqual([180, 365, 45, null]);
   });
-  it('M24-FR-24: a day pass is needed only to submit; at most max_custom_packages custom packages', () => {
-    expect(r.packageErrors([{ kind: 'month', price: 250000 }], lim, { submit: false })).toEqual([]);
-    expect(r.packageErrors([{ kind: 'month', price: 250000 }], lim)).toEqual([{ field: 'packages', message: 'Add a day pass' }]);
+  it('M24-FR-24: one package sold online is needed only to submit; at most max_custom_packages custom packages', () => {
+    expect(r.packageErrors([], lim, { submit: false })).toEqual([]);
+    expect(r.packageErrors([], lim)).toEqual([{ field: 'packages', message: 'Add a package sold online' }]);
+    expect(r.packageErrors([{ kind: 'month', price: 250000 }], lim)).toEqual([]);
     const customs = [{ kind: 'custom', price: 1000 }, { kind: 'custom', price: 2000 }, { kind: 'custom', price: 3000 }];
     expect(r.packageErrors(customs, { ...lim, maxCustom: 2 }, { submit: false })).toEqual([{ field: 'packages', message: 'At most 2 custom packages' }]);
     expect(r.packageErrors(customs, { ...lim, maxCustom: 3 }, { submit: false })).toEqual([]);
@@ -78,38 +79,26 @@ describe('packages', () => {
   it('M24 §7.1: desk packages are never sold online; old packages (no channel) are', () => {
     expect([r.soldOnline({ channel: 'desk' }), r.soldOnline({ channel: 'online' }), r.soldOnline({ channel: 'both' }), r.soldOnline({})]).toEqual([false, true, true, true]);
     expect(r.CHANNELS).toEqual(['desk', 'online', 'both']);
-    expect(r.KINDS).toEqual(['day', 'month', 'quarter', 'half_year', 'year', 'custom']);
+    expect(r.KINDS).toEqual(['month', 'quarter', 'half_year', 'year', 'custom']);
   });
   it('accepts the design gyms', () => {
-    expect(r.packageErrors([{ kind: 'day', price: 40000 }, { kind: 'month', price: 450000 }, { kind: 'quarter', price: 1200000 }], lim)).toEqual([]);
-    expect(r.packageErrors([{ kind: 'day', price: 30000 }, { kind: 'quarter', price: 30000 }], lim)).toEqual([]);
+    expect(r.packageErrors([{ kind: 'month', price: 450000 }, { kind: 'quarter', price: 1200000 }], lim)).toEqual([]);
+    expect(r.packageErrors([{ kind: 'quarter', price: 30000 }], lim)).toEqual([]);
   });
-  it('needs a day pass inside the limits, and longer packages that cost no less', () => {
-    expect(r.packageErrors([{ kind: 'month', price: 450000 }], lim)).toEqual([{ field: 'packages', message: 'Add a day pass' }]);
-    expect(r.packageErrors([{ kind: 'day', price: 5000 }], lim)[0].field).toBe('packages.day');
-    expect(r.packageErrors([{ kind: 'day', price: 400000 }], lim)[0].field).toBe('packages.day');
-    expect(r.packageErrors([{ kind: 'day', price: 40000 }, { kind: 'month', price: 30000 }], lim)).toEqual([{ field: 'packages.month', message: 'A month pass costs at least a day pass' }]);
-    expect(r.packageErrors([{ kind: 'day', price: 40000 }, { kind: 'month', price: 450000 }, { kind: 'quarter', price: 400000 }], lim)).toEqual([{ field: 'packages.quarter', message: 'A quarter pass costs at least a month pass' }]);
-    expect(r.packageErrors([{ kind: 'day', price: 40000 }, { kind: 'quarter', price: 30000 }], lim)[0].field).toBe('packages.quarter');
-    // No day and no month: only the missing day pass is reported.
-    expect(r.packageErrors([{ kind: 'quarter', price: 30000 }], lim)).toEqual([{ field: 'packages', message: 'Add a day pass' }]);
+  it('a quarter costs no less than a month', () => {
+    expect(r.packageErrors([{ kind: 'month', price: 450000 }, { kind: 'quarter', price: 400000 }], lim)).toEqual([{ field: 'packages.quarter', message: 'A quarter pass costs at least a month pass' }]);
   });
 });
 
 describe('buying a pass (FR-03)', () => {
-  const base = { days: 1, today: '2026-10-22', advanceDays: 7, hours: HOURS };
-  it('a day pass on an open day within the next 7 days', () => {
-    expect(r.validity({ ...base, kind: 'day', from: '2026-10-24', now: dhaka('2026-10-22', '12:00') })).toEqual({ validFrom: '2026-10-24', validTo: '2026-10-24' });
-    expect(r.validity({ ...base, kind: 'day', from: '2026-10-22', now: dhaka('2026-10-22', '22:59') })).toEqual({ validFrom: '2026-10-22', validTo: '2026-10-22' });
+  const base = { days: 30, today: '2026-10-22', advanceDays: 7 };
+  it('a pass runs its days from its start, even from a closed day', () => {
+    expect(r.validity({ ...base, from: '2026-10-23' })).toEqual({ validFrom: '2026-10-23', validTo: '2026-11-21' });
+    expect(r.validity({ ...base, from: '2026-10-22' })).toEqual({ validFrom: '2026-10-22', validTo: '2026-11-20' });
   });
-  it('refuses the past, too far ahead, a closed day and today after closing', () => {
-    expect(r.validity({ ...base, kind: 'day', from: '2026-10-21', now: dhaka('2026-10-22', '12:00') })).toEqual({ block: 'DATE_OUT_OF_RANGE' });
-    expect(r.validity({ ...base, kind: 'day', from: '2026-10-29', now: dhaka('2026-10-22', '12:00') })).toEqual({ block: 'DATE_OUT_OF_RANGE' });
-    expect(r.validity({ ...base, kind: 'day', from: '2026-10-23', now: dhaka('2026-10-22', '12:00') })).toEqual({ block: 'GYM_CLOSED_ON_DATE' });
-    expect(r.validity({ ...base, kind: 'day', from: '2026-10-22', now: dhaka('2026-10-22', '23:00') })).toEqual({ block: 'GYM_CLOSED_ON_DATE' });
-  });
-  it('a month pass runs 30 days from its start, even from a closed day', () => {
-    expect(r.validity({ ...base, kind: 'month', days: 30, from: '2026-10-23', now: dhaka('2026-10-22', '12:00') })).toEqual({ validFrom: '2026-10-23', validTo: '2026-11-21' });
+  it('refuses the past and too far ahead', () => {
+    expect(r.validity({ ...base, from: '2026-10-21' })).toEqual({ block: 'DATE_OUT_OF_RANGE' });
+    expect(r.validity({ ...base, from: '2026-10-29' })).toEqual({ block: 'DATE_OUT_OF_RANGE' });
   });
 });
 

@@ -59,7 +59,6 @@ async function main() {
     lat: 23.8759,
     lng: 90.3795,
     packages: [
-      { kind: 'day', title: 'Day pass', price: 30000 },
       { kind: 'month', title: 'Monthly', price: 300000 },
     ],
   });

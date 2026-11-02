@@ -10,7 +10,7 @@
  * ৳2,000/h flat, 25% advance) and owner2Token / ground2Id (another owner); memberToken (books);
  * deskPhone, nonePhone, otherPhone, packerPhone, frontdeskPhone (members with verified phones who
  * become staff) and unverifiedPhone; shopOwnerToken, shopId, subOrderId, subOrder2Id, variantId (a
- * live shop with two placed orders); gymOwnerToken, gymId, passToken (a live gym and a paid day pass);
+ * live shop with two placed orders); gymOwnerToken, gymId, passToken (a live gym and a paid monthly package);
  * s1, s2 (tomorrow's slots). Staff tokens come from the runner's /refresh step (their access changed).
  * controlUrl (the runner): /refresh?who=, /pay?paymentId=, /shift?bookingId=, /drain, /fill-team-adds?who=.
  * Unattended: `node postman/run-b3.js`.
@@ -190,7 +190,7 @@ const collection = {
       item: [
         gymOwner('Add a front-desk member (defaults)', 'POST', '/me/team', { body: { businessType: 'gym', businessId: '{{gymId}}', phone: '{{frontdeskPhone}}' }, expect: { status: 201 } }),
         refresh('frontdesk'),
-        frontdesk('Staff: admit a pass (no money in the answer)', 'POST', '/me/gyms/{{gymId}}/redemptions', { body: { token: '{{passToken}}' }, expect: { status: 201 }, checks: [['redeemed', "j.status === 'redeemed'"], noMoney] }),
+        frontdesk('Staff: admit a pass (no money in the answer)', 'POST', '/me/gyms/{{gymId}}/redemptions', { body: { token: '{{passToken}}' }, expect: { status: 201 }, checks: [['admitted', "j.status === 'active'"], noMoney] }),
         frontdesk('Staff: today’s admissions', 'GET', '/me/gyms/{{gymId}}/redemptions', { expect: { status: 200 }, checks: [['one', 'j.items.length === 1']] }),
         frontdesk('Staff: passes sold is optional and off (expect 403)', 'GET', '/me/gyms/{{gymId}}/passes', { expect: code(403, 'PERMISSION_REQUIRED') }),
         frontdesk('Owner-only: the gym’s hours (expect 403)', 'PUT', '/me/gyms/{{gymId}}/hours', { body: { hours: [] }, expect: { status: 403 } }),

@@ -33,7 +33,6 @@ const ERRORS = {
   PACKAGE_UNKNOWN: [422, 'Choose one of the gym’s packages'],
   DATE_OUT_OF_RANGE: [422, 'Choose a date in the range offered'],
   GYM_CLOSED_ON_DATE: [422, 'The gym is closed on that date'],
-  PASS_CAPACITY_FULL: [409, 'The gym has sold every pass for that date'],
   PASS_NOT_ACTIVE: [409, 'This pass cannot be used'],
   PASS_NOT_REFUNDABLE: [409, 'This pass can no longer be cancelled'],
   PASS_WRONG_GYM: [409, 'This pass is for another gym'],
@@ -52,8 +51,6 @@ const fail = (code, meta) => new AppError(ERRORS[code][0], code, ERRORS[code][1]
 
 /** Every number from M03 (read per call). */
 const config = () => ({
-  dayMin: settings.get('gym.day_pass_min_poisha'),
-  dayMax: settings.get('gym.day_pass_max_poisha'),
   advanceDays: settings.get('gym.pass_advance_days'),
   monthDays: settings.get('gym.month_days'),
   quarterDays: settings.get('gym.quarter_days'),

@@ -53,11 +53,15 @@ describe('M20 gym', () => {
     expect((await api().get(`${P}/me/gyms`).set(h.bearer(plain)).expect(200)).body.items).toEqual([]);
     const owner = await g.gymOwner(docsReviewer);
     const draft = (await api().post(`${P}/me/gyms`).set(h.bearer(owner)).send({ name: 'Iron Yard Banani', areaId: await f.areaId('banani'), addressLine: 'House 9, Road 11, Banani' }).expect(201)).body;
-    expect(draft).toMatchObject({ status: 'draft', limits: { dayMin: 10000, dayMax: 300000, minPhotos: 3 } });
+    expect(draft).toMatchObject({ status: 'draft', limits: { minPhotos: 3 } });
     const incomplete = await api().post(`${P}/me/gyms/${draft.id}/submit`).set(h.bearer(owner)).expect(422);
     expect(incomplete.body.code).toBe('GYM_INCOMPLETE');
     expect(incomplete.body.errors.map((e) => e.field)).toEqual(['photos', 'hours', 'packages']);
-    await api().put(`${P}/me/gyms/${draft.id}/packages`).set(h.bearer(owner)).send({ packages: [{ kind: 'day', title: 'Day', price: 500 }] }).expect(422);
+    // M24-FR-24: gyms sell subscriptions only: no day pass, and at least one package sold online to list.
+    await api().put(`${P}/me/gyms/${draft.id}/packages`).set(h.bearer(owner)).send({ packages: [{ kind: 'day', title: 'Day', price: 40000 }] }).expect(422);
+    await api().put(`${P}/me/gyms/${draft.id}/packages`).set(h.bearer(owner)).send({ packages: [{ kind: 'month', title: 'Monthly', price: 450000, channel: 'desk' }] }).expect(200);
+    const deskOnly = await api().post(`${P}/me/gyms/${draft.id}/submit`).set(h.bearer(owner)).expect(422);
+    expect(deskOnly.body.errors.find((e) => e.field === 'packages').message).toBe('Add a package sold online');
     await api().put(`${P}/me/gyms/${draft.id}/hours`).set(h.bearer(owner)).send({ hours: [{ dow: 1, openTime: '06:00', closeTime: '05:00' }] }).expect(422);
 
     const ready = await g.readyGym(owner, { name: 'Pulse Fitness', area: 'dhanmondi', hours: [...g.ALL_DAY.filter((x) => x.dow !== 5), { dow: 5, openTime: '08:00', closeTime: '10:00', womenOnly: true }] });
@@ -77,7 +81,7 @@ describe('M20 gym', () => {
     await api().post(`${P}/admin/submissions/${sub.id}/decide`).set(h.bearer(reviewer)).set('Idempotency-Key', key('dec')).send({ decision: 'approve' }).expect(200);
     await h.drainEvents();
     const page = (await api().get(`${P}/gym/gyms/${ready.slug}`).expect(200)).body;
-    expect(page).toMatchObject({ name: 'Pulse Fitness', dayPrice: 40000, monthPrice: 450000, quarterPrice: 1200000, womenOnlyHours: true, taking: true });
+    expect(page).toMatchObject({ name: 'Pulse Fitness', monthPrice: 450000, quarterPrice: 1200000, womenOnlyHours: true, taking: true });
     expect(page.photos).toHaveLength(3);
     expect((await api().get(`${P}/gym/gyms?sort=price`).expect(200)).body.items.map((x) => x.slug)).toEqual([ready.slug]);
     expect(await models.Notification.count({ where: { userId: owner.user.id, code: 'GYM_LIVE' } })).toBe(1);
@@ -98,9 +102,9 @@ describe('M20 gym', () => {
     expect(todo).toEqual([expect.objectContaining({ key: 'gym_changes_requested', count: 1, href: `${config.apps.gym}/manage` })]);
   });
 
-  it('a day pass: paid, shown as a QR, admitted once by token; the owner gets ৳380 (FR-03 to FR-05)', async () => {
+  it('a day pass sold before 2 Nov 2026: paid, shown as a QR, admitted once by token; the owner gets ৳380 (FR-03 to FR-05)', async () => {
     const owner = await g.gymOwner(docsReviewer);
-    const gym = await g.liveGym(owner, reviewer);
+    const gym = await g.withOldDayPass(await g.liveGym(owner, reviewer));
     const member = await h.signupUser({ name: 'Fahim Rahman' });
     await buy(member, pkg(gym, 'day'), g.inDays(9), 422);
     const r = await buy(member, pkg(gym, 'day'), g.today());
@@ -153,9 +157,9 @@ describe('M20 gym', () => {
     expect(await payable(owner)).toBe(427500);
   });
 
-  it('cancel before the date refunds in full; an unused day pass pays the gym at closing (FR-06, Q110)', async () => {
+  it('a day pass sold before 2 Nov 2026: cancel before the date refunds in full; unused it pays the gym at closing (FR-06, Q110)', async () => {
     const owner = await g.gymOwner(docsReviewer);
-    const gym = await g.liveGym(owner, reviewer);
+    const gym = await g.withOldDayPass(await g.liveGym(owner, reviewer));
     const member = await h.signupUser({ name: 'Rafi Ahmed' });
     const tomorrow = await paidPass(member, gym, 'day', g.inDays(1));
     const cancelled = await api().post(`${P}/me/passes/${tomorrow.id}/cancel`).set(h.bearer(member)).expect(200);
@@ -174,16 +178,6 @@ describe('M20 gym', () => {
     const unpaid = await buy(member, pkg(gym, 'day'), g.inDays(3));
     expect((await gymJobs.tick(new Date(Date.now() + 60 * 60000))).voided).toBe(1);
     expect((await models.GymPass.findByPk(unpaid.body.pass.id)).status).toBe('void');
-  });
-
-  it('daily capacity counts day passes per date', async () => {
-    const owner = await g.gymOwner(docsReviewer);
-    const gym = await g.liveGym(owner, reviewer, { capacity: 1 });
-    const a = await h.signupUser({ name: 'Mitu Akter' });
-    const b = await h.signupUser({ name: 'Shila Rahman' });
-    await buy(a, pkg(gym, 'day'), g.inDays(2));
-    expect((await buy(b, pkg(gym, 'day'), g.inDays(2), 409)).body.code).toBe('PASS_CAPACITY_FULL');
-    await buy(b, pkg(gym, 'day'), g.inDays(3));
   });
 
   it('a trainer’s monthly plan: subscribe, cancel in 3 days, renewal in grace, monthly release, lapse (v3)', async () => {
@@ -266,7 +260,7 @@ describe('M20 gym', () => {
 
   it('staff: a pass with its escrow, a platform cancel with step-up, suspend a gym; gates', async () => {
     const owner = await g.gymOwner(docsReviewer);
-    const gym = await g.liveGym(owner, reviewer);
+    const gym = await g.withOldDayPass(await g.liveGym(owner, reviewer));
     const member = await h.signupUser({ name: 'Fahim Rahman' });
     const pass = await paidPass(member, gym, 'day', g.inDays(1));
     const seen = (await api().get(`${P}/admin/gym/passes/${pass.code}`).set(h.bearer(reviewer)).expect(200)).body;

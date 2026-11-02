@@ -3047,7 +3047,7 @@
                   "pm.test('status 201', () => {",
                   "  pm.response.to.have.status(201);",
                   "});",
-                  "pm.test(\"redeemed\", () => { pm.expect(j.status === 'redeemed').to.eql(true); });",
+                  "pm.test(\"admitted\", () => { pm.expect(j.status === 'active').to.eql(true); });",
                   "pm.test(\"no fee, net, released or retained amounts\", () => { pm.expect(!new RegExp(\"\\\"(fee|feeBps|commission|commissionBps|net|released|retained|stockValuePoisha|settlement|payoutsHref)\\\"\\\\s*:\").test(pm.response.text())).to.eql(true); });"
                 ]
               }

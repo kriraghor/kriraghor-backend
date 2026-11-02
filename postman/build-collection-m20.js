@@ -47,7 +47,6 @@ const setVar = (name, expr) => [`saves ${name}`, `(pm.collectionVariables.set('$
 const ALL_DAY = [0, 1, 2, 3, 4, 5, 6].map((dow) => ({ dow, openTime: '00:00', closeTime: '24:00', womenOnly: false }));
 const HOURS = [...ALL_DAY.filter((x) => x.dow !== 5), { dow: 5, openTime: '00:00', closeTime: '10:00', womenOnly: false }, { dow: 5, openTime: '10:00', closeTime: '24:00', womenOnly: false }];
 const IRON_YARD = [
-  { kind: 'day', title: 'Day pass', price: 40000 },
   { kind: 'month', title: 'Monthly', price: 450000 },
   { kind: 'quarter', title: 'Quarterly', price: 1200000 },
 ];
@@ -58,7 +57,7 @@ const collection = {
     name: 'Kriraghor API: M20 Gym (step 1)',
     description: [
       'An approved gym owner (gym_owner role, ground-owner documents; set up by the runner) lists Iron Yard Banani: three photos, the week (open all day; Friday in two windows) and the design packages (day ৳400, month ৳4,500, quarter ৳12,000). Sending it incomplete is refused with the missing parts; the listings desk sees the five automatic checks pass and approves it (M05 kind gym). The public page and list show it.',
-      'A member buys today\'s day pass (Idempotency-Key, M06 purpose gym_package) and pays through the simulator: the pass shows its QR token and 6-character backup code to the holder only. The front desk refuses a tampered token, admits the pass by token (৳380 to the owner, ৳20 fee) and then says "already used". A pass for tomorrow is cancelled for a full refund; a pass bought for today cannot be. An unused day pass is paid to the gym when the gym closes (Q110).',
+      'A member buys a monthly package from today (Idempotency-Key, M06 purpose gym_package) and pays through the simulator: the pass shows its QR token and 6-character backup code to the holder only. The front desk refuses a tampered token, admits the pass by token (৳4,275 to the owner, ৳225 fee) and then says "already used" for the day. A pass not yet used is cancelled for a full refund; a used one cannot be. An unused pass is paid to the gym after its last day (Q110). Day passes sold before 2 Nov 2026 are covered in tests/e2e/gym.test.js.',
       'A fitness trainer adds a monthly plan (a price under the limit is refused) and a member subscribes and pays; cancelling within the first 3 days refunds the month in full.',
       'Staff: the pass with its escrow hold (no token or code), a master\'s platform cancel with step-up escrow.manage, one gym\'s working copy, suspend (manage_users) and restore (master).',
       'Requests named "Runner" go to the local test runner (drain events, pay, run gym.tick at a time, read the ledger).',
@@ -67,7 +66,7 @@ const collection = {
     ].join('\n\n'),
     schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json',
   },
-  variable: ['baseUrl', 'controlUrl', 'gymId', 'slug', 'submissionId', 'dayPkg', 'monthPkg', 'passId', 'passCode', 'passToken', 'backupCode', 'payment1', 'pass2', 'payment2', 'pass3', 'pass3code', 'payment3', 'pass4', 'payment4', 'pass4code', 'planId', 'subId', 'subPayment'].map((key) => ({
+  variable: ['baseUrl', 'controlUrl', 'gymId', 'slug', 'submissionId', 'monthPkg', 'quarterPkg', 'passId', 'passCode', 'passToken', 'backupCode', 'payment1', 'pass2', 'payment2', 'pass3', 'pass3code', 'payment3', 'pass4', 'payment4', 'pass4code', 'planId', 'subId', 'subPayment'].map((key) => ({
     key,
     value: key === 'baseUrl' ? 'http://localhost:4000/api/v1' : '',
   })),
@@ -75,8 +74,8 @@ const collection = {
     {
       name: '1. A gym and its review (FR-01, FR-02)',
       item: [
-        m1('A member cannot list a gym (expect 403)', 'GET', '/me/gyms', { expect: { status: 403 } }),
-        owner('A draft in Banani', 'POST', '/me/gyms', { body: { name: 'Iron Yard Banani', areaId: '{{areaBanani}}', addressLine: 'House 9, Road 11, Banani, Dhaka', about: 'Free weights, squat racks and showers.' }, expect: { status: 201 }, save: { gymId: 'id', slug: 'slug' }, checks: [['draft with limits', "j.status === 'draft' && j.limits.dayMin === 10000 && j.limits.dayMax === 300000 && j.limits.minPhotos === 3"]] }),
+        m1('A member with a verified phone may open gyms (M24 gate run_gym): none yet', 'GET', '/me/gyms', { expect: { status: 200 }, checks: [['none', 'j.items.length === 0']] }),
+        owner('A draft in Banani', 'POST', '/me/gyms', { body: { name: 'Iron Yard Banani', areaId: '{{areaBanani}}', addressLine: 'House 9, Road 11, Banani, Dhaka', about: 'Free weights, squat racks and showers.' }, expect: { status: 201 }, save: { gymId: 'id', slug: 'slug' }, checks: [['draft with limits', "j.status === 'draft' && j.limits.minPhotos === 3"]] }),
         owner('Send it incomplete (expect 422)', 'POST', '/me/gyms/{{gymId}}/submit', { expect: { status: 422, code: 'GYM_INCOMPLETE' }, checks: [['photos, hours, packages missing', "j.errors.map((e) => e.field).join() === 'photos,hours,packages'"]] }),
         upload('Photo 1 (JPEG)', '/me/gyms/{{gymId}}/photos', 'nid-front.jpg', 'image/jpeg', { expect: { status: 201 } }),
         upload('Photo 2 (PNG)', '/me/gyms/{{gymId}}/photos', 'nid-back.png', 'image/png', { expect: { status: 201 } }),
@@ -84,8 +83,10 @@ const collection = {
         upload('A GIF is refused (expect 415)', '/me/gyms/{{gymId}}/photos', 'not-allowed.gif', 'image/gif', { expect: { status: 415 } }),
         owner('Hours that close before they open (expect 422)', 'PUT', '/me/gyms/{{gymId}}/hours', { body: { hours: [{ dow: 1, openTime: '06:00', closeTime: '05:00' }] }, expect: { status: 422 } }),
         owner('The week (Friday in two windows)', 'PUT', '/me/gyms/{{gymId}}/hours', { body: { hours: HOURS }, expect: { status: 200 }, checks: [['8 windows', 'j.hours.length === 8']] }),
-        owner('A day pass under the limit (expect 422)', 'PUT', '/me/gyms/{{gymId}}/packages', { body: { packages: [{ kind: 'day', title: 'Day', price: 500 }] }, expect: { status: 422 } }),
-        owner('The design packages', 'PUT', '/me/gyms/{{gymId}}/packages', { body: { packages: IRON_YARD }, expect: { status: 200 }, checks: [['three, day first', "j.packages.length === 3 && j.packages[0].kind === 'day'"]] }),
+        owner('A day pass is refused (expect 422)', 'PUT', '/me/gyms/{{gymId}}/packages', { body: { packages: [{ kind: 'day', title: 'Day', price: 40000 }] }, expect: { status: 422 } }),
+        owner('Only at the desk: saved', 'PUT', '/me/gyms/{{gymId}}/packages', { body: { packages: [{ kind: 'month', title: 'Monthly', price: 450000, channel: 'desk' }] }, expect: { status: 200 } }),
+        owner('Only at the desk: cannot be sent (expect 422)', 'POST', '/me/gyms/{{gymId}}/submit', { expect: { status: 422, code: 'GYM_INCOMPLETE' }, checks: [['a package sold online', "j.errors.some((e) => e.field === 'packages')"]] }),
+        owner('The design packages', 'PUT', '/me/gyms/{{gymId}}/packages', { body: { packages: IRON_YARD }, expect: { status: 200 }, checks: [['two, month first', "j.packages.length === 2 && j.packages[0].kind === 'month'"]] }),
         owner('Send for review', 'POST', '/me/gyms/{{gymId}}/submit', { expect: { status: 200 } }),
         control('drain events', 'settle'),
         listings('The gym on the desk', 'GET', '/admin/submissions?status=pending_review&kind=gym', { expect: { status: 200 }, checks: [setVar('submissionId', 'j.items[0].id')] }),
@@ -93,37 +94,37 @@ const collection = {
         listings('Tick the rubric', 'PUT', '/admin/submissions/{{submissionId}}/ticks', { body: { ticks: GYM_RUBRIC }, expect: { status: 200 } }),
         idem(listings('Approve', 'POST', '/admin/submissions/{{submissionId}}/decide', { body: { decision: 'approve' }, expect: { status: 200 } })),
         control('deliver the decision', 'settle'),
-        req('The public page', 'GET', '/gym/gyms/{{slug}}', { as: false, expect: { status: 200 }, save: { dayPkg: 'packages.0.id', monthPkg: 'packages.1.id' }, checks: [['prices and photos', 'j.dayPrice === 40000 && j.monthPrice === 450000 && j.quarterPrice === 1200000 && j.photos.length === 3 && j.taking === true']] }),
+        req('The public page', 'GET', '/gym/gyms/{{slug}}', { as: false, expect: { status: 200 }, save: { monthPkg: 'packages.0.id', quarterPkg: 'packages.1.id' }, checks: [['prices and photos', 'j.monthPrice === 450000 && j.quarterPrice === 1200000 && j.photos.length === 3 && j.taking === true']] }),
         req('The gym list', 'GET', '/gym/gyms?sort=price', { as: false, expect: { status: 200 }, checks: [['listed, open now', "j.items.length === 1 && j.items[0].openNow === true"]] }),
       ],
     },
     {
-      name: '2. A day pass and the front desk (FR-03 to FR-05)',
+      name: '2. A monthly package and the front desk (FR-03 to FR-05)',
       item: [
-        idem(m1('Too far ahead (expect 422)', 'POST', '/gym/passes', { body: { packageId: '{{dayPkg}}', validFrom: '{{in9}}' }, expect: { status: 422, code: 'DATE_OUT_OF_RANGE' } })),
-        idem(m1("Buy today's day pass", 'POST', '/gym/passes', { body: { packageId: '{{dayPkg}}', validFrom: '{{today}}' }, expect: { status: 201 }, save: { passId: 'pass.id', passCode: 'pass.code', payment1: 'payment.id' }, checks: [['waiting, no secrets yet', "j.pass.status === 'pending_payment' && j.pass.token === null && j.pass.backupCode === null && j.pass.money.price === 40000"]] })),
+        idem(m1('Too far ahead (expect 422)', 'POST', '/gym/passes', { body: { packageId: '{{monthPkg}}', validFrom: '{{in9}}' }, expect: { status: 422, code: 'DATE_OUT_OF_RANGE' } })),
+        idem(m1('Buy a month from today', 'POST', '/gym/passes', { body: { packageId: '{{monthPkg}}', validFrom: '{{today}}' }, expect: { status: 201 }, save: { passId: 'pass.id', passCode: 'pass.code', payment1: 'payment.id' }, checks: [['waiting, no secrets yet', "j.pass.status === 'pending_payment' && j.pass.token === null && j.pass.backupCode === null && j.pass.money.price === 450000"]] })),
         control('pay through the simulator', 'pay?paymentId={{payment1}}'),
         m1('The pass with its QR token and code', 'GET', '/me/passes/{{passCode}}', { expect: { status: 200 }, save: { passToken: 'pass.token', backupCode: 'pass.backupCode' }, checks: [['active', "j.pass.status === 'active' && /^v1\\./.test(j.pass.token) && /^[0-9A-HJKMNP-TV-Z]{6}$/.test(j.pass.backupCode)"]] }),
         owner('A tampered token (expect 422)', 'POST', '/me/gyms/{{gymId}}/redemptions', { body: { token: 'v1.00000000-0000-0000-0000-000000000000.abcdefgh.00000000000000000000000000000000' }, expect: { status: 422, code: 'INVALID_PASS_TOKEN' } }),
-        owner('Admit by token', 'POST', '/me/gyms/{{gymId}}/redemptions', { body: { token: '{{passToken}}' }, expect: { status: 201 }, checks: [['admitted, ৳380 released', "j.status === 'redeemed' && j.released === 38000 && j.holder.displayName === 'Fahim Rahman'"]] }),
-        owner('A second scan: already used (expect 409)', 'POST', '/me/gyms/{{gymId}}/redemptions', { body: { token: '{{passToken}}' }, expect: { status: 409, code: 'PASS_ALREADY_REDEEMED' } }),
+        owner('Admit by token', 'POST', '/me/gyms/{{gymId}}/redemptions', { body: { token: '{{passToken}}' }, expect: { status: 201 }, checks: [['admitted, ৳4,275 released', "j.status === 'active' && j.released === 427500 && j.holder.displayName === 'Fahim Rahman'"]] }),
+        owner('A second scan today: already used (expect 409)', 'POST', '/me/gyms/{{gymId}}/redemptions', { body: { token: '{{passToken}}' }, expect: { status: 409, code: 'PASS_ALREADY_REDEEMED' } }),
         owner("Today's admissions", 'GET', '/me/gyms/{{gymId}}/redemptions', { expect: { status: 200 }, checks: [['one, by QR', "j.items.length === 1 && j.items[0].method === 'qr'"]] }),
-        control('ledger: owner ৳380, fee ৳20', 'check', { checks: [['balanced', 'j.invariantsOk === true'], ['payable', 'j.ownerPayable === 38000 && j.feeRevenue === 2000']] }),
-        m1('The used pass hides its secrets', 'GET', '/me/passes/{{passCode}}', { expect: { status: 200 }, checks: [['redeemed', "j.pass.status === 'redeemed' && j.pass.token === null && j.pass.backupCode === null"]] }),
+        control('ledger: owner ৳4,275, fee ৳225', 'check', { checks: [['balanced', 'j.invariantsOk === true'], ['payable', 'j.ownerPayable === 427500 && j.feeRevenue === 22500']] }),
+        m1('Still active for the rest of the month', 'GET', '/me/passes/{{passCode}}', { expect: { status: 200 }, checks: [['active, used once', "j.pass.status === 'active' && j.pass.firstRedeemedAt !== null && /^v1\\./.test(j.pass.token)"]] }),
       ],
     },
     {
       name: '3. Cancel and expiry (FR-06, FR-07, Q110)',
       item: [
-        idem(m1('A day pass for tomorrow', 'POST', '/gym/passes', { body: { packageId: '{{dayPkg}}', validFrom: '{{tomorrow}}' }, expect: { status: 201 }, save: { pass2: 'pass.id', payment2: 'payment.id' } })),
+        idem(m1('A month from tomorrow', 'POST', '/gym/passes', { body: { packageId: '{{monthPkg}}', validFrom: '{{tomorrow}}' }, expect: { status: 201 }, save: { pass2: 'pass.id', payment2: 'payment.id' } })),
         control('pay it', 'pay?paymentId={{payment2}}'),
-        m1('Cancel before the day: full refund', 'POST', '/me/passes/{{pass2}}/cancel', { expect: { status: 200 }, checks: [['refunded ৳400', "j.pass.status === 'refunded' && j.pass.money.refunded === 40000"]] }),
-        idem(m1('Another pass for today', 'POST', '/gym/passes', { body: { packageId: '{{dayPkg}}', validFrom: '{{today}}' }, expect: { status: 201 }, save: { pass3: 'pass.id', pass3code: 'pass.code', payment3: 'payment.id' } })),
+        m1('Cancel before its first use: full refund', 'POST', '/me/passes/{{pass2}}/cancel', { expect: { status: 200 }, checks: [['refunded ৳4,500', "j.pass.status === 'refunded' && j.pass.money.refunded === 450000"]] }),
+        m1('Cancel after its first use (expect 409)', 'POST', '/me/passes/{{passId}}/cancel', { expect: { status: 409, code: 'PASS_NOT_REFUNDABLE' } }),
+        idem(m1('Another month, never used', 'POST', '/gym/passes', { body: { packageId: '{{monthPkg}}', validFrom: '{{today}}' }, expect: { status: 201 }, save: { pass3: 'pass.id', pass3code: 'pass.code', payment3: 'payment.id' } })),
         control('pay it', 'pay?paymentId={{payment3}}'),
-        m1('Cancel on the day (expect 409)', 'POST', '/me/passes/{{pass3}}/cancel', { expect: { status: 409, code: 'PASS_NOT_REFUNDABLE' } }),
-        control('gym.tick after the gym closes today', 'tick?date={{tomorrow}}&minutes=1', { checks: [['one expired', 'j.tick.expired === 1']] }),
+        control('gym.tick after the last day', 'tick?date={{in31}}&minutes=1', { checks: [['both months expired', 'j.tick.expired === 2']] }),
         m1('The unused pass expired', 'GET', '/me/passes/{{pass3code}}', { expect: { status: 200 }, checks: [['expired', "j.pass.status === 'expired' && j.pass.closeReason === 'unused'"]] }),
-        control('ledger: the gym kept it minus the fee', 'check', { checks: [['payable ৳760', 'j.ownerPayable === 76000 && j.feeRevenue === 4000']] }),
+        control('ledger: the gym kept it minus the fee', 'check', { checks: [['payable ৳8,550', 'j.ownerPayable === 855000 && j.feeRevenue === 45000']] }),
       ],
     },
     {
@@ -143,18 +144,18 @@ const collection = {
     {
       name: '5. Staff (FR-10)',
       item: [
-        idem(m1('A pass for tomorrow', 'POST', '/gym/passes', { body: { packageId: '{{dayPkg}}', validFrom: '{{tomorrow}}' }, expect: { status: 201 }, save: { pass4: 'pass.id', pass4code: 'pass.code', payment4: 'payment.id' } })),
+        idem(m1('A pass for tomorrow', 'POST', '/gym/passes', { body: { packageId: '{{monthPkg}}', validFrom: '{{tomorrow}}' }, expect: { status: 201 }, save: { pass4: 'pass.id', pass4code: 'pass.code', payment4: 'payment.id' } })),
         control('pay it', 'pay?paymentId={{payment4}}'),
-        listings('Staff: the pass with its hold, no secrets', 'GET', '/admin/gym/passes/{{pass4code}}', { expect: { status: 200 }, checks: [['held ৳400', "j.escrow.held === 40000 && j.token === null && j.backupCode === null"]] }),
+        listings('Staff: the pass with its hold, no secrets', 'GET', '/admin/gym/passes/{{pass4code}}', { expect: { status: 200 }, checks: [['held ৳4,500', "j.escrow.held === 450000 && j.token === null && j.backupCode === null"]] }),
         listings('A reviewer cannot cancel it (expect 403)', 'POST', '/admin/gym/passes/{{pass4code}}/cancel', { body: { reason: 'The gym closed for repairs' }, expect: { status: 403 } }),
         (() => {
-          const r = req('Master: platform cancel (step-up)', 'POST', '/admin/gym/passes/{{pass4code}}/cancel', { body: { reason: 'The gym closed for repairs' }, expect: { status: 200 }, checks: [['refunded', "j.status === 'refunded' && j.money.refunded === 40000"]] });
+          const r = req('Master: platform cancel (step-up)', 'POST', '/admin/gym/passes/{{pass4code}}/cancel', { body: { reason: 'The gym closed for repairs' }, expect: { status: 200 }, checks: [['refunded', "j.status === 'refunded' && j.money.refunded === 450000"]] });
           r.request.header.push({ key: 'X-Step-Up', value: '{{stepUpA}}' });
           return r;
         })(),
-        listings('Staff: the gym working copy', 'GET', '/admin/gym/gyms/{{gymId}}', { expect: { status: 200 }, checks: [['live, owner', "j.status === 'live' && typeof j.ownerId === 'string' && j.packages.length === 3"]] }),
+        listings('Staff: the gym working copy', 'GET', '/admin/gym/gyms/{{gymId}}', { expect: { status: 200 }, checks: [['live, owner', "j.status === 'live' && typeof j.ownerId === 'string' && j.packages.length === 2"]] }),
         mod('Suspend the gym', 'POST', '/admin/gym/gyms/{{gymId}}/suspend', { body: { reason: 'Fake photos reported' }, expect: { status: 200 }, checks: [['suspended', "j.status === 'suspended'"]] }),
-        idem(m1('Buying now (expect 409)', 'POST', '/gym/passes', { body: { packageId: '{{dayPkg}}', validFrom: '{{tomorrow}}' }, expect: { status: 409, code: 'GYM_NOT_AVAILABLE' } })),
+        idem(m1('Buying now (expect 409)', 'POST', '/gym/passes', { body: { packageId: '{{monthPkg}}', validFrom: '{{tomorrow}}' }, expect: { status: 409, code: 'GYM_NOT_AVAILABLE' } })),
         req('The public page is gone (expect 404)', 'GET', '/gym/gyms/{{slug}}', { as: false, expect: { status: 404 } }),
         req('Master: restore', 'POST', '/admin/gym/gyms/{{gymId}}/restore', { body: { reason: 'Photos checked on site' }, expect: { status: 200 }, checks: [['live', "j.status === 'live'"]] }),
         control('ledger still balanced', 'check', { checks: [['balanced', 'j.invariantsOk === true']] }),

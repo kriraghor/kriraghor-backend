@@ -74,7 +74,8 @@ async function main() {
     const s3 = await bf.paidOrder(nadia, shop, ['40']);
     const s4 = await bf.paidOrder(nadia, shop, ['41']);
     await bf.shopPost(shop.owner, s4.id, 'reject', { reason: 'out_of_stock' }).expect(200);
-    const { owner: gymOwner, gym } = await bf.liveGym(reviewer, reviewer);
+    const { owner: gymOwner, gym: fresh } = await bf.liveGym(reviewer, reviewer);
+    const gym = await gf.withOldDayPass(fresh); // the history still counts day passes sold before 2 Nov 2026
     const fahim = await h.signupUser({ name: 'Fahim Rahman' });
     const rina = await h.signupUser({ name: 'Rina Begum' });
     const day = await bf.paidPass(fahim, gym, 'day');

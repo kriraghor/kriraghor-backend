@@ -222,7 +222,7 @@ async function admit(owner, gym, member, pass) {
 }
 
 /**
- * A day pass bought, paid and used at the front desk today. It stays today: pass_redemptions is
+ * A monthly package bought, paid and used at the front desk today. It stays today: pass_redemptions is
  * append-only, and the front desk's day view must match the pass.
  */
 async function gymVisit(owners, g, member) {
@@ -232,7 +232,7 @@ async function gymVisit(owners, g, member) {
     const today = todayDhaka();
     pass = await models.GymPass.findOne({ where: { holderId: member.userId, gymId: gym.id, status: 'active', validFrom: { [Op.lte]: today }, validTo: { [Op.gte]: today } } });
     if (!pass) {
-      const pkg = await models.GymPackage.findOne({ where: { gymId: gym.id, kind: 'day' } });
+      const pkg = await models.GymPackage.findOne({ where: { gymId: gym.id, kind: 'month' } });
       const r = await rt.post(member, '/gym/passes', { packageId: pkg.id, validFrom: today }, { idem: `demo-pass-${member.n}-${gym.id.slice(0, 8)}-${today}` });
       if (r.payment?.id) await pay(member, r.payment.id);
       pass = await models.GymPass.findOne({ where: { code: r.pass.code } });

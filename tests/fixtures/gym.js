@@ -14,9 +14,8 @@ const rules = require('../../src/modules/gym/gym.rules');
 
 const { api, P, models } = h;
 const ALL_DAY = [0, 1, 2, 3, 4, 5, 6].map((dow) => ({ dow, openTime: '00:00', closeTime: '24:00', womenOnly: false }));
-/** The design's Iron Yard: day ৳400, month ৳4,500, quarter ৳12,000. */
+/** The design's Iron Yard: month ৳4,500, quarter ৳12,000. */
 const IRON_YARD = [
-  { kind: 'day', title: 'Day pass', price: 40000 },
   { kind: 'month', title: 'Monthly', price: 450000 },
   { kind: 'quarter', title: 'Quarterly', price: 1200000 },
 ];
@@ -36,11 +35,11 @@ async function gymOwner(docsReviewer, name = 'Iron Yard Fitness') {
 }
 
 /** A gym ready for review: basics (a map pin with lat and lng, M24 prompt 3), three photos, hours and packages. */
-async function readyGym(owner, { name = 'Iron Yard Banani', area = 'banani', hours = ALL_DAY, packages = IRON_YARD, capacity = null, lat = null, lng = null } = {}) {
+async function readyGym(owner, { name = 'Iron Yard Banani', area = 'banani', hours = ALL_DAY, packages = IRON_YARD, lat = null, lng = null } = {}) {
   const g = await api()
     .post(`${P}/me/gyms`)
     .set(h.bearer(owner))
-    .send({ name, areaId: await f.areaId(area), addressLine: 'House 9, Road 11, Banani, Dhaka', about: 'Free weights, squat racks and showers.', dailyCapacity: capacity, ...(lat !== null ? { lat, lng } : {}) })
+    .send({ name, areaId: await f.areaId(area), addressLine: 'House 9, Road 11, Banani, Dhaka', about: 'Free weights, squat racks and showers.', ...(lat !== null ? { lat, lng } : {}) })
     .expect(201);
   for (const [buf, type] of [
     [f.JPEG, 'image/jpeg'],
@@ -60,6 +59,18 @@ async function liveGym(owner, reviewer, opts = {}) {
   await h.drainEvents();
   await f.review(reviewer, 'gym', g.id);
   return (await api().get(`${P}/gym/gyms/${g.slug}`).expect(200)).body;
+}
+
+/**
+ * A gym that still sells a day pass, as every gym could before 2 Nov 2026: the only way to get one now, for
+ * testing that passes already sold keep working (none can be created through the API).
+ */
+async function withOldDayPass(gym, { price = 40000 } = {}) {
+  const row = await models.GymPackage.create({ gymId: gym.id, kind: 'day', title: 'Day pass', pricePoisha: price, days: 1, channel: 'both', status: 'retired', sort: 99 });
+  const seen = { id: row.id, kind: 'day', title: 'Day pass', price, days: 1, admissionFee: 0, channel: 'both', visitLimit: null, sort: 99 };
+  const g = await models.Gym.findByPk(gym.id);
+  await g.update({ liveSnapshot: { ...g.liveSnapshot, packages: [...g.liveSnapshot.packages, seen] } });
+  return { ...gym, packages: [...gym.packages, seen] };
 }
 
 /** A fitness trainer with a live M11 profile (no credential needed for the role). */
@@ -93,4 +104,4 @@ async function shiftSubscription(subscriptionId, endsIn) {
   return s.reload();
 }
 
-module.exports = { ALL_DAY, IRON_YARD, gymOwner, readyGym, liveGym, trainer, today, inDays, shiftSubscription };
+module.exports = { ALL_DAY, IRON_YARD, gymOwner, readyGym, liveGym, withOldDayPass, trainer, today, inDays, shiftSubscription };

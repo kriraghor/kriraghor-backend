@@ -2,7 +2,7 @@
 
 /**
  * M20 public reads for the gym app on gym.kriraghor.com (no sign-in; M24-FR-103): live gyms by area and facility, sorted by the
- * day pass price, rating or newest; a gym page (photos, address, weekly hours with women-only
+ * monthly price, rating or newest; a gym page (photos, address, weekly hours with women-only
  * windows, facilities, packages, open now); the fitness trainers (M11 profiles in role
  * fitness_trainer) with their active monthly plans. Only the public version (live_snapshot) is read.
  * M24 prompt 3: the directory sorts by distance from a position sent with the query, filters by a radius
@@ -39,7 +39,7 @@ function card(g, { areas, facilities }, now = new Date(), distanceM = null) {
     area: areas.get(s.areaId) ?? null,
     cover: s.photos[0] ? storage.publicUrl(s.photos[0].key) : null,
     facilities: (s.facilityIds ?? []).map((id) => facilities.get(id)).filter(Boolean),
-    dayPrice: price('day'),
+    dayPrice: null, // no day pass since 2 Nov 2026; installed apps read this until their update reaches them
     monthPrice: price('month'),
     quarterPrice: price('quarter'),
     womenOnlyHours: s.hours.some((h) => h.womenOnly),
@@ -51,7 +51,7 @@ function card(g, { areas, facilities }, now = new Date(), distanceM = null) {
   };
 }
 
-const SORTS = { price: [['publicDayPricePoisha', 'ASC']], rating: [['ratingAvg', 'DESC NULLS LAST'], ['ratingCount', 'DESC']], newest: [['firstLiveAt', 'DESC']] };
+const SORTS = { price: [['publicMonthPricePoisha', 'ASC NULLS LAST']], rating: [['ratingAvg', 'DESC NULLS LAST'], ['ratingCount', 'DESC']], newest: [['firstLiveAt', 'DESC']] };
 
 const monthPriceOf = (g) => g.liveSnapshot.packages.find((p) => p.kind === 'month')?.price ?? null;
 

@@ -30,7 +30,7 @@ const { fail } = c;
 const PUBLISHED = ['live', 'paused', 'suspended'];
 const isPublished = (s) => PUBLISHED.includes(s);
 const inReview = (g) => g.status === 'pending_review' || g.editStatus === 'pending_review';
-const FIELDS = ['name', 'areaId', 'addressLine', 'lat', 'lng', 'about', 'facilityIds', 'dailyCapacity'];
+const FIELDS = ['name', 'areaId', 'addressLine', 'lat', 'lng', 'about', 'facilityIds'];
 const PHOTO_TYPES = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 
 // ---------------------------------------------------------------- working copy and snapshot
@@ -62,7 +62,6 @@ const snapshotOf = ({ gym: g, photos, hours, packages }, version) => ({
   lng: g.lng,
   about: g.about ?? null,
   facilityIds: g.facilityIds,
-  dailyCapacity: g.dailyCapacity ?? null,
   photos: photos.map((p) => ({ id: p.id, key: p.storageKey })),
   hours,
   // M24 §7.1: the public page and passes list only packages sold online (`online`, `both`).
@@ -83,12 +82,10 @@ function diffOf(live, next) {
 
 /** What the package and photo editors need (M24-FR-24 adds the custom limit and the days of each kind). */
 const limitsView = (cfg) => ({
-  dayMin: cfg.dayMin,
-  dayMax: cfg.dayMax,
   minPhotos: cfg.minPhotos,
   maxPhotos: cfg.maxPhotos,
   maxCustomPackages: cfg.maxCustom,
-  kindDays: { day: 1, month: cfg.monthDays, quarter: cfg.quarterDays, half_year: cfg.halfYearDays, year: cfg.yearDays },
+  kindDays: { month: cfg.monthDays, quarter: cfg.quarterDays, half_year: cfg.halfYearDays, year: cfg.yearDays },
 });
 
 function ownerView(w) {
@@ -106,7 +103,6 @@ function ownerView(w) {
     lng: g.lng,
     about: g.about ?? null,
     facilityIds: g.facilityIds,
-    dailyCapacity: g.dailyCapacity ?? null,
     photos: w.photos.map((p) => ({ id: p.id, url: storage.publicUrl(p.storageKey) })),
     hours: w.hours,
     packages: w.packages.map(packageView),
@@ -204,7 +200,7 @@ async function setHours(principal, id, rows, req) {
 
 /**
  * PUT /me/gyms/:id/packages: every active package (an omitted one is retired). One per kind except
- * `custom` (M24-FR-24, at most gym_manage.max_custom_packages); a day pass is needed only to submit.
+ * `custom` (M24-FR-24, at most gym_manage.max_custom_packages); one sold online is needed only to submit.
  * A package whose kind, title, price, days and admission fee stay the same keeps its id (channel,
  * visit limit and order change in place); anything else retires it and creates a new one, so running
  * memberships keep their snapshot.
@@ -320,7 +316,7 @@ function completeness(w) {
   const problems = [];
   if (w.photos.length < cfg.minPhotos) problems.push({ field: 'photos', message: `Add at least ${cfg.minPhotos} photos` });
   if (!rules.hasOpenDay(w.hours)) problems.push({ field: 'hours', message: 'Add the opening hours' });
-  // M24-FR-24: the day pass is required to list the gym, among the packages sold online.
+  // M24-FR-24: at least one package sold online is required to list the gym.
   problems.push(...rules.packageErrors(w.packages.filter(rules.soldOnline).map((p) => ({ kind: p.kind, price: p.pricePoisha })), cfg));
   return problems;
 }
@@ -344,9 +340,9 @@ async function submit(principal, id, req) {
       diff = diffOf(null, snapshotOf(w, null));
     }
     const version = g.liveVersion + 1;
-    const day = w.packages.find((p) => p.kind === 'day' && rules.soldOnline(p));
+    const fromPrice = Math.min(...w.packages.filter(rules.soldOnline).map((p) => p.pricePoisha));
     const sub = await moderation.submit(
-      { kind: 'gym', subjectId: g.id, payload: { gymId: g.id, version, isEdit: published, diff, dayPrice: day.pricePoisha, photos: w.photos.length }, title: `${g.name} · v${version}${published ? ' (edit)' : ''}`, submittedBy: principal.id, isEdit: published },
+      { kind: 'gym', subjectId: g.id, payload: { gymId: g.id, version, isEdit: published, diff, fromPrice, photos: w.photos.length }, title: `${g.name} · v${version}${published ? ' (edit)' : ''}`, submittedBy: principal.id, isEdit: published },
       { transaction }
     );
     await g.update({ ...(published ? { editStatus: 'pending_review' } : { status: 'pending_review', statusChangedAt: new Date() }), currentSubmissionId: sub.id, reviewReasonCode: null, reviewReasonText: null, updatedBy: principal.id }, { transaction });
@@ -406,7 +402,6 @@ async function applyDecision(submissionId, status, { transaction }) {
       liveSnapshot: snap,
       publicName: snap.name,
       publicAreaId: snap.areaId,
-      publicDayPricePoisha: price('day'),
       publicMonthPricePoisha: price('month'),
       currentSubmissionId: null,
       reviewReasonCode: null,

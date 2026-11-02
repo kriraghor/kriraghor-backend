@@ -105,6 +105,7 @@ async function main() {
     today: g.today(),
     tomorrow: g.inDays(1),
     in9: g.inDays(9),
+    in31: g.inDays(31),
     stepUpA: await h.stepUp(a, 'escrow.manage'),
     controlUrl: `http://127.0.0.1:${controlPort}`,
   };

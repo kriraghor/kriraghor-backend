@@ -23782,7 +23782,8 @@
               "integer",
               "null"
             ],
-            "minimum": 0
+            "minimum": 0,
+            "description": "Always null: gyms sell no day pass since 2 Nov 2026. Installed apps still read it; it goes in a later release."
           },
           "monthPrice": {
             "type": [
@@ -23927,7 +23928,8 @@
               "integer",
               "null"
             ],
-            "minimum": 0
+            "minimum": 0,
+            "description": "Always null: gyms sell no day pass since 2 Nov 2026. Installed apps still read it; it goes in a later release."
           },
           "monthPrice": {
             "type": [
@@ -25075,12 +25077,6 @@
               "format": "uuid"
             }
           },
-          "dailyCapacity": {
-            "type": [
-              "integer",
-              "null"
-            ]
-          },
           "photos": {
             "type": "array",
             "items": {
@@ -25156,14 +25152,6 @@
           "limits": {
             "type": "object",
             "properties": {
-              "dayMin": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "dayMax": {
-                "type": "integer",
-                "minimum": 0
-              },
               "minPhotos": {
                 "type": "integer"
               },
@@ -25204,8 +25192,6 @@
               }
             },
             "required": [
-              "dayMin",
-              "dayMax",
               "minPhotos",
               "maxPhotos",
               "maxCustomPackages",
@@ -25237,7 +25223,6 @@
           "lng",
           "about",
           "facilityIds",
-          "dailyCapacity",
           "photos",
           "hours",
           "packages",
@@ -85929,7 +85914,7 @@
         "tags": [
           "gym"
         ],
-        "summary": "Live gyms by area, facility, name and monthly price; sorted by the day pass price, rating, newest or distance from a position sent with the query (never stored), within a radius",
+        "summary": "Live gyms by area, facility, name and monthly price; sorted by the monthly price, rating, newest or distance from a position sent with the query (never stored), within a radius",
         "parameters": [
           {
             "schema": {
@@ -86016,10 +86001,10 @@
                 "newest",
                 "nearest"
               ],
-              "description": "Default nearest with a position, else price (the day pass)"
+              "description": "Default nearest with a position, else price (the monthly package)"
             },
             "required": false,
-            "description": "Default nearest with a position, else price (the day pass)",
+            "description": "Default nearest with a position, else price (the monthly package)",
             "name": "sort",
             "in": "query"
           },
@@ -86235,7 +86220,7 @@
                   "validFrom": {
                     "type": "string",
                     "format": "date",
-                    "description": "A day pass: the date; month and quarter: the first day"
+                    "description": "The first day"
                   }
                 },
                 "required": [
@@ -86278,7 +86263,7 @@
             }
           },
           "409": {
-            "description": "Error. Codes: GYM_NOT_AVAILABLE, PASS_CAPACITY_FULL",
+            "description": "Error. Codes: GYM_NOT_AVAILABLE",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -86412,7 +86397,7 @@
         "tags": [
           "gym"
         ],
-        "summary": "Cancel: a day pass before its date, a month or quarter pass before its first use, in full (FR-06)",
+        "summary": "Cancel: a pass before its first use, in full (FR-06)",
         "security": [
           {
             "bearer": []
@@ -87021,15 +87006,6 @@
                       "format": "uuid"
                     },
                     "maxItems": 30
-                  },
-                  "dailyCapacity": {
-                    "type": [
-                      "integer",
-                      "null"
-                    ],
-                    "minimum": 1,
-                    "maximum": 5000,
-                    "description": "Day passes sold per date at most (empty = no limit)"
                   }
                 },
                 "required": [
@@ -87252,15 +87228,6 @@
                       "format": "uuid"
                     },
                     "maxItems": 30
-                  },
-                  "dailyCapacity": {
-                    "type": [
-                      "integer",
-                      "null"
-                    ],
-                    "minimum": 1,
-                    "maximum": 5000,
-                    "description": "Day passes sold per date at most (empty = no limit)"
                   }
                 }
               }
@@ -87468,7 +87435,7 @@
         "tags": [
           "gym"
         ],
-        "summary": "Every active package (M24-FR-24): day, month, quarter, 6 months, 12 months (one each) and custom days (at most gym_manage.max_custom_packages); admission fee, channel desk/online/both, visit limit, order. A day pass sold online (within gym.day_pass_min/max_poisha) is needed only to submit",
+        "summary": "Every active package (M24-FR-24): month, quarter, 6 months, 12 months (one each) and custom days (at most gym_manage.max_custom_packages); admission fee, channel desk/online/both, visit limit, order. A day pass sold online (within gym.day_pass_min/max_poisha) is needed only to submit",
         "security": [
           {
             "bearer": []
@@ -87499,7 +87466,6 @@
                         "kind": {
                           "type": "string",
                           "enum": [
-                            "day",
                             "month",
                             "quarter",
                             "half_year",
@@ -87558,7 +87524,7 @@
                     },
                     "minItems": 1,
                     "maxItems": 35,
-                    "description": "Every active package: one per kind except custom (at most gym_manage.max_custom_packages); a day pass sold online is needed only to submit. Days: 1, gym.month_days, gym.quarter_days, gym.half_year_days, gym.year_days, or the custom days"
+                    "description": "Every active package: one per kind except custom (at most gym_manage.max_custom_packages); one sold online is needed only to submit. Days: gym.month_days, gym.quarter_days, gym.half_year_days, gym.year_days, or the custom days"
                   }
                 },
                 "required": [

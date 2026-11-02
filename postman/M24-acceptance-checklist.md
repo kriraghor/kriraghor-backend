@@ -17,7 +17,7 @@ Prompt 1 lets a pilot gym run a full day without a paper register: a phone sign-
 | # | Do | Expect |
 |---|---|---|
 | 1.1 | **A private gym on a verified phone** | 201 `draft`; no NID, no documents (gate `run_gym`, M24-FR-01); the owner's `gym_owner_subscriptions` row (tier free) is created with the first gym (FR-81) |
-| 1.2 | **Packages: month, quarter and a desk-only custom package** | 200; no day pass needed (FR-24); admission fee, channel, visit limit and order kept |
+| 1.2 | **Packages: month, quarter and a desk-only custom package** | 200; none needs to be sold online until the gym is listed (FR-24); admission fee, channel, visit limit and order kept |
 | 1.3 | **Submitting for review still needs the gym_owner role** | 403 (`list_gym`, FR-02) |
 | 1.4 | **The private gym is not in the directory** | empty list |
 | 1.5 | **Adding a member before the short code** | 409 `GYM_SETUP_REQUIRED` |

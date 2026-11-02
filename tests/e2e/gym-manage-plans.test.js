@@ -62,6 +62,19 @@ async function joined(owner, gym, body = {}) {
 }
 
 describe('join requests (M24-FR-16, FR-17, FR-91)', () => {
+  it('a package sold only online can be asked for, accepted and renewed', async () => {
+    const opts = { packages: [{ kind: 'month', title: 'Monthly', price: 450000, channel: 'online' }] };
+    const { owner, gym, month } = await liveManagedGym({ opts });
+    const person = await h.signupUser({ name: 'Ayesha Rahman' });
+    const r = (await as(person).post('/me/gym-join-requests', { gymId: gym.id, packageId: month.id }).expect(201)).body;
+    const accepted = (await gm.manage(owner, gym.id).post(`/requests/${r.request.id}/accept`, { packageId: month.id }, true).expect(200)).body;
+    expect(accepted.membership).toMatchObject({ packageId: month.id });
+    expect(accepted.due).toMatchObject({ amountPoisha: 450000 });
+    // At the desk, the same package stays refused for a new member.
+    const other = (await gm.manage(owner, gym.id).post('/members', { displayName: 'Rina Begum', phone: '+8801711000123' }, true).expect(201)).body;
+    expect((await gm.manage(owner, gym.id).post(`/members/${other.member?.id ?? other.id}/memberships`, { packageId: month.id, startsOn: gm.today() }, true).expect(422)).body.code).toBe('GYM_PACKAGE_UNAVAILABLE');
+  });
+
   it('a person asks a live gym, the gym sees who asks, accepts with a membership and the first payment; the referral charges once', async () => {
     const { owner, gym, month } = await liveManagedGym();
     const desk = gm.manage(owner, gym.id);
@@ -456,10 +469,7 @@ describe('the entrance QR check-in (M24-FR-51)', () => {
 describe('the directory by distance and price (M20 for §4.1), the landing page offer', () => {
   it('nearest from a position (pin, else the area centre), a radius, the monthly price cap, distanceM on cards; founding places on pricing', async () => {
     const owner = await g.gymOwner(reviewer, 'Gym Chain');
-    const cheap = [
-      { kind: 'day', title: 'Day pass', price: 30000 },
-      { kind: 'month', title: 'Monthly', price: 300000 },
-    ];
+    const cheap = [{ kind: 'month', title: 'Monthly', price: 300000 }];
     const gulshan = await g.liveGym(owner, reviewer, { name: 'Gulshan Gym', lat: 23.7925, lng: 90.4078 });
     const uttara = await g.liveGym(owner, reviewer, { name: 'Uttara Gym', lat: 23.8759, lng: 90.3795, packages: cheap });
     const noPin = await g.liveGym(owner, reviewer, { name: 'Banani Gym' });

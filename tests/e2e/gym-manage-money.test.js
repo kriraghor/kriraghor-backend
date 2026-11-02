@@ -560,8 +560,8 @@ describe('fee overrides change a referral and a pass commission (M24-FR-93 to FR
 
     // FR-95: a pass bought at the gym snapshots 300 bps and the override id.
     const buyer = await h.signupUser();
-    const dayPkg = live.packages.find((p) => p.kind === 'day');
-    const bought = await api().post(`${P}/gym/passes`).set(h.bearer(buyer)).set('Idempotency-Key', gm.key('gp')).send({ packageId: dayPkg.id, validFrom: gm.today() }).expect(201);
+    const monthPkg = live.packages.find((p) => p.kind === 'month');
+    const bought = await api().post(`${P}/gym/passes`).set(h.bearer(buyer)).set('Idempotency-Key', gm.key('gp')).send({ packageId: monthPkg.id, validFrom: gm.today() }).expect(201);
     const pass = await models.GymPass.findOne({ where: { code: bought.body.pass.code } });
     expect(pass).toMatchObject({ feeBps: 300, feeOverrideId: pct.id });
 

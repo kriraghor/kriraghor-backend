@@ -233,7 +233,6 @@ const GYMS = [
     facilities: ['free_weights', 'squat_racks', 'cardio_floor', 'showers', 'lockers', 'air_conditioning'],
     hours: [...window_([0, 1, 2, 3, 4, 6], '06:00', '23:00'), ...window_([5], '14:00', '22:00')],
     packages: [
-      { kind: 'day', title: 'Day pass', price: 40000 },
       { kind: 'month', title: 'Monthly', price: 450000 },
       { kind: 'quarter', title: 'Quarterly', price: 1200000 },
     ],
@@ -248,7 +247,6 @@ const GYMS = [
     facilities: ['cardio_floor', 'functional_zone', 'free_weights', 'showers', 'air_conditioning'],
     hours: window_([0, 1, 2, 3, 4, 5, 6], '06:00', '22:00'),
     packages: [
-      { kind: 'day', title: 'Day pass', price: 30000 },
       { kind: 'month', title: 'Monthly', price: 350000 },
       { kind: 'quarter', title: 'Quarterly', price: 950000 },
     ],
@@ -263,7 +261,6 @@ const GYMS = [
     facilities: ['cardio_floor', 'free_weights', 'lockers', 'showers', 'air_conditioning'],
     hours: [...window_([0, 1, 2, 3, 4, 6], '07:00', '12:00', true), ...window_([0, 1, 2, 3, 4, 6], '12:00', '22:00')],
     packages: [
-      { kind: 'day', title: 'Day pass', price: 35000 },
       { kind: 'month', title: 'Monthly', price: 400000 },
     ],
     photos: ['gym-windows.jpg', 'gym-floor.jpg', 'gym-class.jpg'],
@@ -277,7 +274,6 @@ const GYMS = [
     facilities: ['free_weights', 'cardio_floor', 'sauna', 'functional_zone', 'lockers'],
     hours: window_([0, 1, 2, 3, 4, 5, 6], '05:30', '23:30'),
     packages: [
-      { kind: 'day', title: 'Day pass', price: 20000 },
       { kind: 'month', title: 'Monthly', price: 250000 },
       { kind: 'quarter', title: 'Quarterly', price: 680000 },
     ],
@@ -421,10 +417,10 @@ const SHOP_REVIEWS = [
 // The demo member rates one shop of their received order and leaves the other waiting.
 const MEMBER_SHOP_REVIEW = { shop: 'Muscle Fuel BD', review: [5, 'Genuine whey with the batch number and expiry on the tub. The chocolate flavour mixes well with milk.'] };
 
-// Gym day passes (M20) used at the front desk today, then rated. `reply` is the owner's answer.
+// Gym subscriptions (M20) used at the front desk today, then rated. `reply` is the owner's answer.
 const GYM_REVIEWS = [
   { member: 54, gym: 'PowerHouse Gym Mirpur', review: [5, 'Good equipment for the price and the sauna is a nice bonus. It gets busy after 7 pm.'], reply: 'Thank you! Come before 6 pm on weekdays if you want the squat racks free.' },
-  { member: 57, gym: 'PowerHouse Gym Mirpur', review: [4, 'The day pass was easy, the front desk scanned my QR code in seconds. The AC in the cardio area could be stronger.'] },
+  { member: 57, gym: 'PowerHouse Gym Mirpur', review: [4, 'Buying online was easy, the front desk scanned my QR code in seconds. The AC in the cardio area could be stronger.'] },
   { member: 60, gym: 'PowerHouse Gym Mirpur', review: [4, 'Friendly trainers and open late, perfect after office. The changing room needs more lockers.'] },
 ];
 

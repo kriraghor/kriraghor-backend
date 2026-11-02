@@ -59,7 +59,7 @@ const collection = {
   info: {
     name: 'Kriraghor API: M24 prompt 1 · Desk',
     description: [
-      'M24 Gym management, prompt 1 (Desk MVP). A member with only a verified phone (no NID, no documents) opens a private gym (gate run_gym), saves a month-only package list (a day pass is needed only to list the gym), picks the short code IY and the Basic plan. They add a member with a membership (৳2,500 + ৳1,000 admission − ৳500 discount = ৳3,000) and a first cash payment in one call (Idempotency-Key replayed), get receipt IY-R26-000001 and its public link, then record the rest, a reversal and a waiver. Counter money never touches the ledger.',
+      'M24 Gym management, prompt 1 (Desk MVP). A member with only a verified phone (no NID, no documents) opens a private gym (gate run_gym), saves a month-only package list (a package sold online is needed only to list the gym), picks the short code IY and the Basic plan. They add a member with a membership (৳2,500 + ৳1,000 admission − ৳500 discount = ৳3,000) and a first cash payment in one call (Idempotency-Key replayed), get receipt IY-R26-000001 and its public link, then record the rest, a reversal and a waiver. Counter money never touches the ledger.',
       'A front-desk staff member (attendance.mark, members.view; hired through /me/team) lists members without amounts, checks them in (one counted per Dhaka day) and is refused fees and owner-only settings. The member accepts the gym invite, sees the membership and receipts, and shows the rotating QR that the desk scans. A member list (CSV) is previewed with row errors, applied and undone; Kriraghor staff upload only with the owner’s consent.',
       'Requests named "Runner" go to the local test runner (refreshing a session after its access changed, draining events, running the daily jobs).',
       'Unattended: `node postman/run-m24.js`. Rebuild this file with: node postman/build-collection-m24.js',
@@ -75,7 +75,7 @@ const collection = {
       name: '1. A private gym and its setup (FR-01, FR-02, FR-09, FR-24, FR-81, FR-82)',
       item: [
         owner('A private gym on a verified phone (gate run_gym)', 'POST', '/me/gyms', { body: { name: 'Iron Yard Banani', areaId: '{{areaBanani}}', addressLine: 'House 9, Road 11, Banani, Dhaka' }, expect: { status: 201 }, save: { gymId: 'id' }, checks: [['draft, custom limit from settings', "j.status === 'draft' && j.limits.maxCustomPackages === 10 && j.limits.kindDays.year === 365"]] }),
-        owner('Packages: month, quarter and a desk-only custom package (no day pass needed)', 'PUT', '/me/gyms/{{gymId}}/packages', {
+        owner('Packages: month, quarter and a desk-only custom package', 'PUT', '/me/gyms/{{gymId}}/packages', {
           body: { packages: PACKAGES },
           expect: { status: 200 },
           checks: [setVar('monthPkg', "j.packages.find((p) => p.kind === 'month').id"), setVar('quarterPkg', "j.packages.find((p) => p.kind === 'quarter').id"), ['admission fee and channel kept', "j.packages.find((p) => p.kind === 'custom').channel === 'desk' && j.packages.find((p) => p.kind === 'month').admissionFee === 100000"]],

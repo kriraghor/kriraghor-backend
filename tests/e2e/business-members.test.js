@@ -619,17 +619,17 @@ describe('Round B3 gym front desk: route-by-route matrix', () => {
     const member = await h.signupUser({ name: 'Nadia Islam' });
     const admit = (who, pass) => api().post(`${P}/me/gyms/${gym.id}/redemptions`).set(h.bearer(who)).send({ token: pass.token });
 
-    const p1 = await b.paidPass(member, gym, 'day');
+    const p1 = await b.paidPass(member, gym, 'month');
     expect((await admit(foreign, p1).expect(404)).body.code).toBe('NOT_FOUND');
     expect((await admit(none, p1).expect(403)).body).toMatchObject({ code: 'PERMISSION_REQUIRED', permission: 'desk.admit' });
     const card = (await admit(full, p1).expect(201)).body;
-    expect(card).toMatchObject({ passCode: p1.code, status: 'redeemed' });
+    expect(card).toMatchObject({ passCode: p1.code, status: 'active' });
     expectStaffSafe(card);
     conforms(gyS.Admission, card);
     const pass = await models.GymPass.findOne({ where: { code: p1.code } });
     expect(await ledger.balance(`payable:user:${owner.user.id}`)).toBeGreaterThan(0);
     expect(await ledger.balance(`payable:user:${full.user.id}`)).toBe(0);
-    expect(pass.status).toBe('redeemed');
+    expect(pass.status).toBe('active');
     const a = await models.AuditLog.findOne({ where: { action: 'gym_pass.redeemed' } });
     expect(a).toMatchObject({ actorId: full.user.id, actorRole: 'business_staff' });
     expect(a.meta).toMatchObject({ onBehalfOf: owner.user.id });

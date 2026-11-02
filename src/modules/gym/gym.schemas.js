@@ -15,7 +15,9 @@ const dateTime = z.iso.datetime({ offset: true });
 const nullable = (t) => t.nullable();
 const text = (min, max) => z.string().trim().min(min).max(max);
 // M24 §7.1 (G2): 6 months, 12 months and custom days; channel desk (the gym's own books), online or both.
-const KINDS = ['day', 'month', 'quarter', 'half_year', 'year', 'custom'];
+const SOLD_KINDS = ['month', 'quarter', 'half_year', 'year', 'custom'];
+// Passes and history keep `day`: day passes sold before 2 Nov 2026 stay readable; none can be created.
+const KINDS = ['day', ...SOLD_KINDS];
 const CHANNELS = ['desk', 'online', 'both'];
 const GYM_STATUSES = ['draft', 'pending_review', 'changes_requested', 'live', 'paused', 'rejected', 'withdrawn', 'suspended', 'removed'];
 const PASS_STATUSES = ['pending_payment', 'active', 'redeemed', 'expired', 'cancelled', 'refunded', 'void'];
@@ -39,7 +41,7 @@ const listQuery = z
     lng: z.coerce.number().min(88).max(93).optional(),
     radiusKm: z.coerce.number().min(1).max(50).optional().meta({ description: 'Only gyms within this distance (needs lat and lng)' }),
     priceMax: z.coerce.number().int().min(0).optional().meta({ description: 'The monthly package costs at most this (poisha); gyms without a monthly package are left out' }),
-    sort: z.enum(['price', 'rating', 'newest', 'nearest']).optional().meta({ description: 'Default nearest with a position, else price (the day pass)' }),
+    sort: z.enum(['price', 'rating', 'newest', 'nearest']).optional().meta({ description: 'Default nearest with a position, else price (the monthly package)' }),
     cursor: z.string().regex(/^\d+$/).optional(),
     limit: z.coerce.number().int().min(1).max(48).default(24),
   })
@@ -54,7 +56,6 @@ const gymFields = {
   lng: z.number().min(-180).max(180).nullable().optional(),
   about: text(10, 3000).nullable().optional(),
   facilityIds: z.array(id).max(30).optional(),
-  dailyCapacity: z.number().int().min(1).max(5000).nullable().optional().meta({ description: 'Day passes sold per date at most (empty = no limit)' }),
 };
 const createGym = z.object(gymFields);
 const updateGym = z
@@ -69,7 +70,7 @@ const packagesBody = z.object({
   packages: z
     .array(
       z.object({
-        kind: z.enum(KINDS),
+        kind: z.enum(SOLD_KINDS),
         title: text(2, 80),
         price: z.number().int().positive(),
         days: z.number().int().min(1).max(366).optional().meta({ description: 'Custom packages only (1–366); other kinds take their days from settings' }),
@@ -81,10 +82,10 @@ const packagesBody = z.object({
     )
     .min(1)
     .max(35)
-    .meta({ description: 'Every active package: one per kind except custom (at most gym_manage.max_custom_packages); a day pass sold online is needed only to submit. Days: 1, gym.month_days, gym.quarter_days, gym.half_year_days, gym.year_days, or the custom days' }),
+    .meta({ description: 'Every active package: one per kind except custom (at most gym_manage.max_custom_packages); one sold online is needed only to submit. Days: gym.month_days, gym.quarter_days, gym.half_year_days, gym.year_days, or the custom days' }),
 });
 const photoOrder = z.object({ ids: z.array(id).min(1).max(20) });
-const buyBody = z.object({ packageId: id, validFrom: date.meta({ description: 'A day pass: the date; month and quarter: the first day' }) });
+const buyBody = z.object({ packageId: id, validFrom: date.meta({ description: 'The first day' }) });
 const passesQuery = z.object({ status: z.enum(['active', 'used', 'expired']).optional() });
 const redeemBody = z
   .object({ token: z.string().trim().min(10).max(200).optional(), code: z.string().trim().min(6).max(12).optional() })
@@ -134,7 +135,7 @@ const GymCard = z
     area: nullable(named),
     cover: nullable(z.string()),
     facilities: z.array(named.extend({ icon: nullable(z.string()) })),
-    dayPrice: nullable(poisha),
+    dayPrice: nullable(poisha).meta({ description: 'Always null: gyms sell no day pass since 2 Nov 2026. Installed apps still read it; it goes in a later release.' }),
     monthPrice: nullable(poisha),
     quarterPrice: nullable(poisha),
     womenOnlyHours: z.boolean(),
@@ -172,14 +173,11 @@ const OwnerGym = z
     lng: nullable(z.number()),
     about: nullable(z.string()),
     facilityIds: z.array(id),
-    dailyCapacity: nullable(z.number().int()),
     photos: z.array(z.object({ id, url: z.string() })),
     hours: Hours,
     packages: z.array(OwnerPackage),
     reviewReason: nullable(z.object({ code: z.string(), text: nullable(z.string()) })),
     limits: z.object({
-      dayMin: poisha,
-      dayMax: poisha,
       minPhotos: z.number().int(),
       maxPhotos: z.number().int(),
       maxCustomPackages: z.number().int().meta({ description: "gym_manage.max_custom_packages (M24-FR-24)" }),
