@@ -59,7 +59,9 @@ async function list(q) {
   const near = q.lat !== undefined && q.lng !== undefined ? { lat: q.lat, lng: q.lng } : null;
   const all = (await liveGrounds()).map((x) => ({ ...x, distanceM: near ? rules.distanceM(near, x.s) : null }));
 
+  const text = q.q?.toLowerCase();
   const tests = {
+    q: (x) => !text || x.g.name.toLowerCase().includes(text),
     sport: (x) => !sportIds || x.s.courts.some((k) => k.sportIds.some((id) => sportIds.includes(id))),
     area: (x) => !q.areaId || x.s.areaId === q.areaId,
     radius: (x) => !near || !q.radiusKm || x.distanceM <= q.radiusKm * 1000,

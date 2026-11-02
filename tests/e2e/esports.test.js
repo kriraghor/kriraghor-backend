@@ -236,6 +236,11 @@ describe('authoring and publishing (FR-06, FR-07)', () => {
     await api().patch(`${P}/admin/esports/tournaments/${t.id}`).set(h.bearer(master)).send({ titleEn: 'Fixed Final' }).expect(200);
     const list = await api().get(`${P}/esports/tournaments?game=free_fire&featured=true`).expect(200);
     expect(list.body.items.map((x) => x.id)).toEqual([t.id]);
+    // M21-FR-33: part of the title, any case; a wildcard is not a wildcard; one letter is refused.
+    expect((await api().get(`${P}/esports/tournaments?q=FIXED%20fin`).expect(200)).body.items.map((x) => x.id)).toEqual([t.id]);
+    expect((await api().get(`${P}/esports/tournaments?q=%25%25`).expect(200)).body.items).toEqual([]);
+    expect((await api().get(`${P}/esports/tournaments?q=__`).expect(200)).body.items).toEqual([]);
+    await api().get(`${P}/esports/tournaments?q=f`).expect(422);
   });
 });
 
