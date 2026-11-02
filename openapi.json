@@ -58285,6 +58285,18 @@
           {
             "schema": {
               "type": "string",
+              "minLength": 2,
+              "maxLength": 60,
+              "description": "Part of the title, English or Bangla (M21-FR-33)"
+            },
+            "required": false,
+            "description": "Part of the title, English or Bangla (M21-FR-33)",
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
               "maxLength": 40
             },
             "required": false,
@@ -60812,6 +60824,18 @@
           }
         ],
         "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 60,
+              "description": "Part of the title, English or Bangla (M21-FR-33)"
+            },
+            "required": false,
+            "description": "Part of the title, English or Bangla (M21-FR-33)",
+            "name": "q",
+            "in": "query"
+          },
           {
             "schema": {
               "type": "string",
@@ -63865,6 +63889,18 @@
         ],
         "summary": "Live grounds: filters, facet counts, sorts cheapest / nearest / newest (FR-25)",
         "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 60,
+              "description": "Part of the venue name (M09-FR-28)"
+            },
+            "required": false,
+            "description": "Part of the venue name (M09-FR-28)",
+            "name": "q",
+            "in": "query"
+          },
           {
             "schema": {
               "type": "string",

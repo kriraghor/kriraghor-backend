@@ -82,6 +82,7 @@ const staffListQuery = z.object({ status: z.enum(['draft', 'pending_review', 'ch
 
 // ---------------- public
 const listQuery = z.object({
+  q: z.string().trim().min(2).max(60).optional().meta({ description: 'Part of the venue name (M09-FR-28)' }),
   sport: z.string().regex(/^[a-z_]{2,40}$/).optional(),
   areaId: id.optional(),
   lat: z.coerce.number().min(20).max(27).optional(),

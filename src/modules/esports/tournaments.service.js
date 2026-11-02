@@ -139,8 +139,12 @@ const decodeCursor = (c) => {
 };
 
 /** GET /esports/tournaments (public) and /admin/esports/tournaments (staff, every status). */
-async function list({ game, mode, tier, status, featured, organisationId, cursor, limit = 20, staff = false }) {
+async function list({ q, game, mode, tier, status, featured, organisationId, cursor, limit = 20, staff = false }) {
   const where = {};
+  if (q) {
+    const like = `%${q.replace(/[%_\\]/g, (ch) => `\\${ch}`)}%`;
+    where[Op.and] = [{ [Op.or]: [{ titleEn: { [Op.iLike]: like } }, { titleBn: { [Op.iLike]: like } }] }];
+  }
   if (organisationId) where.organisationId = organisationId;
   if (game) {
     const g = await EsportsGame.findOne({ where: { [Op.or]: [{ key: game }, ...(/^[0-9a-f-]{36}$/.test(game) ? [{ id: game }] : [])] } });

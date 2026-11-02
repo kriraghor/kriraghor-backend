@@ -38,6 +38,7 @@ const disputeBody = z.object({ reason: z.string().trim().min(5).max(500), eviden
 
 // ---------------- public
 const listQuery = z.object({
+  q: z.string().trim().min(2).max(60).optional().meta({ description: 'Part of the title, English or Bangla (M21-FR-33)' }),
   game: z.string().max(40).optional(),
   mode: z.uuid().optional(),
   tier: z.enum(['daily', 'weekly', 'monthly', 'major']).optional(),

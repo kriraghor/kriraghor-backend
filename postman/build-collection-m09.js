@@ -160,6 +160,16 @@ const collection = {
           expect: { status: 200 },
           checks: [['one card from ৳1,920/h', "j.total === 1 && j.items[0].name === 'Postman Turf Arena' && j.items[0].priceFromPoisha === 192000 && j.facets.sports.some((f) => f.key === 'football')"]],
         }),
+        req('Search by part of the name (FR-28)', 'GET', '/grounds?q=postman%20turf', {
+          as: false,
+          expect: { status: 200 },
+          checks: [['finds it', "j.total === 1 && j.items[0].name === 'Postman Turf Arena'"]],
+        }),
+        req('A search that matches nothing (FR-28)', 'GET', '/grounds?q=no-such-venue', {
+          as: false,
+          expect: { status: 200 },
+          checks: [['empty', 'j.total === 0']],
+        }),
         req('Detail with the v3 payment line', 'GET', '/grounds/{{slug}}', {
           as: false,
           expect: { status: 200 },

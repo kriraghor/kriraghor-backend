@@ -1134,6 +1134,86 @@
           }
         },
         {
+          "name": "Search by part of the title (FR-33)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"finds it\", () => { pm.expect(j.items.some((x) => x.titleEn === 'Postman Free Fire Daily')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/esports/tournaments?q=postman%20free",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "esports",
+                "tournaments"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "postman%20free"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "A search that matches nothing (FR-33)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"empty\", () => { pm.expect(j.items.length === 0).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/esports/tournaments?q=no-such-event",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "esports",
+                "tournaments"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "no-such-event"
+                }
+              ]
+            }
+          }
+        },
+        {
           "name": "The prize table is locked (expect 409)",
           "event": [
             {

@@ -147,6 +147,8 @@ const collection = {
           save: { matchId: 'matches.0.id' },
           checks: [['scheduled, ৳50 entry, places 1 and 2', "j.status === 'scheduled' && j.entryFee.amount === 5000 && j.prizes.length === 2 && j.prizes[0].amount.amount === 5000"]],
         }),
+        req('Search by part of the title (FR-33)', 'GET', '/esports/tournaments?q=postman%20free', { as: false, expect: { status: 200 }, checks: [['finds it', "j.items.some((x) => x.titleEn === 'Postman Free Fire Daily')"]] }),
+        req('A search that matches nothing (FR-33)', 'GET', '/esports/tournaments?q=no-such-event', { as: false, expect: { status: 200 }, checks: [['empty', 'j.items.length === 0']] }),
         req('The prize table is locked (expect 409)', 'PATCH', '/admin/esports/tournaments/{{tournamentId}}', { body: { entryFee: 100 }, expect: { status: 409, code: 'ESPORTS_PRIZE_TABLE_LOCKED' } }),
       ],
     },

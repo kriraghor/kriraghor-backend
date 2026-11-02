@@ -442,6 +442,12 @@ describe('pricing (FR-09 to FR-14) and the public read side (FR-25, FR-27)', () 
     expect(list.body.facets.sports.map((f) => [f.key, f.count]).sort()).toEqual([['football', 2], ['futsal', 2]]);
     expect(list.body.facets.indoor).toEqual({ indoor: 1, outdoor: 1 });
 
+    // M09-FR-28: part of the name, any case; a wildcard is not a wildcard; one letter is refused.
+    expect((await api().get(`${P}/grounds?q=uttara%20futsal`).expect(200)).body.items.map((x) => x.id)).toEqual([b.id]);
+    expect((await api().get(`${P}/grounds?q=UTTARA`).expect(200)).body.total).toBe(1);
+    expect((await api().get(`${P}/grounds?q=%25%25`).expect(200)).body.total).toBe(0);
+    expect((await api().get(`${P}/grounds?q=__`).expect(200)).body.total).toBe(0);
+    await api().get(`${P}/grounds?q=u`).expect(422);
     expect((await api().get(`${P}/grounds?indoor=true`).expect(200)).body.items.map((x) => x.id)).toEqual([b.id]);
     // Facets ignore their own filter: the indoor facet still counts both.
     expect((await api().get(`${P}/grounds?indoor=true`).expect(200)).body.facets.indoor).toEqual({ indoor: 1, outdoor: 1 });
