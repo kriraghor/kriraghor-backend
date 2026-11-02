@@ -157,6 +157,19 @@ describe('M20 gym', () => {
     expect(await payable(owner)).toBe(427500);
   });
 
+  it('the desk admits at any hour, by the typed code, outside the gym\'s opening hours (M20-FR-05)', async () => {
+    const owner = await g.gymOwner(docsReviewer);
+    // Open one hour a day, starting six hours from now in Dhaka, so the gym is closed during this test.
+    const hour = (Number(new Date(Date.now() + 6 * 3_600_000).toISOString().slice(11, 13)) + 6) % 23;
+    const at = (n) => `${String(n).padStart(2, '0')}:00`;
+    const gym = await g.liveGym(owner, reviewer, { hours: g.ALL_DAY.map((d) => ({ ...d, openTime: at(hour), closeTime: at(hour + 1) })) });
+    const member = await h.signupUser({ name: 'Rafi Karim' });
+    const pass = await paidPass(member, gym, 'month', g.today());
+    const r = await redeem(owner, gym.id, { code: pass.backupCode.toLowerCase() });
+    expect(r.status).toBe(201);
+    expect(r.body).toMatchObject({ passCode: pass.code, status: 'active' });
+  });
+
   it('a day pass sold before 2 Nov 2026: cancel before the date refunds in full; unused it pays the gym at closing (FR-06, Q110)', async () => {
     const owner = await g.gymOwner(docsReviewer);
     const gym = await g.withOldDayPass(await g.liveGym(owner, reviewer));

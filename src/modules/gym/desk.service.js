@@ -79,7 +79,7 @@ async function redeem(principal, gymId, body, req) {
   return sequelize.transaction(async (transaction) => {
     const p = await c.lockPass(found.id, transaction);
     const used = await PassRedemption.findOne({ where: { passId: p.id, redeemedOn: today }, transaction });
-    const block = rules.redeemBlock({ pass: p, gymId: g.id, today, at: now, hours: g.liveSnapshot.hours, usedTodayAt: used?.redeemedAt ?? null });
+    const block = rules.redeemBlock({ pass: p, gymId: g.id, today, usedTodayAt: used?.redeemedAt ?? null });
     if (block) {
       const { code, ...meta } = block;
       throw fail(code, Object.fromEntries(Object.entries(meta).map(([k, v]) => [k, v instanceof Date ? v.toISOString() : v])));
