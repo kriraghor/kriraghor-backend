@@ -41,10 +41,13 @@ async function lockedMembership(gymId, membershipId, transaction) {
   return { member, ms };
 }
 
-/** An active package of this gym sold at the desk (FR-25), else 422 GYM_PACKAGE_UNAVAILABLE. */
-async function deskPackage(gymId, packageId, { transaction } = {}) {
+/**
+ * An active package of this gym sold at the desk (FR-25), else 422 GYM_PACKAGE_UNAVAILABLE. `anyChannel`:
+ * also one sold only online, which is what a join request asks for and what such a member renews (FR-91).
+ */
+async function deskPackage(gymId, packageId, { transaction, anyChannel = false } = {}) {
   const pkg = await packagesFacade.get(packageId, { transaction });
-  if (!pkg || pkg.gymId !== gymId || pkg.status !== 'active' || pkg.channel === 'online') throw fail('GYM_PACKAGE_UNAVAILABLE');
+  if (!pkg || pkg.gymId !== gymId || pkg.status !== 'active' || (pkg.channel === 'online' && !anyChannel)) throw fail('GYM_PACKAGE_UNAVAILABLE');
   return pkg;
 }
 
@@ -168,7 +171,7 @@ async function body(a, { membership, due, payment = null, today, extra = {} }) {
  * Assign inside a transaction (used by POST …/members/:id/memberships and by adding a member): the
  * caller holds the member row lock and has checked members.edit. Returns { membership, due, payment }.
  */
-async function assignIn(transaction, a, member, input, { now = new Date() } = {}) {
+async function assignIn(transaction, a, member, input, { now = new Date(), anyChannel = false } = {}) {
   const today = c.today(now);
   const cfg = c.cfg();
   if (!rules.inWindow({ date: input.startsOn, today, back: cfg.backdateDays, ahead: rules.ASSIGN_AHEAD_DAYS })) {
@@ -176,7 +179,7 @@ async function assignIn(transaction, a, member, input, { now = new Date() } = {}
   }
   if (input.payment) c.needs(a, 'fees.collect');
   memberUsable(member);
-  const pkg = await deskPackage(a.gym.id, input.packageId, { transaction });
+  const pkg = await deskPackage(a.gym.id, input.packageId, { transaction, anyChannel });
   const discount = checkDiscount(a, pkg, input.discountPoisha ?? 0, input.discountReason ?? null);
   const admission = await admissionFor(a, member, pkg, input.admissionFee, transaction);
   const made = await createIn(transaction, { gym: a.gym, member, pkg, startsOn: input.startsOn, admissionFee: admission.fee, discount, discountReason: input.discountReason ?? null, origin: admission.origin, actor: a.actor, today });
@@ -214,7 +217,7 @@ async function renew(principal, gymId, membershipId, input, req) {
     if (!['active', 'frozen', 'expired'].includes(old.status)) throw fail('GYM_MEMBERSHIP_STATE', { reason: old.status });
     const later = await GymMembership.findOne({ where: { memberId: member.id, status: ['upcoming', 'active', 'frozen', 'expired'] }, order: [['startsOn', 'DESC']], transaction });
     if (later && later.id !== old.id && later.startsOn > old.startsOn) throw fail('GYM_MEMBERSHIP_STATE', { reason: 'not_latest', membershipId: later.id });
-    const pkg = await deskPackage(gymId, input.packageId ?? old.packageId, { transaction });
+    const pkg = await deskPackage(gymId, input.packageId ?? old.packageId, { transaction, anyChannel: !input.packageId });
     const start = rules.renewStart({ today, oldEndsOn: old.endsOn, graceDays: cfg.renewGraceDays, chosen: input.startsOn ?? null });
     if (start.block || start.startsOn > rules.addDays(today, rules.ASSIGN_AHEAD_DAYS)) throw fail('GYM_DATE_OUT_OF_RANGE', { from: today, to: rules.addDays(today, rules.ASSIGN_AHEAD_DAYS) });
     const m = await createIn(transaction, { gym: a.gym, member, pkg, startsOn: start.startsOn, origin: 'renewal', previousId: old.id, actor: a.actor, today });

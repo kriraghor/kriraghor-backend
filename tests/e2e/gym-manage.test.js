@@ -754,8 +754,8 @@ describe('M20 pass admissions count for linked members (FR-52)', () => {
     const m = await gm.addMember(owner, gym.id, { displayName: 'Rafiq Hasan', phone: person.phone });
     const inv = (await gm.manage(owner, gym.id).post(`/members/${m.member.id}/invite`, {}).expect(201)).body;
     await api().post(`${P}/me/gym-requests/${inv.request.id}/accept`).set(h.bearer(person)).expect(200);
-    await b.admit(owner, gym, await b.paidPass(person, gym, 'day'));
-    await b.admit(owner, gym, await b.paidPass(visitor, gym, 'day'));
+    await b.admit(owner, gym, await b.paidPass(person, gym, 'month'));
+    await b.admit(owner, gym, await b.paidPass(visitor, gym, 'month'));
     await h.drainEvents();
     const rows = await models.GymAttendance.findAll({ where: { gymId: gym.id } });
     expect(rows.map((r) => [r.memberId, r.method, r.counted])).toEqual([[m.member.id, 'pass', true]]);

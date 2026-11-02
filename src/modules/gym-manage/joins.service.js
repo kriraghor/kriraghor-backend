@@ -165,7 +165,7 @@ async function accept(principal, gymId, requestId, input = {}, req) {
     const out = { r, member, linkedExisting };
     if (input.packageId) {
       const ms = { packageId: input.packageId, startsOn: input.startsOn ?? today, admissionFee: input.admissionFee, discountPoisha: input.discountPoisha, discountReason: input.discountReason, payment: input.payment };
-      Object.assign(out, await memberships.assignIn(transaction, a, member, ms, { now }));
+      Object.assign(out, await memberships.assignIn(transaction, a, member, ms, { now, anyChannel: true }));
     }
     return out;
   });

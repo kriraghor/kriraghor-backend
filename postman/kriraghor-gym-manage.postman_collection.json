@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Kriraghor API: M24 prompt 1 · Desk",
-    "description": "M24 Gym management, prompt 1 (Desk MVP). A member with only a verified phone (no NID, no documents) opens a private gym (gate run_gym), saves a month-only package list (a day pass is needed only to list the gym), picks the short code IY and the Basic plan. They add a member with a membership (৳2,500 + ৳1,000 admission − ৳500 discount = ৳3,000) and a first cash payment in one call (Idempotency-Key replayed), get receipt IY-R26-000001 and its public link, then record the rest, a reversal and a waiver. Counter money never touches the ledger.\n\nA front-desk staff member (attendance.mark, members.view; hired through /me/team) lists members without amounts, checks them in (one counted per Dhaka day) and is refused fees and owner-only settings. The member accepts the gym invite, sees the membership and receipts, and shows the rotating QR that the desk scans. A member list (CSV) is previewed with row errors, applied and undone; Kriraghor staff upload only with the owner’s consent.\n\nRequests named \"Runner\" go to the local test runner (refreshing a session after its access changed, draining events, running the daily jobs).\n\nUnattended: `node postman/run-m24.js`. Rebuild this file with: node postman/build-collection-m24.js",
+    "description": "M24 Gym management, prompt 1 (Desk MVP). A member with only a verified phone (no NID, no documents) opens a private gym (gate run_gym), saves a month-only package list (a package sold online is needed only to list the gym), picks the short code IY and the Basic plan. They add a member with a membership (৳2,500 + ৳1,000 admission − ৳500 discount = ৳3,000) and a first cash payment in one call (Idempotency-Key replayed), get receipt IY-R26-000001 and its public link, then record the rest, a reversal and a waiver. Counter money never touches the ledger.\n\nA front-desk staff member (attendance.mark, members.view; hired through /me/team) lists members without amounts, checks them in (one counted per Dhaka day) and is refused fees and owner-only settings. The member accepts the gym invite, sees the membership and receipts, and shows the rotating QR that the desk scans. A member list (CSV) is previewed with row errors, applied and undone; Kriraghor staff upload only with the owner’s consent.\n\nRequests named \"Runner\" go to the local test runner (refreshing a session after its access changed, draining events, running the daily jobs).\n\nUnattended: `node postman/run-m24.js`. Rebuild this file with: node postman/build-collection-m24.js",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -180,7 +180,7 @@
           }
         },
         {
-          "name": "Packages: month, quarter and a desk-only custom package (no day pass needed)",
+          "name": "Packages: month, quarter and a desk-only custom package",
           "event": [
             {
               "listen": "test",

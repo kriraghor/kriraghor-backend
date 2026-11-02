@@ -3,15 +3,14 @@
 /**
  * M20 passes (FR-03 to FR-07, v3 packages).
  *  - Buy (gate buy_gym_pass, Idempotency-Key): a package of a live gym for a start date; the price is
- *    the live package's, the fee snapshot M06's (fees.gym_pct). A day pass needs a date the gym opens
- *    within gym.pass_advance_days; the gym's daily capacity (if set) counts day passes per date under
- *    the gym row lock. One M06 payment and one escrow hold per pass (purpose gym_package).
+ *    the live package's, the fee snapshot M06's (fees.gym_pct), starting within gym.pass_advance_days.
+ *    One M06 payment and one escrow hold per pass (purpose gym_package).
  *  - Captured → active, with a signed QR token and a 6-character backup code (unique per gym among
  *    active passes). Not paid in time → void.
- *  - Cancel (holder): a day pass before its date, a month or quarter pass before its first use, in
- *    full; nothing after. Unpaid → void.
- *  - Expiry (gym.tick, Q110): a day pass when the gym closes on its date, month and quarter passes
- *    after their last day; money not yet released goes to the gym minus the fee.
+ *  - Cancel (holder): before its first use, in full; nothing after. Unpaid → void. A day pass sold
+ *    before 2 Nov 2026: before its date.
+ *  - Expiry (gym.tick, Q110): after its last day (a day pass sold before 2 Nov 2026: when the gym closes
+ *    on its date); money not yet released goes to the gym minus the fee.
  */
 const { Op, UniqueConstraintError } = require('sequelize');
 const crypto = require('crypto');
@@ -28,7 +27,6 @@ const rules = require('./gym.rules');
 const c = require('./gym.common');
 
 const { fail } = c;
-const SOLD = ['pending_payment', 'active', 'redeemed', 'expired'];
 
 async function gymRef(gymId) {
   const g = await Gym.findByPk(gymId, { attributes: ['id', 'slug', 'name', 'liveSnapshot'] });
@@ -58,12 +56,8 @@ async function buy(principal, { packageId, validFrom }, idempotencyKey, req) {
       if (!g || g.status !== 'live') throw fail('GYM_NOT_AVAILABLE');
       const pkg = g.liveSnapshot.packages.find((p) => p.id === packageId);
       if (!pkg) throw fail('PACKAGE_UNKNOWN');
-      const v = rules.validity({ kind: pkg.kind, days: pkg.days, from: validFrom, today: c.today(now), now, advanceDays: cfg.advanceDays, hours: g.liveSnapshot.hours });
+      const v = rules.validity({ days: pkg.days, from: validFrom, today: c.today(now), advanceDays: cfg.advanceDays });
       if (v.block) throw fail(v.block);
-      if (pkg.kind === 'day' && g.liveSnapshot.dailyCapacity) {
-        const sold = await GymPass.count({ where: { gymId: g.id, kind: 'day', validFrom: v.validFrom, status: SOLD }, transaction });
-        if (sold >= g.liveSnapshot.dailyCapacity) throw fail('PASS_CAPACITY_FULL');
-      }
       const payBy = new Date(now.getTime() + cfg.payMinutes * 60000);
       const row = await GymPass.create(
         {

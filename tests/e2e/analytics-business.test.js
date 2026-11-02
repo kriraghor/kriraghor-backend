@@ -113,7 +113,8 @@ describe('M19 shop owner (§6.3 "Shop")', () => {
 
 describe('M19 gym owner (§6.3 gym, Round B2)', () => {
   it('facts from M20 events; pass sales, passes by kind, admissions, unused share; charts add up; CSVs without holders', async () => {
-    const { owner, gym } = await b.liveGym(docsReviewer, reviewer);
+    const { owner, gym: fresh } = await b.liveGym(docsReviewer, reviewer);
+    const gym = await g.withOldDayPass(fresh);
     const fahim = await h.signupUser({ name: 'Fahim Rahman' });
     const rina = await h.signupUser({ name: 'Rina Begum' });
     const day = await b.paidPass(fahim, gym, 'day');

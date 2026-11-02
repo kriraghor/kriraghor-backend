@@ -11,7 +11,7 @@
  * played bookings (b2, b3), lowers refunds.staff_limit_poisha to ৳300 (so ৳500 needs a master), and
  * serves {{controlUrl}}, a local test-only control (never part of the API). Round B1 review sources:
  * a live pro profile whose job for member was paid out, a live shop whose sub-order for member was
- * received, and a live gym where member2's day pass was admitted.
+ * received, and a live gym where member2's monthly package was admitted.
  *   POST /gympass                      a newer gym pass for member2, used (returns passId)
  *   POST /settle                       drain events
  *   POST /noshow?who=member|member2    a new booking marked a no-show (returns bookingId)
@@ -110,7 +110,7 @@ async function main() {
   const b3 = await played(member2);
 
   // Round B1 review sources: member hires a pro (a released job) and buys from a shop (a completed
-  // sub-order); member2 uses a gym day pass at the front desk.
+  // sub-order); member2 uses a monthly gym package at the front desk.
   const hx = require('../tests/fixtures/hire');
   const mx = require('../tests/fixtures/market');
   const gx = require('../tests/fixtures/gym');
@@ -140,9 +140,9 @@ async function main() {
   await api().post(`${P}/me/sub-orders/${sub.id}/received`).set(h.bearer(member)).send({}).expect(200);
   const gymOwner = await gx.gymOwner(docs);
   const gym = await gx.liveGym(gymOwner, lister);
-  const dayPass = gym.packages.find((p) => p.kind === 'day').id;
+  const monthly = gym.packages.find((p) => p.kind === 'month').id;
   async function gymPass(validFrom) {
-    const r = await api().post(`${P}/gym/passes`).set(h.bearer(member2)).set('Idempotency-Key', `pm-gp-${Date.now()}-${(hour += 1)}`).send({ packageId: dayPass, validFrom }).expect(201);
+    const r = await api().post(`${P}/gym/passes`).set(h.bearer(member2)).set('Idempotency-Key', `pm-gp-${Date.now()}-${(hour += 1)}`).send({ packageId: monthly, validFrom }).expect(201);
     await h.payWithSimulator(member2, r.body.payment.id);
     await h.drainEvents();
     return models.GymPass.findOne({ where: { code: r.body.pass.code } });

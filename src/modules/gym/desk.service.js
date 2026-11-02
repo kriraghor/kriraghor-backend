@@ -6,7 +6,7 @@
  * gym's, active, valid today (Dhaka), not yet used today, and the gym is open now (its live hours).
  * The admission row (UNIQUE pass and day) and the pass row lock settle two scans at once: one admits,
  * the other answers "Already used at 07:42". The first admission releases the pass's money to the
- * owner minus fees.gym_pct; a day pass is then used up.
+ * owner minus fees.gym_pct; a day pass sold before 2 Nov 2026 is then used up.
  *
  * Round B3: the gym's staff work the desk too (business-members actFor): desk.admit admits,
  * desk.admissions lists the day, passes.view lists passes sold without any money. Staff never see the

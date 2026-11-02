@@ -192,7 +192,7 @@ describe('M17 reviews: gyms (passes, M20-FR-10)', () => {
     const gym = await g.liveGym(owner, reviewer);
     const member = await h.signupUser({ name: 'Nadia Islam' });
     const buy = async (validFrom) => {
-      const r = await api().post(`${P}/gym/passes`).set(h.bearer(member)).set('Idempotency-Key', key('gp')).send({ packageId: gym.packages.find((p) => p.kind === 'day').id, validFrom }).expect(201);
+      const r = await api().post(`${P}/gym/passes`).set(h.bearer(member)).set('Idempotency-Key', key('gp')).send({ packageId: gym.packages.find((p) => p.kind === 'month').id, validFrom }).expect(201);
       await h.payWithSimulator(member, r.body.payment.id);
       await h.drainEvents();
       return (await api().get(`${P}/me/passes/${r.body.pass.code}`).set(h.bearer(member)).expect(200)).body.pass;

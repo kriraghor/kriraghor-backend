@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Kriraghor API: M20 Gym (step 1)",
-    "description": "An approved gym owner (gym_owner role, ground-owner documents; set up by the runner) lists Iron Yard Banani: three photos, the week (open all day; Friday in two windows) and the design packages (day ৳400, month ৳4,500, quarter ৳12,000). Sending it incomplete is refused with the missing parts; the listings desk sees the five automatic checks pass and approves it (M05 kind gym). The public page and list show it.\n\nA member buys today's day pass (Idempotency-Key, M06 purpose gym_package) and pays through the simulator: the pass shows its QR token and 6-character backup code to the holder only. The front desk refuses a tampered token, admits the pass by token (৳380 to the owner, ৳20 fee) and then says \"already used\". A pass for tomorrow is cancelled for a full refund; a pass bought for today cannot be. An unused day pass is paid to the gym when the gym closes (Q110).\n\nA fitness trainer adds a monthly plan (a price under the limit is refused) and a member subscribes and pays; cancelling within the first 3 days refunds the month in full.\n\nStaff: the pass with its escrow hold (no token or code), a master's platform cancel with step-up escrow.manage, one gym's working copy, suspend (manage_users) and restore (master).\n\nRequests named \"Runner\" go to the local test runner (drain events, pay, run gym.tick at a time, read the ledger).\n\nUnattended: `node postman/run-m20.js` (kriraghor_test database).\n\nRebuild this file with: node postman/build-collection-m20.js",
+    "description": "An approved gym owner (gym_owner role, ground-owner documents; set up by the runner) lists Iron Yard Banani: three photos, the week (open all day; Friday in two windows) and the design packages (day ৳400, month ৳4,500, quarter ৳12,000). Sending it incomplete is refused with the missing parts; the listings desk sees the five automatic checks pass and approves it (M05 kind gym). The public page and list show it.\n\nA member buys a monthly package from today (Idempotency-Key, M06 purpose gym_package) and pays through the simulator: the pass shows its QR token and 6-character backup code to the holder only. The front desk refuses a tampered token, admits the pass by token (৳4,275 to the owner, ৳225 fee) and then says \"already used\" for the day. A pass not yet used is cancelled for a full refund; a used one cannot be. An unused pass is paid to the gym after its last day (Q110). Day passes sold before 2 Nov 2026 are covered in tests/e2e/gym.test.js.\n\nA fitness trainer adds a monthly plan (a price under the limit is refused) and a member subscribes and pays; cancelling within the first 3 days refunds the month in full.\n\nStaff: the pass with its escrow hold (no token or code), a master's platform cancel with step-up escrow.manage, one gym's working copy, suspend (manage_users) and restore (master).\n\nRequests named \"Runner\" go to the local test runner (drain events, pay, run gym.tick at a time, read the ledger).\n\nUnattended: `node postman/run-m20.js` (kriraghor_test database).\n\nRebuild this file with: node postman/build-collection-m20.js",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -26,11 +26,11 @@
       "value": ""
     },
     {
-      "key": "dayPkg",
+      "key": "monthPkg",
       "value": ""
     },
     {
-      "key": "monthPkg",
+      "key": "quarterPkg",
       "value": ""
     },
     {
@@ -103,7 +103,7 @@
       "name": "1. A gym and its review (FR-01, FR-02)",
       "item": [
         {
-          "name": "A member cannot list a gym (expect 403)",
+          "name": "A member with a verified phone may open gyms (M24 gate run_gym): none yet",
           "event": [
             {
               "listen": "test",
@@ -113,9 +113,10 @@
                   "let j = null; try { j = pm.response.json(); } catch (e) {}",
                   "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
                   "const ok = pm.response.code >= 200 && pm.response.code < 300;",
-                  "pm.test('status 403', () => {",
-                  "  pm.response.to.have.status(403);",
-                  "});"
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"none\", () => { pm.expect(j.items.length === 0).to.eql(true); });"
                 ]
               }
             }
@@ -156,7 +157,7 @@
                   "pm.test('status 201', () => {",
                   "  pm.response.to.have.status(201);",
                   "});",
-                  "pm.test(\"draft with limits\", () => { pm.expect(j.status === 'draft' && j.limits.dayMin === 10000 && j.limits.dayMax === 300000 && j.limits.minPhotos === 3).to.eql(true); });"
+                  "pm.test(\"draft with limits\", () => { pm.expect(j.status === 'draft' && j.limits.minPhotos === 3).to.eql(true); });"
                 ]
               }
             }
@@ -544,7 +545,7 @@
           }
         },
         {
-          "name": "A day pass under the limit (expect 422)",
+          "name": "A day pass is refused (expect 422)",
           "event": [
             {
               "listen": "test",
@@ -575,7 +576,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"packages\": [\n    {\n      \"kind\": \"day\",\n      \"title\": \"Day\",\n      \"price\": 500\n    }\n  ]\n}",
+              "raw": "{\n  \"packages\": [\n    {\n      \"kind\": \"day\",\n      \"title\": \"Day\",\n      \"price\": 40000\n    }\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -597,7 +598,7 @@
           }
         },
         {
-          "name": "The design packages",
+          "name": "Only at the desk: saved",
           "event": [
             {
               "listen": "test",
@@ -609,8 +610,7 @@
                   "const ok = pm.response.code >= 200 && pm.response.code < 300;",
                   "pm.test('status 200', () => {",
                   "  pm.response.to.have.status(200);",
-                  "});",
-                  "pm.test(\"three, day first\", () => { pm.expect(j.packages.length === 3 && j.packages[0].kind === 'day').to.eql(true); });"
+                  "});"
                 ]
               }
             }
@@ -629,7 +629,103 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"packages\": [\n    {\n      \"kind\": \"day\",\n      \"title\": \"Day pass\",\n      \"price\": 40000\n    },\n    {\n      \"kind\": \"month\",\n      \"title\": \"Monthly\",\n      \"price\": 450000\n    },\n    {\n      \"kind\": \"quarter\",\n      \"title\": \"Quarterly\",\n      \"price\": 1200000\n    }\n  ]\n}",
+              "raw": "{\n  \"packages\": [\n    {\n      \"kind\": \"month\",\n      \"title\": \"Monthly\",\n      \"price\": 450000,\n      \"channel\": \"desk\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/packages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "packages"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Only at the desk: cannot be sent (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 GYM_INCOMPLETE', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('GYM_INCOMPLETE');",
+                  "});",
+                  "pm.test(\"a package sold online\", () => { pm.expect(j.errors.some((e) => e.field === 'packages')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "submit"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The design packages",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"two, month first\", () => { pm.expect(j.packages.length === 2 && j.packages[0].kind === 'month').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"packages\": [\n    {\n      \"kind\": \"month\",\n      \"title\": \"Monthly\",\n      \"price\": 450000\n    },\n    {\n      \"kind\": \"quarter\",\n      \"title\": \"Quarterly\",\n      \"price\": 1200000\n    }\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -965,12 +1061,12 @@
                   "let j = null; try { j = pm.response.json(); } catch (e) {}",
                   "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
                   "const ok = pm.response.code >= 200 && pm.response.code < 300;",
-                  "if (ok && j) { const v = get(j, 'packages.0.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('dayPkg', v); }",
-                  "if (ok && j) { const v = get(j, 'packages.1.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('monthPkg', v); }",
+                  "if (ok && j) { const v = get(j, 'packages.0.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('monthPkg', v); }",
+                  "if (ok && j) { const v = get(j, 'packages.1.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('quarterPkg', v); }",
                   "pm.test('status 200', () => {",
                   "  pm.response.to.have.status(200);",
                   "});",
-                  "pm.test(\"prices and photos\", () => { pm.expect(j.dayPrice === 40000 && j.monthPrice === 450000 && j.quarterPrice === 1200000 && j.photos.length === 3 && j.taking === true).to.eql(true); });"
+                  "pm.test(\"prices and photos\", () => { pm.expect(j.monthPrice === 450000 && j.quarterPrice === 1200000 && j.photos.length === 3 && j.taking === true).to.eql(true); });"
                 ]
               }
             }
@@ -1034,7 +1130,7 @@
       ]
     },
     {
-      "name": "2. A day pass and the front desk (FR-03 to FR-05)",
+      "name": "2. A monthly package and the front desk (FR-03 to FR-05)",
       "item": [
         {
           "name": "Too far ahead (expect 422)",
@@ -1073,7 +1169,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"packageId\": \"{{dayPkg}}\",\n  \"validFrom\": \"{{in9}}\"\n}",
+              "raw": "{\n  \"packageId\": \"{{monthPkg}}\",\n  \"validFrom\": \"{{in9}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1093,7 +1189,7 @@
           }
         },
         {
-          "name": "Buy today's day pass",
+          "name": "Buy a month from today",
           "event": [
             {
               "listen": "test",
@@ -1109,7 +1205,7 @@
                   "pm.test('status 201', () => {",
                   "  pm.response.to.have.status(201);",
                   "});",
-                  "pm.test(\"waiting, no secrets yet\", () => { pm.expect(j.pass.status === 'pending_payment' && j.pass.token === null && j.pass.backupCode === null && j.pass.money.price === 40000).to.eql(true); });"
+                  "pm.test(\"waiting, no secrets yet\", () => { pm.expect(j.pass.status === 'pending_payment' && j.pass.token === null && j.pass.backupCode === null && j.pass.money.price === 450000).to.eql(true); });"
                 ]
               }
             }
@@ -1132,7 +1228,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"packageId\": \"{{dayPkg}}\",\n  \"validFrom\": \"{{today}}\"\n}",
+              "raw": "{\n  \"packageId\": \"{{monthPkg}}\",\n  \"validFrom\": \"{{today}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1299,7 +1395,7 @@
                   "pm.test('status 201', () => {",
                   "  pm.response.to.have.status(201);",
                   "});",
-                  "pm.test(\"admitted, ৳380 released\", () => { pm.expect(j.status === 'redeemed' && j.released === 38000 && j.holder.displayName === 'Fahim Rahman').to.eql(true); });"
+                  "pm.test(\"admitted, ৳4,275 released\", () => { pm.expect(j.status === 'active' && j.released === 427500 && j.holder.displayName === 'Fahim Rahman').to.eql(true); });"
                 ]
               }
             }
@@ -1340,7 +1436,7 @@
           }
         },
         {
-          "name": "A second scan: already used (expect 409)",
+          "name": "A second scan today: already used (expect 409)",
           "event": [
             {
               "listen": "test",
@@ -1435,7 +1531,7 @@
           }
         },
         {
-          "name": "Runner: ledger: owner ৳380, fee ৳20",
+          "name": "Runner: ledger: owner ৳4,275, fee ৳225",
           "event": [
             {
               "listen": "test",
@@ -1449,7 +1545,7 @@
                   "  pm.response.to.have.status(200);",
                   "});",
                   "pm.test(\"balanced\", () => { pm.expect(j.invariantsOk === true).to.eql(true); });",
-                  "pm.test(\"payable\", () => { pm.expect(j.ownerPayable === 38000 && j.feeRevenue === 2000).to.eql(true); });"
+                  "pm.test(\"payable\", () => { pm.expect(j.ownerPayable === 427500 && j.feeRevenue === 22500).to.eql(true); });"
                 ]
               }
             }
@@ -1469,7 +1565,7 @@
           }
         },
         {
-          "name": "The used pass hides its secrets",
+          "name": "Still active for the rest of the month",
           "event": [
             {
               "listen": "test",
@@ -1482,7 +1578,7 @@
                   "pm.test('status 200', () => {",
                   "  pm.response.to.have.status(200);",
                   "});",
-                  "pm.test(\"redeemed\", () => { pm.expect(j.pass.status === 'redeemed' && j.pass.token === null && j.pass.backupCode === null).to.eql(true); });"
+                  "pm.test(\"active, used once\", () => { pm.expect(j.pass.status === 'active' && j.pass.firstRedeemedAt !== null && /^v1\\./.test(j.pass.token)).to.eql(true); });"
                 ]
               }
             }
@@ -1514,7 +1610,7 @@
       "name": "3. Cancel and expiry (FR-06, FR-07, Q110)",
       "item": [
         {
-          "name": "A day pass for tomorrow",
+          "name": "A month from tomorrow",
           "event": [
             {
               "listen": "test",
@@ -1551,7 +1647,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"packageId\": \"{{dayPkg}}\",\n  \"validFrom\": \"{{tomorrow}}\"\n}",
+              "raw": "{\n  \"packageId\": \"{{monthPkg}}\",\n  \"validFrom\": \"{{tomorrow}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1609,7 +1705,7 @@
           }
         },
         {
-          "name": "Cancel before the day: full refund",
+          "name": "Cancel before its first use: full refund",
           "event": [
             {
               "listen": "test",
@@ -1622,7 +1718,7 @@
                   "pm.test('status 200', () => {",
                   "  pm.response.to.have.status(200);",
                   "});",
-                  "pm.test(\"refunded ৳400\", () => { pm.expect(j.pass.status === 'refunded' && j.pass.money.refunded === 40000).to.eql(true); });"
+                  "pm.test(\"refunded ৳4,500\", () => { pm.expect(j.pass.status === 'refunded' && j.pass.money.refunded === 450000).to.eql(true); });"
                 ]
               }
             }
@@ -1650,7 +1746,48 @@
           }
         },
         {
-          "name": "Another pass for today",
+          "name": "Cancel after its first use (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 PASS_NOT_REFUNDABLE', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('PASS_NOT_REFUNDABLE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{m1Token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/passes/{{passId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "passes",
+                "{{passId}}",
+                "cancel"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Another month, never used",
           "event": [
             {
               "listen": "test",
@@ -1688,7 +1825,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"packageId\": \"{{dayPkg}}\",\n  \"validFrom\": \"{{today}}\"\n}",
+              "raw": "{\n  \"packageId\": \"{{monthPkg}}\",\n  \"validFrom\": \"{{today}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1746,48 +1883,7 @@
           }
         },
         {
-          "name": "Cancel on the day (expect 409)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
-                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
-                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
-                  "pm.test('status 409 PASS_NOT_REFUNDABLE', () => {",
-                  "  pm.response.to.have.status(409);",
-                  "  pm.expect(j && j.code).to.eql('PASS_NOT_REFUNDABLE');",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{m1Token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/me/passes/{{pass3}}/cancel",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "me",
-                "passes",
-                "{{pass3}}",
-                "cancel"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Runner: gym.tick after the gym closes today",
+          "name": "Runner: gym.tick after the last day",
           "event": [
             {
               "listen": "test",
@@ -1800,7 +1896,7 @@
                   "pm.test('status 200', () => {",
                   "  pm.response.to.have.status(200);",
                   "});",
-                  "pm.test(\"one expired\", () => { pm.expect(j.tick.expired === 1).to.eql(true); });"
+                  "pm.test(\"both months expired\", () => { pm.expect(j.tick.expired === 2).to.eql(true); });"
                 ]
               }
             }
@@ -1809,7 +1905,7 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{controlUrl}}/tick?date={{tomorrow}}&minutes=1",
+              "raw": "{{controlUrl}}/tick?date={{in31}}&minutes=1",
               "host": [
                 "{{controlUrl}}"
               ],
@@ -1819,7 +1915,7 @@
               "query": [
                 {
                   "key": "date",
-                  "value": "{{tomorrow}}"
+                  "value": "{{in31}}"
                 },
                 {
                   "key": "minutes",
@@ -1883,7 +1979,7 @@
                   "pm.test('status 200', () => {",
                   "  pm.response.to.have.status(200);",
                   "});",
-                  "pm.test(\"payable ৳760\", () => { pm.expect(j.ownerPayable === 76000 && j.feeRevenue === 4000).to.eql(true); });"
+                  "pm.test(\"payable ৳8,550\", () => { pm.expect(j.ownerPayable === 855000 && j.feeRevenue === 45000).to.eql(true); });"
                 ]
               }
             }
@@ -2339,7 +2435,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"packageId\": \"{{dayPkg}}\",\n  \"validFrom\": \"{{tomorrow}}\"\n}",
+              "raw": "{\n  \"packageId\": \"{{monthPkg}}\",\n  \"validFrom\": \"{{tomorrow}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2410,7 +2506,7 @@
                   "pm.test('status 200', () => {",
                   "  pm.response.to.have.status(200);",
                   "});",
-                  "pm.test(\"held ৳400\", () => { pm.expect(j.escrow.held === 40000 && j.token === null && j.backupCode === null).to.eql(true); });"
+                  "pm.test(\"held ৳4,500\", () => { pm.expect(j.escrow.held === 450000 && j.token === null && j.backupCode === null).to.eql(true); });"
                 ]
               }
             }
@@ -2505,7 +2601,7 @@
                   "pm.test('status 200', () => {",
                   "  pm.response.to.have.status(200);",
                   "});",
-                  "pm.test(\"refunded\", () => { pm.expect(j.status === 'refunded' && j.money.refunded === 40000).to.eql(true); });"
+                  "pm.test(\"refunded\", () => { pm.expect(j.status === 'refunded' && j.money.refunded === 450000).to.eql(true); });"
                 ]
               }
             }
@@ -2564,7 +2660,7 @@
                   "pm.test('status 200', () => {",
                   "  pm.response.to.have.status(200);",
                   "});",
-                  "pm.test(\"live, owner\", () => { pm.expect(j.status === 'live' && typeof j.ownerId === 'string' && j.packages.length === 3).to.eql(true); });"
+                  "pm.test(\"live, owner\", () => { pm.expect(j.status === 'live' && typeof j.ownerId === 'string' && j.packages.length === 2).to.eql(true); });"
                 ]
               }
             }
@@ -2683,7 +2779,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"packageId\": \"{{dayPkg}}\",\n  \"validFrom\": \"{{tomorrow}}\"\n}",
+              "raw": "{\n  \"packageId\": \"{{monthPkg}}\",\n  \"validFrom\": \"{{tomorrow}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"

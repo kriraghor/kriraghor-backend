@@ -7,7 +7,7 @@
  * Uses the test database (reset): migrates and seeds it, signs in master A, a venue owner with a
  * two-court fixture ground (৳2,000/h flat, 25% advance), another owner with a ground, a member who
  * books, members with verified phones who become staff (desk, none, other, packer, frontdesk) and one
- * whose phone is not verified; a live shop with two placed orders and a live gym with a paid day pass.
+ * whose phone is not verified; a live shop with two placed orders and a live gym with a paid monthly package.
  * Serves {{controlUrl}}, a local test-only control (never part of the API):
  *   POST /refresh?who=      a fresh access token for a session whose access changed (staff, owner)
  *   POST /pay?paymentId=    pay through the SSLCommerz simulator as the member, then drain events
@@ -67,7 +67,7 @@ async function main() {
   const s1 = await bf.paidOrder(buyer, shop, ['42']);
   const s2 = await bf.paidOrder(buyer, shop, ['43']);
   const { owner: gymOwner, gym } = await bf.liveGym(reviewer, reviewer);
-  const pass = await bf.paidPass(member, gym, 'day');
+  const pass = await bf.paidPass(member, gym, 'month');
   const base = Math.ceil((Date.now() + 86400000) / HALF) * HALF;
 
   const sessions = { ...people, owner, owner2 };

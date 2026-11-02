@@ -2,16 +2,16 @@
 
 /**
  * M20 rules (§6, v3), pure: no database, no clock (callers pass `now` and today's Dhaka date).
- *  - Money: fee = round(price × fee_bps / 10,000), half up; net = price − fee. Iron Yard's ৳400 day
- *    pass at 5% → fee ৳20, the owner gets ৳380.
+ *  - Money: fee = round(price × fee_bps / 10,000), half up; net = price − fee. A ৳400 pass at 5% →
+ *    fee ৳20, the owner gets ৳380.
  *  - Dates are Dhaka calendar dates (YYYY-MM-DD); Asia/Dhaka has no daylight saving (UTC+6).
  *  - Opening hours are windows per weekday (0 = Sunday), some marked women-only; a window may close
  *    at 24:00 but never runs past midnight.
- *  - Passes: a day pass is for one date up to gym.pass_advance_days ahead on which the gym opens; a
- *    month or quarter pass runs its package's days from a start date. Redemption is once (day pass)
- *    or once per Dhaka day (month and quarter), while the gym is open.
- *  - Q110 (user, 18 Oct 2026): an unused day pass is paid to the gym minus the fee when it closes on
- *    that date; month and quarter passes refund in full until their first use.
+ *  - Passes: gyms sell subscriptions only (product owner, 2 Nov 2026). A pass runs its package's days
+ *    from a start date up to gym.pass_advance_days ahead. Redemption is once per Dhaka day, while the
+ *    gym is open; passes refund in full until their first use (Q110).
+ *  - Day passes sold before 2 Nov 2026 still run out their dates: `admission`, `cancelPlan` and
+ *    `expiresAt` keep their day rules until those have drained (kind `day` stays readable on history).
  *  - QR token `v1.<passId>.<nonce>.<sig>` signed with a keyed hash the caller passes in; a 6-character
  *    backup code in Crockford base32 (no I, L, O, U).
  *  - Trainer subscriptions run in periods of gym.subscription_days; renewal opens
@@ -24,7 +24,7 @@
 const DHAKA_MS = 6 * 3600000;
 const DAY_MS = 86400000;
 // M24 §7.1 (G2): 6 months, 12 months and custom days (1–366) join day, month and quarter.
-const KINDS = ['day', 'month', 'quarter', 'half_year', 'year', 'custom'];
+const KINDS = ['month', 'quarter', 'half_year', 'year', 'custom'];
 const CHANNELS = ['desk', 'online', 'both'];
 /** M24: a package sold online (public page, live_snapshot, passes); `desk` packages are the gym's own books only. */
 const soldOnline = (p) => (p.channel ?? 'both') !== 'desk';
@@ -100,44 +100,30 @@ function closingOn(hours, date) {
 // ---------------------------------------------------------------- packages
 
 /** The days a package of a kind covers (custom: the days the owner chose, M24-FR-24). */
-const daysOf = (kind, cfg, customDays = null) => (kind === 'custom' ? customDays : { day: 1, month: cfg.monthDays, quarter: cfg.quarterDays, half_year: cfg.halfYearDays, year: cfg.yearDays }[kind]);
+const daysOf = (kind, cfg, customDays = null) => (kind === 'custom' ? customDays : { month: cfg.monthDays, quarter: cfg.quarterDays, half_year: cfg.halfYearDays, year: cfg.yearDays }[kind]);
 
 /**
- * Problems with a gym's active packages ({ kind, price }), or []: a day pass inside the M03 limits; a
- * month pass costs at least a day pass, a quarter at least a month. M24-FR-24: the day pass is required
- * only to submit the gym for review (`submit`), so a private gym may save only a month package; at most
- * `maxCustom` custom packages (gym_manage.max_custom_packages) when that limit is given.
+ * Problems with a gym's active packages ({ kind, price }), or []: a quarter costs at least a month. M24-FR-24:
+ * to submit the gym for review (`submit`) at least one package must be sold online, so a private gym may
+ * save desk packages only; at most `maxCustom` custom packages (gym_manage.max_custom_packages) when given.
  */
-function packageErrors(packages, { dayMin, dayMax, maxCustom = null }, { submit = true } = {}) {
+function packageErrors(packages, { maxCustom = null }, { submit = true } = {}) {
   const errors = [];
   const price = (k) => packages.find((p) => p.kind === k)?.price ?? null;
-  const day = price('day');
   const month = price('month');
   const quarter = price('quarter');
-  if (day === null) {
-    if (submit) errors.push({ field: 'packages', message: 'Add a day pass' });
-  } else if (day < dayMin || day > dayMax) errors.push({ field: 'packages.day', message: `A day pass costs between ${dayMin / 100} and ${dayMax / 100} taka` });
-  if (month !== null && day !== null && month < day) errors.push({ field: 'packages.month', message: 'A month pass costs at least a day pass' });
-  if (quarter !== null && (month ?? day) !== null && quarter < (month ?? day)) errors.push({ field: 'packages.quarter', message: 'A quarter pass costs at least a month pass' });
+  if (submit && !packages.length) errors.push({ field: 'packages', message: 'Add a package sold online' });
+  if (quarter !== null && month !== null && quarter < month) errors.push({ field: 'packages.quarter', message: 'A quarter pass costs at least a month pass' });
   if (maxCustom !== null && packages.filter((p) => p.kind === 'custom').length > maxCustom) errors.push({ field: 'packages', message: `At most ${maxCustom} custom packages` });
   return errors;
 }
 
 // ---------------------------------------------------------------- buying a pass
 
-/**
- * The dates a pass covers, or { block }: a day pass on a date from today to advanceDays − 1 ahead on
- * which the gym opens (today only before it closes); a month or quarter pass starts in the same range
- * and runs `days` days.
- */
-function validity({ kind, days, from, today, now, advanceDays, hours }) {
+/** The dates a pass covers, or { block }: it starts from today to advanceDays − 1 ahead and runs `days` days. */
+function validity({ days, from, today, advanceDays }) {
   const ahead = daysBetween(today, from);
   if (ahead < 0 || ahead >= advanceDays) return { block: 'DATE_OUT_OF_RANGE' };
-  if (kind === 'day') {
-    if (!opensOn(hours, from)) return { block: 'GYM_CLOSED_ON_DATE' };
-    if (ahead === 0 && closingOn(hours, from) <= now) return { block: 'GYM_CLOSED_ON_DATE' };
-    return { validFrom: from, validTo: from };
-  }
   return { validFrom: from, validTo: addDays(from, days - 1) };
 }
 
