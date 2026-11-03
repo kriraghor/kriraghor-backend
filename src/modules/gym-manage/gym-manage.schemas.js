@@ -80,7 +80,7 @@ const membersQuery = z.object({
   overdue: bool.optional(),
   expiring: bool.optional().meta({ description: 'The running membership ends within 7 days' }),
   frozen: bool.optional(),
-  notSeen: z.coerce.number().int().min(1).max(365).optional().meta({ description: 'Days without a counted check-in (members with a running membership)' }),
+  notSeen: z.coerce.number().int().min(1).max(365).optional().meta({ description: 'Days without a counted check-in (active members with an active membership; frozen members are left out, M24-FR-53)' }),
   packageId: id.optional(),
   linked: bool.optional(),
   trainerId: id.optional().meta({ description: 'Members assigned to this trainer (the business_members id from GET …/trainers; feature trainers)' }),

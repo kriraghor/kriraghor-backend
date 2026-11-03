@@ -258,6 +258,32 @@ describe('member list, profile, edit, phone reveal (FR-12, FR-13, FR-15, FR-23)'
     expect((await g.get('/members?status=removed').expect(200)).body.items.map((x) => x.id)).toEqual([clean.member.id]);
     expect(h.events.recorded().map((e) => e.name)).toEqual(expect.arrayContaining(['gym_member.left', 'gym_member.rejoined', 'gym_member.removed', 'gym_membership.cancelled']));
   });
+
+  it('not seen: a frozen member is in neither the list nor the tile, which agree on the same days (FR-23, FR-53)', async () => {
+    const { owner, gym, pkg } = await gm.privateGym();
+    const g = gm.manage(owner, gym.id);
+    const running = { membership: { packageId: pkg('month').id, startsOn: gm.inDays(-20), admissionFee: false } };
+    await gm.addMember(owner, gym.id, { displayName: 'Rafiq Hasan', ...running });
+    const paused = await gm.addMember(owner, gym.id, { displayName: 'Nadia Islam', ...running });
+    await g.post(`/memberships/${paused.membership.id}/freeze`, { fromOn: gm.today(), toOn: gm.inDays(4), reason: 'Fever' }).expect(200);
+    const names = (x) => x.body.items.map((m) => m.displayName);
+    const notSeen = async () => {
+      const { tiles } = (await g.get('/overview').expect(200)).body;
+      return {
+        tile: tiles.notSeen,
+        list: names(await g.get(`/members?notSeen=${tiles.notSeenDays}`).expect(200)),
+        absent: names(await g.get('/reports/absent').expect(200)),
+      };
+    };
+
+    expect(await notSeen()).toEqual({ tile: 1, list: ['Rafiq Hasan'], absent: ['Rafiq Hasan'] });
+    // The frozen member stays reachable through their own filter.
+    expect(names(await g.get('/members?frozen=true').expect(200))).toEqual(['Nadia Islam']);
+    // Unfrozen, they count again: the freeze was the only reason they were left out.
+    await g.post(`/memberships/${paused.membership.id}/unfreeze`).expect(200);
+    const both = ['Nadia Islam', 'Rafiq Hasan'];
+    expect(await notSeen()).toEqual({ tile: 2, list: both, absent: both });
+  });
 });
 
 describe('memberships (FR-25 to FR-31)', () => {

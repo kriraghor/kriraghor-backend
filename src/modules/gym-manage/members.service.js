@@ -195,8 +195,8 @@ async function list(principal, gymId, query = {}) {
   }
   if (frozen) where.push("cur_status = 'frozen'");
   if (notSeen) {
-    // FR-53: a running membership older than the window and no counted check-in inside it.
-    where.push("cur_id IS NOT NULL AND cur_starts_on <= :seenSince AND (last_date IS NULL OR last_date <= :seenSince)");
+    // FR-53: an active member with an active membership older than the window and no counted check-in inside it; frozen members are left out, as on the dashboard tile.
+    where.push("status = 'active' AND cur_status = 'active' AND cur_starts_on <= :seenSince AND (last_date IS NULL OR last_date <= :seenSince)");
     rep.seenSince = rules.addDays(today, -notSeen);
   }
   if (packageId) {
