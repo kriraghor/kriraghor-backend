@@ -67,6 +67,16 @@ const SUBJECTS = {
     if (!p) return null;
     return { owners: [p.ownerId], suspendable: p.ownerId, summary: { title: p.title, slug: p.slug, status: p.status, shopId: p.shopId } };
   },
+  async tournament_post(id) {
+    const p = await require('../tournament-posts').posts.facts(id);
+    if (!p) return null;
+    return { owners: [p.authorId], suspendable: p.authorId, summary: { title: p.title, slug: p.slug, status: p.status } };
+  },
+  async tournament_comment(id) {
+    const r = await require('../tournament-posts').comments.facts(id);
+    if (!r) return null;
+    return { owners: [r.authorId], suspendable: r.authorId, summary: { body: r.body, status: r.status, postId: r.postId } };
+  },
   async esports_tournament(id) {
     const t = await require('../esports').facts.tournament(id).catch(() => null);
     if (!t) return null;
@@ -197,6 +207,8 @@ async function resolve(actor, { subjectType, subjectId, action, note }, req) {
     if (subjectType === 'ground' && action === 'content_removed') await require('../grounds').grounds.staffActionInTx(actor, subjectId, 'suspend', { reason: note, transaction, req });
     if (subjectType === 'shop' && action === 'content_removed') await require('../market').shops.staffActionInTx(actor, subjectId, 'suspend', { reason: note, transaction, req });
     if (subjectType === 'product' && action === 'content_removed') await require('../market').products.staffActionInTx(actor, subjectId, 'suspend', { reason: note, transaction, req });
+    if (subjectType === 'tournament_post' && action === 'content_removed') await require('../tournament-posts').posts.removeInTx(actor, subjectId, { reason: note, transaction, req });
+    if (subjectType === 'tournament_comment' && action === 'content_removed') await require('../tournament-posts').comments.removeInTx(actor, subjectId, { reason: note, transaction, req });
     if (action === 'user_suspended') await require('../admin').adminUsers.suspendInTx(actor, subject.suspendable, { reasonCode: 'reported', note }, { transaction, req });
     const now = new Date();
     await Report.update({ status: 'resolved', resolutionAction: action, resolutionNote: note, resolvedBy: actor.id, resolvedAt: now }, { where: { id: open.map((r) => r.id) }, transaction });

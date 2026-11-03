@@ -35,6 +35,7 @@ const gymManage = require('../modules/gym-manage/gym-manage.jobs');
 const saas = require('../modules/organiser-saas/saas.jobs');
 const esportsEvents = require('../modules/esports-events/events.jobs');
 const teamsJobs = require('../modules/teams/teams.jobs');
+const tournamentPostJobs = require('../modules/tournament-posts/tournament-posts.jobs');
 const tournamentsJobs = require('../modules/tournaments/tournaments.jobs');
 const { purgeExpired: purgeIdempotencyKeys } = require('../common/idempotency');
 const logger = require('../common/logger');
@@ -510,6 +511,13 @@ const JOBS = [
     pattern: '30 2 * * *',
     tz: 'Asia/Dhaka',
     run: async () => ({ rebuilt: await analytics.rebuildRecentCourtDays() }),
+  },
+  {
+    // M26-FR-08: open posts past their last day plus tournament_posts.expire_days_after_end. Idempotent.
+    name: 'tournament_posts.tick',
+    queue: QUEUES.TOURNAMENT_POSTS,
+    every: 60 * 60 * 1000,
+    run: async () => tournamentPostJobs.tick(),
   },
   {
     name: 'idempotency.purge',

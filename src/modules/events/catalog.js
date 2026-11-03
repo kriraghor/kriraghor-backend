@@ -16,6 +16,7 @@ const role = z.string().max(32);
 const iso = z.string().max(40);
 const json = z.unknown();
 const poisha = z.number().int().nonnegative();
+const tournamentPostEvent = z.object({ postId: uuid, slug: z.string().max(110), title: z.string().max(120), authorId: uuid });
 const paymentClosed = z.object({ paymentId: uuid, purpose: z.string(), purposeId: uuid, amount: poisha, payerId: uuid, reason: z.string().max(60) });
 const refundEvent = z.object({ refundId: uuid, paymentId: uuid, amount: poisha, purpose: z.string(), purposeId: uuid, payerId: uuid });
 const groundEvent = z.object({ groundId: uuid, ownerId: uuid });
@@ -67,7 +68,7 @@ const esProfile = z.object({ profileId: uuid, userId: uuid, gameId: uuid });
 const esShare = z.object({ shareId: uuid, tournamentId: uuid, userId: uuid, amount: poisha });
 const bookingEvent = z.object({ bookingId: uuid, code: z.string().max(16), groundId: uuid, ownerId: uuid, bookerUserId: uuid.nullable() });
 const disputeEvent = z.object({ disputeId: uuid, code: z.string().max(20), sourceType: z.enum(['booking', 'esports_result', 'sub_order', 'hire_job', 'trainer_subscription']), sourceId: uuid, category: z.string().max(30), claimantId: uuid, respondentId: uuid.nullable() });
-const subjectType = z.enum(['ground', 'booking', 'user', 'review', 'esports_tournament', 'shop', 'product']);
+const subjectType = z.enum(['ground', 'booking', 'user', 'review', 'esports_tournament', 'shop', 'product', 'tournament_post', 'tournament_comment']);
 // M17 review subjects (Round B1): venues, pro profiles (M11), shops (M12), gyms (M20).
 const reviewSubject = z.enum(['ground', 'hire_profile', 'shop', 'gym']);
 const reviewEvent = z.object({ reviewId: uuid, subjectType: reviewSubject, subjectId: uuid, authorId: uuid });
@@ -374,6 +375,10 @@ const EVENTS = {
   'hire_request.paid': { module: 'M11', version: 1, schema: hireRequestEvent.extend({ paymentId: uuid }) },
   'hire_request.completed': { module: 'M11', version: 1, schema: hireRequestEvent },
   'hire_request.cancelled': { module: 'M11', version: 1, schema: hireRequestEvent },
+  ...Object.fromEntries(['created', 'closed', 'expired', 'restored'].map((k) => [`tournament_post.${k}`, { module: 'M26', version: 1, schema: tournamentPostEvent }])),
+  'tournament_post.removed': { module: 'M26', version: 1, schema: tournamentPostEvent.extend({ reason: z.string().max(300) }) },
+  'tournament_post.commented': { module: 'M26', version: 1, schema: tournamentPostEvent.extend({ commentId: uuid, commenterId: uuid }) },
+  'tournament_message.posted': { module: 'M26', version: 1, schema: z.object({ postId: uuid, title: z.string().max(120), threadId: uuid, messageId: uuid, senderId: uuid, recipientId: uuid }) },
   'hire_message.posted': { module: 'M11', version: 1, schema: z.object({ requestId: uuid, code: z.string().max(20), messageId: uuid, authorId: uuid, recipientId: uuid }) },
   'hire_job.checkin_opened': { module: 'M11', version: 1, schema: hireJobEvent.extend({ start: iso }) },
   'hire_job.check_in_recorded': { module: 'M11', version: 1, schema: hireJobEvent.extend({ late: z.boolean() }) },

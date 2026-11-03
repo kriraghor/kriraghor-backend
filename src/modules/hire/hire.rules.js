@@ -464,12 +464,8 @@ function completeness({ headline, bio, worksWithU16 }, f, { bioMinChars }) {
 
 // ---------------------------------------------------------------- contact masking (v3)
 
-const PHONE = /(\+?88)?0?1[3-9](?:[\s.-]?\d){8}/;
-const DIGITS = /(?:\d[\s.-]?){9,}/;
-const EMAIL = /[^\s@]+@[^\s@]+\.[a-z]{2,}/i;
-const LINK = /(https?:\/\/|www\.)\S+|\b[a-z0-9-]+\.(com|net|org|bd|me|io|co)\b/i;
 /** Contact details (phone, long numbers, email, links) are not allowed in messages before payment. */
-const hasContact = (text) => PHONE.test(text) || DIGITS.test(text) || EMAIL.test(text) || LINK.test(text);
+const { hasContact } = require('../../common/contact');
 
 module.exports = {
   LEVELS,

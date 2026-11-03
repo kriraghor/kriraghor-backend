@@ -1264,6 +1264,9 @@ const gymManage = require('./gym-manage');
 // ---- M14 lite organisations and M22 organiser SaaS (./organisations.js) ----
 const organisations = require('./organisations');
 
+// ---- M26 tournament feed (./tournament-posts.js) ----
+const tournamentPosts = require('./tournament-posts');
+
 // ---- M16 teams and players, step 1 (./teams.js) ----
 const teams = require('./teams');
 
@@ -1304,6 +1307,7 @@ module.exports = {
   ...organisations,
   ...esportsEvents,
   ...teams,
+  ...tournamentPosts,
   ...tournaments,
   ...grounds,
   ...bookings,

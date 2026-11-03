@@ -49,6 +49,9 @@ module.exports = {
   groundPhoto: guard('grph', { windowMs: 60 * 60 * 1000, settingKey: 'ground.photo_uploads_per_hour', code: 'UPLOAD_RATE_LIMITED' }), // M09 ground photos
   productPhoto: guard('mkph', { windowMs: 60 * 60 * 1000, settingKey: 'market.photo_uploads_per_hour', code: 'UPLOAD_RATE_LIMITED' }), // M12 product photos
   tournamentAction: guard('tmact', { windowMs: 60 * 1000, settingKey: 'tournament.actions_per_minute', code: 'RATE_LIMITED' }), // M14 organiser console writes per minute
+  tournamentComment: guard('tmcmt', { windowMs: 60 * 60 * 1000, settingKey: 'tournament_posts.comments_per_hour', code: 'RATE_LIMITED' }), // M26 comments per hour
+  tournamentMessage: guard('tmmsg', { windowMs: 60 * 60 * 1000, settingKey: 'tournament_posts.messages_per_hour', code: 'RATE_LIMITED' }), // M26 private messages per hour
+  tournamentPhoto: guard('tmpho', { windowMs: 60 * 60 * 1000, settingKey: 'tournament_posts.photo_uploads_per_hour', code: 'UPLOAD_RATE_LIMITED' }), // M26 post photos
   teamInvite: guard('tminv', { windowMs: 24 * 60 * 60 * 1000, settingKey: 'teams.invites_per_day', code: 'RATE_LIMITED' }), // M16 invites per captain per day
   eventAction: guard('esev', { windowMs: 60 * 1000, settingKey: 'esports_events.actions_per_minute', code: 'RATE_LIMITED' }), // M23 follows and poll votes
   teamAdd: guard('bmadd', { windowMs: 60 * 60 * 1000, settingKey: 'business.team_adds_per_hour', code: 'RATE_LIMITED' }), // Round B3 staff adds per owner (Q180)

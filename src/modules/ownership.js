@@ -19,7 +19,7 @@ const GROUPS = {
   hiring: ['hire'],
   gym: ['gym', 'gym-manage'],
   esports: ['esports', 'esports-events', 'organisations', 'organiser-saas'],
-  tournament: ['teams', 'tournaments', 'scoring'],
+  tournament: ['teams', 'tournaments', 'scoring', 'tournament-posts'],
 };
 
 /** Sequelize model name → owning module. */
@@ -53,6 +53,7 @@ const OWNERS = {
   'organiser-saas': ['OrganiserContract', 'OrganiserInvoice', 'OrganiserInvoiceLine', 'OrganiserPrizeFund', 'OrganisationBranding'],
   'esports-events': ['EsportsEvent', 'EsportsEventStage', 'EsportsEventQualification', 'EsportsEventStream', 'EsportsEventSponsor', 'EsportsEventPoll', 'EsportsEventPollOption', 'EsportsEventPollVote', 'EsportsEventFollow', 'EsportsEventFeedItem', 'EsportsEventAlert'],
   'esports': ['EsportsGameProfile', 'EsportsUidBan', 'EsportsSquad', 'EsportsSquadMember', 'EsportsTournament', 'EsportsPrizePlace', 'EsportsStage', 'EsportsMatch', 'EsportsRegistration', 'EsportsRegistrationPlayer', 'EsportsCheckin', 'EsportsRoomCredential', 'EsportsCredentialView', 'EsportsResult', 'EsportsResultPlayer', 'EsportsResultEvidence', 'EsportsResultDispute', 'EsportsDisqualification', 'EsportsStanding', 'EsportsPrizeAward', 'EsportsPrizeShare', 'EsportsStream', 'EsportsRankingEntry', 'EsportsRanking'],
+  'tournament-posts': ['TournamentPost', 'TournamentPostPhoto', 'TournamentPostComment', 'TournamentPostThread', 'TournamentPostMessage'],
   'teams': ['Team', 'TeamMember', 'TeamInvite', 'PlayerProfile', 'Roster', 'RosterPlayer', 'EligibilityCheck'],
   'tournaments': ['Tournament', 'TournamentRules', 'TournamentVenue', 'Stage', 'Group', 'GroupTeam', 'Registration', 'Match', 'Standing'],
   'scoring': ['MatchResult'],

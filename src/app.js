@@ -41,6 +41,7 @@ const gymManageRoutes = require('./modules/gym-manage/gym-manage.routes');
 const saasRoutes = require('./modules/organiser-saas/saas.routes');
 const eventRoutes = require('./modules/esports-events/events.routes');
 const teamRoutes = require('./modules/teams/teams.routes');
+const tournamentPostRoutes = require('./modules/tournament-posts/tournament-posts.routes');
 const tournamentRoutes = require('./modules/tournaments/tournaments.routes');
 const businessMemberRoutes = require('./modules/business-members/business-members.routes');
 
@@ -116,6 +117,10 @@ function createApp() {
   api.use('/me/gym-plans', gymManageRoutes.mePlans);
   api.use('/me/gym-checkins', gymManageRoutes.meCheckins);
   api.use('/me', teamRoutes.meRouter);
+  // M26 the tournament feed.
+  api.use('/tournament-posts', tournamentPostRoutes.publicRouter);
+  api.use('/me/tournament-posts', tournamentPostRoutes.mePosts);
+  api.use('/me/tournament-threads', tournamentPostRoutes.meThreads);
   api.use('/teams', teamRoutes.teamsRouter);
   api.use('/', teamRoutes.publicRouter);
   api.use('/tournaments', tournamentRoutes.publicRouter);
@@ -203,6 +208,7 @@ function createApp() {
   api.use('/admin/kyc', kycRoutes.adminKyc);
   api.use('/admin/submissions', moderationRoutes.adminRouter);
   api.use('/admin/teams', teamRoutes.adminRouter);
+  api.use('/admin/tournament-posts', tournamentPostRoutes.adminRouter);
   api.use('/admin/tournaments', tournamentRoutes.adminRouter);
   api.use('/admin/esports/events', eventRoutes.adminRouter);
   api.use('/admin/esports', esportsRoutes.adminRouter);

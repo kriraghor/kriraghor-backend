@@ -11,7 +11,7 @@
 require('../env');
 const { ACTIONS, PHONE_VERIFIED, GYM_RUNNER, evaluate } = require('../../src/modules/auth/gate.service');
 
-const PHONE_ONLY = ['join_gym', 'buy_gym_pass', 'subscribe_trainer', 'book_ground', 'hire', 'buy', 'join_esports', 'create_team', 'join_team', 'vote_poll', 'file_dispute'];
+const PHONE_ONLY = ['post_tournament', 'join_gym', 'buy_gym_pass', 'subscribe_trainer', 'book_ground', 'hire', 'buy', 'join_esports', 'create_team', 'join_team', 'vote_poll', 'file_dispute'];
 const MEMBER_NID = ['offer', 'sell_used', 'register_team', 'join_open_game', 'withdraw_winnings'];
 const BUSINESS = { list_ground: 'ground_owner', list_gym: 'gym_owner', list_product: 'shop_owner', publish_tournament: 'organiser', accept_hire: ['player', 'pro'] };
 

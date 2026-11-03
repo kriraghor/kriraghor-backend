@@ -143,6 +143,8 @@ const RESOLUTIONS = {
   esports_tournament: ['no_violation', 'owner_warned'],
   shop: ['no_violation', 'content_removed', 'owner_warned', 'user_suspended'],
   product: ['no_violation', 'content_removed', 'owner_warned', 'user_suspended'],
+  tournament_post: ['no_violation', 'content_removed', 'user_suspended'],
+  tournament_comment: ['no_violation', 'content_removed', 'user_suspended'],
 };
 const resolutionAllowed = (subjectType, action) => RESOLUTIONS[subjectType].includes(action);
 
