@@ -179,7 +179,7 @@ describe('M17 reports (Q99)', () => {
     expect(r.resolutionAllowed('review', 'content_removed')).toBe(true);
     expect(r.resolutionAllowed('user', 'content_removed')).toBe(false);
     expect(r.resolutionAllowed('booking', 'converted_to_dispute')).toBe(true);
-    expect(Object.keys(r.RESOLUTIONS)).toEqual(['ground', 'booking', 'user', 'review', 'esports_tournament', 'shop', 'product']);
+    expect(Object.keys(r.RESOLUTIONS)).toEqual(['ground', 'booking', 'user', 'review', 'esports_tournament', 'shop', 'product', 'tournament_post', 'tournament_comment']);
     expect(r.resolutionAllowed('product', 'content_removed')).toBe(true); // M12: a reported product can be taken down
   });
 });

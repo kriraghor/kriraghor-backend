@@ -37,6 +37,8 @@ const ACTIONS = Object.freeze({
   // M24-FR-01 (G1): a private gym (management only) needs a verified phone and a gym_owner role that is
   // not suspended; members accept gym invites and join gyms with a verified phone (never NID, D6).
   run_gym: GYM_RUNNER,
+  // M26: posting a tournament, commenting and messaging need a verified phone; reading needs nothing.
+  post_tournament: PHONE_VERIFIED,
   join_gym: PHONE_VERIFIED,
   buy_gym_pass: PHONE_VERIFIED,
   subscribe_trainer: PHONE_VERIFIED,

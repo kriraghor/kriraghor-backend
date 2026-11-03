@@ -53,6 +53,8 @@ module.exports = {
     './src/modules/orders/orders.rules.js': FULL,
     // M11 quote, rate limits, checks, the request and job machines, windows and cancellation.
     './src/modules/hire/hire.rules.js': FULL,
+    // M26 dates, contact details, what each status allows, expiry and the fee filter.
+    './src/modules/tournament-posts/tournament-posts.rules.js': FULL,
     // M20 gym money, validity, redemption, cancellation, tokens and subscription periods.
     './src/modules/gym/gym.rules.js': FULL,
     // M24 membership dates, dues, the entry policy, tiers, codes, tokens and import rows.

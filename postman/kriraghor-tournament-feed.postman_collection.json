@@ -1,0 +1,3247 @@
+{
+  "info": {
+    "name": "Kriraghor API: M26 Tournament feed",
+    "description": "M26 (product owner, 3 Nov 2026; ADR-008). Nobody organises tournaments on Kriraghor: people post about the ones they run. A verified phone posts, and it shows at once. The feed filters and sorts. Phones, emails and links are refused in public text and allowed in private messages. Authors close their posts, a job expires old ones, staff remove and restore them, and reports reach the M17 desk. No money moves in this module.\n\nRequests named \"Runner\" go to the local test runner. Unattended: `node postman/run-m26.js`. Rebuild this file with: node postman/build-collection-m26.js",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000/api/v1"
+    },
+    {
+      "key": "controlUrl",
+      "value": ""
+    },
+    {
+      "key": "authorToken",
+      "value": ""
+    },
+    {
+      "key": "playerToken",
+      "value": ""
+    },
+    {
+      "key": "strangerToken",
+      "value": ""
+    },
+    {
+      "key": "noPhoneToken",
+      "value": ""
+    },
+    {
+      "key": "staffToken",
+      "value": ""
+    },
+    {
+      "key": "deskToken",
+      "value": ""
+    },
+    {
+      "key": "sportKey",
+      "value": ""
+    },
+    {
+      "key": "districtId",
+      "value": ""
+    },
+    {
+      "key": "areaId",
+      "value": ""
+    },
+    {
+      "key": "in20",
+      "value": ""
+    },
+    {
+      "key": "in22",
+      "value": ""
+    },
+    {
+      "key": "in10",
+      "value": ""
+    },
+    {
+      "key": "past",
+      "value": ""
+    },
+    {
+      "key": "postId",
+      "value": ""
+    },
+    {
+      "key": "slug",
+      "value": ""
+    },
+    {
+      "key": "commentId",
+      "value": ""
+    },
+    {
+      "key": "threadId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Posting (M26-FR-01 to FR-04)",
+      "item": [
+        {
+          "name": "Posting needs an account (expect 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 401', () => {",
+                  "  pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Mirpur Futsal Cup 2026\",\n  \"sport\": \"{{sportKey}}\",\n  \"format\": \"knockout\",\n  \"districtId\": \"{{districtId}}\",\n  \"areaId\": \"{{areaId}}\",\n  \"venueName\": \"Kick Off Arena\",\n  \"address\": \"Road 11, Mirpur 10\",\n  \"mapLink\": \"https://maps.app.goo.gl/abc\",\n  \"startDate\": \"{{in20}}\",\n  \"endDate\": \"{{in22}}\",\n  \"registrationDeadline\": \"{{in10}}\",\n  \"entryFee\": 200000,\n  \"prizePool\": 5000000,\n  \"prizeDetails\": \"Winner takes the trophy and the prize money\",\n  \"teamLimit\": 16,\n  \"playersPerTeam\": 7,\n  \"gender\": \"open\",\n  \"ageGroup\": \"Under 25\",\n  \"skillLevel\": \"intermediate\",\n  \"organiserName\": \"Mirpur Sports Club\",\n  \"description\": \"Sixteen teams play over a weekend, seven a side, on the turf at Mirpur 10.\",\n  \"rules\": \"Standard futsal rules. Bring your own kit.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/tournament-posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "tournament-posts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Posting needs a verified phone (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 PHONE_REQUIRED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('PHONE_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{noPhoneToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Mirpur Futsal Cup 2026\",\n  \"sport\": \"{{sportKey}}\",\n  \"format\": \"knockout\",\n  \"districtId\": \"{{districtId}}\",\n  \"areaId\": \"{{areaId}}\",\n  \"venueName\": \"Kick Off Arena\",\n  \"address\": \"Road 11, Mirpur 10\",\n  \"mapLink\": \"https://maps.app.goo.gl/abc\",\n  \"startDate\": \"{{in20}}\",\n  \"endDate\": \"{{in22}}\",\n  \"registrationDeadline\": \"{{in10}}\",\n  \"entryFee\": 200000,\n  \"prizePool\": 5000000,\n  \"prizeDetails\": \"Winner takes the trophy and the prize money\",\n  \"teamLimit\": 16,\n  \"playersPerTeam\": 7,\n  \"gender\": \"open\",\n  \"ageGroup\": \"Under 25\",\n  \"skillLevel\": \"intermediate\",\n  \"organiserName\": \"Mirpur Sports Club\",\n  \"description\": \"Sixteen teams play over a weekend, seven a side, on the turf at Mirpur 10.\",\n  \"rules\": \"Standard futsal rules. Bring your own kit.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/tournament-posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "tournament-posts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A start in the past (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 TOURNAMENT_POST_DATE_PAST', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('TOURNAMENT_POST_DATE_PAST');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Mirpur Futsal Cup 2026\",\n  \"sport\": \"{{sportKey}}\",\n  \"format\": \"knockout\",\n  \"districtId\": \"{{districtId}}\",\n  \"areaId\": \"{{areaId}}\",\n  \"venueName\": \"Kick Off Arena\",\n  \"address\": \"Road 11, Mirpur 10\",\n  \"mapLink\": \"https://maps.app.goo.gl/abc\",\n  \"startDate\": \"{{past}}\",\n  \"endDate\": null,\n  \"registrationDeadline\": \"{{past}}\",\n  \"entryFee\": 200000,\n  \"prizePool\": 5000000,\n  \"prizeDetails\": \"Winner takes the trophy and the prize money\",\n  \"teamLimit\": 16,\n  \"playersPerTeam\": 7,\n  \"gender\": \"open\",\n  \"ageGroup\": \"Under 25\",\n  \"skillLevel\": \"intermediate\",\n  \"organiserName\": \"Mirpur Sports Club\",\n  \"description\": \"Sixteen teams play over a weekend, seven a side, on the turf at Mirpur 10.\",\n  \"rules\": \"Standard futsal rules. Bring your own kit.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/tournament-posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "tournament-posts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Registration closing after the start (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 TOURNAMENT_POST_DEADLINE_AFTER_START', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('TOURNAMENT_POST_DEADLINE_AFTER_START');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Mirpur Futsal Cup 2026\",\n  \"sport\": \"{{sportKey}}\",\n  \"format\": \"knockout\",\n  \"districtId\": \"{{districtId}}\",\n  \"areaId\": \"{{areaId}}\",\n  \"venueName\": \"Kick Off Arena\",\n  \"address\": \"Road 11, Mirpur 10\",\n  \"mapLink\": \"https://maps.app.goo.gl/abc\",\n  \"startDate\": \"{{in20}}\",\n  \"endDate\": \"{{in22}}\",\n  \"registrationDeadline\": \"{{in22}}\",\n  \"entryFee\": 200000,\n  \"prizePool\": 5000000,\n  \"prizeDetails\": \"Winner takes the trophy and the prize money\",\n  \"teamLimit\": 16,\n  \"playersPerTeam\": 7,\n  \"gender\": \"open\",\n  \"ageGroup\": \"Under 25\",\n  \"skillLevel\": \"intermediate\",\n  \"organiserName\": \"Mirpur Sports Club\",\n  \"description\": \"Sixteen teams play over a weekend, seven a side, on the turf at Mirpur 10.\",\n  \"rules\": \"Standard futsal rules. Bring your own kit.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/tournament-posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "tournament-posts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A phone number in the description (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 CONTACT_NOT_ALLOWED', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('CONTACT_NOT_ALLOWED');",
+                  "});",
+                  "pm.test(\"names the field\", () => { pm.expect(j.field === 'description').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Mirpur Futsal Cup 2026\",\n  \"sport\": \"{{sportKey}}\",\n  \"format\": \"knockout\",\n  \"districtId\": \"{{districtId}}\",\n  \"areaId\": \"{{areaId}}\",\n  \"venueName\": \"Kick Off Arena\",\n  \"address\": \"Road 11, Mirpur 10\",\n  \"mapLink\": \"https://maps.app.goo.gl/abc\",\n  \"startDate\": \"{{in20}}\",\n  \"endDate\": \"{{in22}}\",\n  \"registrationDeadline\": \"{{in10}}\",\n  \"entryFee\": 200000,\n  \"prizePool\": 5000000,\n  \"prizeDetails\": \"Winner takes the trophy and the prize money\",\n  \"teamLimit\": 16,\n  \"playersPerTeam\": 7,\n  \"gender\": \"open\",\n  \"ageGroup\": \"Under 25\",\n  \"skillLevel\": \"intermediate\",\n  \"organiserName\": \"Mirpur Sports Club\",\n  \"description\": \"Sixteen teams this weekend. Call 01712345678 to join in.\",\n  \"rules\": \"Standard futsal rules. Bring your own kit.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/tournament-posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "tournament-posts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A map link that is not Google Maps (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 TOURNAMENT_POST_MAP_LINK', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('TOURNAMENT_POST_MAP_LINK');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Mirpur Futsal Cup 2026\",\n  \"sport\": \"{{sportKey}}\",\n  \"format\": \"knockout\",\n  \"districtId\": \"{{districtId}}\",\n  \"areaId\": \"{{areaId}}\",\n  \"venueName\": \"Kick Off Arena\",\n  \"address\": \"Road 11, Mirpur 10\",\n  \"mapLink\": \"https://example.com/map\",\n  \"startDate\": \"{{in20}}\",\n  \"endDate\": \"{{in22}}\",\n  \"registrationDeadline\": \"{{in10}}\",\n  \"entryFee\": 200000,\n  \"prizePool\": 5000000,\n  \"prizeDetails\": \"Winner takes the trophy and the prize money\",\n  \"teamLimit\": 16,\n  \"playersPerTeam\": 7,\n  \"gender\": \"open\",\n  \"ageGroup\": \"Under 25\",\n  \"skillLevel\": \"intermediate\",\n  \"organiserName\": \"Mirpur Sports Club\",\n  \"description\": \"Sixteen teams play over a weekend, seven a side, on the turf at Mirpur 10.\",\n  \"rules\": \"Standard futsal rules. Bring your own kit.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/tournament-posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "tournament-posts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A sport that does not exist (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 TOURNAMENT_POST_SPORT_UNKNOWN', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('TOURNAMENT_POST_SPORT_UNKNOWN');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Mirpur Futsal Cup 2026\",\n  \"sport\": \"not_a_sport\",\n  \"format\": \"knockout\",\n  \"districtId\": \"{{districtId}}\",\n  \"areaId\": \"{{areaId}}\",\n  \"venueName\": \"Kick Off Arena\",\n  \"address\": \"Road 11, Mirpur 10\",\n  \"mapLink\": \"https://maps.app.goo.gl/abc\",\n  \"startDate\": \"{{in20}}\",\n  \"endDate\": \"{{in22}}\",\n  \"registrationDeadline\": \"{{in10}}\",\n  \"entryFee\": 200000,\n  \"prizePool\": 5000000,\n  \"prizeDetails\": \"Winner takes the trophy and the prize money\",\n  \"teamLimit\": 16,\n  \"playersPerTeam\": 7,\n  \"gender\": \"open\",\n  \"ageGroup\": \"Under 25\",\n  \"skillLevel\": \"intermediate\",\n  \"organiserName\": \"Mirpur Sports Club\",\n  \"description\": \"Sixteen teams play over a weekend, seven a side, on the turf at Mirpur 10.\",\n  \"rules\": \"Standard futsal rules. Bring your own kit.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/tournament-posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "tournament-posts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Post a tournament: live at once",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('postId', v); }",
+                  "if (ok && j) { const v = get(j, 'slug'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('slug', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Mirpur Futsal Cup 2026\",\n  \"sport\": \"{{sportKey}}\",\n  \"format\": \"knockout\",\n  \"districtId\": \"{{districtId}}\",\n  \"areaId\": \"{{areaId}}\",\n  \"venueName\": \"Kick Off Arena\",\n  \"address\": \"Road 11, Mirpur 10\",\n  \"mapLink\": \"https://maps.app.goo.gl/abc\",\n  \"startDate\": \"{{in20}}\",\n  \"endDate\": \"{{in22}}\",\n  \"registrationDeadline\": \"{{in10}}\",\n  \"entryFee\": 200000,\n  \"prizePool\": 5000000,\n  \"prizeDetails\": \"Winner takes the trophy and the prize money\",\n  \"teamLimit\": 16,\n  \"playersPerTeam\": 7,\n  \"gender\": \"open\",\n  \"ageGroup\": \"Under 25\",\n  \"skillLevel\": \"intermediate\",\n  \"organiserName\": \"Mirpur Sports Club\",\n  \"description\": \"Sixteen teams play over a weekend, seven a side, on the turf at Mirpur 10.\",\n  \"rules\": \"Standard futsal rules. Bring your own kit.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/tournament-posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "tournament-posts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Its page has every detail, signed out",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"the details\", () => { pm.expect(j.title === 'Mirpur Futsal Cup 2026' && j.status === 'open' && j.entryFee === 200000 && j.prizePool === 5000000 && j.teamLimit === 16 && j.organiserName === 'Mirpur Sports Club' && j.registrationOpen === true).to.eql(true); });",
+                  "pm.test(\"the place\", () => { pm.expect(j.district.id === pm.variables.get('districtId') && j.area.id === pm.variables.get('areaId')).to.eql(true); });",
+                  "pm.test(\"no phone on it\", () => { pm.expect(!/01[3-9]\\d{8}/.test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts/{{slug}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts",
+                "{{slug}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Its author can edit and close it",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"can\", () => { pm.expect(j.mine === true && j.can.edit === true && j.can.close === true && j.can.message === false).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts/{{slug}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts",
+                "{{slug}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Edit it",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Mirpur Futsal Cup 2026\",\n  \"sport\": \"{{sportKey}}\",\n  \"format\": \"knockout\",\n  \"districtId\": \"{{districtId}}\",\n  \"areaId\": \"{{areaId}}\",\n  \"venueName\": \"Kick Off Arena\",\n  \"address\": \"Road 11, Mirpur 10\",\n  \"mapLink\": \"https://maps.app.goo.gl/abc\",\n  \"startDate\": \"{{in20}}\",\n  \"endDate\": \"{{in22}}\",\n  \"registrationDeadline\": \"{{in10}}\",\n  \"entryFee\": 200000,\n  \"prizePool\": 6000000,\n  \"prizeDetails\": \"Winner takes the trophy and the prize money\",\n  \"teamLimit\": 16,\n  \"playersPerTeam\": 7,\n  \"gender\": \"open\",\n  \"ageGroup\": \"Under 25\",\n  \"skillLevel\": \"intermediate\",\n  \"organiserName\": \"Mirpur Sports Club\",\n  \"description\": \"Sixteen teams play over a weekend, seven a side, on the turf at Mirpur 10.\",\n  \"rules\": \"Standard futsal rules. Bring your own kit.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/tournament-posts/{{postId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "tournament-posts",
+                "{{postId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Someone else cannot edit it (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 TOURNAMENT_POST_NOT_YOURS', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('TOURNAMENT_POST_NOT_YOURS');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{strangerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Mirpur Futsal Cup 2026\",\n  \"sport\": \"{{sportKey}}\",\n  \"format\": \"knockout\",\n  \"districtId\": \"{{districtId}}\",\n  \"areaId\": \"{{areaId}}\",\n  \"venueName\": \"Kick Off Arena\",\n  \"address\": \"Road 11, Mirpur 10\",\n  \"mapLink\": \"https://maps.app.goo.gl/abc\",\n  \"startDate\": \"{{in20}}\",\n  \"endDate\": \"{{in22}}\",\n  \"registrationDeadline\": \"{{in10}}\",\n  \"entryFee\": 200000,\n  \"prizePool\": 5000000,\n  \"prizeDetails\": \"Winner takes the trophy and the prize money\",\n  \"teamLimit\": 16,\n  \"playersPerTeam\": 7,\n  \"gender\": \"open\",\n  \"ageGroup\": \"Under 25\",\n  \"skillLevel\": \"intermediate\",\n  \"organiserName\": \"Mirpur Sports Club\",\n  \"description\": \"Sixteen teams play over a weekend, seven a side, on the turf at Mirpur 10.\",\n  \"rules\": \"Standard futsal rules. Bring your own kit.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/tournament-posts/{{postId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "tournament-posts",
+                "{{postId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. The feed (M26-FR-05)",
+      "item": [
+        {
+          "name": "The feed, signed out",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"it is there\", () => { pm.expect(j.total === 1 && j.items[0].id === pm.variables.get('postId') && j.items[0].prizePool === 6000000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "By sport",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"one\", () => { pm.expect(j.total === 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts?sport={{sportKey}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts"
+              ],
+              "query": [
+                {
+                  "key": "sport",
+                  "value": "{{sportKey}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "By a sport nobody posted",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"none\", () => { pm.expect(j.total === 0).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts?sport=nothing",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts"
+              ],
+              "query": [
+                {
+                  "key": "sport",
+                  "value": "nothing"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "By district",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"one\", () => { pm.expect(j.total === 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts?districtId={{districtId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts"
+              ],
+              "query": [
+                {
+                  "key": "districtId",
+                  "value": "{{districtId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Paid",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"one\", () => { pm.expect(j.total === 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts?fee=paid",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts"
+              ],
+              "query": [
+                {
+                  "key": "fee",
+                  "value": "paid"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Free",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"none\", () => { pm.expect(j.total === 0).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts?fee=free",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts"
+              ],
+              "query": [
+                {
+                  "key": "fee",
+                  "value": "free"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Registration open",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"one\", () => { pm.expect(j.total === 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts?registrationOpen=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts"
+              ],
+              "query": [
+                {
+                  "key": "registrationOpen",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"found\", () => { pm.expect(j.total === 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts?q=mirpur",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "mirpur"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Starts soonest",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts?sort=starts_soon",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts"
+              ],
+              "query": [
+                {
+                  "key": "sort",
+                  "value": "starts_soon"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Most discussed",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts?sort=most_discussed",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts"
+              ],
+              "query": [
+                {
+                  "key": "sort",
+                  "value": "most_discussed"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "A bad sort (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 VALIDATION_FAILED', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('VALIDATION_FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts?sort=random",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts"
+              ],
+              "query": [
+                {
+                  "key": "sort",
+                  "value": "random"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Comments (M26-FR-06)",
+      "item": [
+        {
+          "name": "Commenting needs an account (expect 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 401', () => {",
+                  "  pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Hello\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts/{{postId}}/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts",
+                "{{postId}}",
+                "comments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A phone number in a comment (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 CONTACT_NOT_ALLOWED', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('CONTACT_NOT_ALLOWED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{playerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Call me on 01712345678\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts/{{postId}}/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts",
+                "{{postId}}",
+                "comments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Comment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('commentId', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{playerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Is it open to school teams?\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts/{{postId}}/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts",
+                "{{postId}}",
+                "comments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Anyone reads it",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"the comment\", () => { pm.expect(j.total === 1 && j.items[0].body === 'Is it open to school teams?' && j.items[0].canRemove === false).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts/{{postId}}/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts",
+                "{{postId}}",
+                "comments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: deliver the events",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/drain",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "drain"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The author is told",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"the notice\", () => { pm.expect(j.items.some((n) => n.code === 'TOURNAMENT_POST_COMMENT' && n.link.endsWith('/tournaments/' + pm.variables.get('slug')))).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "notifications"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Someone else cannot remove it (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 TOURNAMENT_COMMENT_NOT_YOURS', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('TOURNAMENT_COMMENT_NOT_YOURS');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{strangerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts/{{postId}}/comments/{{commentId}}/remove",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts",
+                "{{postId}}",
+                "comments",
+                "{{commentId}}",
+                "remove"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The post's author removes it",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts/{{postId}}/comments/{{commentId}}/remove",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts",
+                "{{postId}}",
+                "comments",
+                "{{commentId}}",
+                "remove"
+              ]
+            }
+          }
+        },
+        {
+          "name": "It is gone",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"none\", () => { pm.expect(j.total === 0).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts/{{postId}}/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts",
+                "{{postId}}",
+                "comments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Comment again, for the report",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('commentId', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{playerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"This is a rude comment\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts/{{postId}}/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts",
+                "{{postId}}",
+                "comments"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Private messages (M26-FR-07)",
+      "item": [
+        {
+          "name": "Not on your own post (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 TOURNAMENT_THREAD_OWN_POST', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('TOURNAMENT_THREAD_OWN_POST');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts/{{postId}}/threads",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts",
+                "{{postId}}",
+                "threads"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Message the organiser: opens a thread",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('threadId', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"from my side\", () => { pm.expect(j.role === 'player' && j.unread === 0).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{playerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts/{{postId}}/threads",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts",
+                "{{postId}}",
+                "threads"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Again finds the same thread",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"same\", () => { pm.expect(j.id === pm.variables.get('threadId')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{playerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts/{{postId}}/threads",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts",
+                "{{postId}}",
+                "threads"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A phone number is fine here",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{playerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"My number is 01712345678, please call\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/tournament-threads/{{threadId}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "tournament-threads",
+                "{{threadId}}",
+                "messages"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The organiser has one unread",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"unread\", () => { pm.expect(j.items[0].role === 'organiser' && j.items[0].unread === 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/tournament-threads",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "tournament-threads"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reads the conversation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"the message\", () => { pm.expect(j.canSend === true && j.items.length === 1 && j.items[0].mine === false).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/tournament-threads/{{threadId}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "tournament-threads",
+                "{{threadId}}",
+                "messages"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Marks it read",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"one read\", () => { pm.expect(j.read === 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/tournament-threads/{{threadId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "tournament-threads",
+                "{{threadId}}",
+                "read"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Replies",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Thanks, I will call tonight\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/tournament-threads/{{threadId}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "tournament-threads",
+                "{{threadId}}",
+                "messages"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Nobody else can read it (expect 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 404 TOURNAMENT_THREAD_NOT_FOUND', () => {",
+                  "  pm.response.to.have.status(404);",
+                  "  pm.expect(j && j.code).to.eql('TOURNAMENT_THREAD_NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{strangerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/tournament-threads/{{threadId}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "tournament-threads",
+                "{{threadId}}",
+                "messages"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Nobody else can write in it (expect 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 404 TOURNAMENT_THREAD_NOT_FOUND', () => {",
+                  "  pm.response.to.have.status(404);",
+                  "  pm.expect(j && j.code).to.eql('TOURNAMENT_THREAD_NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{strangerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Hello there\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/tournament-threads/{{threadId}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "tournament-threads",
+                "{{threadId}}",
+                "messages"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: deliver the events",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/drain",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "drain"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The player is told about the reply",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"the notice\", () => { pm.expect(j.items.some((n) => n.code === 'TOURNAMENT_POST_MESSAGE')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{playerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "notifications"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Reports and staff (M26-FR-09)",
+      "item": [
+        {
+          "name": "Report the post",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{playerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subjectType\": \"tournament_post\",\n  \"subjectId\": \"{{postId}}\",\n  \"reasonCode\": \"fraud\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reports",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Report the comment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subjectType\": \"tournament_comment\",\n  \"subjectId\": \"{{commentId}}\",\n  \"reasonCode\": \"offensive\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reports",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports"
+              ]
+            }
+          }
+        },
+        {
+          "name": "They reach the Reports desk",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"both\", () => { pm.expect(['tournament_post', 'tournament_comment'].every((s) => j.items.some((r) => r.subjectType === s))).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/reports",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "reports"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Upholding removes the comment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subjectType\": \"tournament_comment\",\n  \"subjectId\": \"{{commentId}}\",\n  \"action\": \"content_removed\",\n  \"note\": \"Rude\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/reports/resolve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "reports",
+                "resolve"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The comment is gone",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"none\", () => { pm.expect(j.total === 0).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts/{{postId}}/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts",
+                "{{postId}}",
+                "comments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dismiss the post report as no violation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subjectType\": \"tournament_post\",\n  \"subjectId\": \"{{postId}}\",\n  \"action\": \"no_violation\",\n  \"note\": \"Looks genuine\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/reports/resolve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "reports",
+                "resolve"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Not staff (expect 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 401', () => {",
+                  "  pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/tournament-posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "tournament-posts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff list every post",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"there\", () => { pm.expect(j.total === 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/tournament-posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "tournament-posts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A removal needs a reason (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 VALIDATION_FAILED', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('VALIDATION_FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"x\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/tournament-posts/{{postId}}/remove",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "tournament-posts",
+                "{{postId}}",
+                "remove"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Remove it",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"removed\", () => { pm.expect(j.status === 'removed').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"A fake tournament\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/tournament-posts/{{postId}}/remove",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "tournament-posts",
+                "{{postId}}",
+                "remove"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Off the feed",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"none\", () => { pm.expect(j.total === 0).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Gone for the public (expect 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 404 TOURNAMENT_POST_NOT_FOUND', () => {",
+                  "  pm.response.to.have.status(404);",
+                  "  pm.expect(j && j.code).to.eql('TOURNAMENT_POST_NOT_FOUND');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts/{{slug}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts",
+                "{{slug}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Its author sees why",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"the reason\", () => { pm.expect(j.status === 'removed' && j.removedReason === 'A fake tournament').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts/{{slug}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts",
+                "{{slug}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "No more messages (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 TOURNAMENT_POST_STATE', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('TOURNAMENT_POST_STATE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{playerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Hello?\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/tournament-threads/{{threadId}}/messages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "tournament-threads",
+                "{{threadId}}",
+                "messages"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: deliver the events",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/drain",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "drain"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Its author is told",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"the notice\", () => { pm.expect(j.items.some((n) => n.code === 'TOURNAMENT_POST_REMOVED')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "notifications"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Restore it",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"open\", () => { pm.expect(j.status === 'open').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"It was real after all\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/tournament-posts/{{postId}}/restore",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "tournament-posts",
+                "{{postId}}",
+                "restore"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Restore again (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 TOURNAMENT_POST_STATE', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('TOURNAMENT_POST_STATE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staffToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"It was real after all\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/tournament-posts/{{postId}}/restore",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "tournament-posts",
+                "{{postId}}",
+                "restore"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Closing and expiry (M26-FR-08)",
+      "item": [
+        {
+          "name": "Someone else cannot close it (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 TOURNAMENT_POST_NOT_YOURS', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('TOURNAMENT_POST_NOT_YOURS');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{strangerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/tournament-posts/{{postId}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "tournament-posts",
+                "{{postId}}",
+                "close"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Close it",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"closed\", () => { pm.expect(j.status === 'closed').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/tournament-posts/{{postId}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "tournament-posts",
+                "{{postId}}",
+                "close"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Off the feed, still readable",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"read-only\", () => { pm.expect(j.status === 'closed' && j.registrationOpen === false && j.can.comment === false).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts/{{slug}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts",
+                "{{slug}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "No more comments (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 TOURNAMENT_POST_STATE', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('TOURNAMENT_POST_STATE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{playerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Too late?\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts/{{postId}}/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts",
+                "{{postId}}",
+                "comments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Close again (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 TOURNAMENT_POST_STATE', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('TOURNAMENT_POST_STATE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/tournament-posts/{{postId}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "tournament-posts",
+                "{{postId}}",
+                "close"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Post another",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('postId', v); }",
+                  "if (ok && j) { const v = get(j, 'slug'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('slug', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Dhanmondi Badminton Open\",\n  \"sport\": \"{{sportKey}}\",\n  \"format\": \"knockout\",\n  \"districtId\": \"{{districtId}}\",\n  \"areaId\": \"{{areaId}}\",\n  \"venueName\": \"Kick Off Arena\",\n  \"address\": \"Road 11, Mirpur 10\",\n  \"mapLink\": \"https://maps.app.goo.gl/abc\",\n  \"startDate\": \"{{in20}}\",\n  \"endDate\": \"{{in22}}\",\n  \"registrationDeadline\": \"{{in10}}\",\n  \"entryFee\": 200000,\n  \"prizePool\": 5000000,\n  \"prizeDetails\": \"Winner takes the trophy and the prize money\",\n  \"teamLimit\": 16,\n  \"playersPerTeam\": 7,\n  \"gender\": \"open\",\n  \"ageGroup\": \"Under 25\",\n  \"skillLevel\": \"intermediate\",\n  \"organiserName\": \"Mirpur Sports Club\",\n  \"description\": \"Sixteen teams play over a weekend, seven a side, on the turf at Mirpur 10.\",\n  \"rules\": \"Standard futsal rules. Bring your own kit.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/tournament-posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "tournament-posts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: its dates pass and the job runs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"one expired\", () => { pm.expect(j.expired === 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/expire?postId={{postId}}",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "expire?postId={{postId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Expired: readable, off the feed",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"expired\", () => { pm.expect(j.status === 'expired').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tournament-posts/{{slug}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tournament-posts",
+                "{{slug}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "My posts keep them all",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"two\", () => { pm.expect(j.total === 2 && j.items.map((p) => p.status).sort().join() === 'closed,expired').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/tournament-posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "tournament-posts"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

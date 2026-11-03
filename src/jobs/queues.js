@@ -24,6 +24,7 @@ const QUEUES = Object.freeze({
   HIRE: 'hire', // M11 tick: request expiry and lapse, check-in reminders, auto-release
   GYM: 'gym', // M20 tick: unpaid and expired passes, trainer renewals, lapses and monthly releases
   SAAS: 'saas', // M22 tick: flat-fee invoices, overdue invoices, contract expiry
+  TOURNAMENT_POSTS: 'tournament_posts', // M26 tick: open posts past their last day expire
   TEAMS: 'teams', // M16 tick: team invites expire
   TOURNAMENTS: 'tournaments', // M14 tick: registration close, unpaid holds, reserve offers, rules relock
   ESPORTS_EVENTS: 'esports_events', // M23 tick: event start and final reminders, final live, polls closing, missed places
