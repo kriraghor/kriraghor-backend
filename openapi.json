@@ -90999,10 +90999,10 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 365,
-              "description": "Days without a counted check-in (members with a running membership)"
+              "description": "Days without a counted check-in (active members with an active membership; frozen members are left out, M24-FR-53)"
             },
             "required": false,
-            "description": "Days without a counted check-in (members with a running membership)",
+            "description": "Days without a counted check-in (active members with an active membership; frozen members are left out, M24-FR-53)",
             "name": "notSeen",
             "in": "query"
           },
