@@ -224,10 +224,10 @@ describe('Round B1 completeness', () => {
     expect(r.scoreOf([])).toEqual({ score: 100, steps: [] });
   });
 
-  it('scores a player profile: sports with positions, bio, esports UID, NID', () => {
+  it('scores a player profile: sports with positions, bio, team, esports UID, NID', () => {
     const p = { sports: [{ sportKey: 'cricket', positions: ['batter'] }], bio: 'Opening bat' };
-    expect(t.playerCompleteness(p, { esportsUid: true, nid: true }).score).toBe(100);
-    expect(t.playerCompleteness({ sports: [], bio: null }, {})).toEqual({ score: 0, steps: ['sports', 'bio', 'esportsUid', 'nid'].map((key) => ({ key, done: false })) });
-    expect(t.playerCompleteness({ sports: [{ sportKey: 'cricket' }], bio: ' ' }, { nid: true }).score).toBe(25);
+    expect(t.playerCompleteness(p, { team: true, esportsUid: true, nid: true }).score).toBe(100);
+    expect(t.playerCompleteness({ sports: [], bio: null }, {})).toEqual({ score: 0, steps: ['sports', 'bio', 'team', 'esportsUid', 'nid'].map((key) => ({ key, done: false })) });
+    expect(t.playerCompleteness({ sports: [{ sportKey: 'cricket' }], bio: ' ' }, { nid: true }).score).toBe(20);
   });
 });

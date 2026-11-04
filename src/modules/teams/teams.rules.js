@@ -124,6 +124,7 @@ function playerCompleteness({ sports, bio }, f) {
   const steps = [
     { key: 'sports', done: sports.length > 0 && sports.every((s) => (s.positions ?? []).length > 0) },
     { key: 'bio', done: Boolean(bio?.trim()) },
+    { key: 'team', done: Boolean(f.team) },
     { key: 'esportsUid', done: Boolean(f.esportsUid) },
     { key: 'nid', done: Boolean(f.nid) },
   ];
