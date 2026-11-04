@@ -261,7 +261,7 @@ async function openEntries(players) {
 
 /** Four NID-verified captains enter their badminton teams in the Gulshan Badminton Open (free entry). */
 async function sportsEntries(reviewer, players) {
-  const id = await rt.marked('sports_tournament', 'sports:badminton-open');
+  const id = await rt.marked('sports_tournament', 'sports:banani-badminton-open');
   if (!id) return;
   for (const p of players.slice(12, 16)) {
     await people.verifyNid(p, reviewer);
