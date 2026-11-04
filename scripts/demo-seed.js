@@ -8,6 +8,7 @@
  *   node scripts/demo-seed.js --profile=listings [--confirm-live]   venues, shops, gyms, hire, events (no payments)
  *   node scripts/demo-seed.js --profile=full                         everything, payments through the simulator (never production)
  *   node scripts/demo-seed.js --access-only [--confirm-live]         the demo business staff (B3) and the demo sign-in accounts (needs DEMO_PASSWORD)
+ *   node scripts/demo-seed.js --sports-only [--confirm-live]         only the sports events: closes the retired ones, adds the new ones (listings must exist)
  *
  * Every record is created through the real API and approved on the Moderation desk, and is listed in
  * demo_records so `npm run demo:hide` can hide it all later. Re-running skips what already exists.
@@ -82,6 +83,13 @@ async function main() {
   if (args['access-only']) {
     await businessStaff();
     await signIns(master);
+    return;
+  }
+  if (args['sports-only']) {
+    if (!(await rt.marked('organisation', 'sports-org'))) throw new Error('--sports-only needs the demo organisation: run --profile=listings first.');
+    await step('sports events', () => L.sports(reviewer));
+    await rt.drain();
+    console.log(`Finished in ${((Date.now() - started) / 60000).toFixed(1)} min.`);
     return;
   }
   const owner = await step('owners: sign-up, NID and business documents', () => L.owners(reviewer));

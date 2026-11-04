@@ -8,6 +8,7 @@ Realistic demo content for every public section, so the sites can be shown befor
 |---|---|
 | `npm run demo:seed -- --profile=full` | Everything, locally: listings plus bookings, orders, passes, hire jobs, finished esports events with results and prizes, leaderboards, top players, reviews (venues, pros, shops, gyms) with owner replies, pro earnings and stats, and notifications. Payments go through the simulator, so it needs `PAYMENTS_SIMULATOR=true` and never runs in production. |
 | `npm run demo:seed -- --profile=listings` | Venues, shops and products, gyms, hire profiles and trainers (the demo referee and trainer with an availability calendar), players with game IDs, upcoming esports events (free entry), the showcase and sports events. Takes no payment. Safe for production with `--confirm-live`. |
+| `npm run demo:seed -- --sports-only` | Only the sports events: their organiser cancels the retired ones (`RETIRED_SPORTS_EVENTS`) and adds the new ones. Needs the listings to exist. On Render: `DEMO_SEED=sports`. |
 | `npm run demo:hide -- --dry-run` | Lists what hiding would change. |
 | `npm run demo:hide` | Hides all demo data (add `--confirm-live` in production). |
 

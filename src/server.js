@@ -99,12 +99,15 @@ async function main() {
  *                       restart resumes it
  *   DEMO_SEED=access    only the demo business staff (B3) and the demo sign-in accounts (needs
  *                       DEMO_PASSWORD; listings must exist)
+ *   DEMO_SEED=sports    only the demo sports events: closes the retired ones, adds the new ones (listings
+ *                       must exist); touches nothing else
  *   DEMO_SEED=hide      the hide command (cancels demo events, suspends demo accounts; deletes nothing)
  * Remove the variable when the log shows the run finished.
  */
 const DEMO_COMMANDS = {
   listings: ['scripts/demo-seed.js', '--profile=listings', '--confirm-live'],
   access: ['scripts/demo-seed.js', '--access-only', '--confirm-live'],
+  sports: ['scripts/demo-seed.js', '--sports-only', '--confirm-live'],
   hide: ['scripts/demo-hide.js', '--confirm-live'],
 };
 
@@ -130,7 +133,7 @@ function startDemoSeed() {
   const mode = process.env.DEMO_SEED;
   if (!mode) return;
   if (!DEMO_COMMANDS[mode]) {
-    logger.warn({ mode }, 'DEMO_SEED ignored: use "listings", "access" or "hide"');
+    logger.warn({ mode }, 'DEMO_SEED ignored: use "listings", "access", "sports" or "hide"');
     return;
   }
   logger.info({ mode }, 'DEMO_SEED: starting the demo command in the background');

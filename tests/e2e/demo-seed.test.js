@@ -44,7 +44,16 @@ describe('demo data', () => {
     expect(await count('/hire/profiles?limit=24')).toBe(14);
     expect(await count('/esports/tournaments?status=registration_open&limit=12')).toBeGreaterThanOrEqual(6);
     expect(await count('/esports/events?featured=true&limit=3')).toBe(1);
-    expect(await count('/tournaments?status=open&limit=24')).toBe(3);
+    expect(await count('/tournaments?status=open&limit=24')).toBe(6);
+    // --sports-only: a retired event is cancelled by its organiser with its record kept, its place is
+    // taken by a new one, and nothing else is touched.
+    const others = await models.DemoRecord.count({ where: { entity: 'ground' } });
+    const retired = await models.DemoRecord.findOne({ where: { entity: 'sports_tournament', label: 'sports:dhaka-futsal-cup' } });
+    await retired.update({ label: 'sports:futsal-league' });
+    expect(await run('demo-seed.js', ['--sports-only'])).toContain('sports events');
+    expect(await models.Tournament.findByPk(retired.entityId)).toMatchObject({ status: 'cancelled', cancelReason: 'Demo event replaced by newer demo events' });
+    expect(await count('/tournaments?status=open&limit=24')).toBe(6);
+    expect(await models.DemoRecord.count({ where: { entity: 'ground' } })).toBe(others);
     // Listings never take a payment: no ledger rows, free entry.
     expect(await models.LedgerTransaction.count()).toBe(0);
     // Demo staff cannot sign in: no phone, email or password.

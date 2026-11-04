@@ -349,11 +349,17 @@ const FINISHED = [
 
 // ---------------------------------------------------------------- sports events (M14)
 const SPORTS_ORG = { name: 'Mirpur Sports Club', about: 'Weekend leagues and knockouts in Mirpur since 2015: futsal, cricket and badminton.', area: 'mirpur' };
+// Far enough ahead to stay open for a while. Free entry, like every listings profile record (no payments).
 const SPORTS_EVENTS = [
-  { key: 'futsal-league', sportKey: 'futsal', name: 'Mirpur Futsal League 2026', format: 'league', minTeams: 4, maxTeams: 8, squadMin: 5, squadMax: 10, venue: 'Kick Off Arena Mirpur', area: 'mirpur', startInDays: 9 },
-  { key: 'cricket-t20', sportKey: 'cricket', name: 'Corporate T20 Knockout', format: 'knockout', minTeams: 4, maxTeams: 8, squadMin: 11, squadMax: 15, venue: 'Pallabi Cricket Ground', area: 'pallabi', startInDays: 12 },
-  { key: 'badminton-open', sportKey: 'badminton', name: 'Gulshan Badminton Open', format: 'league', minTeams: 4, maxTeams: 16, squadMin: 1, squadMax: 2, venue: 'Gulshan Shuttle House', area: 'gulshan', startInDays: 8 },
+  { key: 'dhaka-futsal-cup', sportKey: 'futsal', name: 'Dhaka Futsal Cup 2026', format: 'knockout', minTeams: 4, maxTeams: 8, squadMin: 5, squadMax: 10, venue: 'Kick Off Arena Mirpur', area: 'mirpur', startInDays: 21 },
+  { key: 'dhanmondi-football-league', sportKey: 'football', name: 'Dhanmondi Football League', format: 'league', minTeams: 4, maxTeams: 8, squadMin: 11, squadMax: 18, venue: 'Dhanmondi Rooftop Turf', area: 'dhanmondi', startInDays: 30 },
+  { key: 'bashundhara-t20-cup', sportKey: 'cricket', name: 'Bashundhara T20 Cup', format: 'knockout', minTeams: 4, maxTeams: 8, squadMin: 11, squadMax: 15, venue: 'Bashundhara Cricket Nets', area: 'bashundhara', startInDays: 35 },
+  { key: 'banani-badminton-open', sportKey: 'badminton', name: 'Banani Badminton Open', format: 'league', minTeams: 4, maxTeams: 16, squadMin: 1, squadMax: 2, venue: 'Banani Smash Badminton', area: 'banani', startInDays: 24 },
+  { key: 'uttara-basketball-challenge', sportKey: 'basketball', name: 'Uttara Basketball Challenge', format: 'knockout', minTeams: 4, maxTeams: 8, squadMin: 5, squadMax: 12, venue: 'Uttara Sports Hub', area: 'uttara', startInDays: 28 },
+  { key: 'mohammadpur-volleyball-league', sportKey: 'volleyball', name: 'Mohammadpur Volleyball League', format: 'league', minTeams: 4, maxTeams: 8, squadMin: 6, squadMax: 12, venue: 'Mohammadpur Futsal Point', area: 'mohammadpur', startInDays: 40 },
 ];
+// Old demo events whose dates have passed (product owner, 4 Nov 2026): their organiser cancels them on the next run.
+const RETIRED_SPORTS_EVENTS = ['futsal-league', 'cricket-t20', 'badminton-open'];
 
 // ---------------------------------------------------------------- the demo member (full profile)
 const MEMBER = { n: 90, name: 'Ayesha Siddiqua', username: 'ayesha.s' };
@@ -424,4 +430,4 @@ const GYM_REVIEWS = [
   { member: 60, gym: 'PowerHouse Gym Mirpur', review: [4, 'Friendly trainers and open late, perfect after office. The changing room needs more lockers.'] },
 ];
 
-module.exports = { OWNERS, VENUES, SHOPS, GYMS, PROS, TRAINERS, PLAYERS, ESPORTS, SHOWCASE, FINISHED, SPORTS_ORG, SPORTS_EVENTS, MEMBER, BUSINESS_STAFF, AVAILABILITY, HIRE_HISTORY, HIRE_DECLINED, SHOP_REVIEWS, MEMBER_SHOP_REVIEW, GYM_REVIEWS };
+module.exports = { OWNERS, VENUES, SHOPS, GYMS, PROS, TRAINERS, PLAYERS, ESPORTS, SHOWCASE, FINISHED, SPORTS_ORG, SPORTS_EVENTS, RETIRED_SPORTS_EVENTS, MEMBER, BUSINESS_STAFF, AVAILABILITY, HIRE_HISTORY, HIRE_DECLINED, SHOP_REVIEWS, MEMBER_SHOP_REVIEW, GYM_REVIEWS };

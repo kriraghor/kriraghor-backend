@@ -322,6 +322,13 @@ async function sports(reviewer) {
   if (org.status === 'draft') await rt.post(o, `/me/organisations/${orgId}/submit`);
   if (org.status !== 'verified') await people.review(reviewer, 'organisation', orgId);
 
+  // Old demo events are closed by their organiser, through the real route. Records stay (status only).
+  for (const key of D.RETIRED_SPORTS_EVENTS) {
+    const id = await done('sports_tournament', `sports:${key}`);
+    const t = id ? await models.Tournament.findByPk(id) : null;
+    if (t && !['cancelled', 'completed'].includes(t.status)) await rt.post(o, `/org/${orgId}/sports/tournaments/${id}/cancel`, { reason: 'Demo event replaced by newer demo events' });
+  }
+
   const dhaka = (ms) => new Date(ms + 6 * 3600000).toISOString().slice(0, 10);
   const out = [];
   for (const e of D.SPORTS_EVENTS) {
