@@ -32,8 +32,8 @@ const profileView = (p) => ({ sports: p?.sports ?? [], bio: p?.bio ?? null, visi
 /** The owner's view: the profile, the username and how complete it is (Round B1). */
 async function ownView(principal, p, { transaction } = {}) {
   const view = profileView(p);
-  const esportsUid = await require('../esports').reads.hasAnyVerifiedProfile(principal.user.id, { transaction });
-  const completeness = rules.playerCompleteness(view, { esportsUid, nid: principal.roles?.member === 'active' });
+  const [teams, esportsUid] = [await require('./teams.service').teamsOf(principal.user.id, { transaction }), await require('../esports').reads.hasAnyVerifiedProfile(principal.user.id, { transaction })];
+  const completeness = rules.playerCompleteness(view, { team: teams.length > 0, esportsUid, nid: principal.roles?.member === 'active' });
   return { ...view, username: principal.user.username ?? null, completeness };
 }
 
