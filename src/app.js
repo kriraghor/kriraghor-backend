@@ -163,6 +163,8 @@ function createApp() {
   api.use('/manage', gymManageRoutes.manageRouter);
   // M27 gym operations: expenses, the cash drawer, profit and loss, the counter shop, lockers.
   api.use('/manage', gymOpsRoutes.manageRouter);
+  api.use('/me', gymOpsRoutes.meRouter);
+  api.use('/gym', gymOpsRoutes.publicRouter);
   api.use('/gym-manage', gymManageRoutes.pricingRouter);
   api.use('/gym-receipts', gymManageRoutes.receiptRouter);
   api.use('/gym-pay', gymManageRoutes.payRouter);

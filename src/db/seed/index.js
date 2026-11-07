@@ -18,7 +18,8 @@ const placesSeed = require('./reference/places.v1.json');
 const itemsSeed = require('./reference/items.v1.json');
 const hireSeed = require('./reference/hire.v1.json');
 const rulesSeed = require('./reference/rules.v1.json');
-const { sequelize, PlatformSetting, SettingsHistory, EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset, MessageTemplate, DocumentRequirement, ReviewRubric, RejectionReason, Sport, Division, District, Area, Facility, Surface, ItemCategory, ItemType, ItemTypeField, HireCategory, HireRole, SportRuleSchema } = require('../../models');
+const exercisesSeed = require('./reference/exercises.v1.json');
+const { sequelize, Exercise, PlatformSetting, SettingsHistory, EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset, MessageTemplate, DocumentRequirement, ReviewRubric, RejectionReason, Sport, Division, District, Area, Facility, Surface, ItemCategory, ItemType, ItemTypeField, HireCategory, HireRole, SportRuleSchema } = require('../../models');
 
 const SEED_REASON = `Seed settings v${settingsSeed.seedVersion}`;
 
@@ -211,6 +212,16 @@ async function seedRules(transaction) {
   return inserted;
 }
 
+/** M27-FR-70: the exercise library, only keys that are missing (an edited exercise is never overwritten). */
+async function seedExercises(transaction) {
+  let inserted = 0;
+  for (const x of exercisesSeed.exercises) {
+    const { key, ...rest } = x;
+    inserted += Number((await insertMissing(Exercise, { key }, rest, transaction))[1]);
+  }
+  return inserted;
+}
+
 async function seedReference() {
   return sequelize.transaction(async (transaction) => ({
     settings: await seedSettings(transaction),
@@ -222,6 +233,7 @@ async function seedReference() {
     items: await seedItems(transaction),
     hire: await seedHire(transaction),
     rules: await seedRules(transaction),
+    exercises: await seedExercises(transaction),
   }));
 }
 
@@ -260,4 +272,4 @@ async function seedReferenceIfChanged({ force = false } = {}) {
   return { skipped: false, fingerprint, inserted };
 }
 
-module.exports = { seedReference, seedReferenceIfChanged, seedFingerprint,seedPlaces, placesSeed, seedItems, itemsSeed, seedHire, hireSeed, seedRules, rulesSeed, seedSettings, seedEsports, seedTemplates, seedKycRequirements, kycSeed, seedModeration, moderationSeed, settingRow, SETTING_KEYS, settingsSeed, esportsSeed, templatesSeed };
+module.exports = { seedReference, seedReferenceIfChanged, seedFingerprint,seedPlaces, placesSeed, seedItems, itemsSeed, seedHire, hireSeed, seedRules, rulesSeed, seedExercises, exercisesSeed, seedSettings, seedEsports, seedTemplates, seedKycRequirements, kycSeed, seedModeration, moderationSeed, settingRow, SETTING_KEYS, settingsSeed, esportsSeed, templatesSeed };

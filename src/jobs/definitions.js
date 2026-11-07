@@ -422,6 +422,30 @@ const JOBS = [
     run: async () => gymOpsJobs.daily(),
   },
   {
+    // M27 round 2: class sessions made ahead from the weekly slots (FR-47) and points past their date expire (FR-60).
+    name: 'gym-ops.classes-points-daily',
+    queue: QUEUES.GYM,
+    pattern: '20 3 * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => gymOpsJobs.classesAndPoints(),
+  },
+  {
+    // M27-FR-53: the reminder before each class, once.
+    name: 'gym-ops.class-reminders',
+    queue: QUEUES.GYM,
+    pattern: '*/15 * * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => gymOpsJobs.classReminders(),
+  },
+  {
+    // M27-FR-42: visits left open past gym_manage.visit_auto_close_hours close by themselves.
+    name: 'gym-manage.visits-close',
+    queue: QUEUES.GYM,
+    pattern: '*/30 * * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => require('../modules/gym-manage/visits.service').closeStale(),
+  },
+  {
     // Renewal due, ends today, expired and overdue reminders (§6.9); the once-key first (M24-FR-56).
     name: 'gym-manage.reminders',
     queue: QUEUES.GYM,

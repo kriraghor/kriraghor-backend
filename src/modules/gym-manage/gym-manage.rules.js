@@ -25,7 +25,7 @@ const DAY_MS = 86400000;
 
 const TIERS = Object.freeze(['free', 'basic', 'standard', 'pro']);
 // M27 round 1 adds expenses (with the cash drawer), lockers, pos (counter shop and stock) and pnl (profit and loss).
-const FEATURES = Object.freeze(['attendance', 'reminders', 'online_fees', 'reports', 'trainers', 'plans', 'multi_gym', 'expenses', 'lockers', 'pos', 'pnl']);
+const FEATURES = Object.freeze(['attendance', 'reminders', 'online_fees', 'reports', 'trainers', 'plans', 'multi_gym', 'expenses', 'lockers', 'pos', 'pnl', 'classes', 'points', 'notices', 'leads']);
 const METHODS = Object.freeze(['cash', 'owner_bkash', 'owner_nagad', 'card_counter', 'other']);
 const LEFT_REASONS = Object.freeze(['price', 'moved', 'injury', 'other_gym', 'schedule', 'unknown', 'other']);
 const SHORT_CODE = /^[A-Z]{2,6}$/;
@@ -751,7 +751,11 @@ function vatPart(amount, bps) {
   return { vat, net: amount - vat };
 }
 
+/** M27-FR-40: a visit's length in whole minutes (never negative). */
+const visitMinutes = (checkedInAt, checkedOutAt) => Math.max(0, Math.floor((new Date(checkedOutAt).getTime() - new Date(checkedInAt).getTime()) / 60000));
+
 module.exports = {
+  visitMinutes,
   bmiOf,
   vatPart,
   entranceToken,

@@ -515,6 +515,12 @@ async function get(gymId, { transaction } = {}) {
   return g && g.status !== 'removed' ? gymRef(g) : null;
 }
 
+/** M27 round 2: a gym with a public page (live or paused, published) by its slug, for the timetable and enquiries; else null. */
+async function publicBySlug(slug, { transaction } = {}) {
+  const g = await Gym.findOne({ where: { slug }, attributes: ['id', 'ownerId', 'name', 'slug', 'status', 'areaId', 'addressLine', 'liveVersion'], transaction });
+  return g && ['live', 'paused'].includes(g.status) && g.liveVersion > 0 ? gymRef(g) : null;
+}
+
 /** An owner's gyms (not removed), oldest first. */
 async function ofOwner(ownerId, { transaction } = {}) {
   const rows = await Gym.findAll({ where: { ownerId, status: { [Op.ne]: 'removed' } }, attributes: ['id', 'ownerId', 'name', 'slug', 'status', 'areaId', 'addressLine'], order: [['createdAt', 'ASC']], transaction });
@@ -550,6 +556,7 @@ async function packagesForGym(gymId, { status = 'active', transaction } = {}) {
 module.exports = {
   get,
   ofOwner,
+  publicBySlug,
   packageGet,
   packagesForGym,
   loadWorking,

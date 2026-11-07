@@ -76,6 +76,11 @@ const PLAN_KINDS = { en: { workout: 'workout plan', diet: 'diet chart' }, bn: { 
 const gymOwnerAndCollectors = async (e) => [e.payload.ownerId, ...(await staffOf('gym', e.payload.gymId, 'fees.collect'))];
 // M27: the gym's owner (from M20) and the staff holding a permission.
 const gymOwnerId = async (gymId) => (await require('../gym').gyms.get(gymId))?.ownerId ?? null;
+// M27 round 2: many members of a gym at once (classes, notices): linked accounts, else email to the gym's record.
+const gmMembersReach = (e) => require('../gym-manage').ops.reachOf(e.payload.gymId, e.payload.memberIds ?? []);
+const gmMemberReach = (e) => require('../gym-manage').ops.reachOf(e.payload.gymId, [e.payload.memberId]);
+const classOf = (e) => require('../gym-ops').classes.sessionFacts(e.payload.sessionId);
+const timeText = (iso, locale) => (iso ? new Intl.DateTimeFormat(locale === 'bn' ? 'bn-BD' : 'en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Dhaka' }).format(new Date(iso)) : '');
 const gymOwnerAnd = (permission) => async (e) => [await gymOwnerId(e.payload.gymId), ...(permission ? await staffOf('gym', e.payload.gymId, permission) : [])].filter(Boolean);
 // M14 lite and M22: the organisation (its name) and its admins (owner and admins get organiser news).
 const orgAdmins = (id) => require('../organisations').organisations.adminIds(id);
@@ -1778,7 +1783,7 @@ const CATALOGUE = [
   // M27 gym operations, round 1.
   {
     code: 'GYM_STOCK_LOW',
-    events: ['gym_stock.low'],
+    events: ['gym_stock.low_reached'],
     category: 'gym_business',
     channels: ['in_app'],
     recipients: gymOwnerAnd('stock.manage'),
@@ -1787,7 +1792,7 @@ const CATALOGUE = [
   },
   {
     code: 'GYM_PRODUCT_EXPIRING',
-    events: ['gym_product.expiring'],
+    events: ['gym_product.expiry_warned'],
     category: 'gym_business',
     channels: ['in_app'],
     recipients: gymOwnerAnd('stock.manage'),
@@ -1803,9 +1808,61 @@ const CATALOGUE = [
     values: async (e, { locale }) => ({ gym: await gymName(e.payload.gymId), date: dayText(e.payload.date, locale), difference: e.payload.difference }),
     link: (e) => gymUrl(`/manage/${e.payload.gymId}/fees/closing?date=${e.payload.date}`),
   },
+  // M27 round 2.
+  {
+    code: 'GYM_CLASS_CANCELLED',
+    events: ['gym_class.session_cancelled'],
+    category: 'gym',
+    channels: ['in_app', 'push', 'email'],
+    recipients: async (e) => (await gmMembersReach(e)).userIds,
+    external: async (e) => (await gmMembersReach(e)).external,
+    values: async (e, { locale }) => ({ gym: await gymName(e.payload.gymId), className: (await classOf(e))?.name ?? '', startsAt: timeText(e.payload.startsAt, locale) }),
+    link: () => gymUrl('/me/classes'),
+  },
+  {
+    code: 'GYM_CLASS_REMINDER',
+    events: ['gym_class.reminded'],
+    category: 'gym',
+    channels: ['in_app', 'push'],
+    recipients: async (e) => (await gmMembersReach(e)).userIds,
+    values: async (e, { locale }) => ({ gym: await gymName(e.payload.gymId), className: (await classOf(e))?.name ?? '', startsAt: timeText(e.payload.startsAt, locale) }),
+    link: () => gymUrl('/me/classes'),
+  },
+  {
+    code: 'GYM_CLASS_PROMOTED',
+    events: ['gym_booking.promoted'],
+    category: 'gym',
+    channels: ['in_app', 'push', 'email'],
+    recipients: async (e) => (await gmMemberReach(e)).userIds,
+    external: async (e) => (await gmMemberReach(e)).external,
+    values: async (e, { locale }) => ({ gym: await gymName(e.payload.gymId), className: (await classOf(e))?.name ?? '', startsAt: timeText(e.payload.startsAt, locale) }),
+    link: () => gymUrl('/me/classes'),
+  },
+  {
+    code: 'GYM_NOTICE',
+    events: ['gym_notice.sent'],
+    category: 'gym',
+    channels: ['in_app', 'push', 'email'],
+    recipients: async (e) => (await require('../gym-ops').notices.targets(e.payload.noticeId)).userIds,
+    external: async (e) => (await require('../gym-ops').notices.targets(e.payload.noticeId)).external,
+    values: async (e) => {
+      const n = await require('../gym-ops').notices.facts(e.payload.noticeId);
+      return { gym: await gymName(e.payload.gymId), title: n?.title ?? '', message: n?.body ?? '' };
+    },
+    link: () => gymUrl('/me'),
+  },
+  {
+    code: 'GYM_LEAD_NEW',
+    events: ['gym_lead.received'],
+    category: 'gym_business',
+    channels: ['in_app', 'push'],
+    recipients: async (e) => [e.payload.ownerId, ...(await staffOf('gym', e.payload.gymId, 'leads.manage'))],
+    values: async (e) => ({ gym: await gymName(e.payload.gymId) }),
+    link: (e) => gymUrl(`/manage/${e.payload.gymId}/leads`),
+  },
   {
     code: 'GYM_LOCKER_ENDING',
-    events: ['gym_locker.ending'],
+    events: ['gym_locker.end_reminded'],
     category: 'gym',
     channels: ['in_app', 'email'],
     recipients: gmUsers(null),

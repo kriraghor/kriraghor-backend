@@ -13,7 +13,8 @@
  *   joins      M20's gym page: whether the gym takes join requests (prompt 3)
  *   consumers  registered by registry.registerAll
  *   ops        M27 gym-ops: access to one gym, today's date, receipt numbers and VAT, a member, the money
- *              collected for profit and loss (round 1)
+ *              collected for profit and loss (round 1); notice segments and reach, reward writes
+ *              (extend, waive), member by account, check-in dates (round 2)
  */
 const lazy = (file, names, values = []) => {
   const out = Object.fromEntries(names.map((n) => [n, (...args) => require(file)[n](...args)]));
@@ -48,5 +49,14 @@ module.exports = {
     member: (...args) => require('./ops.service').member(...args),
     collected: (...args) => require('./ops.service').collected(...args),
     cashCollected: (...args) => require('./ops.service').cashCollected(...args),
+    // round 2
+    featureOn: (...args) => require('./ops.service').featureOn(...args),
+    extendIn: (...args) => require('./ops.service').extendIn(...args),
+    waiveIn: (...args) => require('./ops.service').waiveIn(...args),
+    segmentMemberIds: (...args) => require('./ops.service').segmentMemberIds(...args),
+    reachOf: (...args) => require('./ops.service').reachOf(...args),
+    memberOfUser: (...args) => require('./ops.service').memberOfUser(...args),
+    hasRunningMembership: (...args) => require('./ops.service').hasRunningMembership(...args),
+    checkInDates: (...args) => require('./ops.service').checkInDates(...args),
   }),
 };

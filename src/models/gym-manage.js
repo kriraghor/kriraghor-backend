@@ -242,6 +242,22 @@ GymAttendance.init(
   { sequelize, modelName: 'GymAttendance', tableName: 'gym_attendance', updatedAt: false }
 );
 
+/** M27-FR-40: a visit's check-out (append-only), by the desk, a second entrance scan or the auto-close job. */
+class GymAttendanceExit extends Model {}
+GymAttendanceExit.init(
+  {
+    id,
+    gymId: req(DataTypes.UUID),
+    memberId: req(DataTypes.UUID),
+    attendanceId: req(DataTypes.UUID),
+    checkedOutAt: req(DataTypes.DATE(3)),
+    method: enumOf(['desk', 'entrance_qr', 'auto']),
+    visitMinutes: DataTypes.INTEGER,
+    byUser: DataTypes.UUID,
+  },
+  { sequelize, modelName: 'GymAttendanceExit', tableName: 'gym_attendance_exits', updatedAt: false }
+);
+
 class GymMemberNote extends Model {}
 GymMemberNote.init(
   { id, memberId: req(DataTypes.UUID), gymId: req(DataTypes.UUID), body: req(DataTypes.STRING(2000)), byUser: req(DataTypes.UUID) },
@@ -514,7 +530,7 @@ module.exports = {
   GymFreeze,
   GymDue,
   GymFeePayment,
-  GymAttendance,
+  GymAttendance, GymAttendanceExit,
   GymMemberNote,
   GymImport,
   GymOwnerSubscription,

@@ -40,6 +40,7 @@ const ERRORS = {
   GYM_CHECKIN_TOKEN_INVALID: [422, 'This check-in code is not valid here'],
   GYM_NOT_A_MEMBER: [403, 'You are not a linked member of this gym'],
   GYM_TIER_REQUIRED: [403, 'Your gym plan does not include this'],
+  GYM_VISIT_CLOSED: [409, 'This visit is already checked out'],
   GYM_ACCOUNT_RESTRICTED: [403, 'The gym panel is read-only until the overdue invoice is paid'],
   GYM_SHORT_CODE_TAKEN: [409, 'Another of your gyms uses this short code'],
   GYM_SETUP_REQUIRED: [409, 'Choose the gym’s short code first'],

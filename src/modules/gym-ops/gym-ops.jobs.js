@@ -1,10 +1,8 @@
 'use strict';
 
 /**
- * M27 jobs (BullMQ, src/jobs/definitions.js):
- *  - gym-ops.daily (09:00 Dhaka): locker rentals ending soon are reminded once and ended ones free their
- *    lockers (M27-FR-25); products near or past their expiry date alert the gym once per date (M27-FR-15).
- * Idempotent: every step checks its row's state in its own transaction.
+ * M27 jobs (BullMQ, src/jobs/definitions.js): round 1 gym-ops.daily (lockers, expiry alerts); round 2
+ * gym-ops.classes-points-daily (sessions ahead, points expiry) and gym-ops.class-reminders.
  */
 const lockers = require('./lockers.service');
 const shop = require('./shop.service');
@@ -15,4 +13,12 @@ async function daily(now = new Date()) {
   return { ...rentals, expiring };
 }
 
-module.exports = { daily };
+async function classesAndPoints() {
+  const sessions = await require('./classes.service').sessionsAhead();
+  const points = await require('./points.service').expire();
+  return { ...sessions, ...points };
+}
+
+const classReminders = (now = new Date()) => require('./classes.service').reminders(now);
+
+module.exports = { daily, classesAndPoints, classReminders };

@@ -21,7 +21,7 @@ module.exports = {
   disputes: lazy('./gym.disputes', ['register']),
   reviewSource: lazy('./gym.reviews', ['register']),
   reads: lazy('./gym.reads', ['exportPassKpiFacts', 'passFacts', 'passKpiFact', 'pendingActions']),
-  gyms: lazy('./gyms.service', ['facts', 'get', 'ofOwner']),
+  gyms: lazy('./gyms.service', ['facts', 'get', 'ofOwner', 'publicBySlug']),
   packages: Object.freeze({
     get: (...args) => require('./gyms.service').packageGet(...args),
     forGym: (...args) => require('./gyms.service').packagesForGym(...args),

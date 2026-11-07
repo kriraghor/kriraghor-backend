@@ -153,7 +153,108 @@ function previousPeriod(from, to) {
   return { from: addDays(from, -len), to: addDays(from, -1) };
 }
 
+// ---------------------------------------------------------------- round 2: classes, points, notices
+
+const DHAKA_OFFSET_MS = 6 * 3600000; // Asia/Dhaka is UTC+6 all year (no daylight saving)
+
+/** M27-FR-47: a session's start and end as instants, from a Dhaka date, "HH:MM" and its length in minutes. */
+function sessionWindow(localDate, startTime, minutes) {
+  const startsAt = new Date(Date.parse(`${localDate}T${startTime}:00Z`) - DHAKA_OFFSET_MS);
+  return { startsAt, endsAt: new Date(startsAt.getTime() + minutes * 60000) };
+}
+
+/** The Dhaka day of the week of a date (0 = Sunday … 6 = Saturday). */
+const dowOf = (date) => new Date(`${date}T00:00:00Z`).getUTCDay();
+
+/** M27-FR-47: the dates from today (inclusive) for `weeks` weeks that fall on `dow`. */
+function datesAhead(today, weeks, dow) {
+  const out = [];
+  for (let i = 0; i < weeks * 7; i += 1) {
+    const d = addDays(today, i);
+    if (dowOf(d) === dow) out.push(d);
+  }
+  return out;
+}
+
+/**
+ * M27-FR-48, FR-49: what a new booking becomes: a place while there is room, else a waitlist place while the
+ * waitlist has room, else null (full).
+ */
+function bookingOutcome({ booked, waitlisted, capacity, waitlistMax }) {
+  if (booked < capacity) return 'booked';
+  if (waitlisted < waitlistMax) return 'waitlisted';
+  return null;
+}
+
+/** M27-FR-48: a session takes bookings while scheduled and not started → null, or the code. */
+function sessionBookBlock({ status, startsAt, now }) {
+  if (status !== 'scheduled') return 'GYM_CLASS_SESSION_STATE';
+  return now >= startsAt ? 'GYM_CLASS_STARTED' : null;
+}
+
+/** M27-FR-50: a member cancels up to cutoff minutes before the start; the desk until the start. */
+function cancelBlock({ source, now, startsAt, cutoffMinutes }) {
+  const limit = source === 'desk' ? startsAt.getTime() : startsAt.getTime() - cutoffMinutes * 60000;
+  return now.getTime() > limit ? 'GYM_CLASS_CANCEL_CLOSED' : null;
+}
+
+/** M27-FR-53: the class reminder is due within `minutes` of the start, once. */
+function classReminderDue({ startsAt, now, minutes, remindedAt }) {
+  if (remindedAt) return false;
+  const left = startsAt.getTime() - now.getTime();
+  return left > 0 && left <= minutes * 60000;
+}
+
+/**
+ * M27-FR-56: a streak bonus is due today when the member has checked in on each of the last `days` days
+ * ending today, and the run of days in a row ending today is a whole number of streaks (one bonus per run).
+ * `dates` are counted check-in dates, ascending, without duplicates.
+ */
+function streakBonusDue(dates, today, days) {
+  const have = new Set(dates);
+  let run = 0;
+  for (let d = today; have.has(d); d = addDays(d, -1)) run += 1;
+  return run >= days && run % days === 0;
+}
+
+/**
+ * M27-FR-60: points that expire now, first in first out: points earned that are past their date, less
+ * everything already taken (redeemed, expired, negative adjustments). Never negative.
+ */
+const pointsToExpire = ({ earnedDue, consumed }) => Math.max(0, earnedDue - consumed);
+
+/** M27-FR-59: a reward can be redeemed → null or the code. */
+function redeemBlock({ balance, reward }) {
+  if (!reward || reward.status !== 'active') return 'GYM_REWARD_UNAVAILABLE';
+  return balance < reward.points ? 'GYM_POINTS_SHORT' : null;
+}
+
+const NOTICE_SEGMENTS = Object.freeze(['active', 'expiring', 'expired', 'not_seen', 'package', 'class']);
+
+/** M27-FR-62: a notice segment is complete and within the limits → null or the code. */
+function segmentBlock(segment, { daysMax }) {
+  if (!NOTICE_SEGMENTS.includes(segment.kind)) return 'GYM_NOTICE_SEGMENT';
+  if (['expiring', 'expired', 'not_seen'].includes(segment.kind)) {
+    return Number.isInteger(segment.days) && segment.days >= 1 && segment.days <= daysMax ? null : 'GYM_NOTICE_SEGMENT';
+  }
+  if (segment.kind === 'package') return segment.packageId ? null : 'GYM_NOTICE_SEGMENT';
+  if (segment.kind === 'class') return segment.classId ? null : 'GYM_NOTICE_SEGMENT';
+  return null;
+}
+
 module.exports = {
+  sessionWindow,
+  dowOf,
+  datesAhead,
+  bookingOutcome,
+  sessionBookBlock,
+  cancelBlock,
+  classReminderDue,
+  streakBonusDue,
+  pointsToExpire,
+  redeemBlock,
+  NOTICE_SEGMENTS,
+  segmentBlock,
   EXPENSE_METHODS,
   SALE_METHODS,
   PRODUCT_CATEGORIES,

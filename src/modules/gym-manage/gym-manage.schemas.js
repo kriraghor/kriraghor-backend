@@ -45,6 +45,7 @@ const FEATURES = rules.FEATURES;
 // ---------------- params
 const gymParam = z.object({ gymId: id });
 const memberParam = z.object({ gymId: id, memberId: id });
+const attendanceParam = z.object({ gymId: id, attendanceId: id });
 const membershipParam = z.object({ gymId: id, membershipId: id });
 const dueParam = z.object({ gymId: id, dueId: id });
 const feePaymentParam = z.object({ gymId: id, feePaymentId: id });
@@ -356,7 +357,21 @@ const CheckinDay = z
   .object({
     date,
     counted: z.number().int(),
-    items: z.array(z.object({ id, member: MemberSummary, checkedInAt: dateTime, method: z.enum(['desk', 'member_qr', 'entrance_qr', 'pass']), counted: z.boolean(), decision: z.enum(['allow', 'warn', 'override']), reasons: z.array(z.string()), by: nullable(z.object({ id, displayName: nullable(z.string()) })) })),
+    inGymNow: z.number().int().meta({ description: 'M27-FR-43: members with an open visit now' }),
+    items: z.array(
+      z.object({
+        id,
+        member: MemberSummary,
+        checkedInAt: dateTime,
+        method: z.enum(['desk', 'member_qr', 'entrance_qr', 'pass']),
+        counted: z.boolean(),
+        decision: z.enum(['allow', 'warn', 'override']),
+        reasons: z.array(z.string()),
+        by: nullable(z.object({ id, displayName: nullable(z.string()) })),
+        checkedOutAt: nullable(dateTime).meta({ description: 'M27-FR-40: null while the visit is open' }),
+        visitMinutes: nullable(z.number().int()).meta({ description: 'null while open or when the visit closed by itself' }),
+      })
+    ),
   })
   .meta({ id: 'GymCheckinDay' });
 const Plan = { tier: z.enum(rules.TIERS), features: z.record(z.enum(FEATURES), z.boolean()), restricted: z.boolean(), subscriptionStatus: z.enum(['active', 'past_due', 'restricted', 'closed']) };
@@ -391,6 +406,7 @@ const Overview = z
       members: z.number().int(),
       newThisMonth: z.number().int(),
       expiringThisWeek: z.number().int(),
+      inGymNow: z.number().int().meta({ description: 'M27-FR-43: members with an open visit now' }),
       notSeen: z.number().int(),
       notSeenDays: z.number().int(),
       requestsWaiting: z.number().int(),
@@ -933,6 +949,9 @@ const bilingual = (max) =>
 const httpsUrl = z.url({ protocol: /^https$/, hostname: z.regexes.domain }).max(500).meta({ description: 'https links only' });
 const Exercise = z.object({
   ref: refText,
+  exerciseKey: nullable(z.string().regex(/^[a-z0-9_]{1,40}$/))
+    .optional()
+    .meta({ description: 'M27-FR-71: an exercise of the library (GET /catalog/exercises); the member sees its steps' }),
   name: bilingual(80),
   sets: nullable(z.number().int().min(1).max(50)).optional(),
   reps: nullable(text(1, 20)).optional().meta({ description: '"8-10", "12" or "to failure"' }),
@@ -1103,8 +1122,15 @@ const PlanLogResult = z.object({ log: PlanLog }).meta({ id: 'MyGymPlanLogResult'
 const EntranceToken = z
   .object({ gymId: id, gymName: z.string(), token: z.string(), expiresAt: dateTime.meta({ description: 'Show the next token before this; members may scan the previous one for one more window' }), seconds: z.number().int(), secondsLeft: z.number().int() })
   .meta({ id: 'GymEntranceToken' });
+const CheckOut = z
+  .object({ attendanceId: id, checkedOutAt: dateTime, visitMinutes: nullable(z.number().int()), method: z.enum(['desk', 'entrance_qr', 'auto']), member: MemberSummary })
+  .meta({ id: 'GymCheckOut', description: 'M27-FR-40: the desk checked the member out' });
+const EntranceCheckout = z
+  .object({ checkedOut: z.literal(true), attendanceId: id, checkedOutAt: dateTime, visitMinutes: nullable(z.number().int()), gym: GymRef, member: z.object({ id, memberCode: z.string() }) })
+  .meta({ id: 'MyGymEntranceCheckout', description: 'M27-FR-41: a second scan after gym_manage.min_visit_minutes checks out' });
 const EntranceCheckin = z
   .object({
+    checkedOut: z.literal(false).optional(),
     attendanceId: id,
     counted: z.boolean().meta({ description: 'false: already checked in today (the first time is firstCheckInToday)' }),
     checkedInAt: dateTime,
@@ -1117,6 +1143,7 @@ const EntranceCheckin = z
     reasons: z.array(z.enum(['expired', 'frozen', 'none', 'unpaid', 'visit_limit'])).meta({ description: 'warn: tell the member why (no amounts)' }),
   })
   .meta({ id: 'MyGymEntranceCheckin' });
+const EntranceScan = z.union([EntranceCheckin, EntranceCheckout]).meta({ id: 'MyGymEntranceScan' });
 
 module.exports = {
   joinRequestBody,
@@ -1151,8 +1178,12 @@ module.exports = {
   PlanLogResult,
   EntranceToken,
   EntranceCheckin,
+  EntranceCheckout,
+  EntranceScan,
+  CheckOut,
   gymParam,
   memberParam,
+  attendanceParam,
   membershipParam,
   dueParam,
   feePaymentParam,

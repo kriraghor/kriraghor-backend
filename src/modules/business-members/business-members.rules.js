@@ -56,6 +56,11 @@ const PERMISSIONS = Object.freeze({
     'pos.sell': false,
     'stock.manage': false,
     'lockers.manage': false,
+    // M27 round 2: classes, rewards at the desk, notices to members, enquiries; all off by default.
+    'classes.manage': false,
+    'rewards.redeem': false,
+    'notices.send': false,
+    'leads.manage': false,
   }),
   shop: Object.freeze({
     'orders.view': true,

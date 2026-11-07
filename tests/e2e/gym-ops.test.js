@@ -117,9 +117,9 @@ describe('M27 the counter shop', () => {
     const sale = (await s.post('/sales', { lines: [{ productId: whey.id, qty: 1 }, { productId: whey.id, qty: 1 }], method: 'card_counter' }, true).expect(201)).body;
     expect(sale).toMatchObject({ kind: 'pos', totalPoisha: 900000, lines: [{ qty: 2, lineTotalPoisha: 900000 }], vat: null, gym: { name: gym.name } });
     expect(sale.receiptNo).toMatch(/^IY-R\d{2}-\d{6}$/);
-    expect(await outbox('gym_stock.low')).toBe(1);
+    expect(await outbox('gym_stock.low_reached')).toBe(1);
     await s.post('/sales', { lines: [{ productId: whey.id, qty: 1 }], method: 'cash' }, true).expect(201);
-    expect(await outbox('gym_stock.low')).toBe(1); // once per crossing
+    expect(await outbox('gym_stock.low_reached')).toBe(1); // once per crossing
 
     // A reversal needs fees.adjust; stock comes back; twice is refused.
     expect((await s.post(`/sales/${sale.id}/reverse`, { reason: 'Wrong flavour' }).expect(403)).body.code).toBe('PERMISSION_REQUIRED');
@@ -175,7 +175,7 @@ describe('M27 lockers', () => {
     await models.GymLockerRental.update({ startsOn: gm.inDays(-10), endsOn: gm.inDays(-1) }, { where: { id: unpaid.id } });
     expect(await lockersSvc.daily()).toEqual({ reminded: 1, ended: 1 });
     expect(await lockersSvc.daily()).toEqual({ reminded: 0, ended: 0 });
-    expect(await outbox('gym_locker.ending')).toBe(1);
+    expect(await outbox('gym_locker.end_reminded')).toBe(1);
     now = (await g.get('/lockers').expect(200)).body;
     expect(now.counts).toMatchObject({ free: 1, unpaid: 1, outOfService: 1 });
     expect((await g.get(`/locker-rentals?memberId=${m.id}`).expect(200)).body.items.map((r) => r.status).sort()).toEqual(['active', 'ended', 'ended']);
