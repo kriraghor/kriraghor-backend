@@ -396,6 +396,7 @@ const EVENTS = {
   'gym.rejected': { module: 'M20', version: 1, schema: gymEvent.extend({ isEdit: z.boolean(), reasonCode: z.string().max(40).nullable() }) },
   'gym.paused': { module: 'M20', version: 1, schema: gymEvent.extend({ reason: z.string().max(40).optional() }) },
   'gym.resumed': { module: 'M20', version: 1, schema: gymEvent },
+  'gym.removed': { module: 'M20', version: 1, schema: gymEvent },
   'gym.suspended': { module: 'M20', version: 1, schema: gymEvent.extend({ reason: reasonText }) },
   'gym.restored': { module: 'M20', version: 1, schema: gymEvent.extend({ reason: reasonText }) },
   'gym_pass.paid': { module: 'M20', version: 1, schema: gymPassEvent.extend({ validFrom: iso, validTo: iso, paymentId: uuid }) },
@@ -520,6 +521,18 @@ const EVENTS = {
   // §2.2 calls it gym_due.overdue; FR-19 needs a past-tense verb (as document_request.overdue_marked).
   'gym_due.overdue_marked': { module: 'M24', version: 1, schema: gmDue.extend({ outstanding: poisha, dueOn: day }) },
   'gym_due.paid': { module: 'M24', version: 1, schema: gmDue.extend({ amount: poisha }) },
+  // M27 gym operations, round 1: the gym's own books (no ledger).
+  'gym_expense.recorded': { module: 'M27', version: 1, schema: z.object({ expenseId: uuid, gymId: uuid, amount: poisha, categoryKey: z.string().max(30).nullable(), method: z.string().max(20), fromDrawer: z.boolean(), spentOn: day }) },
+  'gym_expense.voided': { module: 'M27', version: 1, schema: z.object({ expenseId: uuid, gymId: uuid, amount: poisha }) },
+  'gym_cash.opened': { module: 'M27', version: 1, schema: z.object({ sessionId: uuid, gymId: uuid, date: day, opening: poisha }) },
+  'gym_cash.closed': { module: 'M27', version: 1, schema: z.object({ sessionId: uuid, gymId: uuid, date: day, expected: z.number().int(), counted: poisha, difference: z.number().int() }) },
+  'gym_sale.recorded': { module: 'M27', version: 1, schema: z.object({ saleId: uuid, gymId: uuid, kind: z.enum(['pos', 'locker']), amount: poisha, method: z.string().max(20), receiptNo: z.string().max(24), memberId: uuid.nullable() }) },
+  'gym_sale.reversed': { module: 'M27', version: 1, schema: z.object({ saleId: uuid, gymId: uuid, kind: z.enum(['pos', 'locker']), amount: poisha, method: z.string().max(20), receiptNo: z.string().max(24) }) },
+  'gym_stock.low': { module: 'M27', version: 1, schema: z.object({ productId: uuid, gymId: uuid, item: z.string().max(80), stockQty: z.number().int().nonnegative(), reorderLevel: z.number().int().nonnegative() }) },
+  'gym_product.expiring': { module: 'M27', version: 1, schema: z.object({ productId: uuid, gymId: uuid, item: z.string().max(80), expiresOn: day, stockQty: z.number().int().nonnegative(), expired: z.boolean() }) },
+  'gym_locker.rented': { module: 'M27', version: 1, schema: z.object({ rentalId: uuid, gymId: uuid, lockerId: uuid, memberId: uuid, startsOn: day, endsOn: day, fee: poisha }) },
+  'gym_locker.ending': { module: 'M27', version: 1, schema: z.object({ rentalId: uuid, gymId: uuid, lockerId: uuid, memberId: uuid, endsOn: day }) },
+  'gym_locker.ended': { module: 'M27', version: 1, schema: z.object({ rentalId: uuid, gymId: uuid, lockerId: uuid, memberId: uuid, by: z.enum(['staff', 'job']) }) },
   'gym_due.waived': { module: 'M24', version: 1, schema: gmDue.extend({ amount: poisha }) },
   'gym_fee.recorded': {
     module: 'M24',

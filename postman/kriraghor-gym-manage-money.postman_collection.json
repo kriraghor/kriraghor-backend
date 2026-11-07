@@ -1423,7 +1423,7 @@
                   "pm.test('status 200', () => {",
                   "  pm.response.to.have.status(200);",
                   "});",
-                  "pm.test(\"offsets from settings, the log\", () => { pm.expect(j.feature.reminders === true && j.offsets.remindBeforeDays === 3 && j.offsets.overdueRemindDays[0] === 3 && j.log.items.some((x) => x.kind === 'pay_link') && j.log.items.some((x) => x.kind === 'receipt')).to.eql(true); });",
+                  "pm.test(\"offsets from settings, the log\", () => { pm.expect(j.feature.reminders === true && JSON.stringify(j.offsets.renewalRemindDays) === '[7,3,1]' && j.offsets.overdueRemindDays[0] === 3 && j.log.items.some((x) => x.kind === 'pay_link') && j.log.items.some((x) => x.kind === 'receipt')).to.eql(true); });",
                   "pm.test(\"no full phone numbers\", () => { pm.expect(!new RegExp(\"(\\\\+?880|\\\"0)1[3-9]\\\\d{8}\").test(pm.response.text())).to.eql(true); });"
                 ]
               }

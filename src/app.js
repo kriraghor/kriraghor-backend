@@ -38,6 +38,7 @@ const orderRoutes = require('./modules/orders/orders.routes');
 const hireRoutes = require('./modules/hire/hire.routes');
 const gymRoutes = require('./modules/gym/gym.routes');
 const gymManageRoutes = require('./modules/gym-manage/gym-manage.routes');
+const gymOpsRoutes = require('./modules/gym-ops/gym-ops.routes');
 const saasRoutes = require('./modules/organiser-saas/saas.routes');
 const eventRoutes = require('./modules/esports-events/events.routes');
 const teamRoutes = require('./modules/teams/teams.routes');
@@ -160,6 +161,8 @@ function createApp() {
   api.use('/me/gyms', gymRoutes.ownerRouter);
   // M24 gym management: the owner and staff panel, public pricing and receipts.
   api.use('/manage', gymManageRoutes.manageRouter);
+  // M27 gym operations: expenses, the cash drawer, profit and loss, the counter shop, lockers.
+  api.use('/manage', gymOpsRoutes.manageRouter);
   api.use('/gym-manage', gymManageRoutes.pricingRouter);
   api.use('/gym-receipts', gymManageRoutes.receiptRouter);
   api.use('/gym-pay', gymManageRoutes.payRouter);

@@ -287,19 +287,20 @@ describe('reminders and notices (M24-FR-55 to FR-61)', () => {
     expect(await countOf(linked.user.id, 'GYM_MEMBERSHIP_ENDS_TODAY')).toBe(0);
     await runDay(4);
     expect(await countOf(linked.user.id, 'GYM_MEMBERSHIP_EXPIRED')).toBe(1);
-    expect(await countOf(linked.user.id, 'GYM_RENEWAL_DUE')).toBe(1);
+    // M27: renewal reminders at 7, 3 and 1 days before the end: day 0 was d-3, day 2 was d-1, each once.
+    expect(await countOf(linked.user.id, 'GYM_RENEWAL_DUE')).toBe(2);
     expect(await countOf(late.user.id, 'GYM_FEE_OVERDUE')).toBe(1);
-    expect(await models.NotificationExternalDelivery.count({ where: { code: 'GYM_RENEWAL_DUE' } })).toBe(1);
+    expect(await models.NotificationExternalDelivery.count({ where: { code: 'GYM_RENEWAL_DUE' } })).toBe(2);
     // The unlinked member with an email also heard that the package started (GYM_MEMBERSHIP_STARTED, by email only).
     expect(await models.NotificationExternalDelivery.count({ where: { code: 'GYM_MEMBERSHIP_STARTED' } })).toBe(1);
 
     // The reminders page: offsets, members reachable only by SMS, the log (no text, no phone) (FR-59, FR-61).
     const page = (await desk.get('/reminders').expect(200)).body;
     conforms(s.RemindersPage, page);
-    expect(page).toMatchObject({ feature: { reminders: true }, offsets: { remindBeforeDays: 3, overdueRemindDays: [3], morningSummaryTime: '08:00' }, sms: { available: false } });
+    expect(page).toMatchObject({ feature: { reminders: true }, offsets: { renewalRemindDays: [7, 3, 1], overdueRemindDays: [3], morningSummaryTime: '08:00' }, sms: { available: false } });
     expect(page.kinds.find((k) => k.kind === 'ends_today').on).toBe(false);
     expect(page.reachability.smsOnly).toBe(0); // the expired members are no longer active; see below
-    expect(page.log.items.filter((x) => x.kind === 'renewal_due').map((x) => x.status).sort()).toEqual(['published', 'published', 'skipped']);
+    expect(page.log.items.filter((x) => x.kind === 'renewal_due').map((x) => x.status).sort()).toEqual(['published', 'published', 'published', 'published', 'skipped', 'skipped']); // 3 members × d-3 and d-1
     expect(page.log.items.find((x) => x.skipReason === 'no_contact')).toBeTruthy();
     expect(JSON.stringify(page)).not.toMatch(PHONE);
     // Staff never see the reminders page (owner only).

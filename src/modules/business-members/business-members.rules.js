@@ -50,6 +50,12 @@ const PERMISSIONS = Object.freeze({
     'reports.view': false,
     'members.trainer': false,
     'plans.manage': false,
+    // M27 round 1 (7 Nov 2026): the gym's own books beyond fees, all off by default.
+    'expenses.manage': false,
+    'cash.drawer': false,
+    'pos.sell': false,
+    'stock.manage': false,
+    'lockers.manage': false,
   }),
   shop: Object.freeze({
     'orders.view': true,

@@ -80,7 +80,7 @@ async function search(principal, gymId, { q }) {
     const phone = normalizePhone(text);
     const or = [{ memberCode: text.toUpperCase() }, { displayName: { [Op.iLike]: `%${text.replace(/[%_\\]/g, (ch) => `\\${ch}`)}%` } }];
     if (phone) or.push({ phoneHash: c.phoneHash(phone) });
-    members = await GymMember.findAll({ where: { gymId, status: { [Op.ne]: 'removed' }, [Op.or]: or }, order: [['displayName', 'ASC']], limit: 10 });
+    members = await GymMember.findAll({ where: { gymId, status: { [Op.ne]: 'removed' }, [Op.or]: or }, order: [['displayName', 'ASC'], ['memberCode', 'ASC']], limit: 10 }); // the code breaks ties (same names)
   }
   const items = [];
   for (const m of members) items.push(await card(a, m, await facts(m, today), today, { policy }));

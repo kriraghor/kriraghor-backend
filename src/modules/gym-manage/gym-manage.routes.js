@@ -182,7 +182,7 @@ g.post('/fee-payments/:feePaymentId/refund', fp, validate(s.refundBody), ik('fee
 // Prompt 2: reminders page (owner, FR-59, FR-61), reports (FR-71), not-seen list (FR-53), exports (owner, FR-73).
 g.get('/reminders', async (req, res) => res.json(await reminders.page(req.user, P(req))));
 g.get('/reports', query(s.reportQuery), async (req, res) => res.json(await reports.gymReport(req.user, P(req), req.validQuery)));
-g.get('/reports/absent', async (req, res) => res.json(await reports.absent(req.user, P(req))));
+g.get('/reports/absent', query(s.absentQuery), async (req, res) => res.json(await reports.absent(req.user, P(req), req.validQuery)));
 g.get('/reports/export', query(s.exportQuery), async (req, res) => sendCsv(res, await reports.exportCsv(req.user, P(req), req.validQuery, req)));
 
 // Imports (owner) and the owner's consent for Kriraghor uploads.
@@ -263,6 +263,8 @@ meMemberships.get('/:memberId/checkin-token', mm, async (req, res) => {
   res.json(await me.checkinToken(req.user, req.params.memberId));
 });
 meMemberships.put('/:memberId/health-note', mm, validate(s.healthNoteBody), async (req, res) => res.json(await me.setHealthNote(req.user, req.params.memberId, req.body, req)));
+// M27-FR-30: blood group, height, weight, conditions (the member's own; encrypted conditions).
+meMemberships.put('/:memberId/health', mm, validate(s.healthBody), async (req, res) => res.json(await me.setHealth(req.user, req.params.memberId, req.body, req)));
 meMemberships.post('/:memberId/unlink', mm, async (req, res) => res.json(await links.unlinkByMember(req.user, req.params.memberId, req)));
 
 const meReceipts = Router();

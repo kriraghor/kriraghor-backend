@@ -12,6 +12,8 @@
  *   reads      M19 the gym owner's to-dos; M20's business adapter: a gym's staff to-dos
  *   joins      M20's gym page: whether the gym takes join requests (prompt 3)
  *   consumers  registered by registry.registerAll
+ *   ops        M27 gym-ops: access to one gym, today's date, receipt numbers and VAT, a member, the money
+ *              collected for profit and loss (round 1)
  */
 const lazy = (file, names, values = []) => {
   const out = Object.fromEntries(names.map((n) => [n, (...args) => require(file)[n](...args)]));
@@ -35,4 +37,16 @@ module.exports = {
   reads: lazy('./reads.service', ['pendingActions', 'staffActions']),
   joins: lazy('./joins.service', ['openFor']),
   consumers: lazy('./gym-manage.consumers', ['registerGymManageConsumers']),
+  ops: Object.freeze({
+    access: (...args) => require('./gym-manage.common').gymAccess(...args),
+    needs: (...args) => require('./gym-manage.common').needs(...args),
+    shown: (...args) => require('./gym-manage.common').shown(...args),
+    today: (...args) => require('./gym-manage.common').today(...args),
+    nextReceiptNo: (...args) => require('./gym-manage.common').nextReceiptNo(...args),
+    vatBpsOf: (...args) => require('./gym-manage.common').vatBpsOf(...args),
+    gymSettings: (...args) => require('./gym-manage.common').settingsOf(...args),
+    member: (...args) => require('./ops.service').member(...args),
+    collected: (...args) => require('./ops.service').collected(...args),
+    cashCollected: (...args) => require('./ops.service').cashCollected(...args),
+  }),
 };

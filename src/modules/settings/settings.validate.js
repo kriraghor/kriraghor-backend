@@ -211,6 +211,16 @@ const CROSS_RULES = [
       return days.length >= 1 && days.length <= 3 && days.every((d) => d >= 1 && d <= 30);
     },
   },
+  {
+    // M27-FR-29: up to three renewal reminders, each 1 to 30 days before the end.
+    id: 'gym_manage.renewal_remind_days_range',
+    text: 'gym_manage.renewal_remind_days has 1 to 3 values, each between 1 and 30',
+    keys: ['gym_manage.renewal_remind_days'],
+    ok: (v) => {
+      const days = v('gym_manage.renewal_remind_days') ?? [];
+      return days.length >= 1 && days.length <= 3 && days.every((d) => d >= 1 && d <= 30);
+    },
+  },
 ];
 
 /**

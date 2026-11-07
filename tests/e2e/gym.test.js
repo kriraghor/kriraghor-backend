@@ -157,6 +157,27 @@ describe('M20 gym', () => {
     expect(await payable(owner)).toBe(427500);
   });
 
+  it('the owner removes their gym: typed name, not while paid packages run, never deleted (M20-FR-15)', async () => {
+    const owner = await g.gymOwner(docsReviewer);
+    const gym = await g.liveGym(owner, reviewer);
+    const member = await h.signupUser({ name: 'Sadia Islam' });
+    const pass = await paidPass(member, gym, 'month', g.today());
+    const remove = (body) => api().post(`${P}/me/gyms/${gym.id}/remove`).set(h.bearer(owner)).send(body);
+    expect((await remove({ confirmName: 'Some other gym' }).expect(422)).body.code).toBe('GYM_NAME_MISMATCH');
+    expect((await remove({ confirmName: gym.name }).expect(409)).body).toMatchObject({ code: 'GYM_HAS_ACTIVE_PASSES', passes: 1 });
+    const stranger = await h.signupUser({ name: 'Not The Owner' });
+    await api().post(`${P}/me/gyms/${gym.id}/remove`).set(h.bearer(stranger)).send({ confirmName: gym.name }).expect(403);
+    await models.GymPass.update({ status: 'expired' }, { where: { id: pass.id } });
+    expect((await remove({ confirmName: ` ${gym.name.toUpperCase()} `, reason: 'Closing this branch' }).expect(200)).body).toEqual({ id: gym.id, status: 'removed' });
+    expect((await models.Gym.findByPk(gym.id)).status).toBe('removed');
+    expect(await models.OutboxEvent.count({ where: { name: 'gym.removed' } })).toBe(1);
+    expect(await models.AuditLog.count({ where: { action: 'gym.removed', entityId: gym.id } })).toBe(1);
+    await api().get(`${P}/me/gyms/${gym.id}`).set(h.bearer(owner)).expect(404);
+    expect((await api().get(`${P}/me/gyms`).set(h.bearer(owner)).expect(200)).body.items.map((x) => x.id)).not.toContain(gym.id);
+    await api().get(`${P}/gym/gyms/${gym.slug}`).expect(404);
+    await remove({ confirmName: gym.name }).expect(404);
+  });
+
   it('the desk admits at any hour, by the typed code, outside the gym\'s opening hours (M20-FR-05)', async () => {
     const owner = await g.gymOwner(docsReviewer);
     // Open one hour a day, starting six hours from now in Dhaka, so the gym is closed during this test.

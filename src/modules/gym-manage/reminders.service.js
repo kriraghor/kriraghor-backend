@@ -3,7 +3,7 @@
 /**
  * M24 reminders and notices (§5.7, §6.9, §10): the scheduled member reminders, the owner's morning
  * summary and monthly report, and the owner's reminders page.
- *  - gym-manage.reminders (09:00 Dhaka): renewal_due (gym_manage.remind_before_days before the end, no
+ *  - gym-manage.reminders (09:00 Dhaka): renewal_due (each of gym_manage.renewal_remind_days before the end, no
  *    upcoming membership), ends_today, expired (the day after the end, in-app only, not renewed) and
  *    overdue (each gym_manage.overdue_remind_days after due_on, still unpaid or partial), for gyms whose
  *    owner has the `reminders` feature, is not restricted and has the kind on (FR-55).
@@ -85,12 +85,12 @@ async function run(now = new Date()) {
   if (!gyms.size) return out;
   const gymIds = [...gyms.keys()];
 
-  // Memberships ending in remind_before_days, ending today, or ended yesterday.
+  // Memberships ending in one of renewal_remind_days, ending today, or ended yesterday.
   const mss = await GymMembership.findAll({
     where: {
       gymId: gymIds,
       [Op.or]: [
-        { status: ['active', 'frozen'], endsOn: [rules.addDays(today, cfg.remindBeforeDays), today] },
+        { status: ['active', 'frozen'], endsOn: [...cfg.renewalRemindDays.map((d) => rules.addDays(today, d)), today] },
         { status: 'expired', endsOn: rules.addDays(today, -1) },
       ],
     },
@@ -102,7 +102,7 @@ async function run(now = new Date()) {
     const kinds = ms.status === 'expired' ? ['expired'] : ['renewal_due', 'ends_today'];
     for (const kind of kinds) {
       if (g.off.has(kind)) continue;
-      const offsetKey = rules.reminderKey(kind, { today, endsOn: ms.endsOn, remindBeforeDays: cfg.remindBeforeDays });
+      const offsetKey = rules.reminderKey(kind, { today, endsOn: ms.endsOn, renewalDays: cfg.renewalRemindDays });
       if (!offsetKey) continue;
       // Renewed already (an upcoming membership, or a running one after the expired one): nothing to remind.
       const renewed = await GymMembership.findOne({ where: { memberId: ms.memberId, id: { [Op.ne]: ms.id }, status: kind === 'expired' ? ['upcoming', 'active', 'frozen'] : ['upcoming'] }, attributes: ['id'] });
@@ -264,7 +264,7 @@ async function page(principal, gymId) {
     feature: { reminders: rules.hasFeature(sub.chosenTier, 'reminders', map), minTier: rules.minTierOf(map, 'reminders') },
     restricted: sub.status === 'restricted',
     kinds: KINDS.map((kind) => ({ kind, on: !(s?.remindersOff ?? []).includes(kind), member: MEMBER_KINDS.includes(kind) || ['receipt', 'pay_link'].includes(kind) })),
-    offsets: { remindBeforeDays: cfg.remindBeforeDays, overdueRemindDays: cfg.overdueRemindDays, morningSummaryTime: cfg.morningSummaryTime },
+    offsets: { renewalRemindDays: cfg.renewalRemindDays, overdueRemindDays: cfg.overdueRemindDays, morningSummaryTime: cfg.morningSummaryTime },
     sms: { available: false, kinds: s?.smsKinds ?? [] },
     reachability: { activeMembers: reach.activeMembers, smsOnly: reach.smsOnly },
     log: {

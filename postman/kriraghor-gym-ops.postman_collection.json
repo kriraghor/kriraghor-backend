@@ -1,0 +1,2533 @@
+{
+  "info": {
+    "name": "Kriraghor API: M27 round 1 · Front desk and money",
+    "description": "M27 Gym operations, round 1, on a Standard gym. The owner records expenses in the gym’s categories (rent, electricity …) and voids one with a reason (never deleted). The cashier opens the day’s cash drawer with a float, sells at the counter and closes with the counted cash; the difference is kept. A store keeper adds a product with its batch and expiry and stocks it; staff without stock.manage never see the cost. A sale takes its receipt number from the gym’s receipt series; a reversal needs fees.adjust and puts the stock back.\n\nLockers: a grid of numbers, a rental with the monthly fee collected at once (a locker sale), the daily job reminds before the end and ends rentals past it. Profit and loss: fees, counter sales and locker fees, less the cost of goods and expenses, against the period before. VAT is off by default; within the cap it is kept on each payment and sale and shown on the receipt. The member sets height and weight and sees the BMI; the owner sees the conditions, staff with members.edit only the blood group.\n\nRequests named \"Runner\" go to the local test runner (delivering events, the daily lockers job).\n\nUnattended: `node postman/run-m27.js`. Rebuild this file with: node postman/build-collection-m27.js",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000/api/v1"
+    },
+    {
+      "key": "controlUrl",
+      "value": ""
+    },
+    {
+      "key": "ownerToken",
+      "value": ""
+    },
+    {
+      "key": "cashierToken",
+      "value": ""
+    },
+    {
+      "key": "keeperToken",
+      "value": ""
+    },
+    {
+      "key": "deskToken",
+      "value": ""
+    },
+    {
+      "key": "memberToken",
+      "value": ""
+    },
+    {
+      "key": "gymId",
+      "value": ""
+    },
+    {
+      "key": "memberId",
+      "value": ""
+    },
+    {
+      "key": "lockerEnds",
+      "value": ""
+    },
+    {
+      "key": "rentId",
+      "value": ""
+    },
+    {
+      "key": "internetId",
+      "value": ""
+    },
+    {
+      "key": "expenseId",
+      "value": ""
+    },
+    {
+      "key": "productId",
+      "value": ""
+    },
+    {
+      "key": "saleId",
+      "value": ""
+    },
+    {
+      "key": "receiptNo",
+      "value": ""
+    },
+    {
+      "key": "locker1",
+      "value": ""
+    },
+    {
+      "key": "locker2",
+      "value": ""
+    },
+    {
+      "key": "rentalId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Plan and permissions (M27-FR-34)",
+      "item": [
+        {
+          "name": "Staff without expenses.manage (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 PERMISSION_REQUIRED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('PERMISSION_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/expenses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "expenses"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff without reports.view: no profit and loss (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 PERMISSION_REQUIRED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('PERMISSION_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/pnl",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "pnl"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A member is not staff (expect 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 404', () => {",
+                  "  pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/lockers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "lockers"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Expenses (M27-FR-01 to FR-05)",
+      "item": [
+        {
+          "name": "The categories, made on first use",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"nine defaults\", () => { pm.expect(j.items.length === 9 && j.items.some((c) => c.key === 'rent')).to.eql(true); });",
+                  "pm.test(\"saves ids\", () => { pm.expect((pm.collectionVariables.set('rentId', j.items.find((c) => c.key === 'rent').id), pm.collectionVariables.set('internetId', j.items.find((c) => c.key === 'internet').id), true)).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/expense-categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "expense-categories"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A date in the future (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "go-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryId\": \"{{rentId}}\",\n  \"amountPoisha\": 1000,\n  \"method\": \"bank\",\n  \"spentOn\": \"2999-01-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/expenses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "expenses"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Rent ৳25,000 by bank",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('expenseId', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"recorded\", () => { pm.expect(j.status === 'recorded' && j.category.key === 'rent' && j.fromDrawer === false).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "go-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryId\": \"{{rentId}}\",\n  \"amountPoisha\": 2500000,\n  \"method\": \"bank\",\n  \"note\": \"November rent\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/expenses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "expenses"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Internet ৳1,500 by bKash",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "go-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryId\": \"{{internetId}}\",\n  \"amountPoisha\": 150000,\n  \"method\": \"owner_bkash\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/expenses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "expenses"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The list and its total",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"two, ৳26,500\", () => { pm.expect(j.items.length === 2 && j.totalPoisha === 2650000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/expenses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "expenses"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Void the rent with a reason",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"void, kept\", () => { pm.expect(j.status === 'void' && j.voidReason === 'Entered for the wrong month').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Entered for the wrong month\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/expenses/{{expenseId}}/void",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "expenses",
+                "{{expenseId}}",
+                "void"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Void it again (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 GYM_EXPENSE_STATE', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('GYM_EXPENSE_STATE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Second time\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/expenses/{{expenseId}}/void",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "expenses",
+                "{{expenseId}}",
+                "void"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. The cash drawer opens (M27-FR-06)",
+      "item": [
+        {
+          "name": "The cashier opens the day with ৳500",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"open\", () => { pm.expect(j.status === 'open' && j.openingPoisha === 50000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cashierToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"openingPoisha\": 50000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/cash-drawer/open",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "cash-drawer",
+                "open"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Open twice (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 GYM_DRAWER_OPEN', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('GYM_DRAWER_OPEN');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cashierToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"openingPoisha\": 50000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/cash-drawer/open",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "cash-drawer",
+                "open"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. The counter shop (M27-FR-12 to FR-20)",
+      "item": [
+        {
+          "name": "A product: whey 1 kg, reorder at 2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('productId', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{keeperToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Whey 1kg\",\n  \"barcode\": \"8901234567890\",\n  \"category\": \"supplement\",\n  \"pricePoisha\": 450000,\n  \"costPoisha\": 330000,\n  \"reorderLevel\": 2,\n  \"importer\": \"BSTI 123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "products"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The same barcode again (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 GYM_PRODUCT_BARCODE_TAKEN', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('GYM_PRODUCT_BARCODE_TAKEN');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{keeperToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Copy\",\n  \"barcode\": \"8901234567890\",\n  \"category\": \"supplement\",\n  \"pricePoisha\": 1000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "products"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Stock in: 4 with batch and expiry",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"4 in stock\", () => { pm.expect(j.stockQty === 4).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{keeperToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "go-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kind\": \"in\",\n  \"qty\": 4,\n  \"batchNo\": \"B-7\",\n  \"expiresOn\": \"2027-06-30\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/products/{{productId}}/stock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "products",
+                "{{productId}}",
+                "stock"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The cashier finds it by barcode, without the cost",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"no cost for pos.sell\", () => { pm.expect(j.items.length === 1 && j.items[0].costPoisha === undefined && j.items[0].batchNo === 'B-7').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cashierToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/products?barcode=8901234567890",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "barcode",
+                  "value": "8901234567890"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Too many (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 GYM_STOCK_SHORT', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('GYM_STOCK_SHORT');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cashierToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "go-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lines\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"qty\": 9\n    }\n  ],\n  \"method\": \"cash\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/sales",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "sales"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sell 2 for cash, to the member",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('saleId', v); }",
+                  "if (ok && j) { const v = get(j, 'receiptNo'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('receiptNo', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"৳9,000, a receipt from the gym series, no VAT\", () => { pm.expect(j.totalPoisha === 900000 && /^IY-R\\d{2}-\\d{6}$/.test(j.receiptNo) && j.vat === null && j.member && j.member.memberCode.startsWith('IY-')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cashierToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "go-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lines\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"qty\": 2\n    }\n  ],\n  \"method\": \"cash\",\n  \"memberId\": \"{{memberId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/sales",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "sales"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: deliver events",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/drain",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "drain"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The receipt",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"same number, gym header\", () => { pm.expect(j.receiptNo === pm.collectionVariables.get('receiptNo') && j.gym.name.length > 0 && j.lines[0].qty === 2).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/sales/{{saleId}}/receipt",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "sales",
+                "{{saleId}}",
+                "receipt"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A reversal without fees.adjust (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 PERMISSION_REQUIRED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('PERMISSION_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cashierToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Wrong flavour\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/sales/{{saleId}}/reverse",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "sales",
+                "{{saleId}}",
+                "reverse"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The owner reverses it; the stock comes back",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"reversed, kept\", () => { pm.expect(j.status === 'reversed' && j.reverseReason === 'Wrong flavour').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Wrong flavour\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/sales/{{saleId}}/reverse",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "sales",
+                "{{saleId}}",
+                "reverse"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Stock is 4 again",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"4, cost visible to stock.manage\", () => { pm.expect(j.items[0].stockQty === 4 && j.items[0].costPoisha === 330000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{keeperToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "products"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sell 3 by card at the counter (stock falls to the reorder level)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cashierToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "go-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lines\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"qty\": 3\n    }\n  ],\n  \"method\": \"card_counter\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/sales",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "sales"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Low stock is flagged",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"1 left, low\", () => { pm.expect(j.items[0].stockQty === 1 && j.items[0].low === true).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{keeperToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "products"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Lockers (M27-FR-21 to FR-26)",
+      "item": [
+        {
+          "name": "Add lockers 1 to 3 at ৳300 a month",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'items.0.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('locker1', v); }",
+                  "if (ok && j) { const v = get(j, 'items.1.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('locker2', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"three free\", () => { pm.expect(j.counts.free === 3).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"numbers\": [\n    \"1\",\n    \"2\",\n    \"3\"\n  ],\n  \"size\": \"small\",\n  \"monthlyFeePoisha\": 30000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/lockers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "lockers"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Locker 2 again (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 GYM_LOCKER_NUMBER_TAKEN', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('GYM_LOCKER_NUMBER_TAKEN');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"numbers\": [\n    \"2\"\n  ],\n  \"monthlyFeePoisha\": 30000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/lockers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "lockers"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Rent locker 1 to the member, fee taken in cash",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('rentalId', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"paid, active\", () => { pm.expect(j.paid === true && j.status === 'active' && j.feePoisha === 30000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "go-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"memberId\": \"{{memberId}}\",\n  \"endsOn\": \"{{lockerEnds}}\",\n  \"collect\": {\n    \"method\": \"cash\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/lockers/{{locker1}}/rent",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "lockers",
+                "{{locker1}}",
+                "rent"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Locker 1 is taken (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 GYM_LOCKER_UNAVAILABLE', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('GYM_LOCKER_UNAVAILABLE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "go-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"memberId\": \"{{memberId}}\",\n  \"endsOn\": \"{{lockerEnds}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/lockers/{{locker1}}/rent",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "lockers",
+                "{{locker1}}",
+                "rent"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Locker 2 out of service",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"out_of_service\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/lockers/{{locker2}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "lockers",
+                "{{locker2}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The grid",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"1 taken, 1 out of service, 1 free\", () => { pm.expect(j.counts.taken === 1 && j.counts.outOfService === 1 && j.counts.free === 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/lockers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "lockers"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: the daily lockers job",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/lockers",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "lockers"
+              ]
+            }
+          }
+        },
+        {
+          "name": "End the rental early",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"ended\", () => { pm.expect(j.status === 'ended').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Member moved away\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/locker-rentals/{{rentalId}}/end",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "locker-rentals",
+                "{{rentalId}}",
+                "end"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The member’s rentals",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"one ended\", () => { pm.expect(j.items.length === 1 && j.items[0].status === 'ended').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/locker-rentals?memberId={{memberId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "locker-rentals"
+              ],
+              "query": [
+                {
+                  "key": "memberId",
+                  "value": "{{memberId}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. The drawer closes (M27-FR-07, FR-08)",
+      "item": [
+        {
+          "name": "The drawer: float + cash fee + locker fee",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"expected ৳1,800 (500 + 1,000 + 300; the cash sale was reversed)\", () => { pm.expect(j.status === \"open\" && j.cash.expectedPoisha === 180000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cashierToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/cash-drawer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "cash-drawer"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Close with ৳1,790 counted",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"short ৳10\", () => { pm.expect(j.status === 'closed' && j.differencePoisha === -1000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cashierToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"countedPoisha\": 179000,\n  \"note\": \"Short by ৳10\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/cash-drawer/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "cash-drawer",
+                "close"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A cash sale after closing (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 GYM_DRAWER_CLOSED', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('GYM_DRAWER_CLOSED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cashierToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "go-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lines\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"qty\": 1\n    }\n  ],\n  \"method\": \"cash\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/sales",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "sales"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Profit and loss, VAT (M27-FR-27, FR-28)",
+      "item": [
+        {
+          "name": "This month",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"fees ৳1,000 + sales ৳13,500 + lockers ৳300 − goods ৳9,900 − expenses ৳1,500\", () => { pm.expect(j.current.income.fees === 100000 && j.current.income.posSales === 1350000 && j.current.income.lockerFees === 30000 && j.current.goodsCost === 990000 && j.current.expenses.total === 150000 && j.current.net === 340000).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/pnl",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "pnl"
+              ]
+            }
+          }
+        },
+        {
+          "name": "VAT above the cap (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vatEnabled\": true,\n  \"vatBps\": 1600\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "settings"
+              ]
+            }
+          }
+        },
+        {
+          "name": "VAT 15% on",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"on\", () => { pm.expect(j.vatEnabled === true && j.vatBps === 1500 && j.vatMaxBps === 1500).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vatEnabled\": true,\n  \"vatBps\": 1500\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "settings"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A card sale shows the VAT inside",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"৳4,500 incl. ৳587 VAT\", () => { pm.expect(j.vat.bps === 1500 && j.vat.vat === 58696 && j.vat.net === 391304).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cashierToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "go-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lines\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"qty\": 1\n    }\n  ],\n  \"method\": \"card_counter\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/sales",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "sales"
+              ]
+            }
+          }
+        },
+        {
+          "name": "VAT off again",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vatEnabled\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "settings"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Health, dashboard, absent (M27-FR-30 to FR-33)",
+      "item": [
+        {
+          "name": "The member sets height and weight",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"BMI 22.9, normal\", () => { pm.expect(j.bmi.value === 22.9 && j.bmi.band === 'normal').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"heightCm\": 175,\n  \"weightKg\": 70,\n  \"bloodGroup\": \"B+\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/gym-memberships/{{memberId}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gym-memberships",
+                "{{memberId}}",
+                "health"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The owner sees the body fields",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"blood group and BMI\", () => { pm.expect(j.member.bloodGroup === 'B+' && j.member.bmi.value === 22.9).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/members/{{memberId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "members",
+                "{{memberId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff with members.view only: no health fields",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"hidden\", () => { pm.expect(j.member.bloodGroup === undefined && j.member.bmi === undefined && j.member.medical === undefined).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/members/{{memberId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "members",
+                "{{memberId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The dashboard: who ends soon and the mix",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"lists\", () => { pm.expect(Array.isArray(j.expiring) && j.mix.active >= 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/overview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "overview"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Absent for 7 days",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/reports/absent?days=7",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "reports",
+                "absent"
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "7"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "0 days (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/reports/absent?days=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "reports",
+                "absent"
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

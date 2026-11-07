@@ -115,7 +115,7 @@ const collection = {
     {
       name: '4. Reminders and reports (FR-55 to FR-61, FR-70 to FR-74)',
       item: [
-        owner('The reminders page', 'GET', `${G}/reminders`, { expect: { status: 200 }, checks: [['offsets from settings, the log', "j.feature.reminders === true && j.offsets.remindBeforeDays === 3 && j.offsets.overdueRemindDays[0] === 3 && j.log.items.some((x) => x.kind === 'pay_link') && j.log.items.some((x) => x.kind === 'receipt')"], noPhone] }),
+        owner('The reminders page', 'GET', `${G}/reminders`, { expect: { status: 200 }, checks: [['offsets from settings, the log', "j.feature.reminders === true && JSON.stringify(j.offsets.renewalRemindDays) === '[7,3,1]' && j.offsets.overdueRemindDays[0] === 3 && j.log.items.some((x) => x.kind === 'pay_link') && j.log.items.some((x) => x.kind === 'receipt')"], noPhone] }),
         cashier('Staff never see the reminders page (expect 403)', 'GET', `${G}/reminders`, { expect: { status: 403, code: 'PERMISSION_REQUIRED' } }),
         control('run the reminder jobs twice on a fake clock', 'reminders', { checks: [['once only: the second runs send nothing', 'j.second.renewal_due === 0 && j.second.overdue === 0 && j.secondMorning.sent === 0']] }),
         owner('Reports need Standard (expect 403)', 'GET', `${G}/reports?month={{month}}`, { expect: { status: 403, code: 'GYM_TIER_REQUIRED' }, checks: [['standard', "j.feature === 'reports' && j.minTier === 'standard'"]] }),

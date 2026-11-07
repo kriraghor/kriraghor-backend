@@ -32,6 +32,7 @@ const orders = require('../modules/orders/orders.jobs');
 const hire = require('../modules/hire/hire.jobs');
 const gym = require('../modules/gym/gym.jobs');
 const gymManage = require('../modules/gym-manage/gym-manage.jobs');
+const gymOpsJobs = require('../modules/gym-ops/gym-ops.jobs');
 const saas = require('../modules/organiser-saas/saas.jobs');
 const esportsEvents = require('../modules/esports-events/events.jobs');
 const teamsJobs = require('../modules/teams/teams.jobs');
@@ -410,6 +411,15 @@ const JOBS = [
     pattern: '0 8 1 * *',
     tz: 'Asia/Dhaka',
     run: async () => gymManage.monthlyReport(),
+  },
+  {
+    // M27: locker rentals ending soon are reminded and ended ones free their lockers; products near
+    // their expiry date alert the gym once (09:00 Dhaka, after the morning's renewal reminders).
+    name: 'gym-ops.daily',
+    queue: QUEUES.GYM,
+    pattern: '5 9 * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => gymOpsJobs.daily(),
   },
   {
     // Renewal due, ends today, expired and overdue reminders (§6.9); the once-key first (M24-FR-56).

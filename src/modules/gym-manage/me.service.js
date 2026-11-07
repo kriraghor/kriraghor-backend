@@ -78,7 +78,7 @@ async function detail(principal, memberId) {
   const freezes = mss.length ? await GymFreeze.findAll({ where: { membershipId: mss.map((x) => x.id) }, order: [['fromOn', 'ASC']] }) : [];
   const reversedOn = new Map(payments.filter((p) => p.reversesId).map((p) => [p.reversesId, p.paidOn]));
   return {
-    member: { id: m.id, memberCode: m.memberCode, displayName: m.displayName, status: m.status, linked, joinedOn: m.joinedOn, gym: gymRef(await gymFacade.get(m.gymId)), ...(linked ? { healthNote: c.dec(m.healthNoteEnc), healthNoteAt: c.iso(m.healthNoteAt) } : {}) },
+    member: { id: m.id, memberCode: m.memberCode, displayName: m.displayName, status: m.status, linked, joinedOn: m.joinedOn, gym: gymRef(await gymFacade.get(m.gymId)), ...(linked ? { healthNote: c.dec(m.healthNoteEnc), healthNoteAt: c.iso(m.healthNoteAt), health: healthView(m) } : {}) },
     memberships: mss.map((ms) => view.membershipView(ms, { today, freezes: freezes.filter((f) => f.membershipId === ms.id) })),
     dues: dueRows.map((d) => {
       const v = view.dueView(d, { today, payments: payments.filter((p) => p.dueId === d.id) });
@@ -115,6 +115,21 @@ async function checkinToken(principal, memberId) {
   return { memberId: m.id, gymId: m.gymId, ...c.memberTokenOf(m.id) };
 }
 
+/** PUT /me/gym-memberships/:memberId/health (linked; M27-FR-30): blood group, height, weight, conditions. */
+async function setHealth(principal, memberId, input, req) {
+  const { m, linked } = await mine(principal, memberId);
+  if (!linked) throw E.notFound('Membership');
+  const changes = require('./members.service').healthChanges(input);
+  await sequelize.transaction(async (transaction) => {
+    await m.update({ ...changes, version: m.version + 1 }, { transaction });
+    await c.record({ action: 'gym_member.health_set', actor: principal, entityType: 'gym_member', entityId: m.id, entityCode: m.memberCode, after: { fields: Object.keys(input) }, meta: { gymId: m.gymId }, req }, transaction);
+  });
+  return healthView(m);
+}
+
+/** The member's own health profile with BMI (M27-FR-30). */
+const healthView = (m) => ({ memberId: m.id, bloodGroup: m.bloodGroup ?? null, heightCm: m.heightCm ?? null, weightKg: m.weightKg ?? null, bmi: rules.bmiOf(m), medical: c.dec(m.medicalEnc) });
+
 /** PUT /me/gym-memberships/:memberId/health-note { text } (linked; encrypted; empty clears it). */
 async function setHealthNote(principal, memberId, { text }, req) {
   const { m, linked } = await mine(principal, memberId);
@@ -149,4 +164,6 @@ async function receipt(principal, feePaymentId) {
   return dues.receiptOf(p);
 }
 
-module.exports = { myMembers, list, detail, attendance, checkinToken, setHealthNote, receipts, receipt };
+module.exports = {
+  setHealth,
+  healthView, myMembers, list, detail, attendance, checkinToken, setHealthNote, receipts, receipt };

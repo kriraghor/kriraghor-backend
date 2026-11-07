@@ -89,7 +89,7 @@ describe('private gym and onboarding (FR-01, FR-02, FR-09, FR-24, FR-81)', () =>
       ['standard', 300, 150000],
       ['pro', null, 250000],
     ]);
-    expect(pricing.tiers[1].features).toEqual(['attendance', 'reminders', 'online_fees']);
+    expect(pricing.tiers[1].features).toEqual(['attendance', 'reminders', 'online_fees', 'expenses', 'lockers']); // M27 round 1 adds expenses and lockers to basic
 
     // Billing: choose a tier (features unlock at once; the month keeps the highest).
     const bill = (await api().put(`${P}/manage/billing/tier`).set(h.bearer(owner)).send({ tier: 'standard' }).expect(200)).body;

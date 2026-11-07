@@ -70,6 +70,20 @@ async function listMine(principal) {
 }
 
 /** GET /manage/gyms/:gymId/overview (any staff of the gym): the dashboard tiles (FR-70). */
+/** Members whose running membership ends within gym_manage.expiring_list_days and who have not renewed (M27-FR-32). */
+async function expiringSoon(gymId, today) {
+  const rows = await sequelize.query(
+    `SELECT m.id AS "memberId", m.member_code AS "memberCode", m.display_name AS "displayName", m.phone_last4 AS "phoneLast4", ms.ends_on AS "endsOn",
+            (m.user_id IS NOT NULL) AS linked
+       FROM gym_memberships ms JOIN gym_members m ON m.id = ms.member_id
+      WHERE ms.gym_id = :gymId AND ms.status IN ('active', 'frozen') AND ms.ends_on BETWEEN :today AND :until AND m.status NOT IN ('left', 'removed')
+        AND NOT EXISTS (SELECT 1 FROM gym_memberships up WHERE up.member_id = ms.member_id AND up.status = 'upcoming')
+      ORDER BY ms.ends_on ASC, m.display_name ASC LIMIT 50`,
+    { replacements: { gymId, today, until: rules.addDays(today, c.cfg().expiringListDays) }, type: QueryTypes.SELECT }
+  );
+  return rows.map((r) => ({ ...r, daysLeft: rules.daysBetween(today, r.endsOn) }));
+}
+
 async function overview(principal, gymId) {
   const a = await c.gymAccess(principal, gymId, null);
   const today = c.today();
@@ -108,7 +122,16 @@ async function overview(principal, gymId) {
     // FR-70: the money tiles only for the owner and reports.view.
     ...(money ? { collectedTodayPoisha: Number(row.collectedTodayPoisha), dueTodayPoisha: Number(row.dueTodayPoisha) } : {}),
   };
-  return c.shown(a, { gymId, date: today, setupDone: Boolean(s), ...(await planOf(a.gym.ownerId)), tiles });
+  // M27-FR-32: who ends soon (for the call and WhatsApp buttons) and the membership mix.
+  const expiring = a.can('members.view') ? await expiringSoon(gymId, today) : [];
+  const [mix] = await sequelize.query(
+    `SELECT COUNT(*) FILTER (WHERE status = 'active')::int AS active, COUNT(*) FILTER (WHERE status = 'frozen')::int AS frozen,
+            COUNT(*) FILTER (WHERE status = 'expired')::int AS expired, COUNT(*) FILTER (WHERE status = 'new')::int AS "new",
+            COUNT(*) FILTER (WHERE status = 'left')::int AS "left"
+       FROM gym_members WHERE gym_id = :gymId AND status <> 'removed'`,
+    { replacements: { gymId }, type: QueryTypes.SELECT }
+  );
+  return c.shown(a, { gymId, date: today, setupDone: Boolean(s), ...(await planOf(a.gym.ownerId)), tiles, expiring, mix });
 }
 
 /**
@@ -137,6 +160,9 @@ function settingsView(gym, s) {
     joinRequestsOpen: s?.joinRequestsOpen ?? true,
     remindersOff: s?.remindersOff ?? [],
     smsKinds: s?.smsKinds ?? [],
+    vatEnabled: s?.vatEnabled ?? false,
+    vatBps: s?.vatBps ?? null,
+    vatMaxBps: c.cfg().vatMaxBps,
     importConsentUntil: c.iso(s?.importConsentUntil),
     nextMemberCode: s ? rules.memberCode(s.shortCode, s.memberSeq + 1) : null,
   };
@@ -159,10 +185,14 @@ async function patchSettings(principal, gymId, input, req) {
     const { minValue: min, maxValue: max } = settingsFacade.definition('gym_manage.absent_alert_days');
     if (input.absentAlertDays < min || input.absentAlertDays > max) throw E.validation([{ field: 'absentAlertDays', message: `Between ${min} and ${max}` }]);
   }
+  // M27-FR-28: a VAT rate within gym_manage.vat_max_bps; VAT on needs a rate.
+  if (input.vatBps !== undefined && input.vatBps !== null && input.vatBps > c.cfg().vatMaxBps) {
+    throw E.validation([{ field: 'vatBps', message: `At most ${c.cfg().vatMaxBps}` }]);
+  }
   try {
     await sequelize.transaction(async (transaction) => {
       const s = await c.settingsOf(gymId, { transaction, lock: true });
-      const fields = ['shortCode', 'tin', 'bin', 'receiptFooter', 'entryPolicy', 'absentAlertDays', 'joinRequestsOpen', 'remindersOff', 'smsKinds'].filter((k) => input[k] !== undefined);
+      const fields = ['shortCode', 'tin', 'bin', 'receiptFooter', 'entryPolicy', 'absentAlertDays', 'joinRequestsOpen', 'remindersOff', 'smsKinds', 'vatEnabled', 'vatBps'].filter((k) => input[k] !== undefined);
       const changes = Object.fromEntries(fields.map((k) => [k, input[k]]));
       if (changes.shortCode) {
         const taken = await GymManageSettings.findOne({ where: { ownerId: a.gym.ownerId, shortCode: changes.shortCode, gymId: { [Op.ne]: gymId } }, attributes: ['gymId'], transaction });

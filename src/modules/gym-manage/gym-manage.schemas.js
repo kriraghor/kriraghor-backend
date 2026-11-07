@@ -28,6 +28,16 @@ const PAY_METHODS = ['cash', 'owner_bkash', 'owner_nagad', 'card_counter', 'othe
 const KINDS = ['day', 'month', 'quarter', 'half_year', 'year', 'custom'];
 const REMINDER_KINDS = ['renewal_due', 'ends_today', 'overdue', 'expired', 'receipt', 'pay_link', 'plan', 'morning', 'monthly'];
 const SMS_KINDS = ['renewal_due', 'ends_today', 'overdue', 'receipt', 'pay_link'];
+// M27-FR-30: blood group, height, weight, conditions and injuries (encrypted); null clears a field.
+const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+const HEALTH_FIELDS = {
+  bloodGroup: z.enum(BLOOD_GROUPS).nullable().optional(),
+  heightCm: z.number().int().min(50).max(250).nullable().optional(),
+  weightKg: z.number().min(10).max(400).multipleOf(0.1).nullable().optional(),
+  medical: z.string().trim().max(500).nullable().optional().meta({ description: 'Conditions and injuries, encrypted; shown to the owner and plans.manage only' }),
+};
+const Bmi = z.object({ value: z.number(), band: z.enum(['under', 'normal', 'over', 'obese']) }).meta({ id: 'GymBmi' });
+const absentQuery = z.object({ days: z.coerce.number().int().min(1).max(365).optional().meta({ description: 'Not seen for this many days (M27-FR-31); default the gym setting' }) });
 const REQUEST_STATUSES = ['pending', 'accepted', 'declined', 'expired', 'cancelled'];
 const IMPORT_STATUSES = ['previewed', 'applied', 'undone', 'discarded'];
 const FEATURES = rules.FEATURES;
@@ -62,6 +72,8 @@ const settingsPatch = z
     joinRequestsOpen: z.boolean().optional(),
     remindersOff: z.array(z.enum(REMINDER_KINDS)).max(REMINDER_KINDS.length).optional(),
     smsKinds: z.array(z.enum(SMS_KINDS)).max(SMS_KINDS.length).optional(),
+    vatEnabled: z.boolean().optional().meta({ description: 'M27-FR-28: show VAT on member receipts (prices include it); needs vatBps' }),
+    vatBps: nullable(z.number().int().min(1).max(10000)).optional().meta({ description: 'The VAT rate in basis points (15% = 1500), at most gym_manage.vat_max_bps' }),
   })
   .refine((b) => Object.keys(b).length > 0, 'Nothing to change');
 const deskSearchQuery = z.object({ q: text(1, 200) });
@@ -109,6 +121,7 @@ const memberBody = z.object({
   birthDate: date.optional(),
   email: z.email().max(191).nullable().optional(),
   emergencyContact: z.object({ name: text(1, 80), phone: z.string().trim().min(6).max(20) }).nullable().optional(),
+  ...HEALTH_FIELDS,
   notes: text(1, 2000).optional().meta({ description: 'The first note (append-only, never shown to the member)' }),
   membership: z.object(assignFields).optional(),
   payment: paymentBody.optional().meta({ description: 'Needs membership; fees.collect' }),
@@ -122,6 +135,7 @@ const memberPatch = z
     birthDate: nullable(date).optional(),
     email: z.email().max(191).nullable().optional(),
     emergencyContact: z.object({ name: text(1, 80), phone: z.string().trim().min(6).max(20) }).nullable().optional(),
+    ...HEALTH_FIELDS,
   })
   .refine((b) => Object.keys(b).length > 1, 'Nothing to change');
 const inviteBody = z
@@ -147,6 +161,8 @@ const consentBody = z.object({ grant: z.boolean() });
 const tierBody = z.object({ tier: z.enum(rules.TIERS) });
 const meRequestsQuery = z.object({ status: z.enum(REQUEST_STATUSES).optional(), direction: z.enum(['gym_invite', 'join_request']).optional().meta({ description: 'Default both: invites to me and my join requests' }) });
 const healthNoteBody = z.object({ text: nullable(z.string().max(500)) });
+/** M27-FR-30: the member's own health profile (linked; encrypted conditions). */
+const healthBody = z.object(HEALTH_FIELDS).refine((b) => Object.keys(b).length > 0, 'Nothing to change');
 
 // ---------------- responses
 const MemberSummary = z
@@ -249,6 +265,11 @@ const MemberProfile = z
       emergencyContact: nullable(z.object({ name: z.string(), phone: z.string() })).optional().meta({ description: 'Owner and members.edit only' }),
       healthNote: nullable(z.string()).optional().meta({ description: 'Owner (and plans.manage) only' }),
       healthNoteBy: nullable(z.enum(['member', 'staff'])).optional(),
+      bloodGroup: nullable(z.enum(BLOOD_GROUPS)).optional().meta({ description: 'Owner and members.edit only (M27-FR-30)' }),
+      heightCm: nullable(z.number().int()).optional().meta({ description: 'Owner (and plans.manage) only' }),
+      weightKg: nullable(z.number()).optional().meta({ description: 'Owner (and plans.manage) only' }),
+      bmi: nullable(Bmi).optional().meta({ description: 'Owner (and plans.manage) only' }),
+      medical: nullable(z.string()).optional().meta({ description: 'Conditions and injuries; owner (and plans.manage) only' }),
       leftOn: nullable(date),
       leftReason: nullable(z.enum(rules.LEFT_REASONS)),
       removedAt: nullable(dateTime),
@@ -378,6 +399,11 @@ const Overview = z
       collectedTodayPoisha: poisha.optional().meta({ description: 'Owner and reports.view only' }),
       dueTodayPoisha: poisha.optional().meta({ description: 'Owner and reports.view only' }),
     }),
+    // M27-FR-32, FR-33 (round 1).
+    expiring: z
+      .array(z.object({ memberId: id, memberCode: z.string(), displayName: z.string(), phoneLast4: z.string(), endsOn: date, daysLeft: z.number().int(), linked: z.boolean() }))
+      .meta({ description: 'Memberships ending within gym_manage.expiring_list_days, not yet renewed (members.view; empty otherwise); at most 50' }),
+    mix: z.object({ active: z.number().int(), frozen: z.number().int(), expired: z.number().int(), new: z.number().int(), left: z.number().int() }).meta({ description: 'Members by status (removed left out)' }),
   })
   .meta({ id: 'GymOverview' });
 const Packages = z
@@ -413,6 +439,9 @@ const Settings = z
     joinRequestsOpen: z.boolean(),
     remindersOff: z.array(z.string()),
     smsKinds: z.array(z.string()),
+    vatEnabled: z.boolean(),
+    vatBps: nullable(z.number().int()),
+    vatMaxBps: z.number().int(),
     importConsentUntil: nullable(dateTime),
     nextMemberCode: nullable(z.string()),
   })
@@ -537,7 +566,7 @@ const RemindersPage = z
     feature: z.object({ reminders: z.boolean(), minTier: z.enum(rules.TIERS) }),
     restricted: z.boolean(),
     kinds: z.array(z.object({ kind: z.enum(REMINDER_KINDS), on: z.boolean(), member: z.boolean() })),
-    offsets: z.object({ remindBeforeDays: z.number().int(), overdueRemindDays: z.array(z.number().int()), morningSummaryTime: z.string() }),
+    offsets: z.object({ renewalRemindDays: z.array(z.number().int()), overdueRemindDays: z.array(z.number().int()), morningSummaryTime: z.string() }),
     sms: z.object({ available: z.boolean().meta({ description: 'The SMS add-on (prompt 3b); false in prompt 2' }), kinds: z.array(z.string()) }),
     reachability: z.object({ activeMembers: z.number().int(), smsOnly: z.number().int().meta({ description: 'Active members with no linked account and no email (reachable only by SMS, M24-FR-59)' }) }),
     log: z.object({
@@ -847,9 +876,12 @@ const MyMemberships = z
   })
   .meta({ id: 'MyGymMemberships' });
 const MyReceiptItem = z.object({ id, receiptNo: z.string(), amountPoisha: poisha, method: z.enum(PAY_METHODS), paidOn: date, url: z.string(), reversedOn: nullable(date), gym: GymRef.optional(), memberCode: z.string().optional() });
+const HealthProfile = z
+  .object({ memberId: id, bloodGroup: nullable(z.enum(BLOOD_GROUPS)), heightCm: nullable(z.number().int()), weightKg: nullable(z.number()), bmi: nullable(Bmi), medical: nullable(z.string()) })
+  .meta({ id: 'GymHealthProfile' });
 const MyMembership = z
   .object({
-    member: z.object({ id, memberCode: z.string(), displayName: z.string(), status: z.enum(MEMBER_STATUSES), linked: z.boolean(), joinedOn: date, gym: GymRef, healthNote: nullable(z.string()).optional(), healthNoteAt: nullable(dateTime).optional() }),
+    member: z.object({ id, memberCode: z.string(), displayName: z.string(), status: z.enum(MEMBER_STATUSES), linked: z.boolean(), joinedOn: date, gym: GymRef, healthNote: nullable(z.string()).optional(), healthNoteAt: nullable(dateTime).optional(), health: HealthProfile.optional().meta({ description: 'M27-FR-30: my own health fields and BMI (linked members)' }) }),
     memberships: z.array(Membership),
     dues: z.array(Due),
     receipts: z.array(MyReceiptItem),
@@ -1155,6 +1187,8 @@ module.exports = {
   tierBody,
   meRequestsQuery,
   healthNoteBody,
+  healthBody,
+  absentQuery,
   MemberSummary,
   MemberListItem,
   MemberList,
@@ -1200,6 +1234,7 @@ module.exports = {
   MyReceipts,
   CheckinToken,
   HealthNote,
+  HealthProfile,
   linkParam,
   meDueParam,
   invoiceParam,

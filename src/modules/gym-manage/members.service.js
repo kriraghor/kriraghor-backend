@@ -75,6 +75,7 @@ async function createIn(transaction, { gym, settings, input, source, actor, toda
           gender: input.gender ?? null,
           birthDate: input.birthDate ?? null,
           emergencyContactEnc: input.emergencyContact ? c.enc(JSON.stringify(input.emergencyContact)) : null,
+          ...healthChanges(input),
           source,
           status: 'new',
           userId,
@@ -253,6 +254,9 @@ async function profile(a, m, today) {
       // §7.3: email and emergency contact for the owner and members.edit; the health note for the owner (and plans.manage, prompt 3).
       ...(edit ? { email: c.dec(m.emailEnc), emergencyContact: c.decJson(m.emergencyContactEnc) } : {}),
       ...(a.owner || a.can('plans.manage') ? { healthNote: c.dec(m.healthNoteEnc), healthNoteBy: m.healthNoteBy ?? null } : {}),
+      // M27-FR-30: blood group with the emergency contact; body and conditions with the health note.
+      ...(edit ? { bloodGroup: m.bloodGroup ?? null } : {}),
+      ...(a.owner || a.can('plans.manage') ? { heightCm: m.heightCm ?? null, weightKg: m.weightKg ?? null, bmi: rules.bmiOf(m), medical: c.dec(m.medicalEnc) } : {}),
       leftOn: m.leftOn ?? null,
       leftReason: m.leftReason ?? null,
       removedAt: c.iso(m.removedAt),
@@ -280,6 +284,9 @@ async function get(principal, gymId, memberId) {
 /** PATCH /manage/gyms/:gymId/members/:memberId { version, … } (members.edit; FR-13). Encrypted fields audit as "changed". */
 async function update(principal, gymId, memberId, input, req) {
   const a = await c.gymAccess(principal, gymId, 'members.edit', { restricted: true });
+  // M27-FR-30: height, weight and conditions are changed only by those who can see them (the owner and
+  // plans.manage); desk staff keep the blood group. A new member's form may carry them (intake).
+  if (['heightCm', 'weightKg', 'medical'].some((k) => input[k] !== undefined)) c.needs(a, 'plans.manage');
   await sequelize.transaction(async (transaction) => {
     const m = await memberships.lockedMember(gymId, memberId, transaction);
     if (m.status === 'removed') throw fail('GYM_MEMBER_STATE', { reason: 'removed' });
@@ -313,6 +320,9 @@ async function update(principal, gymId, memberId, input, req) {
       changes.emergencyContactEnc = input.emergencyContact ? c.enc(JSON.stringify(input.emergencyContact)) : null;
       after.emergencyContact = 'changed';
     }
+    const health = healthChanges(input);
+    Object.assign(changes, health);
+    for (const k of Object.keys(health)) after[k === 'medicalEnc' ? 'medical' : k] = 'changed';
     if (!Object.keys(changes).length) return;
     await m.update({ ...changes, version: m.version + 1, updatedBy: principal.id }, { transaction });
     await c.record({ action: 'gym_member.updated', actor: a.actor, entityType: 'gym_member', entityId: m.id, entityCode: m.memberCode, before, after, meta: { gymId }, req }, transaction);
@@ -466,4 +476,15 @@ async function getPhoto(principal, gymId, memberId) {
   return { body: obj.body, mime: obj.contentType ?? 'image/jpeg' };
 }
 
-module.exports = { SEE, visibleMember, phoneOf, phoneTaken, createIn, add, list, profile, get, update, revealPhone, leave, rejoin, removeIn, remove, notes, addNote, calendarOf, attendance, setPhoto, getPhoto };
+/** M27-FR-30: the health fields of a body as column changes (conditions encrypted); untouched fields are left out. */
+function healthChanges(input) {
+  const out = {};
+  if (input.bloodGroup !== undefined) out.bloodGroup = input.bloodGroup;
+  if (input.heightCm !== undefined) out.heightCm = input.heightCm;
+  if (input.weightKg !== undefined) out.weightKg = input.weightKg;
+  if (input.medical !== undefined) out.medicalEnc = input.medical?.trim() ? c.enc(input.medical.trim()) : null;
+  return out;
+}
+
+module.exports = {
+  healthChanges, SEE, visibleMember, phoneOf, phoneTaken, createIn, add, list, profile, get, update, revealPhone, leave, rejoin, removeIn, remove, notes, addNote, calendarOf, attendance, setPhoto, getPhoto };
