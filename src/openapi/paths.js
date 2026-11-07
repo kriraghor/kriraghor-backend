@@ -25,6 +25,7 @@ const orS = require('../modules/orders/orders.schemas');
 const hiS = require('../modules/hire/hire.schemas');
 const gyS = require('../modules/gym/gym.schemas');
 const gmS = require('../modules/gym-manage/gym-manage.schemas');
+const goS = require('../modules/gym-ops/gym-ops.schemas');
 const orgS = require('../modules/organisations/organisations.schemas');
 const saS = require('../modules/organiser-saas/saas.schemas');
 const evS = require('../modules/esports-events/events.schemas');
@@ -1093,6 +1094,7 @@ function register(registry) {
   p({ method: 'get', path: '/me/gyms/{id}', tags: ['gym'], summary: 'My gym (the working copy)', security: bearer, request: gyId, responses: { 200: json(gyS.OwnerGym), ...errors(GYM_OWNER) } });
   p({ method: 'patch', path: '/me/gyms/{id}', tags: ['gym'], summary: 'Edit the working copy (an edit of a live gym waits for review)', security: bearer, request: { ...gyId, ...body(gyS.updateGym) }, responses: { 200: json(gyS.OwnerGym), ...errors({ ...GYM_OWNER, ...VALIDATION }) } });
   p({ method: 'put', path: '/me/gyms/{id}/hours', tags: ['gym'], summary: 'The week of opening windows (some women-only)', security: bearer, request: { ...gyId, ...body(gyS.hoursBody) }, responses: { 200: json(gyS.OwnerGym), ...errors({ ...GYM_OWNER, ...VALIDATION }) } });
+  p({ method: 'post', path: '/me/gyms/{id}/remove', tags: ['gym'], summary: 'Remove my gym (M20-FR-15): type its name; never deleted, the status becomes removed; refused while members hold paid online packages', security: bearer, request: { ...gyId, ...body(gyS.removeGym) }, responses: { 200: json(z.object({ id: z.string().uuid(), status: z.literal('removed') })), ...errors({ ...GYM_OWNER, 409: ['GYM_STATE', 'GYM_HAS_ACTIVE_PASSES'], 422: ['GYM_NAME_MISMATCH'] }) } });
   p({ method: 'put', path: '/me/gyms/{id}/packages', tags: ['gym'], summary: 'Every active package (M24-FR-24): month, quarter, 6 months, 12 months (one each) and custom days (at most gym_manage.max_custom_packages); admission fee, channel desk/online/both, visit limit, order. A day pass sold online (within gym.day_pass_min/max_poisha) is needed only to submit', security: bearer, request: { ...gyId, ...body(gyS.packagesBody) }, responses: { 200: json(gyS.OwnerGym), ...errors({ ...GYM_OWNER, ...VALIDATION }) } });
   p({ method: 'post', path: '/me/gyms/{id}/photos', tags: ['gym'], summary: 'Upload a photo (raw JPEG, PNG or WebP, checked by its first bytes) to the public bucket', security: bearer,
     request: { ...gyId, body: gyPhoto('The photo itself, up to ground.photo_max_bytes') }, responses: { 201: json(z.object({ id: z.uuid(), url: z.string() }), 'Created'), ...errors({ ...GYM_OWNER, 409: ['GYM_IN_REVIEW', 'GYM_STATE', 'PHOTO_LIMIT'], 413: ['FILE_TOO_LARGE'], 415: ['FILE_TYPE_NOT_ALLOWED', 'FILE_TYPE_MISMATCH'], 422: ['FILE_EMPTY'], 429: ['UPLOAD_RATE_LIMITED'] }) } });
@@ -1226,6 +1228,7 @@ function register(registry) {
   p({ method: 'get', path: '/me/gym-memberships/{memberId}/attendance', tags: gmTag, summary: 'My check-ins of a month', security: bearer, request: { ...gmMe, query: gmS.monthQuery }, responses: { 200: json(gmS.Calendar), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'] }) } });
   p({ method: 'get', path: '/me/gym-memberships/{memberId}/checkin-token', tags: gmTag, summary: 'My rotating check-in QR token (linked only; no-store; valid for gym_manage.member_qr_seconds, the desk also accepts the previous one) (M24-FR-50)', security: bearer, request: gmMe, responses: { 200: json(gmS.CheckinToken), ...errors({ ...COMMON_AUTH, 403: ['GYM_NOT_A_MEMBER'], 404: ['NOT_FOUND'] }) } });
   p({ method: 'put', path: '/me/gym-memberships/{memberId}/health-note', tags: gmTag, summary: 'My health note at this gym (encrypted; shown to the owner and plans.manage staff; empty clears it)', security: bearer, request: { ...gmMe, ...body(gmS.healthNoteBody) }, responses: { 200: json(gmS.HealthNote), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], ...VALIDATION }) } });
+  p({ method: 'put', path: '/me/gym-memberships/{memberId}/health', tags: gmTag, summary: 'My health profile at this gym: blood group, height, weight, conditions and injuries (encrypted); BMI comes back (M27-FR-30)', security: bearer, request: { ...gmMe, ...body(gmS.healthBody) }, responses: { 200: json(gmS.HealthProfile), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], ...VALIDATION }) } });
   p({ method: 'post', path: '/me/gym-memberships/{memberId}/unlink', tags: gmTag, summary: 'Unlink my account from this gym (the gym keeps its record; my receipts stay under Past)', security: bearer, request: gmMe, responses: { 200: json(gmS.UnlinkResult), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], 409: ['GYM_MEMBER_STATE'] }) } });
   p({ method: 'get', path: '/me/gym-receipts', tags: gmTag, summary: 'My gym receipts across gyms', security: bearer, responses: { 200: json(gmS.MyReceipts), ...errors(COMMON_AUTH) } });
   p({ method: 'get', path: '/me/gym-receipts/{feePaymentId}', tags: gmTag, summary: 'One of my receipts', security: bearer, request: { params: gmS.meReceiptParam }, responses: { 200: json(gmS.Receipt), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'] }) } });
@@ -1251,7 +1254,7 @@ function register(registry) {
   });
   gp('get', '/reminders', 'The reminders page (owner): kinds on or off, offsets from settings, members reachable only by SMS, the log of the last gym_manage.reminder_log_days (no text, no phone) (M24-FR-59, FR-61)', { request: gmG, responses: { 200: json(gmS.RemindersPage), ...errors(GM) } });
   gp('get', '/reports', 'Members, money and attendance for a month or a period (reports.view, plan feature reports) (M24-FR-71)', { request: { ...gmG, query: gmS.reportQuery }, responses: { 200: json(gmS.GymReport), ...errors({ ...GM, 403: [...GM[403], 'GYM_TIER_REQUIRED'] }) } });
-  gp('get', '/reports/absent', 'Members not seen for the gym’s absent days (members.view; no money) (M24-FR-53)', { request: gmG, responses: { 200: json(gmS.AbsentList), ...errors(GM) } });
+  gp('get', '/reports/absent', 'Members not seen for the gym’s absent days, or ?days= 7, 14, 30 or any number (members.view; no money) (M24-FR-53, M27-FR-31)', { request: { ...gmG, query: gmS.absentQuery }, responses: { 200: json(gmS.AbsentList), ...errors(GM) } });
   gp('get', '/reports/export', 'CSV export (owner, plan feature reports): members (with the full phone), payments or check-ins for a period; at most analytics.export_sync_max_rows rows and analytics.exports_per_hour; audited (M24-FR-73)', {
     request: { ...gmG, query: gmS.exportQuery },
     responses: { 200: gmCsv, ...errors({ ...GM, 403: [...GM[403], 'GYM_TIER_REQUIRED'], 422: ['VALIDATION_FAILED', 'EXPORT_TOO_LARGE'], 429: ['EXPORT_LIMIT'] }) },
@@ -1334,6 +1337,47 @@ function register(registry) {
     request: body(gmS.meCheckinBody),
     responses: { 201: json(gmS.EntranceCheckin, 'Counted'), 200: json(gmS.EntranceCheckin, 'Already checked in today'), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'GYM_NOT_A_MEMBER', 'GYM_TIER_REQUIRED'], 409: ['GYM_ENTRY_BLOCKED', 'GYM_MEMBER_STATE'], 422: ['VALIDATION_FAILED', 'GYM_CHECKIN_TOKEN_INVALID'] }) } });
 
+
+  // ------------------------------------------------------------------ M27 gym operations, round 1 (expenses, drawer, P&L, shop, lockers)
+  const goG = { params: goS.gymParam };
+  const tier = ['GYM_TIER_REQUIRED', 'PERMISSION_REQUIRED', 'GYM_ACCOUNT_RESTRICTED'];
+  const goErr = (extra = {}) => errors({ ...GM, 403: tier, ...extra });
+  gp('get', '/expense-categories', 'Expense categories; the defaults are made the first time (expenses.manage or reports.view; feature expenses) (M27-FR-01)', { request: goG, responses: { 200: json(goS.Categories), ...goErr() } });
+  gp('put', '/expense-categories', 'Rename, add or retire expense categories (owner) (M27-FR-01)', { request: { ...goG, ...body(goS.categoriesBody) }, responses: { 200: json(goS.Categories), ...goErr({ 422: ['VALIDATION_FAILED', 'GYM_EXPENSE_CATEGORY_UNKNOWN'] }) } });
+  gp('get', '/expenses', 'Expenses, newest first, with the period total (expenses.manage or reports.view) (M27-FR-05)', { request: { ...goG, query: goS.expenseQuery }, responses: { 200: json(goS.Expenses), ...goErr() } });
+  gp('post', '/expenses', 'Record an expense (expenses.manage); cash may come from today’s drawer. Bookkeeping only (M27-FR-02, FR-03)', {
+    request: { ...goG, headers: idem, ...body(goS.expenseBody) },
+    responses: { 201: json(goS.Expense, 'Created'), ...goErr({ 409: ['GYM_DRAWER_CLOSED'], 422: ['VALIDATION_FAILED', 'GYM_AMOUNT_OUT_OF_RANGE', 'GYM_DATE_OUT_OF_RANGE', 'GYM_EXPENSE_CATEGORY_UNKNOWN'] }) },
+  });
+  gp('post', '/expenses/{expenseId}/void', 'Void an expense with a reason; never deleted (expenses.manage) (M27-FR-04)', { request: { params: goS.expenseParam, ...body(goS.reasonBody) }, responses: { 200: json(goS.Expense), ...goErr({ 409: ['GYM_EXPENSE_STATE', 'GYM_DRAWER_CLOSED'] }) } });
+  gp('get', '/cash-drawer', 'The day’s cash drawer: float, cash in and out, expected, counted (cash.drawer or reports.view; feature expenses) (M27-FR-06..09)', { request: { ...goG, query: goS.dayQuery }, responses: { 200: json(goS.Drawer), ...goErr() } });
+  gp('post', '/cash-drawer/open', 'Open today’s drawer with the float (cash.drawer; works while restricted) (M27-FR-06)', { request: { ...goG, ...body(goS.openBody) }, responses: { 201: json(goS.Drawer, 'Opened'), ...goErr({ 409: ['GYM_DRAWER_OPEN'], 422: ['VALIDATION_FAILED', 'GYM_AMOUNT_OUT_OF_RANGE'] }) } });
+  gp('post', '/cash-drawer/close', 'Close today’s drawer with the counted cash; expected and the difference are kept; the owner is told when it does not balance (cash.drawer) (M27-FR-08)', { request: { ...goG, ...body(goS.closeBody) }, responses: { 200: json(goS.Drawer), ...goErr({ 409: ['GYM_DRAWER_NOT_OPEN', 'GYM_DRAWER_CLOSED'] }) } });
+  gp('get', '/pnl', 'Profit and loss for a period and the same length before it: fees, counter sales, locker fees, cost of goods, expenses by category, net (owner and reports.view; feature pnl) (M27-FR-27)', { request: { ...goG, query: goS.periodQuery }, responses: { 200: json(goS.Pnl), ...goErr() } });
+  gp('get', '/products', 'Counter products: search, barcode, low stock (pos.sell or stock.manage; feature pos) (M27-FR-10)', { request: { ...goG, query: goS.productQuery }, responses: { 200: json(goS.Products), ...goErr() } });
+  gp('post', '/products', 'Add a product (stock.manage); stock comes in through a stock move (M27-FR-10, FR-11)', { request: { ...goG, ...body(goS.productBody) }, responses: { 201: json(goS.Product, 'Created'), ...goErr({ 409: ['GYM_PRODUCT_BARCODE_TAKEN'], 422: ['VALIDATION_FAILED', 'GYM_AMOUNT_OUT_OF_RANGE'] }) } });
+  gp('patch', '/products/{productId}', 'Change or retire a product (stock.manage) (M27-FR-11)', { request: { params: goS.productParam, ...body(goS.productPatch) }, responses: { 200: json(goS.Product), ...goErr({ 409: ['GYM_PRODUCT_BARCODE_TAKEN'] }) } });
+  gp('post', '/products/{productId}/stock', 'Stock in (a new batch with its expiry and cost), an adjustment or a write-off (stock.manage); the low-stock alert fires once per crossing (M27-FR-12..14)', {
+    request: { params: goS.productParam, headers: idem, ...body(goS.stockBody) },
+    responses: { 201: json(goS.Product, 'Recorded'), ...goErr({ 409: ['GYM_STOCK_SHORT'] }) },
+  });
+  gp('get', '/sales', 'A day’s counter sales (pos.sell: own; owner and reports.view: everyone) (M27-FR-21)', { request: { ...goG, query: goS.saleQuery }, responses: { 200: json(goS.Sales), ...goErr() } });
+  gp('post', '/sales', 'Sell at the counter (pos.sell; works while restricted): stock goes down, a receipt number from the gym’s series, VAT inside the total when the gym shows VAT. Bookkeeping only (M27-FR-17, FR-18, FR-28)', {
+    request: { ...goG, headers: idem, ...body(goS.saleBody) },
+    responses: { 201: json(goS.Sale, 'Sold'), ...goErr({ 409: ['GYM_STOCK_SHORT', 'GYM_DRAWER_CLOSED', 'GYM_SETUP_REQUIRED'], 422: ['VALIDATION_FAILED', 'GYM_PRODUCT_UNAVAILABLE', 'GYM_PRODUCT_EXPIRED', 'GYM_MEMBER_UNKNOWN'] }) },
+  });
+  gp('get', '/sales/{saleId}/receipt', 'A sale as a receipt with the gym’s header, for A4 or an 80 mm printer (pos.sell, lockers.manage or reports.view) (M27-FR-20)', { request: { params: goS.saleParam }, responses: { 200: json(goS.Sale), ...goErr() } });
+  gp('post', '/sales/{saleId}/reverse', 'Reverse a sale with a reason: stock back, the sale kept as reversed (pos.sell and fees.adjust) (M27-FR-19)', { request: { params: goS.saleParam, ...body(goS.reasonBody) }, responses: { 200: json(goS.Sale), ...goErr({ 409: ['GYM_SALE_STATE', 'GYM_DRAWER_CLOSED'] }) } });
+  gp('get', '/lockers', 'The locker grid: free, taken, fee unpaid, overdue, out of service (lockers.manage; feature lockers) (M27-FR-22)', { request: goG, responses: { 200: json(goS.Lockers), ...goErr() } });
+  gp('post', '/lockers', 'Add one or more lockers with a monthly fee (lockers.manage) (M27-FR-22)', { request: { ...goG, ...body(goS.lockerBody) }, responses: { 201: json(goS.Lockers, 'Added'), ...goErr({ 409: ['GYM_LOCKER_NUMBER_TAKEN'], 422: ['VALIDATION_FAILED', 'GYM_LOCKER_LIMIT', 'GYM_AMOUNT_OUT_OF_RANGE'] }) } });
+  gp('patch', '/lockers/{lockerId}', 'Change a locker: zone, size, fee, out of service, retired (not while rented) (lockers.manage)', { request: { params: goS.lockerParam, ...body(goS.lockerPatch) }, responses: { 200: json(goS.Lockers), ...goErr({ 409: ['GYM_LOCKER_UNAVAILABLE'] }) } });
+  gp('post', '/lockers/{lockerId}/rent', 'Rent a locker to a member for dates; the fee now (a counter sale with a receipt) or later (lockers.manage) (M27-FR-23)', {
+    request: { params: goS.lockerParam, headers: idem, ...body(goS.rentBody) },
+    responses: { 201: json(goS.Rental, 'Rented'), ...goErr({ 409: ['GYM_LOCKER_UNAVAILABLE', 'GYM_DRAWER_CLOSED'], 422: ['VALIDATION_FAILED', 'GYM_DATE_OUT_OF_RANGE', 'GYM_MEMBER_UNKNOWN', 'GYM_AMOUNT_OUT_OF_RANGE'] }) },
+  });
+  gp('get', '/locker-rentals', 'Locker rentals, by member or status (lockers.manage) (M27-FR-26)', { request: { ...goG, query: goS.rentalQuery }, responses: { 200: json(goS.Rentals), ...goErr() } });
+  gp('post', '/locker-rentals/{rentalId}/collect', 'Take an unpaid locker fee now (lockers.manage; works while restricted) (M27-FR-24)', { request: { params: goS.rentalParam, headers: idem, ...body(goS.collectBody) }, responses: { 201: json(goS.Rental, 'Paid'), ...goErr({ 409: ['GYM_LOCKER_FEE_PAID', 'GYM_LOCKER_RENTAL_STATE', 'GYM_DRAWER_CLOSED'] }) } });
+  gp('post', '/locker-rentals/{rentalId}/end', 'End a rental now with a reason; the locker is free again (lockers.manage) (M27-FR-25)', { request: { params: goS.rentalParam, ...body(goS.reasonBody) }, responses: { 200: json(goS.Rental), ...goErr({ 409: ['GYM_LOCKER_RENTAL_STATE'] }) } });
   // ------------------------------------------------------------------ M14 lite organisations and M22 organiser SaaS (step 1)
   const orgP = { params: saS.orgParam };
   const orgIdP = { params: saS.orgIdParam };

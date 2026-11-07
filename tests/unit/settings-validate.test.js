@@ -82,6 +82,9 @@ describe('shapeError per value type (M03-FR-14)', () => {
   it('the M24 provider charge rule tolerates a missing value; the overdue days rule refuses an empty list', () => {
     expect(CROSS_RULES.find((x) => x.id === 'gym_manage.provider_bps_range').ok(() => undefined)).toBe(true);
     expect(CROSS_RULES.find((x) => x.id === 'gym_manage.overdue_remind_days_range').ok(() => undefined)).toBe(false);
+    expect(CROSS_RULES.find((x) => x.id === 'gym_manage.renewal_remind_days_range').ok(() => undefined)).toBe(false);
+    expect(CROSS_RULES.find((x) => x.id === 'gym_manage.renewal_remind_days_range').ok(() => [7, 3, 1])).toBe(true);
+    expect(CROSS_RULES.find((x) => x.id === 'gym_manage.renewal_remind_days_range').ok(() => [7, 3, 1, 14])).toBe(false);
   });
 
   it('rejects an unknown type', () => {
@@ -170,6 +173,7 @@ describe('cross-key rules (§6.5)', () => {
     'gym_saas.feature_min_tiers': { attendance: 'basic', reminders: 'basic', online_fees: 'basic', reports: 'standard', trainers: 'standard', plans: 'standard', multi_gym: 'pro' },
     'gym_manage.online_fee_provider_bps': { bkash: 200, nagad: 200, card: 250 },
     'gym_manage.overdue_remind_days': [3],
+    'gym_manage.renewal_remind_days': [7, 3, 1],
   };
   const lookupWith = (over = {}) => (k) => (k in over ? over[k] : defaults[k]);
   const broken = (over, changed) => crossRuleViolations(lookupWith(over), changed).map((r) => r.id);
@@ -212,7 +216,7 @@ describe('cross-key rules (§6.5)', () => {
 
   it('every rule is covered by the cases above', () => {
     expect(CROSS_RULES.map((r) => r.id).sort()).toEqual(
-      ['booking.advance_order', 'booking.advance_covers_fee', 'booking.refund_tiers', 'booking.grid_order', 'ground.price_band', 'market.offer_order', 'market.return_window', 'market.photos_order', 'market.mto_default', 'market.qty_default', 'esports.checkin_order', 'esports.room_reveal', 'money.refund_below_payout_threshold', 'money.auto_release_below_payout_threshold', 'gym_saas.tier_limits_order', 'gym_saas.tier_prices_order', 'gym_saas.feature_tiers_known', 'gym_manage.provider_bps_range', 'gym_manage.overdue_remind_days_range'].sort()
+      ['booking.advance_order', 'booking.advance_covers_fee', 'booking.refund_tiers', 'booking.grid_order', 'ground.price_band', 'market.offer_order', 'market.return_window', 'market.photos_order', 'market.mto_default', 'market.qty_default', 'esports.checkin_order', 'esports.room_reveal', 'money.refund_below_payout_threshold', 'money.auto_release_below_payout_threshold', 'gym_saas.tier_limits_order', 'gym_saas.tier_prices_order', 'gym_saas.feature_tiers_known', 'gym_manage.provider_bps_range', 'gym_manage.overdue_remind_days_range', 'gym_manage.renewal_remind_days_range'].sort()
     );
   });
 

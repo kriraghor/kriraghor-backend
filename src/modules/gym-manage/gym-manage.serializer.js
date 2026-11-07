@@ -139,6 +139,8 @@ function receiptView({ payment, gym, settings, member, membership, receivedByNam
     member: { memberCode: member.memberCode, displayName: member.displayName },
     membership: membership ? { title: membership.title, packageKind: membership.packageKind, startsOn: membership.startsOn, endsOn: membership.endsOn } : null,
     amountPoisha: payment.amountPoisha,
+    // M27-FR-28: the VAT inside the amount, at the rate it was recorded at.
+    vat: payment.vatBps ? { bps: payment.vatBps, ...rules.vatPart(payment.amountPoisha, payment.vatBps) } : null,
     method: payment.method,
     paidOn: payment.paidOn,
     receivedBy: receivedByName ?? null,

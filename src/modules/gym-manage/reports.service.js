@@ -124,11 +124,12 @@ async function gymReport(principal, gymId, query = {}) {
 }
 
 /** GET /manage/gyms/:gymId/reports/absent (members.view): members not seen for the gym's absent days (FR-53). */
-async function absent(principal, gymId) {
+async function absent(principal, gymId, { days: asked } = {}) {
   const a = await c.gymAccess(principal, gymId, 'members.view');
   const today = c.today();
   const s = await c.settingsOf(gymId);
-  const days = s?.absentAlertDays ?? c.cfg().absentAlertDays;
+  // M27-FR-31: 7, 14, 30 or any number of days; the gym's setting when none is asked.
+  const days = asked ?? s?.absentAlertDays ?? c.cfg().absentAlertDays;
   const since = rules.addDays(today, -days);
   const rows = await select(
     `SELECT m.id, m.member_code AS "memberCode", m.display_name AS "displayName", m.phone_last4 AS "phoneLast4", cm.ends_on AS "endsOn",

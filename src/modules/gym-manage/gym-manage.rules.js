@@ -24,7 +24,8 @@ const DHAKA_MS = 6 * 3600000;
 const DAY_MS = 86400000;
 
 const TIERS = Object.freeze(['free', 'basic', 'standard', 'pro']);
-const FEATURES = Object.freeze(['attendance', 'reminders', 'online_fees', 'reports', 'trainers', 'plans', 'multi_gym']);
+// M27 round 1 adds expenses (with the cash drawer), lockers, pos (counter shop and stock) and pnl (profit and loss).
+const FEATURES = Object.freeze(['attendance', 'reminders', 'online_fees', 'reports', 'trainers', 'plans', 'multi_gym', 'expenses', 'lockers', 'pos', 'pnl']);
 const METHODS = Object.freeze(['cash', 'owner_bkash', 'owner_nagad', 'card_counter', 'other']);
 const LEFT_REASONS = Object.freeze(['price', 'moved', 'injury', 'other_gym', 'schedule', 'unknown', 'other']);
 const SHORT_CODE = /^[A-Z]{2,6}$/;
@@ -547,13 +548,16 @@ function subscriptionStatus({ status, invoices, now, graceDays }) {
 
 /**
  * The once-key of a scheduled member reminder due `today`, or null (§6.9, M24-FR-55, FR-56):
- *   renewal_due  remind_before_days before ends_on   'd-3'
+ *   renewal_due  each renewal_remind_days before ends_on   'd-7', 'd-3', 'd-1' (M27-FR-29)
  *   ends_today   on ends_on                          'd0'
  *   expired      the day after ends_on               'd+1'
  *   overdue      each overdue_remind_days after due_on  'd+3'
  */
-function reminderKey(kind, { today, endsOn = null, dueOn = null, remindBeforeDays = 0, overdueDays = [] }) {
-  if (kind === 'renewal_due') return endsOn && addDays(endsOn, -remindBeforeDays) === today ? `d-${remindBeforeDays}` : null;
+function reminderKey(kind, { today, endsOn = null, dueOn = null, renewalDays = [], overdueDays = [] }) {
+  if (kind === 'renewal_due') {
+    const left = endsOn ? daysBetween(today, endsOn) : -1;
+    return renewalDays.includes(left) ? `d-${left}` : null;
+  }
   if (kind === 'ends_today') return endsOn === today ? 'd0' : null;
   if (kind === 'expired') return endsOn && addDays(endsOn, 1) === today ? 'd+1' : null;
   const late = dueOn ? daysBetween(dueOn, today) : 0;
@@ -725,7 +729,31 @@ function latestLogs(rows) {
 /** A member ticks only an active assignment of a gym they are still linked to and have not left (M24-FR-67). */
 const planReadOnly = ({ assignmentStatus, linked, memberStatus }) => assignmentStatus !== 'active' || !linked || ['left', 'removed'].includes(memberStatus);
 
+/**
+ * M27-FR-30: body mass index from height (cm) and weight (kg), one decimal, with its WHO band; null when
+ * either is missing.
+ */
+function bmiOf({ heightCm, weightKg }) {
+  if (!heightCm || !weightKg) return null;
+  const m = heightCm / 100;
+  const value = Math.round((weightKg / (m * m)) * 10) / 10;
+  const band = value < 18.5 ? 'under' : value < 25 ? 'normal' : value < 30 ? 'over' : 'obese';
+  return { value, band };
+}
+
+/**
+ * M27-FR-28: the VAT inside a VAT-inclusive amount at a rate in basis points (15% = 1500), rounded half up
+ * to the poisha: vat = round(amount × bps ÷ (10000 + bps)); net = amount − vat. No VAT when bps is null or 0.
+ */
+function vatPart(amount, bps) {
+  if (!bps) return { vat: 0, net: amount };
+  const vat = Math.round((amount * bps) / (10000 + bps));
+  return { vat, net: amount - vat };
+}
+
 module.exports = {
+  bmiOf,
+  vatPart,
   entranceToken,
   parseEntranceToken,
   secondsLeft,

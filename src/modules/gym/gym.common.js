@@ -19,6 +19,8 @@ const ERRORS = {
   NOT_OWNER: [403, 'This gym belongs to another owner'],
   GYM_STATE: [409, 'The gym cannot do that in its current state'],
   GYM_IN_REVIEW: [409, 'Staff are reviewing this gym. Wait for the decision'],
+  GYM_HAS_ACTIVE_PASSES: [409, 'Members still have paid packages at this gym'],
+  GYM_NAME_MISMATCH: [422, 'Type the gym’s name exactly to confirm'],
   GYM_INCOMPLETE: [422, 'Finish the listing before sending it for review'],
   NOTHING_TO_REVIEW: [409, 'There are no changes that need review'],
   AREA_UNKNOWN: [422, 'Choose an area from the list'],

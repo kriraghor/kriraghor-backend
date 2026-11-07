@@ -54,6 +54,8 @@ async function recordIn(transaction, { gym, member, due, amount, method, paidOn,
   const block = rules.paymentBlock({ status: state.status, outstanding: state.outstanding, amount, min });
   if (block) throw fail(block, block === 'GYM_PAYMENT_EXCEEDS_DUE' ? { outstanding: state.outstanding } : { status: state.status });
   const receiptNo = await c.nextReceiptNo(gym.id, transaction, now);
+  // M27-FR-28: the VAT rate at this moment is kept on the payment (a later change never edits a receipt).
+  const vatBps = await c.vatBpsOf(gym.id, { transaction });
   const payment = await GymFeePayment.create(
     {
       dueId: due.id,
@@ -67,6 +69,7 @@ async function recordIn(transaction, { gym, member, due, amount, method, paidOn,
       note,
       receivedBy,
       importId,
+      vatBps,
       ...(online
         ? { payerUserId: online.payerUserId, linkId: online.linkId, paymentId: online.paymentId, providerChargeBps: online.providerChargeBps, providerChargePoisha: online.providerChargePoisha, providerSettingVersion: online.providerSettingVersion }
         : {}),

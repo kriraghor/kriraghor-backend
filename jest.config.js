@@ -59,6 +59,8 @@ module.exports = {
     './src/modules/gym/gym.rules.js': FULL,
     // M24 membership dates, dues, the entry policy, tiers, codes, tokens and import rows.
     './src/modules/gym-manage/gym-manage.rules.js': FULL,
+    // M27 gym operations: drawer, sale totals, stock alerts, lockers, profit and loss, VAT.
+    './src/modules/gym-ops/gym-ops.rules.js': FULL,
     // M22 fees, prize fund, contracts, invoices, subdomains and contrast.
     './src/modules/organiser-saas/saas.rules.js': FULL,
     // M23 event phase, stage links, the qualifying cut, core players, alerts and polls.

@@ -15,7 +15,7 @@ const { E } = require('../../common/errors');
 const storage = require('../../common/storage');
 const { sniffMime } = require('../../common/filetype');
 const { uuid7 } = require('../../common/uuid7');
-const { sequelize, Gym, GymHours, GymPhoto, GymPackage } = require('../../models');
+const { sequelize, Gym, GymHours, GymPhoto, GymPackage, GymPass } = require('../../models');
 const { Area, Facility } = require('../catalog').reference;
 const audit = require('../audit').audit;
 const moderation = require('../moderation').moderation;
@@ -364,6 +364,30 @@ async function setPaused(principal, id, paused, req) {
   return view(id);
 }
 
+/**
+ * POST /me/gyms/:id/remove (run_gym, M20-FR-15, 7 Nov 2026): the owner removes their gym. Never deleted:
+ * the status becomes removed, so it leaves search, the desk and gym-manage (every reader skips removed),
+ * frees a plan slot (M24 counts gyms not removed) and keeps its history. The owner types the gym's name.
+ * Refused while staff have it suspended (GYM_STATE) and while members hold paid online packages that are
+ * not used up (GYM_HAS_ACTIVE_PASSES; the money is in escrow, M06): those end or are cancelled first.
+ * An open review is withdrawn (M05).
+ */
+async function remove(principal, id, { confirmName, reason }, req) {
+  await sequelize.transaction(async (transaction) => {
+    const g = await owned(principal, id, { transaction, lock: true });
+    if (g.status === 'suspended') throw fail('GYM_STATE');
+    if (confirmName.trim().toLocaleLowerCase() !== g.name.trim().toLocaleLowerCase()) throw fail('GYM_NAME_MISMATCH');
+    const passes = await GymPass.count({ where: { gymId: g.id, status: ['pending_payment', 'active'] }, transaction });
+    if (passes) throw fail('GYM_HAS_ACTIVE_PASSES', { passes });
+    if (g.currentSubmissionId) await moderation.withdrawSubject('gym', g.id, { transaction });
+    const before = { status: g.status };
+    await g.update({ status: 'removed', statusChangedAt: new Date(), currentSubmissionId: null, editStatus: null }, { transaction });
+    await audit.record({ action: 'gym.removed', actor: principal, entityType: 'gym', entityId: g.id, before, after: { status: 'removed' }, reason: reason ?? null, req }, { transaction });
+    await c.publish(transaction, 'gym.removed', 'gym', g.id, { gymId: g.id, ownerId: g.ownerId });
+  });
+  return { id, status: 'removed' };
+}
+
 // ---------------------------------------------------------------- M05 (adapter in gym.moderation)
 
 const DECIDED_EVENT = { changes_requested: 'gym.changes_requested', rejected: 'gym.rejected' };
@@ -543,6 +567,7 @@ module.exports = {
   removePhoto,
   submit,
   setPaused,
+  remove,
   applyDecision,
   checksFor,
   pauseAllOf,

@@ -109,6 +109,8 @@ const planPatch = planBody
 const subscribeBody = z.object({ planId: id, startDate: date });
 const problemBody = z.object({ statement: text(10, 2000) });
 const reasonBody = z.object({ reason: text(5, 300) });
+/** M20-FR-15: the owner removes a gym by typing its name. */
+const removeGym = z.object({ confirmName: text(1, 120), reason: text(5, 300).optional() });
 const adminGymsQuery = z.object({ status: z.enum(GYM_STATUSES).optional(), q: z.string().trim().max(60).optional() });
 
 // ---------------- responses
@@ -324,6 +326,7 @@ module.exports = {
   subscribeBody,
   problemBody,
   reasonBody,
+  removeGym,
   adminGymsQuery,
   GymList,
   GymPage,

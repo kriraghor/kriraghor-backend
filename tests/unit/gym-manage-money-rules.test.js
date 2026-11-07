@@ -148,8 +148,8 @@ describe('dunning (M24-FR-86, §8.6, §8.7)', () => {
 
 describe('reminder schedule (§6.9, M24-FR-55, FR-56)', () => {
   it('renewal due, ends today, expired and overdue keys on their day only', () => {
-    expect(r.reminderKey('renewal_due', { today: '2026-11-27', endsOn: '2026-11-30', remindBeforeDays: 3 })).toBe('d-3');
-    expect(r.reminderKey('renewal_due', { today: '2026-11-28', endsOn: '2026-11-30', remindBeforeDays: 3 })).toBeNull();
+    expect(r.reminderKey('renewal_due', { today: '2026-11-27', endsOn: '2026-11-30', renewalDays: [7, 3, 1] })).toBe('d-3');
+    expect(r.reminderKey('renewal_due', { today: '2026-11-28', endsOn: '2026-11-30', renewalDays: [7, 3, 1] })).toBeNull();
     expect(r.reminderKey('renewal_due', { today: '2026-11-28' })).toBeNull();
     expect(r.reminderKey('ends_today', { today: '2026-11-30', endsOn: '2026-11-30' })).toBe('d0');
     expect(r.reminderKey('ends_today', { today: '2026-11-29', endsOn: '2026-11-30' })).toBeNull();
@@ -225,5 +225,28 @@ describe('reports (§5.9, M24-FR-71)', () => {
     expect(r.reportPeriod({ month: '2026-02', today: '2026-11-03' })).toEqual({ from: '2026-02-01', to: '2026-02-28', month: '2026-02' });
     expect(r.reportPeriod({ today: '2026-11-03' })).toEqual({ from: '2026-11-01', to: '2026-11-03', month: null });
     expect(r.reportPeriod({ from: '2026-10-01', to: '2026-10-15', today: '2026-11-03' })).toEqual({ from: '2026-10-01', to: '2026-10-15', month: null });
+  });
+});
+
+// M27 round 1: renewal reminders at 7, 3 and 1 days; BMI; VAT inside a receipt.
+describe('M27 additions to the gym-manage rules', () => {
+  const r2 = require('../../src/modules/gym-manage/gym-manage.rules');
+  it('renewal reminders on each listed day before the end (M27-FR-29)', () => {
+    const o = { endsOn: '2026-11-30', renewalDays: [7, 3, 1] };
+    expect(r2.reminderKey('renewal_due', { today: '2026-11-23', ...o })).toBe('d-7');
+    expect(r2.reminderKey('renewal_due', { today: '2026-11-29', ...o })).toBe('d-1');
+    expect(r2.reminderKey('renewal_due', { today: '2026-11-25', ...o })).toBeNull();
+  });
+  it('BMI with its band, null without height or weight (M27-FR-30)', () => {
+    expect(r2.bmiOf({ heightCm: 175, weightKg: 70 })).toEqual({ value: 22.9, band: 'normal' });
+    expect(r2.bmiOf({ heightCm: 170, weightKg: 50 })).toEqual({ value: 17.3, band: 'under' });
+    expect(r2.bmiOf({ heightCm: 170, weightKg: 80 })).toEqual({ value: 27.7, band: 'over' });
+    expect(r2.bmiOf({ heightCm: 160, weightKg: 90 })).toEqual({ value: 35.2, band: 'obese' });
+    expect(r2.bmiOf({ heightCm: null, weightKg: 70 })).toBeNull();
+    expect(r2.bmiOf({ heightCm: 175 })).toBeNull();
+  });
+  it('VAT inside an amount (M27-FR-28)', () => {
+    expect(r2.vatPart(115000, 1500)).toEqual({ vat: 15000, net: 100000 });
+    expect(r2.vatPart(115000, null)).toEqual({ vat: 0, net: 115000 });
   });
 });

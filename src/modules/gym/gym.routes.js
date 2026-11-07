@@ -95,6 +95,7 @@ ownerRouter.post('/:id/photos', owner, id, limits.groundPhoto, raw, async (req, 
 ownerRouter.put('/:id/photos/order', owner, id, validate(s.photoOrder), async (req, res) => res.json(await gyms.reorderPhotos(req.user, req.params.id, req.body.ids, req)));
 ownerRouter.post('/:id/photos/:photoId/remove', owner, validate(s.photoParams, 'params'), async (req, res) => res.json(await gyms.removePhoto(req.user, req.params.id, req.params.photoId, req)));
 ownerRouter.post('/:id/submit', listed, id, async (req, res) => res.json(await gyms.submit(req.user, req.params.id, req)));
+ownerRouter.post('/:id/remove', owner, id, validate(s.removeGym), async (req, res) => res.json(await gyms.remove(req.user, req.params.id, req.body, req)));
 ownerRouter.post('/:id/pause', listed, id, async (req, res) => res.json(await gyms.setPaused(req.user, req.params.id, true, req)));
 ownerRouter.post('/:id/resume', listed, id, async (req, res) => res.json(await gyms.setPaused(req.user, req.params.id, false, req)));
 ownerRouter.post('/:id/redemptions', id, validate(s.redeemBody), async (req, res) => res.status(201).json(await desk.redeem(req.user, req.params.id, req.body, req)));

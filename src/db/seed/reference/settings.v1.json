@@ -1,6 +1,6 @@
 {
-  "seedVersion": 34,
-  "source": "M03 §6.4 with the v3 business rules (Oct 2026), M21 §6.1 and M01 §6.4; v2 adds the M04 events.* and audit.* operations keys; v3 the M08 notify.* keys; v4 the M06 payments.* and refunds.retry_max keys; v5 the M07 payouts.min_amount_poisha, auto_release_max_poisha, run_hour and daily_enabled keys, and payments.test_charge_max_poisha 100000 (৳1,000, so a test charge can clear the ৳100 payout minimum; existing databases keep their value); v6 the M02 kyc.uploads_per_hour and kyc.orphan_upload_hours keys; v7 the M05 moderation.review_sla_warn_hours, claim_max_min, heartbeat_sec, apply_timeout_minutes and apply_max_attempts keys; v8 the M21 esports.dispute_max_per_entry and room_reads_per_minute keys; v9 the M09 ground.min_photos, max_photos, photo_max_bytes, photo_uploads_per_hour, duplicate_radius_m and closure_max_days_ahead keys; v10 the M10 booking.hold_attempts_per_10min, walkin_auto_checkin_min, availability_cache_seconds, balance_unrecorded_days and start_reminder_hours keys (booking.owner_confirm_window_min stays seeded but is unused: bookings confirm instantly, Q66); v11 the M19 analytics.week_start, mview_refresh_minutes, reconcile_days, drift_alert_pct, export_sync_max_rows and exports_per_hour keys; v12 the M17 disputes.*, reports.* and reviews.* keys; v13 the M18 risk.* and trust.* keys (the existing risk.* names are kept). Money in poisha, percentages as numbers. v14 adds the M12 step-1 market keys (product photos and upload limits, the re-review price threshold, made-to-order and per-order defaults, saved items); v15 adds the M13 step-1 order keys (checkout hold, cart line age, ship-overdue cancel windows, the accept reminder) and disputes.window_order_hours; v16 adds the M11 step-1 hire keys (payment window, reply and payment cut-offs before the start, cancellation tier hours, no-show time, match lengths, engagements per request, messages per hour, shortlist size); v17 adds the M20 step-1 gym keys (day pass limits, how far ahead, month and quarter days, photos, trainer subscription days, start, cancel and renewal windows, plan price limits) and disputes.window_trainer_hours; v18 adds the M22 step-1 organiser SaaS keys (invoice due days, overdue grace, reserved subdomains, VAT switch and rate, contract expiry notice); v19 adds the M23 step-1 big event keys (qualifying gap, core players, final reminder, alert cooldown and fan-out batch, poll options, pushes and cache, feed page size, stage and sponsor limits, banner size, viewer actions per minute); v20 adds the M16 step-1 team keys (invite expiry, members per team, teams per member, invites per day, resend cooldown; category tournament); v21 adds the M14 step-1 tournament keys (payment hold, reserve offer, refund after close, entry fee cap, team cap, days before the first match, rules relock, console actions per minute). v22: user-facing words Grounds → Venues, Tournaments → Events, big events → Showcases (19 Oct 2026). v23: esports.external_organisers_enabled, off by default (product owner, 21 Oct 2026: esports is organised by Kriraghor only; the M22 organiser SaaS stays in the code, switched off). v24: hire.acceptance_window_days (90) and hire.availability_horizon_days (60) for the pro stats and availability calendar (Round B1). v25: users.avatar_max_bytes (2 MB) and hire.profile_bio_min_chars (60) for profile photos and the profile checklist (Round B1). v26: analytics.repeat_customer_days (90), best_sellers_days (30) and top_list_size (10) for the business dashboards (Round B2). v27: business.team_max_members (10), the most active staff members one venue, gym or shop may have (Round B3, Q69, Q169, Q170). v28: booking.checkin_due_soon_minutes (60), how soon a check-in shows in the owner and staff to-do (it was a fixed hour), and business.team_adds_per_hour (20), staff adds per owner per hour (Round B3 review, Q180). v29: kyc.min_age_years 18 (bounds 18 to 21; it was 16, bounds 13 to 21): NID verification is for people aged 18 and over (M02, product owner, 25 Oct 2026). New databases get 18 from here; existing ones are moved by migration 20261112000002-kyc-min-age-18 only while they still hold the seeded 16. v30: M24 gym management prompt 1 (Desk MVP): gym.half_year_days (180) and gym.year_days (365) for the new package kinds; the gym_manage.* keys of the counter (active window, renew grace, backdate, due days, freeze limits, custom packages, entry policy, absent days, request expiry, phone reveals, member QR seconds, import rows, bytes, undo, consent and file retention); and the gym_saas.* tier keys in a new category gym_saas (member limits, prices, pro_min_gyms, feature_min_tiers as JSON of plan names, tier_notice_pct). Billing, online-fee and SMS keys come with prompt 2. v31: M24 gym management prompt 2 (online money, reminders and billing): fees.gym_referral_poisha (৳200, four eyes, public); gym_manage.remind_before_days, overdue_remind_days, morning_summary_time, reminder_log_days, pay_link_hours, online_fee_release_hours, online_fee_provider_passthrough (four eyes), online_fee_provider_bps (four eyes, placeholders G13) and referral_match_days; gym_saas.invoice_due_days, grace_days, founding_partner_limit, founding_free_months, founding_discount_pct, founding_discount_months, vat_enabled and vat_pct (four eyes; VAT off, G10). SMS add-on keys come with prompt 3b. v32: M24 gym management prompt 3 (public site, member area, plans): gym_manage.entrance_qr_seconds (the entrance tablet QR), plan_max_items, diet_max_meals and plan_log_back_days.",
+  "seedVersion": 35,
+  "source": "M03 §6.4 with the v3 business rules (Oct 2026), M21 §6.1 and M01 §6.4; v2 adds the M04 events.* and audit.* operations keys; v3 the M08 notify.* keys; v4 the M06 payments.* and refunds.retry_max keys; v5 the M07 payouts.min_amount_poisha, auto_release_max_poisha, run_hour and daily_enabled keys, and payments.test_charge_max_poisha 100000 (৳1,000, so a test charge can clear the ৳100 payout minimum; existing databases keep their value); v6 the M02 kyc.uploads_per_hour and kyc.orphan_upload_hours keys; v7 the M05 moderation.review_sla_warn_hours, claim_max_min, heartbeat_sec, apply_timeout_minutes and apply_max_attempts keys; v8 the M21 esports.dispute_max_per_entry and room_reads_per_minute keys; v9 the M09 ground.min_photos, max_photos, photo_max_bytes, photo_uploads_per_hour, duplicate_radius_m and closure_max_days_ahead keys; v10 the M10 booking.hold_attempts_per_10min, walkin_auto_checkin_min, availability_cache_seconds, balance_unrecorded_days and start_reminder_hours keys (booking.owner_confirm_window_min stays seeded but is unused: bookings confirm instantly, Q66); v11 the M19 analytics.week_start, mview_refresh_minutes, reconcile_days, drift_alert_pct, export_sync_max_rows and exports_per_hour keys; v12 the M17 disputes.*, reports.* and reviews.* keys; v13 the M18 risk.* and trust.* keys (the existing risk.* names are kept). Money in poisha, percentages as numbers. v14 adds the M12 step-1 market keys (product photos and upload limits, the re-review price threshold, made-to-order and per-order defaults, saved items); v15 adds the M13 step-1 order keys (checkout hold, cart line age, ship-overdue cancel windows, the accept reminder) and disputes.window_order_hours; v16 adds the M11 step-1 hire keys (payment window, reply and payment cut-offs before the start, cancellation tier hours, no-show time, match lengths, engagements per request, messages per hour, shortlist size); v17 adds the M20 step-1 gym keys (day pass limits, how far ahead, month and quarter days, photos, trainer subscription days, start, cancel and renewal windows, plan price limits) and disputes.window_trainer_hours; v18 adds the M22 step-1 organiser SaaS keys (invoice due days, overdue grace, reserved subdomains, VAT switch and rate, contract expiry notice); v19 adds the M23 step-1 big event keys (qualifying gap, core players, final reminder, alert cooldown and fan-out batch, poll options, pushes and cache, feed page size, stage and sponsor limits, banner size, viewer actions per minute); v20 adds the M16 step-1 team keys (invite expiry, members per team, teams per member, invites per day, resend cooldown; category tournament); v21 adds the M14 step-1 tournament keys (payment hold, reserve offer, refund after close, entry fee cap, team cap, days before the first match, rules relock, console actions per minute). v22: user-facing words Grounds → Venues, Tournaments → Events, big events → Showcases (19 Oct 2026). v23: esports.external_organisers_enabled, off by default (product owner, 21 Oct 2026: esports is organised by Kriraghor only; the M22 organiser SaaS stays in the code, switched off). v24: hire.acceptance_window_days (90) and hire.availability_horizon_days (60) for the pro stats and availability calendar (Round B1). v25: users.avatar_max_bytes (2 MB) and hire.profile_bio_min_chars (60) for profile photos and the profile checklist (Round B1). v26: analytics.repeat_customer_days (90), best_sellers_days (30) and top_list_size (10) for the business dashboards (Round B2). v27: business.team_max_members (10), the most active staff members one venue, gym or shop may have (Round B3, Q69, Q169, Q170). v28: booking.checkin_due_soon_minutes (60), how soon a check-in shows in the owner and staff to-do (it was a fixed hour), and business.team_adds_per_hour (20), staff adds per owner per hour (Round B3 review, Q180). v29: kyc.min_age_years 18 (bounds 18 to 21; it was 16, bounds 13 to 21): NID verification is for people aged 18 and over (M02, product owner, 25 Oct 2026). New databases get 18 from here; existing ones are moved by migration 20261112000002-kyc-min-age-18 only while they still hold the seeded 16. v30: M24 gym management prompt 1 (Desk MVP): gym.half_year_days (180) and gym.year_days (365) for the new package kinds; the gym_manage.* keys of the counter (active window, renew grace, backdate, due days, freeze limits, custom packages, entry policy, absent days, request expiry, phone reveals, member QR seconds, import rows, bytes, undo, consent and file retention); and the gym_saas.* tier keys in a new category gym_saas (member limits, prices, pro_min_gyms, feature_min_tiers as JSON of plan names, tier_notice_pct). Billing, online-fee and SMS keys come with prompt 2. v31: M24 gym management prompt 2 (online money, reminders and billing): fees.gym_referral_poisha (৳200, four eyes, public); gym_manage.remind_before_days, overdue_remind_days, morning_summary_time, reminder_log_days, pay_link_hours, online_fee_release_hours, online_fee_provider_passthrough (four eyes), online_fee_provider_bps (four eyes, placeholders G13) and referral_match_days; gym_saas.invoice_due_days, grace_days, founding_partner_limit, founding_free_months, founding_discount_pct, founding_discount_months, vat_enabled and vat_pct (four eyes; VAT off, G10). SMS add-on keys come with prompt 3b. v32: M24 gym management prompt 3 (public site, member area, plans): gym_manage.entrance_qr_seconds (the entrance tablet QR), plan_max_items, diet_max_meals and plan_log_back_days. v35: M27 gym operations round 1 (7 Nov 2026): gym_manage.renewal_remind_days replaces remind_before_days (7, 3 and 1 days), gym_manage.expiring_list_days and vat_max_bps, gym_ops.* limits for expenses, the cash drawer, the counter shop and lockers; gym_saas.feature_min_tiers gains expenses, lockers, pos and pnl.",
   "settings": [
     {
       "key": "fees.ground_booking_pct",
@@ -3604,17 +3604,6 @@
       "bn": "আপলোড করা সদস্য তালিকার ফাইল এত দিন পরে মুছে ফেলা হয়"
     },
     {
-      "key": "gym_manage.remind_before_days",
-      "category": "gym",
-      "type": "int",
-      "value": 3,
-      "unit": "days",
-      "min": 1,
-      "max": 14,
-      "en": "Remind members this many days before their package ends",
-      "bn": "প্যাকেজ শেষ হওয়ার এত দিন আগে সদস্যকে মনে করানো"
-    },
-    {
       "key": "gym_manage.overdue_remind_days",
       "category": "gym",
       "type": "int_list",
@@ -3852,7 +3841,11 @@
         "reports": "standard",
         "trainers": "standard",
         "plans": "standard",
-        "multi_gym": "pro"
+        "multi_gym": "pro",
+        "expenses": "basic",
+        "lockers": "basic",
+        "pos": "standard",
+        "pnl": "standard"
       },
       "public": true,
       "en": "The lowest plan that includes each feature",
@@ -4067,6 +4060,153 @@
       "max": 90,
       "en": "Days a post stays after its tournament ends",
       "bn": "টুর্নামেন্ট শেষের পর পোস্ট থাকার দিন"
+    },
+    {
+      "key": "gym_manage.renewal_remind_days",
+      "category": "gym",
+      "type": "int_list",
+      "value": [
+        7,
+        3,
+        1
+      ],
+      "unit": "days",
+      "en": "Remind about a renewal this many days before the membership ends",
+      "bn": "সদস্যপদ শেষ হওয়ার এত দিন আগে নবায়নের কথা মনে করানো হয়",
+      "why": "Up to 3 values, each 1 to 30 days (M27-FR-29; replaces gym_manage.remind_before_days)."
+    },
+    {
+      "key": "gym_manage.expiring_list_days",
+      "category": "gym",
+      "type": "int",
+      "value": 7,
+      "unit": "days",
+      "min": 1,
+      "max": 30,
+      "en": "Dashboard list: memberships ending within this many days",
+      "bn": "ড্যাশবোর্ডের তালিকা: এত দিনের মধ্যে শেষ হওয়া সদস্যপদ",
+      "why": "M27-FR-32: the call and WhatsApp list."
+    },
+    {
+      "key": "gym_manage.vat_max_bps",
+      "category": "gym",
+      "type": "int",
+      "value": 1500,
+      "unit": "bps",
+      "min": 0,
+      "max": 10000,
+      "approval": "four_eyes",
+      "en": "Highest VAT rate a gym can put on its receipts (basis points)",
+      "bn": "জিম রসিদে সর্বোচ্চ যত ভ্যাট দেখাতে পারে (বেসিস পয়েন্ট)",
+      "why": "M27-FR-28: Bangladesh standard VAT is 15%; VAT on member receipts is off until the owner turns it on (G10)."
+    },
+    {
+      "key": "gym_ops.expense_max_poisha",
+      "category": "gym",
+      "type": "money",
+      "value": 50000000,
+      "unit": "poisha",
+      "min": 100,
+      "max": 1000000000,
+      "en": "Largest single expense a gym can record",
+      "bn": "জিম একবারে সর্বোচ্চ যত খরচ লিখতে পারে",
+      "why": "M27-FR-02: catches a typing slip (an extra zero)."
+    },
+    {
+      "key": "gym_ops.drawer_float_max_poisha",
+      "category": "gym",
+      "type": "money",
+      "value": 10000000,
+      "unit": "poisha",
+      "min": 0,
+      "max": 100000000,
+      "en": "Largest opening cash in the drawer",
+      "bn": "ক্যাশ ড্রয়ারে দিনের শুরুর সর্বোচ্চ টাকা",
+      "why": "M27-FR-06."
+    },
+    {
+      "key": "gym_ops.product_price_max_poisha",
+      "category": "gym",
+      "type": "money",
+      "value": 5000000,
+      "unit": "poisha",
+      "min": 100,
+      "max": 100000000,
+      "en": "Highest price of one item at the gym counter",
+      "bn": "জিম কাউন্টারে একটি পণ্যের সর্বোচ্চ দাম",
+      "why": "M27-FR-10."
+    },
+    {
+      "key": "gym_ops.sale_max_lines",
+      "category": "gym",
+      "type": "int",
+      "value": 30,
+      "unit": "lines",
+      "min": 1,
+      "max": 100,
+      "en": "Most lines on one counter sale",
+      "bn": "এক বিক্রিতে সর্বোচ্চ লাইন",
+      "why": "M27-FR-17."
+    },
+    {
+      "key": "gym_ops.stock_expiry_alert_days",
+      "category": "gym",
+      "type": "int",
+      "value": 30,
+      "unit": "days",
+      "min": 1,
+      "max": 180,
+      "en": "Warn this many days before a product expires",
+      "bn": "পণ্যের মেয়াদ শেষের এত দিন আগে জানানো হয়",
+      "why": "M27-FR-15: supplements past their date cannot be sold (as in the marketplace, M12)."
+    },
+    {
+      "key": "gym_ops.locker_fee_max_poisha",
+      "category": "gym",
+      "type": "money",
+      "value": 500000,
+      "unit": "poisha",
+      "min": 0,
+      "max": 10000000,
+      "en": "Highest monthly locker fee",
+      "bn": "লকারের সর্বোচ্চ মাসিক ভাড়া",
+      "why": "M27-FR-22."
+    },
+    {
+      "key": "gym_ops.locker_rental_max_days",
+      "category": "gym",
+      "type": "int",
+      "value": 366,
+      "unit": "days",
+      "min": 1,
+      "max": 731,
+      "en": "Longest locker rental",
+      "bn": "সবচেয়ে লম্বা লকার ভাড়া",
+      "why": "M27-FR-23."
+    },
+    {
+      "key": "gym_ops.locker_remind_days",
+      "category": "gym",
+      "type": "int",
+      "value": 3,
+      "unit": "days",
+      "min": 0,
+      "max": 30,
+      "en": "Remind the member this many days before a locker rental ends (0 = off)",
+      "bn": "লকার ভাড়া শেষের এত দিন আগে সদস্যকে মনে করানো হয় (০ = বন্ধ)",
+      "why": "M27-FR-25."
+    },
+    {
+      "key": "gym_ops.lockers_max",
+      "category": "gym",
+      "type": "int",
+      "value": 500,
+      "unit": "lockers",
+      "min": 1,
+      "max": 2000,
+      "en": "Most lockers in one gym",
+      "bn": "এক জিমে সর্বোচ্চ লকার",
+      "why": "M27-FR-22."
     }
   ]
 }

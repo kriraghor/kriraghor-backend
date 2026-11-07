@@ -74,6 +74,9 @@ const FEE_NAMES = { en: { 'fees.gym_referral_poisha': 'referral fee', 'fees.gym_
 const pickLocale = (map, locale, key) => map[locale]?.[key] ?? map.en[key] ?? key;
 const PLAN_KINDS = { en: { workout: 'workout plan', diet: 'diet chart' }, bn: { workout: 'ওয়ার্কআউট প্ল্যান', diet: 'ডায়েট চার্ট' } };
 const gymOwnerAndCollectors = async (e) => [e.payload.ownerId, ...(await staffOf('gym', e.payload.gymId, 'fees.collect'))];
+// M27: the gym's owner (from M20) and the staff holding a permission.
+const gymOwnerId = async (gymId) => (await require('../gym').gyms.get(gymId))?.ownerId ?? null;
+const gymOwnerAnd = (permission) => async (e) => [await gymOwnerId(e.payload.gymId), ...(permission ? await staffOf('gym', e.payload.gymId, permission) : [])].filter(Boolean);
 // M14 lite and M22: the organisation (its name) and its admins (owner and admins get organiser news).
 const orgAdmins = (id) => require('../organisations').organisations.adminIds(id);
 // M14: tournament names, registrations and captains.
@@ -1771,6 +1774,44 @@ const CATALOGUE = [
     recipients: async (e) => (e.payload.method === 'online' ? gymOwnerAndCollectors(e) : []),
     values: async (e) => ({ memberCode: (await gmMemberFacts(e.payload.memberId))?.memberCode ?? '', amount: e.payload.amount, receiptNo: e.payload.receiptNo }),
     link: (e) => gymUrl(`/manage/${e.payload.gymId}/members/${e.payload.memberId}`),
+  },
+  // M27 gym operations, round 1.
+  {
+    code: 'GYM_STOCK_LOW',
+    events: ['gym_stock.low'],
+    category: 'gym_business',
+    channels: ['in_app'],
+    recipients: gymOwnerAnd('stock.manage'),
+    values: async (e) => ({ gym: await gymName(e.payload.gymId), product: e.payload.item, left: e.payload.stockQty }),
+    link: (e) => gymUrl(`/manage/${e.payload.gymId}/stock`),
+  },
+  {
+    code: 'GYM_PRODUCT_EXPIRING',
+    events: ['gym_product.expiring'],
+    category: 'gym_business',
+    channels: ['in_app'],
+    recipients: gymOwnerAnd('stock.manage'),
+    values: async (e, { locale }) => ({ gym: await gymName(e.payload.gymId), product: e.payload.item, expiresOn: dayText(e.payload.expiresOn, locale) }),
+    link: (e) => gymUrl(`/manage/${e.payload.gymId}/stock`),
+  },
+  {
+    code: 'GYM_CASH_DIFFERENCE',
+    events: ['gym_cash.closed'],
+    category: 'gym_business',
+    channels: ['in_app'],
+    recipients: async (e) => (e.payload.difference === 0 ? [] : [await gymOwnerId(e.payload.gymId)].filter(Boolean)),
+    values: async (e, { locale }) => ({ gym: await gymName(e.payload.gymId), date: dayText(e.payload.date, locale), difference: e.payload.difference }),
+    link: (e) => gymUrl(`/manage/${e.payload.gymId}/fees/closing?date=${e.payload.date}`),
+  },
+  {
+    code: 'GYM_LOCKER_ENDING',
+    events: ['gym_locker.ending'],
+    category: 'gym',
+    channels: ['in_app', 'email'],
+    recipients: gmUsers(null),
+    external: gmExternal(null),
+    values: async (e, { locale }) => ({ gym: await gymName(e.payload.gymId), endsOn: dayText(e.payload.endsOn, locale) }),
+    link: (e) => gymUrl(`/me/memberships/${e.payload.memberId}`),
   },
   {
     code: 'GYM_OWNER_MORNING',

@@ -52,6 +52,9 @@ GymManageSettings.init(
     remindersOff: { type: DataTypes.JSONB, allowNull: false, defaultValue: [] },
     smsKinds: { type: DataTypes.JSONB, allowNull: false, defaultValue: [] },
     importConsentUntil: DataTypes.DATE(3),
+    // M27-FR-28: VAT on member receipts, off by default; the owner enters the rate.
+    vatEnabled: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    vatBps: DataTypes.INTEGER,
     updatedBy: DataTypes.UUID,
   },
   { sequelize, modelName: 'GymManageSettings', tableName: 'gym_manage_settings' }
@@ -76,6 +79,11 @@ GymMember.init(
     healthNoteEnc: DataTypes.TEXT,
     healthNoteBy: DataTypes.ENUM('member', 'staff'),
     healthNoteAt: DataTypes.DATE(3),
+    // M27-FR-30 (round 1): blood group, height and weight, conditions and injuries (encrypted).
+    bloodGroup: DataTypes.ENUM('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'),
+    heightCm: DataTypes.SMALLINT,
+    weightKg: { type: DataTypes.DECIMAL(5, 1), get() { const v = this.getDataValue('weightKg'); return v === null || v === undefined ? null : Number(v); } },
+    medicalEnc: DataTypes.TEXT,
     source: enumOf(['desk', 'platform', 'import', 'pass']),
     status: enumOf(['new', 'active', 'frozen', 'expired', 'left', 'removed'], { defaultValue: 'new' }),
     userId: DataTypes.UUID,
@@ -209,6 +217,8 @@ GymFeePayment.init(
     providerChargePoisha: poisha('providerChargePoisha', { allowNull: true }),
     providerSettingVersion: DataTypes.INTEGER,
     importId: DataTypes.UUID,
+    // M27-FR-28: the VAT rate this payment was recorded at (snapshot; null = no VAT).
+    vatBps: DataTypes.INTEGER,
   },
   { sequelize, modelName: 'GymFeePayment', tableName: 'gym_fee_payments', updatedAt: false }
 );

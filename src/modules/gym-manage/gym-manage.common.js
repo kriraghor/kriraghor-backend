@@ -91,7 +91,10 @@ const cfg = () => ({
   importRetentionDays: settings.get('gym_manage.import_file_retention_days'),
   photoMaxBytes: settings.get('ground.photo_max_bytes'),
   // Prompt 2: reminders, payment links, online fees, referrals (§6.12).
-  remindBeforeDays: settings.get('gym_manage.remind_before_days'),
+  // M27-FR-29: renewal reminders at each of these days before the end (was one remind_before_days).
+  renewalRemindDays: settings.get('gym_manage.renewal_remind_days'),
+  vatMaxBps: settings.get('gym_manage.vat_max_bps'),
+  expiringListDays: settings.get('gym_manage.expiring_list_days'),
   overdueRemindDays: settings.get('gym_manage.overdue_remind_days'),
   morningSummaryTime: settings.get('gym_manage.morning_summary_time'),
   reminderLogDays: settings.get('gym_manage.reminder_log_days'),
@@ -277,6 +280,12 @@ async function nextMemberCode(s, transaction) {
 }
 
 /** The next receipt number of the gym under the settings row lock (M24-FR-33): {SHORT}-R{YY}-{000001}, yearly. */
+/** M27-FR-28: the gym's VAT rate when VAT is on, else null (a payment or a sale keeps it). */
+async function vatBpsOf(gymId, { transaction } = {}) {
+  const s = await settingsOf(gymId, { transaction });
+  return s?.vatEnabled && s.vatBps ? s.vatBps : null;
+}
+
 async function nextReceiptNo(gymId, transaction, now = new Date()) {
   const s = await requireSetup(gymId, { transaction, lock: true });
   const next = rules.nextReceipt({ receiptYear: s.receiptYear, receiptSeq: s.receiptSeq, year: rules.yearOf(today(now)) });
@@ -375,6 +384,7 @@ module.exports = {
   requireSetup,
   nextMemberCode,
   nextReceiptNo,
+  vatBpsOf,
   cursorOf,
   parseCursor,
 };
