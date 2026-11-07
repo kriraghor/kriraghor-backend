@@ -116,6 +116,21 @@ async function create(principal, gymId, input, req) {
   return one(gymId, expense.id);
 }
 
+/**
+ * M27-FR-80, FR-84: an expense another part of gym-ops records inside its own transaction (a paid payroll
+ * line, a service or repair cost) in the category with this key (made with the defaults if needed). Not
+ * checked against the expense limit: the caller checks its own. Returns the row.
+ */
+async function systemExpenseIn(transaction, { gymId, categoryKey, amountPoisha, spentOn, method, fromDrawer = false, payee = null, note = null, source, sourceId, by, actor = null, req = null }) {
+  const cats = await categoriesOf(gymId, { transaction });
+  const cat = cats.find((x) => x.key === categoryKey) ?? cats.find((x) => x.key === 'other');
+  if (fromDrawer) await refuseClosedDrawer(gymId, spentOn, transaction);
+  const x = await GymExpense.create({ gymId, categoryId: cat.id, amountPoisha, spentOn, method, fromDrawer, payee, note, source, sourceId, createdBy: by }, { transaction });
+  await c.publish(transaction, 'gym_expense.recorded', 'gym_expense', x.id, { expenseId: x.id, gymId, amount: amountPoisha, categoryKey: cat.key ?? null, method, fromDrawer, spentOn, source }, actor);
+  await c.record({ action: 'gym_expense.recorded', actor, entityType: 'gym_expense', entityId: x.id, after: { amount: amountPoisha, category: cat.name, method, source }, meta: { gymId }, req }, transaction);
+  return x;
+}
+
 /** POST …/expenses/:expenseId/void (expenses.manage): a reason, never a delete (M27-FR-04). */
 async function voidOne(principal, gymId, expenseId, { reason }, req) {
   const a = await c.access(principal, gymId, 'expenses.manage', { feature: FEATURE, restricted: true });
@@ -154,4 +169,4 @@ async function drawerCash(gymId, day, { transaction } = {}) {
   return Number(sum ?? 0);
 }
 
-module.exports = { categories, saveCategories, list, create, voidOne, totals, drawerCash, refuseClosedDrawer };
+module.exports = { categories, saveCategories, list, create, voidOne, totals, drawerCash, refuseClosedDrawer, systemExpenseIn };

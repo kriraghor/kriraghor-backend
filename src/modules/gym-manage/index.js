@@ -58,5 +58,8 @@ module.exports = {
     memberOfUser: (...args) => require('./ops.service').memberOfUser(...args),
     hasRunningMembership: (...args) => require('./ops.service').hasRunningMembership(...args),
     checkInDates: (...args) => require('./ops.service').checkInDates(...args),
+    // round 3
+    parseEntranceToken: (...args) => require('./gym-manage.common').parseEntranceToken(...args),
+    feesByTrainer: (...args) => require('./ops.service').feesByTrainer(...args),
   }),
 };

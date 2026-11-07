@@ -1861,6 +1861,26 @@ const CATALOGUE = [
     link: (e) => gymUrl(`/manage/${e.payload.gymId}/leads`),
   },
   {
+    // M27-FR-85: a machine is due for service (the owner and staff with assets.manage).
+    code: 'GYM_ASSET_SERVICE_DUE',
+    events: ['gym_asset.service_reminded'],
+    category: 'gym_business',
+    channels: ['in_app', 'push'],
+    recipients: gymOwnerAnd('assets.manage'),
+    values: async (e, { locale }) => ({ gym: await gymName(e.payload.gymId), item: e.payload.item, dueOn: dayText(e.payload.dueOn, locale) }),
+    link: (e) => gymUrl(`/manage/${e.payload.gymId}/equipment`),
+  },
+  {
+    // M27-FR-81: the staff member's pay for the month was paid; the payslip is ready.
+    code: 'GYM_PAYSLIP_READY',
+    events: ['gym_payroll_line.paid'],
+    category: 'gym_business',
+    channels: ['in_app', 'push'],
+    recipients: async (e) => [e.payload.userId],
+    values: async (e) => ({ gym: await gymName(e.payload.gymId), period: e.payload.period }),
+    link: (e) => gymUrl(`/manage/${e.payload.gymId}/my-work`),
+  },
+  {
     code: 'GYM_LOCKER_ENDING',
     events: ['gym_locker.end_reminded'],
     category: 'gym',

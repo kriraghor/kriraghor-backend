@@ -52,6 +52,23 @@ const ERRORS = {
   GYM_NOTICE_NOBODY: [422, 'No member in this group can be reached'],
   GYM_LEAD_STATE: [409, 'This enquiry cannot change that way'],
   GYM_LEADS_CLOSED: [404, 'Gym not found'],
+  // round 3
+  GYM_SHIFT_TIMES: [422, 'Choose a day and a start time before the end time'],
+  GYM_SHIFT_LIMIT: [422, 'This staff member has the most shifts allowed'],
+  GYM_STAFF_UNKNOWN: [422, 'Choose a staff member of this gym'],
+  GYM_CLOCK_TOKEN_INVALID: [422, 'This code is not the gym’s entrance code, or it has expired. Scan it again'],
+  GYM_NOT_STAFF: [403, 'You do not work at this gym'],
+  GYM_STAFF_ALREADY_IN: [409, 'This staff member is already clocked in'],
+  GYM_STAFF_NOT_IN: [409, 'This staff member is not clocked in'],
+  GYM_COMMISSION_OUT_OF_RANGE: [422, 'The commission rate is outside the allowed range'],
+  GYM_PAYROLL_PERIOD: [422, 'Choose this month or an earlier one'],
+  GYM_PAYROLL_EXISTS: [409, 'This month already has a payroll'],
+  GYM_PAYROLL_EMPTY: [422, 'Set the pay of at least one staff member first'],
+  GYM_PAYROLL_STATE: [409, 'This payroll cannot change that way'],
+  GYM_PAYROLL_LINE_STATE: [409, 'This payroll line cannot change now'],
+  GYM_PAYROLL_NEGATIVE: [422, 'The deduction is larger than the pay'],
+  GYM_ASSET_LIMIT: [422, 'This gym has the most machines allowed'],
+  GYM_ASSET_STATE: [409, 'This machine is retired'],
 };
 
 function fail(code, meta) {
@@ -89,6 +106,16 @@ const cfg = () => ({
   noticeDaysMax: settings.get('gym_ops.notice_days_max'),
   leadPerIpHour: settings.get('gym_ops.lead_per_ip_hour'),
   leadPerPhoneDay: settings.get('gym_ops.lead_per_phone_day'),
+  // round 3
+  staffLateGraceMinutes: settings.get('gym_ops.staff_late_grace_minutes'),
+  staffAutoClockoutHours: settings.get('gym_ops.staff_auto_clockout_hours'),
+  shiftsPerStaffMax: settings.get('gym_ops.shifts_per_staff_max'),
+  salaryMax: settings.get('gym_ops.salary_max_poisha'),
+  commissionMax: settings.get('gym_ops.commission_bps_max'),
+  payrollAdjustMax: settings.get('gym_ops.payroll_adjust_max_poisha'),
+  assetsMax: settings.get('gym_ops.assets_max'),
+  assetServiceAlertDays: settings.get('gym_ops.asset_service_alert_days'),
+  assetCostMax: settings.get('gym_ops.asset_cost_max_poisha'),
 });
 
 /**

@@ -242,7 +242,142 @@ function segmentBlock(segment, { daysMax }) {
   return null;
 }
 
+
+// ---------------------------------------------------------------- round 3: staff attendance (M27-FR-72..75)
+
+const HHMM = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
+const minutesOf = (hhmm) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+
+/** M27-FR-72: a shift is a day of the week and a start before its end (no overnight shifts in v1) → null or the code. */
+function shiftBlock({ dow, startTime, endTime }) {
+  if (!Number.isInteger(dow) || dow < 0 || dow > 6) return 'GYM_SHIFT_TIMES';
+  if (!HHMM.test(startTime ?? '') || !HHMM.test(endTime ?? '')) return 'GYM_SHIFT_TIMES';
+  return minutesOf(endTime) > minutesOf(startTime) ? null : 'GYM_SHIFT_TIMES';
+}
+
+/** M27-FR-73: the next clock of a staff member: in after nothing or an out, out after an in. */
+const nextClockKind = (last) => (last && last.kind === 'in' ? 'out' : 'in');
+
+/**
+ * M27-FR-75: clock rows of one staff member (oldest first) → intervals { inAt, outAt, auto }. An out with no
+ * in before it is ignored; a last in with no out is open (outAt null).
+ */
+function clockIntervals(rows) {
+  const out = [];
+  let open = null;
+  for (const r of rows) {
+    if (r.kind === 'in') {
+      if (open) out.push({ inAt: open.at, outAt: null, auto: false });
+      open = r;
+    } else if (open) {
+      out.push({ inAt: open.at, outAt: r.at, auto: r.method === 'auto' });
+      open = null;
+    }
+  }
+  if (open) out.push({ inAt: open.at, outAt: null, auto: false });
+  return out;
+}
+
+/** Minutes worked: closed intervals only; an auto-closed one counts nothing (nobody knows when they left). */
+const workedMinutes = (intervals) => intervals.reduce((n, x) => (x.outAt && !x.auto ? n + Math.max(0, Math.floor((new Date(x.outAt) - new Date(x.inAt)) / 60000)) : n), 0);
+
+/** Minutes after midnight in Dhaka of an instant. */
+const dhakaMinutes = (at) => Math.floor(((new Date(at).getTime() + DHAKA_OFFSET_MS) % DAY_MS) / 60000);
+
+/**
+ * M27-FR-74: late and missed shifts of one staff member over [from, to]. A shift is late when the first
+ * clock-in of its date is more than graceMinutes after its start; missed when its date is before today and
+ * there was no clock-in that date. Shifts on dates from today on are neither. One clock-in covers every
+ * shift of its date.
+ */
+function shiftMarks({ shifts, times, from, to, today, graceMinutes }) {
+  const firstIn = new Map();
+  for (const t of times) if (t.kind === 'in' && (!firstIn.has(t.localDate) || new Date(t.at) < new Date(firstIn.get(t.localDate)))) firstIn.set(t.localDate, t.at);
+  let late = 0;
+  let missed = 0;
+  for (let d = from; d <= to && d < today; d = addDays(d, 1)) {
+    const dow = dowOf(d);
+    for (const sh of shifts) {
+      if (sh.dow !== dow) continue;
+      const first = firstIn.get(d);
+      if (!first) missed += 1;
+      else if (dhakaMinutes(first) > minutesOf(sh.startTime) + graceMinutes) late += 1;
+    }
+  }
+  return { late, missed };
+}
+
+// ---------------------------------------------------------------- round 3: payroll (M27-FR-76..81)
+
+/** "2026-11" → { from: '2026-11-01', to: '2026-11-30' }. */
+const periodRange = (period) => ({ from: `${period}-01`, to: lastOfMonth(`${period}-01`) });
+
+/** M27-FR-77: a payroll month is valid and not after the current one → null or the code. */
+const periodBlock = (period, today) => (/^\d{4}-(0[1-9]|1[0-2])$/.test(period ?? '') && period <= today.slice(0, 7) ? null : 'GYM_PAYROLL_PERIOD');
+
+/** A commission: base × bps ÷ 10000, rounded half up to the poisha. */
+const commissionOf = (base, bps) => Math.floor((base * bps + 5000) / 10000);
+
+/** M27-FR-76: pay terms within the limits → null or the code. */
+function payTermsBlock({ basePoisha, ptCommissionBps, salesCommissionBps }, { salaryMax, commissionMax }) {
+  if (!Number.isInteger(basePoisha) || basePoisha < 0 || basePoisha > salaryMax) return 'GYM_AMOUNT_OUT_OF_RANGE';
+  for (const bps of [ptCommissionBps, salesCommissionBps]) if (!Number.isInteger(bps) || bps < 0 || bps > commissionMax) return 'GYM_COMMISSION_OUT_OF_RANGE';
+  return null;
+}
+
+/**
+ * M27-FR-78: one payroll line from the terms and the month's facts → the amounts. Net = base + the two
+ * commissions + bonus − deduction; a deduction larger than the rest is refused by lineBlock.
+ */
+function payrollLine({ basePoisha, ptCommissionBps, salesCommissionBps, ptBasePoisha, salesBasePoisha, bonusPoisha = 0, deductionPoisha = 0 }) {
+  const ptCommissionPoisha = commissionOf(ptBasePoisha, ptCommissionBps);
+  const salesCommissionPoisha = commissionOf(salesBasePoisha, salesCommissionBps);
+  const netPoisha = basePoisha + ptCommissionPoisha + salesCommissionPoisha + bonusPoisha - deductionPoisha;
+  return { basePoisha, ptBasePoisha, ptCommissionBps, ptCommissionPoisha, salesBasePoisha, salesCommissionBps, salesCommissionPoisha, bonusPoisha, deductionPoisha, netPoisha };
+}
+
+/** M27-FR-78: a bonus or deduction within the limit, and a net that is not negative → null or the code. */
+function lineBlock({ bonusPoisha, deductionPoisha, netPoisha }, { adjustMax }) {
+  for (const v of [bonusPoisha, deductionPoisha]) if (!Number.isInteger(v) || v < 0 || v > adjustMax) return 'GYM_AMOUNT_OUT_OF_RANGE';
+  return netPoisha < 0 ? 'GYM_PAYROLL_NEGATIVE' : null;
+}
+
+/** M27-FR-80: the run's state once a line is paid: paid when every line with money is paid. */
+const runPaid = (lines) => lines.every((l) => l.status === 'paid' || l.netPoisha === 0);
+
+// ---------------------------------------------------------------- round 3: equipment (M27-FR-82..86)
+
+const ASSET_CATEGORIES = Object.freeze(['cardio', 'strength', 'free_weight', 'bench_rack', 'accessory', 'electrical', 'furniture', 'other']);
+const ASSET_STATUSES = Object.freeze(['working', 'needs_service', 'out_of_order', 'retired']);
+
+/** M27-FR-83: the next service date from the last one (or the purchase, or today) and the interval; none without one. */
+const nextServiceOn = ({ every, lastServiceOn, boughtOn, today }) => (every ? addDays(lastServiceOn ?? boughtOn ?? today, every) : null);
+
+/** M27-FR-85: remind once per due date, alertDays ahead, for machines still in use. */
+function serviceAlertDue({ status, nextServiceOn: next, serviceAlertedOn }, { today, alertDays }) {
+  if (!next || status === 'retired') return false;
+  if (serviceAlertedOn === next) return false;
+  return next <= addDays(today, alertDays);
+}
+
 module.exports = {
+  shiftBlock,
+  nextClockKind,
+  clockIntervals,
+  workedMinutes,
+  dhakaMinutes,
+  shiftMarks,
+  periodRange,
+  periodBlock,
+  commissionOf,
+  payTermsBlock,
+  payrollLine,
+  lineBlock,
+  runPaid,
+  ASSET_CATEGORIES,
+  ASSET_STATUSES,
+  nextServiceOn,
+  serviceAlertDue,
   sessionWindow,
   dowOf,
   datesAhead,
