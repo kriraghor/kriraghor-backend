@@ -98,7 +98,7 @@ async function moveIn(transaction, { product, kind, qty, unitCost = null, saleId
   const change = rules.lowStockChange({ before, after, reorderLevel: product.reorderLevel, alerted: Boolean(product.lowAlertedAt) });
   await product.update({ stockQty: after, ...(change === 'alert' ? { lowAlertedAt: new Date() } : change === 'rearm' ? { lowAlertedAt: null } : {}) }, { transaction });
   if (change === 'alert') {
-    await c.publish(transaction, 'gym_stock.low', 'gym_product', product.id, { productId: product.id, gymId: product.gymId, item: product.name, stockQty: after, reorderLevel: product.reorderLevel }, actor);
+    await c.publish(transaction, 'gym_stock.low_reached', 'gym_product', product.id, { productId: product.id, gymId: product.gymId, item: product.name, stockQty: after, reorderLevel: product.reorderLevel }, actor);
   }
   return after;
 }
@@ -298,7 +298,7 @@ async function expiryAlerts(now = new Date()) {
     if (!rules.expiryAlertDue(p, { today, alertDays })) continue;
     await sequelize.transaction(async (transaction) => {
       await p.update({ expiryAlertedOn: p.expiresOn }, { transaction });
-      await c.publish(transaction, 'gym_product.expiring', 'gym_product', p.id, { productId: p.id, gymId: p.gymId, item: p.name, expiresOn: p.expiresOn, stockQty: p.stockQty, expired: p.expiresOn < today });
+      await c.publish(transaction, 'gym_product.expiry_warned', 'gym_product', p.id, { productId: p.id, gymId: p.gymId, item: p.name, expiresOn: p.expiresOn, stockQty: p.stockQty, expired: p.expiresOn < today });
     });
     n += 1;
   }

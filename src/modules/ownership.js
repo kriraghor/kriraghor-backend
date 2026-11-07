@@ -30,7 +30,7 @@ const OWNERS = {
   // Round B3 (Q69, Q169, Q170): staff accounts working at one venue, gym or shop for its owner.
   'business-members': ['BusinessMember'],
   'settings': ['PlatformSetting', 'SettingsHistory', 'SettingsChangeRequest'],
-  'catalog': ['Sport', 'Division', 'District', 'Area', 'Facility', 'Surface', 'SportRuleSchema', 'ItemCategory', 'ItemType', 'ItemTypeField', 'HireCategory', 'HireRole', 'EsportsGame', 'EsportsMode', 'EsportsMap', 'EsportsPointsPreset'],
+  'catalog': ['Sport', 'Division', 'District', 'Area', 'Facility', 'Surface', 'SportRuleSchema', 'Exercise', 'ItemCategory', 'ItemType', 'ItemTypeField', 'HireCategory', 'HireRole', 'EsportsGame', 'EsportsMode', 'EsportsMap', 'EsportsPointsPreset'],
   'analytics': ['KpiFactBooking', 'KpiFactCourtDay', 'KpiFactPayment', 'KpiFactLedgerTxn', 'KpiFactEsportsEntry', 'KpiFactEsportsTournament', 'KpiProcessedEvent', 'KpiDrift', 'KpiFactSubOrder', 'KpiFactOrderLine', 'KpiFactGymPass', 'KpiFactGymAdmission'],
   'audit': ['AuditLog', 'AuditChain', 'AuditExport'],
   'events': ['OutboxEvent', 'ConsumedEvent'],
@@ -48,13 +48,13 @@ const OWNERS = {
   'hire': ['HireProfile', 'RateCard', 'RateCardItem', 'HireRequest', 'HireJob', 'HireMessage', 'HireShortlist', 'AvailabilityBlock'],
   'gym': ['Gym', 'GymHours', 'GymPhoto', 'GymPackage', 'GymPass', 'PassRedemption', 'TrainerPlan', 'TrainerSubscription', 'TrainerSubscriptionPeriod'],
   // M24 gym management (prompts 1 and 2 of 3b: 18 of the 24 tables, §7.2); reads M20 only through gym/index.js.
-  'gym-manage': ['GymManageSettings', 'GymMember', 'GymLinkRequest', 'GymMembership', 'GymFreeze', 'GymDue', 'GymFeePayment', 'GymAttendance', 'GymMemberNote', 'GymImport', 'GymOwnerSubscription', 'GymPaymentLink', 'GymReminder', 'GymActiveMemberCount', 'GymSubscriptionInvoice', 'GymSubscriptionInvoiceLine', 'GymFeeOverride', 'GymReferral', 'GymPlan', 'GymPlanVersion', 'GymPlanAssignment', 'GymPlanLog'],
+  'gym-manage': ['GymManageSettings', 'GymMember', 'GymLinkRequest', 'GymMembership', 'GymFreeze', 'GymDue', 'GymFeePayment', 'GymAttendance', 'GymAttendanceExit', 'GymMemberNote', 'GymImport', 'GymOwnerSubscription', 'GymPaymentLink', 'GymReminder', 'GymActiveMemberCount', 'GymSubscriptionInvoice', 'GymSubscriptionInvoiceLine', 'GymFeeOverride', 'GymReferral', 'GymPlan', 'GymPlanVersion', 'GymPlanAssignment', 'GymPlanLog'],
   'organisations': ['Organisation', 'OrganisationMember'],
   'organiser-saas': ['OrganiserContract', 'OrganiserInvoice', 'OrganiserInvoiceLine', 'OrganiserPrizeFund', 'OrganisationBranding'],
   'esports-events': ['EsportsEvent', 'EsportsEventStage', 'EsportsEventQualification', 'EsportsEventStream', 'EsportsEventSponsor', 'EsportsEventPoll', 'EsportsEventPollOption', 'EsportsEventPollVote', 'EsportsEventFollow', 'EsportsEventFeedItem', 'EsportsEventAlert'],
   'esports': ['EsportsGameProfile', 'EsportsUidBan', 'EsportsSquad', 'EsportsSquadMember', 'EsportsTournament', 'EsportsPrizePlace', 'EsportsStage', 'EsportsMatch', 'EsportsRegistration', 'EsportsRegistrationPlayer', 'EsportsCheckin', 'EsportsRoomCredential', 'EsportsCredentialView', 'EsportsResult', 'EsportsResultPlayer', 'EsportsResultEvidence', 'EsportsResultDispute', 'EsportsDisqualification', 'EsportsStanding', 'EsportsPrizeAward', 'EsportsPrizeShare', 'EsportsStream', 'EsportsRankingEntry', 'EsportsRanking'],
   // M27 gym operations (round 1): expenses, the cash drawer, the counter shop and lockers.
-  'gym-ops': ['GymExpenseCategory', 'GymExpense', 'GymCashSession', 'GymProduct', 'GymStockMove', 'GymSale', 'GymSaleLine', 'GymLocker', 'GymLockerRental'],
+  'gym-ops': ['GymExpenseCategory', 'GymExpense', 'GymCashSession', 'GymProduct', 'GymStockMove', 'GymSale', 'GymSaleLine', 'GymLocker', 'GymLockerRental', 'GymClass', 'GymClassSchedule', 'GymClassSession', 'GymClassBooking', 'GymReward', 'GymPointEntry', 'GymMemberReferral', 'GymNotice', 'GymLead'],
   'tournament-posts': ['TournamentPost', 'TournamentPostPhoto', 'TournamentPostComment', 'TournamentPostThread', 'TournamentPostMessage'],
   'teams': ['Team', 'TeamMember', 'TeamInvite', 'PlayerProfile', 'Roster', 'RosterPlayer', 'EligibilityCheck'],
   'tournaments': ['Tournament', 'TournamentRules', 'TournamentVenue', 'Stage', 'Group', 'GroupTeam', 'Registration', 'Match', 'Standing'],

@@ -37,7 +37,7 @@ describe('B3 permission allow-lists and defaults', () => {
   });
   it('gym: admit, admissions, check-ins and the member list on; the rest optional (M24-FR-04)', () => {
     expect(rules.defaultsFor('gym')).toEqual(['attendance.mark', 'desk.admissions', 'desk.admit', 'members.view']);
-    expect(rules.allowedFor('gym')).toEqual(['attendance.mark', 'cash.drawer', 'desk.admissions', 'desk.admit', 'expenses.manage', 'fees.adjust', 'fees.collect', 'lockers.manage', 'members.edit', 'members.trainer', 'members.view', 'passes.view', 'plans.manage', 'pos.sell', 'reports.view', 'stock.manage']);
+    expect(rules.allowedFor('gym')).toEqual(['attendance.mark', 'cash.drawer', 'classes.manage', 'desk.admissions', 'desk.admit', 'expenses.manage', 'fees.adjust', 'fees.collect', 'leads.manage', 'lockers.manage', 'members.edit', 'members.trainer', 'members.view', 'notices.send', 'passes.view', 'plans.manage', 'pos.sell', 'reports.view', 'rewards.redeem', 'stock.manage']);
   });
   it('gym: editing members and collecting fees need the member list; adjusting fees needs collecting (M24-FR-04)', () => {
     expect(rules.normalizePermissions('gym', ['fees.adjust', 'members.view'])).toEqual({ error: 'PERMISSIONS_INVALID', unknown: [], missing: [{ permission: 'fees.adjust', needs: 'fees.collect' }] });

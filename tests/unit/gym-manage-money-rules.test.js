@@ -250,3 +250,11 @@ describe('M27 additions to the gym-manage rules', () => {
     expect(r2.vatPart(115000, null)).toEqual({ vat: 0, net: 115000 });
   });
 });
+
+describe('M27 round 2: visit length (M27-FR-40)', () => {
+  const r = require('../../src/modules/gym-manage/gym-manage.rules');
+  it('whole minutes, never negative', () => {
+    expect(r.visitMinutes('2026-11-07T10:00:00Z', '2026-11-07T11:29:59Z')).toBe(89);
+    expect(r.visitMinutes('2026-11-07T10:00:00Z', '2026-11-07T09:59:00Z')).toBe(0);
+  });
+});

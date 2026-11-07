@@ -92,3 +92,97 @@ Round 1 gives a gym its own books at the counter: expenses by category, the day'
 - [ ] **Reports:** the absent list for the gym's days, 7, 14, 30 or any number of days.
 - [ ] **Business panel → Team:** for a gym, "Start from a role" presets (Receptionist, Cashier, Trainer, Manager, Accountant, Store keeper) tick the boxes; the boxes stay editable.
 - [ ] Bangla, phone width, light and dark: no text left in English, no sideways scroll, readable contrast.
+
+---
+
+# M27 round 2 · Members and engagement: Acceptance Checklist
+
+Request names refer to the **"Kriraghor API: M27 round 2 · Members and engagement"** collection
+(`postman/kriraghor-gym-ops-r2.postman_collection.json`, rebuilt with `node postman/build-collection-m27-r2.js`).
+
+Round 2 brings members back: check-out and the live count, classes with bookings and a waitlist, reward points, notices to a group of members (in-app, push and email; never SMS), enquiries from the gym page, and the exercise library. 🤖 marks cases only the jest suites cover (`tests/e2e/gym-ops-round2.test.js`, `tests/unit/gym-ops-rules.test.js`).
+
+## 0. Setup
+- [ ] `npm run release` applies `20261120000001-gym-ops-round2`: `gym_attendance_exits` (append-only, one per visit), `gym_classes`, `gym_class_schedules`, `gym_class_sessions` (one per slot and date), `gym_class_bookings` (one live booking per member and session), `gym_rewards`, `gym_point_entries` (append-only), `gym_member_referrals`, `gym_notices` (append-only), `gym_leads` (phone encrypted, last 4 and a hash kept) and the `exercises` catalogue. It merges `classes`, `points`, `notices` (standard) and `leads` (basic) into `gym_saas.feature_min_tiers`.
+- [ ] The seed adds settings v36 (391 settings: `gym_manage.min_visit_minutes` 20, `gym_manage.visit_auto_close_hours` 4, the `gym_ops.class_*`, `points_*`, `notice_*`, `lead_*` keys), templates v28 (GYM_CLASS_CANCELLED, GYM_CLASS_REMINDER, GYM_CLASS_PROMOTED, GYM_NOTICE, GYM_LEAD_NEW) and the 64 library exercises in English and Bangla.
+- [ ] Jobs: `gym-manage.visits-close` (every 30 min), `gym-ops.class-reminders` (every 15 min), `gym-ops.classes-points-daily` (03:20 Dhaka: sessions ahead, points expiry).
+- [ ] `node postman/run-m27-r2.js` → **0 failed** (64 requests, 95 assertions). The runner resets the test database, publishes a Standard gym, links two members with a month each (Lima, Rafi), adds a member who has not paid (Friend Faruk), hires a trainer (classes.manage, members.view), a cashier (members.view, rewards.redeem) and a desk hand (attendance.mark, members.view), and serves `{{controlUrl}}` (`/drain`, `/visits-close`, `/soon`, `/reminders`).
+
+## 1. Permissions
+| # | Do | Expect |
+|---|---|---|
+| 1.1 | **Staff without notices.send** / **without leads.manage** | 403 `PERMISSION_REQUIRED` |
+| 1.2 | **Only the owner keeps the rewards list** | 403 for staff |
+| 1.3 | **A member is not staff** | 404 |
+| 1.4 | Classes on a Basic plan | 403 `GYM_TIER_REQUIRED` `{feature: classes, minTier: standard}` 🤖 |
+
+## 2. Check-out and the live count (M27-FR-40 to FR-45)
+| # | Do | Expect |
+|---|---|---|
+| 2.1 | **The desk checks Lima in** / **One in the gym now** | 201; `inGymNow` 1 |
+| 2.2 | **The desk checks Lima out** / **Out twice** | 200 `method: desk` with the visit length; then 409 `GYM_VISIT_CLOSED` |
+| 2.3 | **Rafi scans in** / **A second scan at once** | 201; 200 repeat, not a check-out (under `gym_manage.min_visit_minutes`) |
+| 2.4 | A second scan after the minimum visit | 200 `checkedOut: true` with the length 🤖 |
+| 2.5 | A visit left open past `visit_auto_close_hours` | the job closes it `method: auto`, no length; a second run closes nothing 🤖 |
+| 2.6 | Each check-in and check-out | `gym.desk_feed` over Socket.IO to the owner and staff with attendance.mark, nobody else 🤖 |
+
+## 3. Classes (M27-FR-46 to FR-55)
+| # | Do | Expect |
+|---|---|---|
+| 3.1 | **Morning HIIT** with a trainer from the staff; a trainer who is not staff | 201 with the slot; 422 `GYM_CLASS_TRAINER` 🤖 |
+| 3.2 | **Sessions made ahead** | at least 3 weeks; 06:30 Dhaka is 00:30 UTC |
+| 3.3 | **Lima books**, **twice**, **Rafi: full** | booked; 409 `GYM_CLASS_BOOKED`; waitlisted |
+| 3.4 | Booking without a running membership; as someone else | 409 `GYM_MEMBERSHIP_NEEDED` 🤖; 404 |
+| 3.5 | **Lima cancels** → **Rafi is promoted** | Rafi booked, `promoted: true`, told by GYM_CLASS_PROMOTED |
+| 3.6 | **The trainer books Lima again** | waitlisted (the desk books for anyone until the start) |
+| 3.7 | **The reminder job** twice | sent once only 🤖 (counts) |
+| 3.8 | **Inside the cutoff a member cannot cancel** | 409 `GYM_CLASS_CANCEL_CLOSED` |
+| 3.9 | After the start: the desk books; **the trainer marks who came** | 409 `GYM_CLASS_STARTED` 🤖; 200 `done`, Rafi `attended` |
+| 3.10 | **The owner cancels a later session** | `cancelled`; everyone booked gets GYM_CLASS_CANCELLED with the reason |
+| 3.11 | **The gym page timetable** | published gyms only; Yoga with 20 places; no member names |
+| 3.12 | **Retire Morning HIIT** | no scheduled sessions left 🤖 |
+
+## 4. Reward points (M27-FR-56 to FR-61)
+| # | Do | Expect |
+|---|---|---|
+| 4.1 | **Lima has points for her check-in** | 10 (`gym_ops.points_per_checkin`); a 7-day streak adds 50 🤖 |
+| 4.2 | **The rewards list** | two rewards (extra days, money off a due) |
+| 4.3 | **The cashier redeems 3 extra days** / **again** | balance 0, the membership ends 3 days later; then 409 `GYM_POINTS_SHORT` |
+| 4.4 | Money off with nothing owed | 409 `GYM_REWARD_NOTHING`; with a due, the due is waived by the amount 🤖 |
+| 4.5 | **The owner adds 50 with a note** | 200; audited |
+| 4.6 | **Lima brought a friend**, **a second referrer**, **the friend pays** | 200; 409 `GYM_REFERRAL_EXISTS`; Lima +200 after the payment |
+| 4.7 | **Lima sees her points** / **not someone else's** | 250 and how to earn; 404 |
+| 4.8 | Expiry after `points_expire_days` | first in, first out; points already spent do not expire twice 🤖 |
+
+## 5. Notices (M27-FR-62 to FR-65)
+| # | Do | Expect |
+|---|---|---|
+| 5.1 | **Who a notice to all active reaches** | by the app, by email, not reachable; cap 3 |
+| 5.2 | **Expired 0 days ago** | 422 `GYM_NOTICE_SEGMENT` |
+| 5.3 | **Send** | 201; in_app and push to linked members, email to others who have one; never SMS |
+| 5.4 | **A fourth today** | 429 `GYM_NOTICE_CAP` |
+| 5.5 | **Lima has the notice in the app** | GYM_NOTICE titled "Closed on Friday" |
+
+## 6. Enquiries and the exercise library (M27-FR-66 to FR-71)
+| # | Do | Expect |
+|---|---|---|
+| 6.1 | An enquiry to an unpublished gym | 404 🤖 |
+| 6.2 | **A robot fills the hidden field** | 202, nothing stored |
+| 6.3 | **Nadia asks** | 202; the phone stored encrypted; the owner and leads.manage staff are told (GYM_LEAD_NEW) |
+| 6.4 | The same phone past `lead_per_phone_day` | 429 `RATE_LIMITED` 🤖 |
+| 6.5 | **One new enquiry, the phone masked** / **Reveal the number** | last 4 only; the reveal is E.164, `no-store`, audited |
+| 6.6 | **Contacted**, **joined without a member**, **joined as the friend**, **lost after joined** | 200; 422 `GYM_MEMBER_UNKNOWN`; 200; 409 `GYM_LEAD_STATE` |
+| 6.7 | **The exercise library** | 64 exercises, English and Bangla names and steps |
+
+## 7. Gym app
+- [ ] The sidebar has **Engage** (Classes, Rewards, Notices, Enquiries), each shown by permission; a page above the plan shows the upsell.
+- [ ] **Front desk:** "In the gym now" count, the live strip of check-ins and check-outs, **Check out** on each open visit, the out time and the visit length.
+- [ ] **Entrance scan (member):** a second scan after the minimum visit says goodbye with the check-out time.
+- [ ] **Classes:** add a class (trainer, places, length, room, weekly times); the week view by day; a session opens to book a member, cancel a booking, mark who came, cancel the session with a reason.
+- [ ] **Rewards:** find a member, see points and history, redeem, adjust with a note, record who referred them; the owner edits the rewards list.
+- [ ] **Notices:** pick a group, see the reach before sending, the daily cap, the sent list.
+- [ ] **Enquiries:** new, contacted, joined, lost; Call and WhatsApp (the number from the audited reveal; prefilled message); mark joined with the member.
+- [ ] **Plans:** "Pick from the exercise library" fills the name in both languages; the member sees "How to do it" with the steps.
+- [ ] **Gym page:** the class timetable and the "Ask the gym" form; the thank-you after sending.
+- [ ] **Me → Classes:** book, join the waitlist, cancel; **My membership:** my points and the rewards.
+- [ ] Bangla, phone width, light and dark: no text left in English, no sideways scroll, readable contrast.

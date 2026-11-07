@@ -136,3 +136,73 @@ describe('M27 gym-ops rules', () => {
     expect(r.vatPart(100000, 0)).toBeNull();
   });
 });
+
+describe('M27 gym-ops rules, round 2', () => {
+  it('session times in Dhaka (UTC+6) and dates ahead (M27-FR-47)', () => {
+    const w = r.sessionWindow('2026-11-10', '06:30', 60);
+    expect(w.startsAt.toISOString()).toBe('2026-11-10T00:30:00.000Z');
+    expect(w.endsAt.toISOString()).toBe('2026-11-10T01:30:00.000Z');
+    expect(r.dowOf('2026-11-08')).toBe(0);
+    expect(r.datesAhead('2026-11-07', 2, 1)).toEqual(['2026-11-09', '2026-11-16']);
+    expect(r.datesAhead('2026-11-07', 1, 6)).toEqual(['2026-11-07']);
+  });
+
+  it('bookings, the waitlist, when a session takes bookings (M27-FR-48, FR-49)', () => {
+    expect(r.bookingOutcome({ booked: 9, waitlisted: 0, capacity: 10, waitlistMax: 2 })).toBe('booked');
+    expect(r.bookingOutcome({ booked: 10, waitlisted: 1, capacity: 10, waitlistMax: 2 })).toBe('waitlisted');
+    expect(r.bookingOutcome({ booked: 10, waitlisted: 2, capacity: 10, waitlistMax: 2 })).toBeNull();
+    const startsAt = new Date('2026-11-10T00:30:00Z');
+    expect(r.sessionBookBlock({ status: 'scheduled', startsAt, now: new Date('2026-11-10T00:00:00Z') })).toBeNull();
+    expect(r.sessionBookBlock({ status: 'scheduled', startsAt, now: startsAt })).toBe('GYM_CLASS_STARTED');
+    expect(r.sessionBookBlock({ status: 'cancelled', startsAt, now: new Date(0) })).toBe('GYM_CLASS_SESSION_STATE');
+  });
+
+  it('cancelling: members until the cutoff, the desk until the start (M27-FR-50)', () => {
+    const startsAt = new Date('2026-11-10T00:30:00Z');
+    const at = (iso) => new Date(iso);
+    expect(r.cancelBlock({ source: 'member', now: at('2026-11-09T23:30:00Z'), startsAt, cutoffMinutes: 60 })).toBeNull();
+    expect(r.cancelBlock({ source: 'member', now: at('2026-11-09T23:31:00Z'), startsAt, cutoffMinutes: 60 })).toBe('GYM_CLASS_CANCEL_CLOSED');
+    expect(r.cancelBlock({ source: 'desk', now: at('2026-11-10T00:30:00Z'), startsAt, cutoffMinutes: 60 })).toBeNull();
+    expect(r.cancelBlock({ source: 'desk', now: at('2026-11-10T00:31:00Z'), startsAt, cutoffMinutes: 60 })).toBe('GYM_CLASS_CANCEL_CLOSED');
+  });
+
+  it('the class reminder, once, inside the window (M27-FR-53)', () => {
+    const startsAt = new Date('2026-11-10T01:00:00Z');
+    expect(r.classReminderDue({ startsAt, now: new Date('2026-11-10T00:10:00Z'), minutes: 60, remindedAt: null })).toBe(true);
+    expect(r.classReminderDue({ startsAt, now: new Date('2026-11-09T23:59:00Z'), minutes: 60, remindedAt: null })).toBe(false);
+    expect(r.classReminderDue({ startsAt, now: new Date('2026-11-10T01:00:00Z'), minutes: 60, remindedAt: null })).toBe(false);
+    expect(r.classReminderDue({ startsAt, now: new Date('2026-11-10T00:10:00Z'), minutes: 60, remindedAt: new Date() })).toBe(false);
+  });
+
+  it('streak bonus: once per full run of days in a row (M27-FR-56)', () => {
+    const run = (n, end = '2026-11-07') => Array.from({ length: n }, (_, i) => r.addDays(end, i - n + 1));
+    expect(r.streakBonusDue(run(7), '2026-11-07', 7)).toBe(true);
+    expect(r.streakBonusDue(run(6), '2026-11-07', 7)).toBe(false);
+    expect(r.streakBonusDue(run(8), '2026-11-07', 7)).toBe(false);
+    expect(r.streakBonusDue(run(14), '2026-11-07', 7)).toBe(true);
+    expect(r.streakBonusDue(run(7, '2026-11-06'), '2026-11-07', 7)).toBe(false);
+  });
+
+  it('points: expiry first in first out, redeeming (M27-FR-59, FR-60)', () => {
+    expect(r.pointsToExpire({ earnedDue: 100, consumed: 30 })).toBe(70);
+    expect(r.pointsToExpire({ earnedDue: 100, consumed: 130 })).toBe(0);
+    expect(r.redeemBlock({ balance: 100, reward: { status: 'active', points: 100 } })).toBeNull();
+    expect(r.redeemBlock({ balance: 99, reward: { status: 'active', points: 100 } })).toBe('GYM_POINTS_SHORT');
+    expect(r.redeemBlock({ balance: 999, reward: { status: 'retired', points: 100 } })).toBe('GYM_REWARD_UNAVAILABLE');
+    expect(r.redeemBlock({ balance: 999, reward: null })).toBe('GYM_REWARD_UNAVAILABLE');
+  });
+
+  it('notice segments (M27-FR-62)', () => {
+    const o = { daysMax: 365 };
+    expect(r.segmentBlock({ kind: 'active' }, o)).toBeNull();
+    expect(r.segmentBlock({ kind: 'expiring', days: 7 }, o)).toBeNull();
+    expect(r.segmentBlock({ kind: 'expired', days: 0 }, o)).toBe('GYM_NOTICE_SEGMENT');
+    expect(r.segmentBlock({ kind: 'not_seen', days: 400 }, o)).toBe('GYM_NOTICE_SEGMENT');
+    expect(r.segmentBlock({ kind: 'not_seen', days: 1.5 }, o)).toBe('GYM_NOTICE_SEGMENT');
+    expect(r.segmentBlock({ kind: 'package', packageId: 'p' }, o)).toBeNull();
+    expect(r.segmentBlock({ kind: 'package' }, o)).toBe('GYM_NOTICE_SEGMENT');
+    expect(r.segmentBlock({ kind: 'class', classId: 'c' }, o)).toBeNull();
+    expect(r.segmentBlock({ kind: 'class' }, o)).toBe('GYM_NOTICE_SEGMENT');
+    expect(r.segmentBlock({ kind: 'everyone' }, o)).toBe('GYM_NOTICE_SEGMENT');
+  });
+});

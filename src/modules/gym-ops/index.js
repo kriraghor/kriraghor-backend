@@ -1,7 +1,15 @@
 'use strict';
 
 /**
- * The gym-ops module's public interface (ADR-007 §3, M27): other modules use only this file. Nothing calls
- * into it yet besides the routes and the jobs; round 3 adds payroll and equipment expenses here.
+ * M27 gym operations: the public face of the module (ADR-007). Other modules use only this.
+ *   consumers  registered by registry.registerAll (points from check-ins and fees)
+ *   notices    M08 targets and values of a notice to members
+ *   classes    session facts for notifications
  */
-module.exports = {};
+const lazy = (file, names) => Object.freeze(Object.fromEntries(names.map((n) => [n, (...args) => require(file)[n](...args)])));
+
+module.exports = {
+  consumers: lazy('./gym-ops.consumers', ['registerGymOpsConsumers']),
+  notices: lazy('./notices.service', ['targets', 'facts']),
+  classes: lazy('./classes.service', ['sessionFacts']),
+};

@@ -98,6 +98,8 @@ g.patch('/settings', validate(s.settingsPatch), async (req, res) => res.json(awa
 
 // Desk and check-ins (attendance.mark; check-ins need the attendance feature, M24-FR-07).
 g.get('/desk/search', query(s.deskSearchQuery), async (req, res) => res.json(await checkins.search(req.user, P(req), req.validQuery)));
+// M27-FR-40: the desk checks a member out.
+g.post('/checkins/:attendanceId/out', validate(s.attendanceParam, 'params'), async (req, res) => res.json(await require('./visits.service').checkOut(req.user, P(req), req.params.attendanceId, req)));
 g.post('/checkins', validate(s.checkinBody), async (req, res) => {
   const r = await checkins.checkIn(req.user, P(req), req.body, req);
   res.status(r.status).json(r.body);

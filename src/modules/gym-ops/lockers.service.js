@@ -212,7 +212,7 @@ async function daily(now = new Date()) {
     for (const r of due) {
       await sequelize.transaction(async (transaction) => {
         await r.update({ remindedOn: today }, { transaction });
-        await c.publish(transaction, 'gym_locker.ending', 'gym_locker_rental', r.id, { rentalId: r.id, gymId: r.gymId, lockerId: r.lockerId, memberId: r.memberId, endsOn: r.endsOn });
+        await c.publish(transaction, 'gym_locker.end_reminded', 'gym_locker_rental', r.id, { rentalId: r.id, gymId: r.gymId, lockerId: r.lockerId, memberId: r.memberId, endsOn: r.endsOn });
       });
       out.reminded += 1;
     }

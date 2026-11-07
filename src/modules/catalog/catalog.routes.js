@@ -16,6 +16,7 @@ publicRouter.get('/esports/games', async (req, res) => cached(req, res, await ca
 publicRouter.get('/sports', async (req, res) => cached(req, res, await catalog.publicSports()));
 publicRouter.get('/sport-rules/:sportKey', validate(s.sportKeyParam, 'params'), async (req, res) => cached(req, res, await require('./sport-rules.service').publicSchema(req.params.sportKey)));
 publicRouter.get('/facilities', async (req, res) => cached(req, res, await catalog.publicFacilities()));
+publicRouter.get('/exercises', async (req, res) => cached(req, res, await catalog.publicExercises()));
 publicRouter.get('/surfaces', async (req, res) => cached(req, res, await catalog.publicSurfaces()));
 publicRouter.get('/locations', validate(s.locationsQuery, 'query'), async (req, res) => cached(req, res, await catalog.publicLocations(req.validQuery)));
 publicRouter.get('/areas', validate(s.areasQuery, 'query'), async (req, res) => cached(req, res, await catalog.publicAreas(req.validQuery)));

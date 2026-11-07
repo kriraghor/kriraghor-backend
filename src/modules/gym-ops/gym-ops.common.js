@@ -31,6 +31,27 @@ const ERRORS = {
   GYM_LOCKER_LIMIT: [422, 'This gym has the most lockers allowed'],
   GYM_MEMBER_UNKNOWN: [422, 'Choose a member of this gym'],
   GYM_DATE_OUT_OF_RANGE: [422, 'Choose a date in the allowed range'],
+  // round 2
+  GYM_CLASS_LIMIT: [422, 'This gym has the most classes allowed'],
+  GYM_CLASS_UNKNOWN: [404, 'Class not found'],
+  GYM_CLASS_TRAINER: [422, 'Choose a trainer who works at this gym'],
+  GYM_CLASS_SESSION_STATE: [409, 'This class session is not taking bookings'],
+  GYM_CLASS_STARTED: [409, 'This class has already started'],
+  GYM_CLASS_FULL: [409, 'This class and its waitlist are full'],
+  GYM_CLASS_BOOKED: [409, 'This member already has a place in this class'],
+  GYM_CLASS_CANCEL_CLOSED: [409, 'It is too late to cancel this booking'],
+  GYM_CLASS_BOOKING_STATE: [409, 'This booking cannot be changed now'],
+  GYM_MEMBERSHIP_NEEDED: [409, 'A running membership is needed for this'],
+  GYM_REWARD_UNAVAILABLE: [409, 'This reward is not available'],
+  GYM_REWARD_LIMIT: [422, 'This gym has the most rewards allowed'],
+  GYM_POINTS_SHORT: [409, 'Not enough points for this reward'],
+  GYM_REWARD_NOTHING: [409, 'This reward cannot be used now'],
+  GYM_REFERRAL_EXISTS: [409, 'This member was already referred'],
+  GYM_NOTICE_SEGMENT: [422, 'Choose who the notice is for'],
+  GYM_NOTICE_CAP: [429, 'This gym has sent the most notices allowed today'],
+  GYM_NOTICE_NOBODY: [422, 'No member in this group can be reached'],
+  GYM_LEAD_STATE: [409, 'This enquiry cannot change that way'],
+  GYM_LEADS_CLOSED: [404, 'Gym not found'],
 };
 
 function fail(code, meta) {
@@ -50,6 +71,24 @@ const cfg = () => ({
   lockerRemindDays: settings.get('gym_ops.locker_remind_days'),
   lockersMax: settings.get('gym_ops.lockers_max'),
   backdateDays: settings.get('gym_manage.backdate_days'),
+  // round 2
+  classWeeksAhead: settings.get('gym_ops.class_weeks_ahead'),
+  classReminderMinutes: settings.get('gym_ops.class_reminder_minutes'),
+  classCancelCutoffMinutes: settings.get('gym_ops.class_cancel_cutoff_minutes'),
+  waitlistMax: settings.get('gym_ops.waitlist_max'),
+  classesMax: settings.get('gym_ops.classes_max'),
+  classSlotsMax: settings.get('gym_ops.class_slots_max'),
+  pointsPerCheckin: settings.get('gym_ops.points_per_checkin'),
+  pointsStreakDays: settings.get('gym_ops.points_streak_days'),
+  pointsStreakBonus: settings.get('gym_ops.points_streak_bonus'),
+  pointsReferral: settings.get('gym_ops.points_referral'),
+  pointsExpireDays: settings.get('gym_ops.points_expire_days'),
+  rewardsMax: settings.get('gym_ops.rewards_max'),
+  rewardDiscountMax: settings.get('gym_ops.reward_discount_max_poisha'),
+  noticeDailyCap: settings.get('gym_ops.notice_daily_cap'),
+  noticeDaysMax: settings.get('gym_ops.notice_days_max'),
+  leadPerIpHour: settings.get('gym_ops.lead_per_ip_hour'),
+  leadPerPhoneDay: settings.get('gym_ops.lead_per_phone_day'),
 });
 
 /**

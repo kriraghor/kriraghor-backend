@@ -26,6 +26,7 @@ const hiS = require('../modules/hire/hire.schemas');
 const gyS = require('../modules/gym/gym.schemas');
 const gmS = require('../modules/gym-manage/gym-manage.schemas');
 const goS = require('../modules/gym-ops/gym-ops.schemas');
+const go2 = require('../modules/gym-ops/gym-ops-round2.schemas');
 const orgS = require('../modules/organisations/organisations.schemas');
 const saS = require('../modules/organiser-saas/saas.schemas');
 const evS = require('../modules/esports-events/events.schemas');
@@ -227,6 +228,7 @@ function register(registry) {
   p({ method: 'get', path: '/catalog/locations', tags: ['catalog'], summary: 'Divisions with their districts (BBS geocodes)', request: { query: catalogS.locationsQuery }, responses: { 200: json(catalogS.LocationList), ...cached, ...errors(VALIDATION) } });
   p({ method: 'get', path: '/catalog/areas', tags: ['catalog'], summary: 'Active areas; filter by district, by service (grounds: Dhaka metro, Q15) or by name and aliases (q)',
     request: { query: catalogS.areasQuery }, responses: { 200: json(catalogS.AreaList), ...cached, ...errors(VALIDATION) } });
+  p({ method: 'get', path: '/catalog/exercises', tags: ['catalog'], summary: 'The exercise library: muscles, equipment, level, steps in English and Bangla (M27-FR-70)', responses: { 200: json(go2.Exercises), ...cached } });
   p({ method: 'get', path: '/catalog/facilities', tags: ['catalog'], summary: 'Ground facilities (floodlights, parking …)', responses: { 200: json(catalogS.FacilityList), ...cached } });
   p({ method: 'get', path: '/catalog/surfaces', tags: ['catalog'], summary: 'Playing surfaces', responses: { 200: json(catalogS.SurfaceList), ...cached } });
   p({ method: 'get', path: '/admin/catalog/{table}', tags: ['catalog'], summary: 'Every row of a catalogue, inactive rows and all preset versions included (manage_esports or manage_catalog)', security: adminBearer,
@@ -1335,7 +1337,7 @@ function register(registry) {
     responses: { 201: json(gmS.PlanLogResult, 'Created'), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], 409: ['GYM_PLAN_STATE'], 422: ['VALIDATION_FAILED', 'GYM_PLAN_LOG_WINDOW'] }) } });
   p({ method: 'post', path: '/me/gym-checkins', tags: gmTag, summary: 'Check in by scanning the gym’s entrance QR (gate join_gym; a linked member of that gym): the gym’s entry policy applies; block shows the gym’s message and has no override (M24-FR-51)', security: bearer,
     request: body(gmS.meCheckinBody),
-    responses: { 201: json(gmS.EntranceCheckin, 'Counted'), 200: json(gmS.EntranceCheckin, 'Already checked in today'), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'GYM_NOT_A_MEMBER', 'GYM_TIER_REQUIRED'], 409: ['GYM_ENTRY_BLOCKED', 'GYM_MEMBER_STATE'], 422: ['VALIDATION_FAILED', 'GYM_CHECKIN_TOKEN_INVALID'] }) } });
+    responses: { 201: json(gmS.EntranceCheckin, 'Counted'), 200: json(gmS.EntranceScan, 'Already checked in today, or checked out by a second scan after gym_manage.min_visit_minutes (M27-FR-41)'), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'GYM_NOT_A_MEMBER', 'GYM_TIER_REQUIRED'], 409: ['GYM_ENTRY_BLOCKED', 'GYM_MEMBER_STATE'], 422: ['VALIDATION_FAILED', 'GYM_CHECKIN_TOKEN_INVALID'] }) } });
 
 
   // ------------------------------------------------------------------ M27 gym operations, round 1 (expenses, drawer, P&L, shop, lockers)
@@ -1378,6 +1380,96 @@ function register(registry) {
   gp('get', '/locker-rentals', 'Locker rentals, by member or status (lockers.manage) (M27-FR-26)', { request: { ...goG, query: goS.rentalQuery }, responses: { 200: json(goS.Rentals), ...goErr() } });
   gp('post', '/locker-rentals/{rentalId}/collect', 'Take an unpaid locker fee now (lockers.manage; works while restricted) (M27-FR-24)', { request: { params: goS.rentalParam, headers: idem, ...body(goS.collectBody) }, responses: { 201: json(goS.Rental, 'Paid'), ...goErr({ 409: ['GYM_LOCKER_FEE_PAID', 'GYM_LOCKER_RENTAL_STATE', 'GYM_DRAWER_CLOSED'] }) } });
   gp('post', '/locker-rentals/{rentalId}/end', 'End a rental now with a reason; the locker is free again (lockers.manage) (M27-FR-25)', { request: { params: goS.rentalParam, ...body(goS.reasonBody) }, responses: { 200: json(goS.Rental), ...goErr({ 409: ['GYM_LOCKER_RENTAL_STATE'] }) } });
+  // ------------------------------------------------------------------ M27 gym operations, round 2 (visits, classes, points, notices, enquiries)
+  gp('post', '/checkins/{attendanceId}/out', 'Check a member out of their visit (attendance.mark; feature attendance; works while restricted). 409 when the visit is already closed (M27-FR-40)', {
+    request: { params: gmS.attendanceParam },
+    responses: { 200: json(gmS.CheckOut), ...goErr({ 404: ['NOT_FOUND'], 409: ['GYM_VISIT_CLOSED'] }) },
+  });
+  const CLS = { 404: ['NOT_FOUND', 'GYM_CLASS_UNKNOWN'] };
+  gp('get', '/class-trainers', 'Who can lead a class: the owner and staff with a desk or trainer permission (classes.manage)', { request: goG, responses: { 200: json(go2.ClassTrainers), ...goErr() } });
+  gp('get', '/classes', 'Classes with their weekly time slots (classes.manage or attendance.mark; feature classes) (M27-FR-45)', { request: { ...goG, query: go2.classQuery }, responses: { 200: json(go2.Classes), ...goErr() } });
+  gp('post', '/classes', 'Add a class with its weekly slots; sessions are made gym_ops.class_weeks_ahead weeks ahead (classes.manage) (M27-FR-45..47)', {
+    request: { ...goG, ...body(go2.classBody) },
+    responses: { 201: json(go2.ClassView, 'Created'), ...goErr({ 422: ['VALIDATION_FAILED', 'GYM_CLASS_LIMIT', 'GYM_CLASS_TRAINER'] }) },
+  });
+  gp('patch', '/classes/{classId}', 'Change a class (capacity and trainer apply to sessions not started) or retire it; retiring cancels the future sessions and tells everyone booked (classes.manage)', {
+    request: { params: go2.classParam, ...body(go2.classPatch) },
+    responses: { 200: json(go2.ClassView), ...goErr({ ...CLS, 422: ['VALIDATION_FAILED', 'GYM_CLASS_TRAINER'] }) },
+  });
+  gp('put', '/classes/{classId}/slots', 'The weekly time slots: a slot taken away cancels its future sessions (everyone booked is told); a new one gets its sessions (classes.manage) (M27-FR-46)', {
+    request: { params: go2.classParam, ...body(go2.slotsBody) },
+    responses: { 200: json(go2.ClassView), ...goErr({ ...CLS, 422: ['VALIDATION_FAILED'] }) },
+  });
+  gp('get', '/class-sessions', 'Class sessions between two dates (default this week) with places booked and waiting (classes.manage or attendance.mark)', { request: { ...goG, query: go2.sessionQuery }, responses: { 200: json(go2.Sessions), ...goErr() } });
+  gp('get', '/class-sessions/{sessionId}', 'One session and its bookings, the waitlist in order (classes.manage or attendance.mark)', { request: { params: go2.sessionParam }, responses: { 200: json(go2.SessionDetail), ...goErr({ 404: ['NOT_FOUND'] }) } });
+  gp('post', '/class-sessions/{sessionId}/cancel', 'Cancel a session with a reason; everyone booked or waiting is told (classes.manage) (M27-FR-52)', {
+    request: { params: go2.sessionParam, ...body(go2.reasonBody) },
+    responses: { 200: json(go2.SessionDetail), ...goErr({ 404: ['NOT_FOUND'], 409: ['GYM_CLASS_SESSION_STATE'] }) },
+  });
+  gp('post', '/class-sessions/{sessionId}/bookings', 'Book a member a place, or a waitlist place when full (classes.manage or attendance.mark) (M27-FR-48, FR-49)', {
+    request: { params: go2.sessionParam, headers: idem, ...body(go2.bookBody) },
+    responses: { 201: json(go2.Booking, 'Booked or waitlisted'), ...goErr({ 404: ['NOT_FOUND'], 409: ['GYM_CLASS_FULL', 'GYM_CLASS_BOOKED', 'GYM_CLASS_STARTED', 'GYM_CLASS_SESSION_STATE', 'GYM_MEMBERSHIP_NEEDED'], 422: ['GYM_MEMBER_UNKNOWN'] }) },
+  });
+  gp('post', '/class-sessions/{sessionId}/attendance', 'After the start: the booked members listed came, the others are no-shows; the session is done (classes.manage or attendance.mark) (M27-FR-54)', {
+    request: { params: go2.sessionParam, ...body(go2.attendanceBody) },
+    responses: { 200: json(go2.SessionDetail), ...goErr({ 404: ['NOT_FOUND'], 409: ['GYM_CLASS_SESSION_STATE'] }) },
+  });
+  gp('post', '/class-bookings/{bookingId}/cancel', 'Cancel a booking until the class starts; the first on the waitlist gets the place (classes.manage or attendance.mark) (M27-FR-50)', {
+    request: { params: go2.bookingParam },
+    responses: { 200: json(go2.Booking), ...goErr({ 404: ['NOT_FOUND'], 409: ['GYM_CLASS_BOOKING_STATE', 'GYM_CLASS_CANCEL_CLOSED'] }) },
+  });
+  gp('get', '/rewards', 'The gym’s rewards (owner, rewards.redeem or members.view; feature points) (M27-FR-58)', { request: goG, responses: { 200: json(go2.Rewards), ...goErr() } });
+  gp('put', '/rewards', 'The whole rewards list: extra days or money off, for points (owner) (M27-FR-58)', { request: { ...goG, ...body(go2.rewardsBody) }, responses: { 200: json(go2.Rewards), ...goErr({ 409: ['GYM_REWARD_UNAVAILABLE'], 422: ['VALIDATION_FAILED', 'GYM_REWARD_LIMIT'] }) } });
+  gp('get', '/members/{memberId}/points', 'A member’s points: balance, expiring soon, history, the rewards, who referred them (members.view or rewards.redeem)', { request: { params: go2.memberParam }, responses: { 200: json(go2.MemberPoints), ...goErr({ 422: ['GYM_MEMBER_UNKNOWN'] }) } });
+  gp('post', '/members/{memberId}/redeem', 'Spend points on a reward: extra days on the running membership, or money off what the member owes (rewards.redeem) (M27-FR-59)', {
+    request: { params: go2.memberParam, headers: idem, ...body(go2.redeemBody) },
+    responses: { 201: json(go2.Redeemed, 'Redeemed'), ...goErr({ 409: ['GYM_POINTS_SHORT', 'GYM_REWARD_UNAVAILABLE', 'GYM_MEMBERSHIP_NEEDED', 'GYM_REWARD_NOTHING'], 422: ['GYM_MEMBER_UNKNOWN'] }) },
+  });
+  gp('post', '/members/{memberId}/points/adjust', 'Add or take points with a note (owner) (M27-FR-61)', { request: { params: go2.memberParam, ...body(go2.adjustBody) }, responses: { 200: json(go2.MemberPoints), ...goErr({ 409: ['GYM_POINTS_SHORT'], 422: ['GYM_MEMBER_UNKNOWN'] }) } });
+  gp('post', '/members/{memberId}/referral', 'Who referred this member; they earn gym_ops.points_referral at the member’s first fee (members.edit) (M27-FR-57)', {
+    request: { params: go2.memberParam, ...body(go2.referralBody) },
+    responses: { 200: json(go2.MemberPoints), ...goErr({ 409: ['GYM_REFERRAL_EXISTS'], 422: ['GYM_MEMBER_UNKNOWN', 'VALIDATION_FAILED'] }) },
+  });
+  gp('get', '/notices', 'Notices sent, newest first, with today’s count and cap (owner or notices.send; feature notices)', { request: goG, responses: { 200: json(go2.Notices), ...goErr() } });
+  gp('post', '/notices/estimate', 'How many members a segment holds and how each can be reached: app, email, none (owner or notices.send) (M27-FR-62)', { request: { ...goG, ...body(go2.estimateBody) }, responses: { 200: json(go2.Estimate), ...goErr({ 422: ['GYM_NOTICE_SEGMENT'] }) } });
+  gp('post', '/notices', 'Send a notice to a segment: in-app and push to linked members, email to unlinked ones with an email; no SMS (owner or notices.send) (M27-FR-63)', {
+    request: { ...goG, headers: idem, ...body(go2.noticeBody) },
+    responses: { 201: json(go2.NoticeView, 'Sent'), ...goErr({ 422: ['GYM_NOTICE_SEGMENT', 'GYM_NOTICE_NOBODY'], 429: ['GYM_NOTICE_CAP'] }) },
+  });
+  gp('get', '/leads', 'Enquiries from the gym page, newest first, with counts by status (owner or leads.manage; feature leads) (M27-FR-68)', { request: { ...goG, query: go2.leadQuery }, responses: { 200: json(go2.Leads), ...goErr() } });
+  gp('patch', '/leads/{leadId}', 'Mark an enquiry contacted, lost or joined (with the member), and a note (owner or leads.manage) (M27-FR-69)', {
+    request: { params: go2.leadParam, ...body(go2.leadPatch) },
+    responses: { 200: json(go2.Lead), ...goErr({ 404: ['NOT_FOUND'], 409: ['GYM_LEAD_STATE'], 422: ['GYM_MEMBER_UNKNOWN'] }) },
+  });
+  gp('post', '/leads/{leadId}/reveal-phone', 'The enquiry’s full phone number: no-store, audited, rate-limited per person (owner or leads.manage)', {
+    request: { params: go2.leadParam },
+    responses: { 200: json(go2.LeadPhone), ...goErr({ 404: ['NOT_FOUND'], 429: ['RATE_LIMITED'] }) },
+  });
+  // the member (linked account)
+  const meErr = (extra = {}) => errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], ...extra });
+  p({ method: 'get', path: '/me/gym-classes', tags: gmTag, summary: 'My gym’s class sessions for two weeks, with my booking on each (M27-FR-48)', security: bearer, request: { query: go2.myQuery }, responses: { 200: json(go2.MyTimetable), ...meErr() } });
+  p({
+    method: 'post',
+    path: '/me/gym-classes/{sessionId}/book',
+    tags: gmTag,
+    summary: 'Book my place in a class, or the waitlist when it is full; a running membership is needed (M27-FR-48, FR-49)',
+    security: bearer,
+    request: { params: go2.mySessionParam, headers: idem, ...body(go2.bookBody) },
+    responses: { 201: json(go2.Booking, 'Booked or waitlisted'), ...meErr({ 409: ['GYM_CLASS_FULL', 'GYM_CLASS_BOOKED', 'GYM_CLASS_STARTED', 'GYM_CLASS_SESSION_STATE', 'GYM_MEMBERSHIP_NEEDED'] }) },
+  });
+  p({ method: 'get', path: '/me/gym-bookings', tags: gmTag, summary: 'My class bookings from yesterday on, soonest first', security: bearer, request: { query: go2.myMemberQuery }, responses: { 200: json(go2.MyBookings), ...meErr() } });
+  p({ method: 'post', path: '/me/gym-bookings/{bookingId}/cancel', tags: gmTag, summary: 'Cancel my booking up to gym_ops.class_cancel_cutoff_minutes before the class (M27-FR-50)', security: bearer, request: { params: go2.myBookingParam }, responses: { 200: json(go2.Booking), ...meErr({ 409: ['GYM_CLASS_BOOKING_STATE', 'GYM_CLASS_CANCEL_CLOSED'] }) } });
+  p({ method: 'get', path: '/me/gym-points', tags: gmTag, summary: 'My points at this gym: balance, expiring soon, history, the rewards and how to earn (M27-FR-59)', security: bearer, request: { query: go2.myMemberQuery }, responses: { 200: json(go2.MyPoints), ...meErr() } });
+  // public (the gym page)
+  p({ method: 'get', path: '/gym/gyms/{slug}/timetable', tags: ['gym'], summary: 'This week’s classes of a gym with free places (no sign-in; no member data) (M27-FR-67)', request: { params: go2.slugParam }, responses: { 200: json(go2.PublicTimetable), ...errors({ 404: ['NOT_FOUND'] }) } });
+  p({
+    method: 'post',
+    path: '/gym/gyms/{slug}/enquiries',
+    tags: ['gym'],
+    summary: 'Ask a gym to call back (no sign-in): name, phone, message, best time; limited per network and per phone; a gym without the feature answers 404 (M27-FR-66)',
+    request: { params: go2.slugParam, ...body(go2.enquiryBody) },
+    responses: { 202: json(go2.Accepted, 'Accepted'), ...errors({ 404: ['GYM_LEADS_CLOSED'], 422: ['VALIDATION_FAILED'], 429: ['RATE_LIMITED'] }) },
+  });
   // ------------------------------------------------------------------ M14 lite organisations and M22 organiser SaaS (step 1)
   const orgP = { params: saS.orgParam };
   const orgIdP = { params: saS.orgIdParam };

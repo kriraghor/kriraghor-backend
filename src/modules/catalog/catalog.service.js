@@ -11,7 +11,7 @@
  *    snapshotted an older version keep scoring with it.
  */
 const { AppError, E } = require('../../common/errors');
-const { sequelize, EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset, Sport, Division, District, Area, Facility, Surface, ItemCategory, ItemType, ItemTypeField, HireCategory, HireRole, AREA_FLAGS } = require('../../models');
+const { sequelize, Exercise, EsportsGame, EsportsMode, EsportsMap, EsportsPointsPreset, Sport, Division, District, Area, Facility, Surface, ItemCategory, ItemType, ItemTypeField, HireCategory, HireRole, AREA_FLAGS } = require('../../models');
 const audit = require('../audit').audit;
 const events = require('../events').events;
 const { modeCapacityError, presetPointsError, uidRegexError, itemFieldError, hireRoleError } = require('./catalog.validate');
@@ -214,6 +214,14 @@ const activeList = async (Model, where = {}) => ({ items: (await Model.findAll({
 
 const publicSports = () => activeList(Sport);
 const publicFacilities = () => activeList(Facility);
+
+/** GET /catalog/exercises (M27-FR-70): the exercise library, active only, in its order; EN and BN. */
+async function publicExercises() {
+  const rows = await Exercise.findAll({ where: { status: 'active' }, order: [['sort', 'ASC'], ['nameEn', 'ASC']] });
+  return {
+    items: rows.map((x) => ({ key: x.key, nameEn: x.nameEn, nameBn: x.nameBn, muscle: x.muscle, equipment: x.equipment, level: x.level, stepsEn: x.stepsEn, stepsBn: x.stepsBn, videoUrl: x.videoUrl ?? null })),
+  };
+}
 const publicSurfaces = () => activeList(Surface);
 
 /** GET /catalog/locations: divisions with their districts (optionally one division). */
@@ -267,4 +275,4 @@ async function publicItems() {
   };
 }
 
-module.exports = { publicItems, list, create, update, setActive, publicGames, publicSports, publicFacilities, publicSurfaces, publicLocations, publicAreas, TABLES };
+module.exports = { publicItems, list, create, update, setActive, publicGames, publicSports, publicFacilities, publicExercises, publicSurfaces, publicLocations, publicAreas, TABLES };

@@ -26,6 +26,7 @@ const gymFacade = require('../gym').gyms;
 const rules = require('./gym-manage.rules');
 const c = require('./gym-manage.common');
 const view = require('./gym-manage.serializer');
+const visits = require('./visits.service');
 
 const { fail } = c;
 
@@ -159,6 +160,7 @@ async function checkIn(principal, gymId, input, req) {
     if (decision === 'override') {
       await c.record({ action: 'gym_attendance.override', actor: a.actor, entityType: 'gym_member', entityId: m.id, entityCode: m.memberCode, after: { attendanceId: row.id, reasons }, reason: overrideReason, meta: { gymId }, req }, transaction);
     }
+    visits.feedAfterCommit(transaction, { gymId, kind: 'in', member: m, attendanceId: row.id, at: c.iso(now), decision: decision === 'override' ? 'allow' : decision, reasons, counted: !first });
     const body = await card(a, m, f, today, {
       policy,
       decision: { reasons, decision: decision === 'override' ? 'allow' : decision },
@@ -196,6 +198,9 @@ async function memberCheckIn(principal, { token }, req) {
   return sequelize.transaction(async (transaction) => {
     const m = await GymMember.findByPk(linked.id, { transaction, lock: transaction.LOCK.UPDATE });
     if (m.userId !== principal.id || m.status === 'removed') throw fail('GYM_NOT_A_MEMBER');
+    // M27-FR-41: a second scan after the minimum visit checks out.
+    const out = await visits.scanOut(transaction, { gym, m, now, principal, req });
+    if (out) return { status: 200, body: out };
     const { row, first, f, reasons, decision } = await checkInCore(transaction, {
       gymId: gym.id,
       m,
@@ -207,6 +212,7 @@ async function memberCheckIn(principal, { token }, req) {
       actor: principal,
       blocked: (d) => fail('GYM_ENTRY_BLOCKED', { reasons: d.reasons, canOverride: false, gym: { id: gym.id, name: gym.name } }, `${gym.name}: please see the front desk.`),
     });
+    visits.feedAfterCommit(transaction, { gymId: gym.id, kind: 'in', member: m, attendanceId: row.id, at: c.iso(now), decision: decision === 'warn' ? 'warn' : 'allow', reasons, counted: !first });
     await c.record({ action: 'gym_attendance.entrance', actor: principal, entityType: 'gym_member', entityId: m.id, entityCode: m.memberCode, after: { attendanceId: row.id, counted: !first, decision }, meta: { gymId: gym.id }, req }, transaction);
     const cur = f.current;
     return {
@@ -214,6 +220,7 @@ async function memberCheckIn(principal, { token }, req) {
       body: {
         attendanceId: row.id,
         counted: !first,
+        checkedOut: false,
         checkedInAt: c.iso(now),
         firstCheckInToday: first ? c.iso(first.checkedInAt) : null,
         method: 'entrance_qr',
@@ -234,9 +241,11 @@ async function day(principal, gymId, { date } = {}) {
   const rows = await GymAttendance.findAll({ where: { gymId, localDate: d }, order: [['checkedInAt', 'DESC']], limit: 1000 });
   const members = new Map((await GymMember.findAll({ where: { id: [...new Set(rows.map((r) => r.memberId))] } })).map((m) => [m.id, m]));
   const names = await directory.displayNames(rows.map((r) => r.byUser).filter(Boolean));
+  const exits = await visits.exitsOf(rows.map((r) => r.id));
   return c.shown(a, {
     date: d,
     counted: rows.filter((r) => r.counted).length,
+    inGymNow: await visits.inGymNow(gymId),
     items: rows.map((r) => ({
       id: r.id,
       member: view.memberSummary(members.get(r.memberId)),
@@ -246,6 +255,8 @@ async function day(principal, gymId, { date } = {}) {
       decision: r.decision,
       reasons: r.reasons,
       by: r.byUser ? { id: r.byUser, displayName: names.get(r.byUser) ?? null } : null,
+      checkedOutAt: exits.get(r.id)?.checkedOutAt ?? null,
+      visitMinutes: exits.get(r.id)?.visitMinutes ?? null,
     })),
   });
 }

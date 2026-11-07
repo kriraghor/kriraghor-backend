@@ -114,6 +114,7 @@ async function overview(principal, gymId) {
     members: row.members,
     newThisMonth: row.newThisMonth,
     expiringThisWeek: row.expiringThisWeek,
+    inGymNow: await require('./visits.service').inGymNow(gymId),
     notSeen: row.notSeen,
     notSeenDays: absent,
     requestsWaiting: row.requestsWaiting,

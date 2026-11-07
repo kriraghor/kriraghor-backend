@@ -1262,6 +1262,8 @@ const gym = require('./gym');
 const gymManage = require('./gym-manage');
 // ---- M27 gym operations, round 1 (./gym-ops.js) ----
 const gymOps = require('./gym-ops');
+const gymOps2 = require('./gym-ops-round2');
+const exercises = require('./exercises');
 
 // ---- M14 lite organisations and M22 organiser SaaS (./organisations.js) ----
 const organisations = require('./organisations');
@@ -1307,6 +1309,8 @@ module.exports = {
   ...gym,
   ...gymManage,
   ...gymOps,
+  ...gymOps2,
+  ...exercises,
   ...organisations,
   ...esportsEvents,
   ...teams,

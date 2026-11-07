@@ -1,0 +1,1222 @@
+{
+  "seedVersion": 1,
+  "source": "M27-FR-70 (7 Nov 2026): common gym exercises, English and Bangla, three short steps each; gyms pick them in plans.",
+  "exercises": [
+    {
+      "key": "push_up",
+      "muscle": "chest",
+      "equipment": "none",
+      "level": "beginner",
+      "nameEn": "Push-up",
+      "nameBn": "পুশ-আপ",
+      "stepsEn": [
+        "Hands under shoulders, body in a straight line.",
+        "Lower your chest to just above the floor.",
+        "Push back up without letting the hips sag."
+      ],
+      "stepsBn": [
+        "কাঁধের নিচে হাত রাখুন, শরীর সোজা রাখুন।",
+        "বুক মেঝের কাছাকাছি নামান।",
+        "কোমর না ঝুলিয়ে আবার উপরে উঠুন।"
+      ],
+      "sort": 1
+    },
+    {
+      "key": "bench_press",
+      "muscle": "chest",
+      "equipment": "barbell",
+      "level": "intermediate",
+      "nameEn": "Bench press",
+      "nameBn": "বেঞ্চ প্রেস",
+      "stepsEn": [
+        "Lie on the bench, feet flat, grip a little wider than the shoulders.",
+        "Lower the bar to the middle of the chest.",
+        "Press up until the arms are straight."
+      ],
+      "stepsBn": [
+        "বেঞ্চে শুয়ে পা মেঝেতে রাখুন, কাঁধের চেয়ে একটু চওড়া করে ধরুন।",
+        "বার বুকের মাঝখানে নামান।",
+        "হাত সোজা হওয়া পর্যন্ত উপরে ঠেলুন।"
+      ],
+      "sort": 2
+    },
+    {
+      "key": "incline_dumbbell_press",
+      "muscle": "chest",
+      "equipment": "dumbbell",
+      "level": "intermediate",
+      "nameEn": "Incline dumbbell press",
+      "nameBn": "ইনক্লাইন ডাম্বেল প্রেস",
+      "stepsEn": [
+        "Set the bench to about 30 degrees.",
+        "Lower the dumbbells beside the upper chest.",
+        "Press up and slightly together."
+      ],
+      "stepsBn": [
+        "বেঞ্চ প্রায় ৩০ ডিগ্রিতে রাখুন।",
+        "ডাম্বেল বুকের উপরের অংশের পাশে নামান।",
+        "উপরে ও একটু কাছাকাছি ঠেলুন।"
+      ],
+      "sort": 3
+    },
+    {
+      "key": "dumbbell_fly",
+      "muscle": "chest",
+      "equipment": "dumbbell",
+      "level": "intermediate",
+      "nameEn": "Dumbbell fly",
+      "nameBn": "ডাম্বেল ফ্লাই",
+      "stepsEn": [
+        "Lie flat with dumbbells above the chest, elbows slightly bent.",
+        "Open the arms wide until you feel a stretch.",
+        "Bring them back up in an arc."
+      ],
+      "stepsBn": [
+        "ডাম্বেল বুকের উপরে ধরে শুয়ে থাকুন, কনুই সামান্য ভাঁজ।",
+        "টান লাগা পর্যন্ত হাত দুই পাশে খুলুন।",
+        "বাঁকা পথে আবার উপরে আনুন।"
+      ],
+      "sort": 4
+    },
+    {
+      "key": "chest_press_machine",
+      "muscle": "chest",
+      "equipment": "machine",
+      "level": "beginner",
+      "nameEn": "Chest press machine",
+      "nameBn": "চেস্ট প্রেস মেশিন",
+      "stepsEn": [
+        "Set the seat so the handles are at chest height.",
+        "Push the handles forward until the arms are straight.",
+        "Return slowly."
+      ],
+      "stepsBn": [
+        "সিট এমনভাবে ঠিক করুন যাতে হ্যান্ডেল বুকের সমান থাকে।",
+        "হাত সোজা হওয়া পর্যন্ত সামনে ঠেলুন।",
+        "ধীরে ফেরত আনুন।"
+      ],
+      "sort": 5
+    },
+    {
+      "key": "cable_crossover",
+      "muscle": "chest",
+      "equipment": "cable",
+      "level": "intermediate",
+      "nameEn": "Cable crossover",
+      "nameBn": "কেবল ক্রসওভার",
+      "stepsEn": [
+        "Stand between the cables, one foot forward.",
+        "Bring the handles down and together in front of you.",
+        "Return slowly with control."
+      ],
+      "stepsBn": [
+        "দুই কেবলের মাঝখানে এক পা সামনে রেখে দাঁড়ান।",
+        "হ্যান্ডেল নিচে ও সামনে একসাথে আনুন।",
+        "নিয়ন্ত্রণ রেখে ধীরে ফেরত দিন।"
+      ],
+      "sort": 6
+    },
+    {
+      "key": "dips",
+      "muscle": "chest",
+      "equipment": "other",
+      "level": "advanced",
+      "nameEn": "Dips",
+      "nameBn": "ডিপস",
+      "stepsEn": [
+        "Support yourself on the parallel bars, arms straight.",
+        "Lean slightly forward and lower until the elbows are at 90 degrees.",
+        "Push back up."
+      ],
+      "stepsBn": [
+        "প্যারালাল বারে হাত সোজা রেখে ভর দিন।",
+        "সামান্য সামনে ঝুঁকে কনুই ৯০ ডিগ্রি পর্যন্ত নামুন।",
+        "আবার উপরে উঠুন।"
+      ],
+      "sort": 7
+    },
+    {
+      "key": "pull_up",
+      "muscle": "back",
+      "equipment": "other",
+      "level": "advanced",
+      "nameEn": "Pull-up",
+      "nameBn": "পুল-আপ",
+      "stepsEn": [
+        "Hang from the bar, palms facing away.",
+        "Pull until the chin is over the bar.",
+        "Lower all the way with control."
+      ],
+      "stepsBn": [
+        "তালু সামনের দিকে রেখে বারে ঝুলুন।",
+        "থুতনি বারের উপরে না আসা পর্যন্ত টানুন।",
+        "নিয়ন্ত্রণ রেখে পুরোটা নামুন।"
+      ],
+      "sort": 8
+    },
+    {
+      "key": "lat_pulldown",
+      "muscle": "back",
+      "equipment": "cable",
+      "level": "beginner",
+      "nameEn": "Lat pulldown",
+      "nameBn": "ল্যাট পুলডাউন",
+      "stepsEn": [
+        "Sit with the thighs under the pad, grip the bar wide.",
+        "Pull the bar to the upper chest, elbows down.",
+        "Let it rise slowly."
+      ],
+      "stepsBn": [
+        "উরু প্যাডের নিচে রেখে বসুন, বার চওড়া করে ধরুন।",
+        "কনুই নিচে নামিয়ে বার বুকের উপরের অংশে টানুন।",
+        "ধীরে উপরে যেতে দিন।"
+      ],
+      "sort": 9
+    },
+    {
+      "key": "seated_cable_row",
+      "muscle": "back",
+      "equipment": "cable",
+      "level": "beginner",
+      "nameEn": "Seated cable row",
+      "nameBn": "সিটেড কেবল রো",
+      "stepsEn": [
+        "Sit tall, knees slightly bent.",
+        "Pull the handle to the belly, squeezing the shoulder blades.",
+        "Return without rounding the back."
+      ],
+      "stepsBn": [
+        "সোজা হয়ে বসুন, হাঁটু সামান্য ভাঁজ।",
+        "কাঁধের হাড় চেপে হ্যান্ডেল পেটের দিকে টানুন।",
+        "পিঠ বাঁকা না করে ফেরত দিন।"
+      ],
+      "sort": 10
+    },
+    {
+      "key": "bent_over_row",
+      "muscle": "back",
+      "equipment": "barbell",
+      "level": "intermediate",
+      "nameEn": "Bent-over row",
+      "nameBn": "বেন্ট-ওভার রো",
+      "stepsEn": [
+        "Hinge at the hips, back flat, bar hanging.",
+        "Row the bar to the lower ribs.",
+        "Lower with control."
+      ],
+      "stepsBn": [
+        "কোমর থেকে ঝুঁকুন, পিঠ সোজা, বার ঝুলিয়ে রাখুন।",
+        "বার পাঁজরের নিচের দিকে টানুন।",
+        "নিয়ন্ত্রণ রেখে নামান।"
+      ],
+      "sort": 11
+    },
+    {
+      "key": "one_arm_dumbbell_row",
+      "muscle": "back",
+      "equipment": "dumbbell",
+      "level": "beginner",
+      "nameEn": "One-arm dumbbell row",
+      "nameBn": "এক হাতে ডাম্বেল রো",
+      "stepsEn": [
+        "One knee and hand on the bench.",
+        "Pull the dumbbell to the hip.",
+        "Lower slowly; switch sides."
+      ],
+      "stepsBn": [
+        "এক হাঁটু ও হাত বেঞ্চে রাখুন।",
+        "ডাম্বেল কোমরের দিকে টানুন।",
+        "ধীরে নামান; পাশ বদলান।"
+      ],
+      "sort": 12
+    },
+    {
+      "key": "deadlift",
+      "muscle": "back",
+      "equipment": "barbell",
+      "level": "advanced",
+      "nameEn": "Deadlift",
+      "nameBn": "ডেডলিফট",
+      "stepsEn": [
+        "Feet hip-width, bar over the mid-foot, back flat.",
+        "Push the floor away and stand up tall.",
+        "Lower the bar along the legs."
+      ],
+      "stepsBn": [
+        "পা কোমরের সমান ফাঁক, বার পায়ের মাঝ বরাবর, পিঠ সোজা।",
+        "মেঝে ঠেলে সোজা হয়ে দাঁড়ান।",
+        "পায়ের গা ঘেঁষে বার নামান।"
+      ],
+      "sort": 13
+    },
+    {
+      "key": "back_extension",
+      "muscle": "back",
+      "equipment": "bench",
+      "level": "beginner",
+      "nameEn": "Back extension",
+      "nameBn": "ব্যাক এক্সটেনশন",
+      "stepsEn": [
+        "Hips on the pad, feet locked in.",
+        "Lower the upper body slowly.",
+        "Rise until the body is straight, not past it."
+      ],
+      "stepsBn": [
+        "কোমর প্যাডে রাখুন, পা আটকে নিন।",
+        "শরীরের উপরের অংশ ধীরে নামান।",
+        "শরীর সোজা হওয়া পর্যন্ত উঠুন, এর বেশি নয়।"
+      ],
+      "sort": 14
+    },
+    {
+      "key": "overhead_press",
+      "muscle": "shoulders",
+      "equipment": "barbell",
+      "level": "intermediate",
+      "nameEn": "Overhead press",
+      "nameBn": "ওভারহেড প্রেস",
+      "stepsEn": [
+        "Bar at the collarbone, grip just outside the shoulders.",
+        "Press the bar straight overhead.",
+        "Lower to the collarbone."
+      ],
+      "stepsBn": [
+        "বার কলারবোনের কাছে, কাঁধের ঠিক বাইরে ধরুন।",
+        "বার সোজা মাথার উপরে ঠেলুন।",
+        "কলারবোন পর্যন্ত নামান।"
+      ],
+      "sort": 15
+    },
+    {
+      "key": "dumbbell_shoulder_press",
+      "muscle": "shoulders",
+      "equipment": "dumbbell",
+      "level": "beginner",
+      "nameEn": "Dumbbell shoulder press",
+      "nameBn": "ডাম্বেল শোল্ডার প্রেস",
+      "stepsEn": [
+        "Sit tall, dumbbells at shoulder height.",
+        "Press up until the arms are straight.",
+        "Lower slowly."
+      ],
+      "stepsBn": [
+        "সোজা হয়ে বসুন, ডাম্বেল কাঁধের সমান।",
+        "হাত সোজা হওয়া পর্যন্ত উপরে ঠেলুন।",
+        "ধীরে নামান।"
+      ],
+      "sort": 16
+    },
+    {
+      "key": "lateral_raise",
+      "muscle": "shoulders",
+      "equipment": "dumbbell",
+      "level": "beginner",
+      "nameEn": "Lateral raise",
+      "nameBn": "ল্যাটারাল রেইজ",
+      "stepsEn": [
+        "Stand with dumbbells at the sides.",
+        "Raise the arms out to shoulder height.",
+        "Lower slowly."
+      ],
+      "stepsBn": [
+        "দুই পাশে ডাম্বেল ধরে দাঁড়ান।",
+        "কাঁধের সমান পর্যন্ত দুই পাশে হাত তুলুন।",
+        "ধীরে নামান।"
+      ],
+      "sort": 17
+    },
+    {
+      "key": "front_raise",
+      "muscle": "shoulders",
+      "equipment": "dumbbell",
+      "level": "beginner",
+      "nameEn": "Front raise",
+      "nameBn": "ফ্রন্ট রেইজ",
+      "stepsEn": [
+        "Dumbbells in front of the thighs.",
+        "Raise straight in front to shoulder height.",
+        "Lower with control."
+      ],
+      "stepsBn": [
+        "ডাম্বেল উরুর সামনে ধরুন।",
+        "সামনে কাঁধের সমান পর্যন্ত তুলুন।",
+        "নিয়ন্ত্রণ রেখে নামান।"
+      ],
+      "sort": 18
+    },
+    {
+      "key": "face_pull",
+      "muscle": "shoulders",
+      "equipment": "cable",
+      "level": "intermediate",
+      "nameEn": "Face pull",
+      "nameBn": "ফেস পুল",
+      "stepsEn": [
+        "Rope at face height.",
+        "Pull towards the face, elbows high and wide.",
+        "Return slowly."
+      ],
+      "stepsBn": [
+        "রোপ মুখের উচ্চতায় রাখুন।",
+        "কনুই উঁচু ও চওড়া রেখে মুখের দিকে টানুন।",
+        "ধীরে ফেরত দিন।"
+      ],
+      "sort": 19
+    },
+    {
+      "key": "shrug",
+      "muscle": "shoulders",
+      "equipment": "dumbbell",
+      "level": "beginner",
+      "nameEn": "Shrug",
+      "nameBn": "শ্রাগ",
+      "stepsEn": [
+        "Hold dumbbells at the sides.",
+        "Lift the shoulders towards the ears.",
+        "Hold a moment, lower."
+      ],
+      "stepsBn": [
+        "দুই পাশে ডাম্বেল ধরুন।",
+        "কাঁধ কানের দিকে তুলুন।",
+        "একটু থামুন, নামান।"
+      ],
+      "sort": 20
+    },
+    {
+      "key": "barbell_curl",
+      "muscle": "arms",
+      "equipment": "barbell",
+      "level": "beginner",
+      "nameEn": "Barbell curl",
+      "nameBn": "বারবেল কার্ল",
+      "stepsEn": [
+        "Stand tall, elbows at the sides.",
+        "Curl the bar up to the chest.",
+        "Lower slowly without swinging."
+      ],
+      "stepsBn": [
+        "সোজা দাঁড়ান, কনুই পাশে রাখুন।",
+        "বার বুক পর্যন্ত বাঁকিয়ে তুলুন।",
+        "না দুলিয়ে ধীরে নামান।"
+      ],
+      "sort": 21
+    },
+    {
+      "key": "dumbbell_curl",
+      "muscle": "arms",
+      "equipment": "dumbbell",
+      "level": "beginner",
+      "nameEn": "Dumbbell curl",
+      "nameBn": "ডাম্বেল কার্ল",
+      "stepsEn": [
+        "Dumbbells at the sides, palms forward.",
+        "Curl up, keeping the elbows still.",
+        "Lower slowly."
+      ],
+      "stepsBn": [
+        "দুই পাশে ডাম্বেল, তালু সামনে।",
+        "কনুই স্থির রেখে উপরে তুলুন।",
+        "ধীরে নামান।"
+      ],
+      "sort": 22
+    },
+    {
+      "key": "hammer_curl",
+      "muscle": "arms",
+      "equipment": "dumbbell",
+      "level": "beginner",
+      "nameEn": "Hammer curl",
+      "nameBn": "হ্যামার কার্ল",
+      "stepsEn": [
+        "Palms face each other.",
+        "Curl the dumbbells up.",
+        "Lower slowly."
+      ],
+      "stepsBn": [
+        "তালু মুখোমুখি রাখুন।",
+        "ডাম্বেল উপরে তুলুন।",
+        "ধীরে নামান।"
+      ],
+      "sort": 23
+    },
+    {
+      "key": "tricep_pushdown",
+      "muscle": "arms",
+      "equipment": "cable",
+      "level": "beginner",
+      "nameEn": "Triceps pushdown",
+      "nameBn": "ট্রাইসেপস পুশডাউন",
+      "stepsEn": [
+        "Elbows at the sides, hands on the bar.",
+        "Push down until the arms are straight.",
+        "Let the bar rise to the chest."
+      ],
+      "stepsBn": [
+        "কনুই পাশে, হাত বারে।",
+        "হাত সোজা হওয়া পর্যন্ত নিচে ঠেলুন।",
+        "বার বুক পর্যন্ত উঠতে দিন।"
+      ],
+      "sort": 24
+    },
+    {
+      "key": "overhead_tricep_extension",
+      "muscle": "arms",
+      "equipment": "dumbbell",
+      "level": "intermediate",
+      "nameEn": "Overhead triceps extension",
+      "nameBn": "ওভারহেড ট্রাইসেপস এক্সটেনশন",
+      "stepsEn": [
+        "Hold one dumbbell overhead with both hands.",
+        "Lower it behind the head.",
+        "Straighten the arms."
+      ],
+      "stepsBn": [
+        "দুই হাতে একটি ডাম্বেল মাথার উপরে ধরুন।",
+        "মাথার পেছনে নামান।",
+        "হাত সোজা করুন।"
+      ],
+      "sort": 25
+    },
+    {
+      "key": "skull_crusher",
+      "muscle": "arms",
+      "equipment": "barbell",
+      "level": "intermediate",
+      "nameEn": "Skull crusher",
+      "nameBn": "স্কাল ক্রাশার",
+      "stepsEn": [
+        "Lie on the bench, bar above the chest.",
+        "Bend the elbows to bring the bar to the forehead.",
+        "Straighten the arms."
+      ],
+      "stepsBn": [
+        "বেঞ্চে শুয়ে বার বুকের উপরে ধরুন।",
+        "কনুই ভাঁজ করে বার কপালের কাছে আনুন।",
+        "হাত সোজা করুন।"
+      ],
+      "sort": 26
+    },
+    {
+      "key": "bench_dip",
+      "muscle": "arms",
+      "equipment": "bench",
+      "level": "beginner",
+      "nameEn": "Bench dip",
+      "nameBn": "বেঞ্চ ডিপ",
+      "stepsEn": [
+        "Hands on the bench behind you, legs out.",
+        "Lower by bending the elbows.",
+        "Push back up."
+      ],
+      "stepsBn": [
+        "পেছনের বেঞ্চে হাত রাখুন, পা সামনে।",
+        "কনুই ভাঁজ করে নামুন।",
+        "আবার উপরে উঠুন।"
+      ],
+      "sort": 27
+    },
+    {
+      "key": "bodyweight_squat",
+      "muscle": "legs",
+      "equipment": "none",
+      "level": "beginner",
+      "nameEn": "Bodyweight squat",
+      "nameBn": "বডিওয়েট স্কোয়াট",
+      "stepsEn": [
+        "Feet shoulder-width, arms forward.",
+        "Sit back and down, chest up.",
+        "Stand up through the heels."
+      ],
+      "stepsBn": [
+        "পা কাঁধের সমান ফাঁক, হাত সামনে।",
+        "বুক উঁচু রেখে পেছনে ও নিচে বসুন।",
+        "গোড়ালিতে ভর দিয়ে উঠে দাঁড়ান।"
+      ],
+      "sort": 28
+    },
+    {
+      "key": "back_squat",
+      "muscle": "legs",
+      "equipment": "barbell",
+      "level": "advanced",
+      "nameEn": "Back squat",
+      "nameBn": "ব্যাক স্কোয়াট",
+      "stepsEn": [
+        "Bar on the upper back, feet shoulder-width.",
+        "Squat until the thighs are parallel or lower.",
+        "Drive up, knees in line with the toes."
+      ],
+      "stepsBn": [
+        "বার পিঠের উপরের অংশে, পা কাঁধের সমান ফাঁক।",
+        "উরু মেঝের সমান্তরাল বা তার নিচে নামুন।",
+        "হাঁটু পায়ের আঙুল বরাবর রেখে উঠুন।"
+      ],
+      "sort": 29
+    },
+    {
+      "key": "goblet_squat",
+      "muscle": "legs",
+      "equipment": "dumbbell",
+      "level": "beginner",
+      "nameEn": "Goblet squat",
+      "nameBn": "গবলেট স্কোয়াট",
+      "stepsEn": [
+        "Hold a dumbbell at the chest.",
+        "Squat down between the knees.",
+        "Stand up tall."
+      ],
+      "stepsBn": [
+        "বুকের কাছে একটি ডাম্বেল ধরুন।",
+        "হাঁটুর মাঝখানে নিচে বসুন।",
+        "সোজা হয়ে দাঁড়ান।"
+      ],
+      "sort": 30
+    },
+    {
+      "key": "leg_press",
+      "muscle": "legs",
+      "equipment": "machine",
+      "level": "beginner",
+      "nameEn": "Leg press",
+      "nameBn": "লেগ প্রেস",
+      "stepsEn": [
+        "Feet hip-width on the plate.",
+        "Lower until the knees are at 90 degrees.",
+        "Press up without locking the knees."
+      ],
+      "stepsBn": [
+        "প্লেটে পা কোমরের সমান ফাঁকে রাখুন।",
+        "হাঁটু ৯০ ডিগ্রি পর্যন্ত নামান।",
+        "হাঁটু লক না করে উপরে ঠেলুন।"
+      ],
+      "sort": 31
+    },
+    {
+      "key": "walking_lunge",
+      "muscle": "legs",
+      "equipment": "none",
+      "level": "beginner",
+      "nameEn": "Walking lunge",
+      "nameBn": "ওয়াকিং লাঞ্জ",
+      "stepsEn": [
+        "Step forward into a lunge.",
+        "Lower the back knee towards the floor.",
+        "Step through to the next lunge."
+      ],
+      "stepsBn": [
+        "সামনে পা ফেলে লাঞ্জে যান।",
+        "পেছনের হাঁটু মেঝের দিকে নামান।",
+        "পরের লাঞ্জে এগিয়ে যান।"
+      ],
+      "sort": 32
+    },
+    {
+      "key": "leg_extension",
+      "muscle": "legs",
+      "equipment": "machine",
+      "level": "beginner",
+      "nameEn": "Leg extension",
+      "nameBn": "লেগ এক্সটেনশন",
+      "stepsEn": [
+        "Sit with the pad on the lower shins.",
+        "Straighten the legs.",
+        "Lower slowly."
+      ],
+      "stepsBn": [
+        "প্যাড শিনের নিচের অংশে রেখে বসুন।",
+        "পা সোজা করুন।",
+        "ধীরে নামান।"
+      ],
+      "sort": 33
+    },
+    {
+      "key": "leg_curl",
+      "muscle": "legs",
+      "equipment": "machine",
+      "level": "beginner",
+      "nameEn": "Leg curl",
+      "nameBn": "লেগ কার্ল",
+      "stepsEn": [
+        "Lie face down, pad above the heels.",
+        "Curl the heels towards the hips.",
+        "Lower slowly."
+      ],
+      "stepsBn": [
+        "উপুড় হয়ে শুয়ে প্যাড গোড়ালির উপরে রাখুন।",
+        "গোড়ালি কোমরের দিকে বাঁকান।",
+        "ধীরে নামান।"
+      ],
+      "sort": 34
+    },
+    {
+      "key": "romanian_deadlift",
+      "muscle": "legs",
+      "equipment": "barbell",
+      "level": "intermediate",
+      "nameEn": "Romanian deadlift",
+      "nameBn": "রোমানিয়ান ডেডলিফট",
+      "stepsEn": [
+        "Hold the bar at the hips, knees soft.",
+        "Push the hips back, bar along the legs.",
+        "Stand up by squeezing the glutes."
+      ],
+      "stepsBn": [
+        "বার কোমরের কাছে, হাঁটু সামান্য ভাঁজ।",
+        "কোমর পেছনে ঠেলে বার পায়ের গা ঘেঁষে নামান।",
+        "নিতম্ব চেপে সোজা হন।"
+      ],
+      "sort": 35
+    },
+    {
+      "key": "calf_raise",
+      "muscle": "legs",
+      "equipment": "none",
+      "level": "beginner",
+      "nameEn": "Calf raise",
+      "nameBn": "কাফ রেইজ",
+      "stepsEn": [
+        "Stand on the edge of a step.",
+        "Rise onto the toes.",
+        "Lower the heels below the step."
+      ],
+      "stepsBn": [
+        "সিঁড়ির কিনারায় দাঁড়ান।",
+        "পায়ের আঙুলের উপর উঠুন।",
+        "গোড়ালি সিঁড়ির নিচে নামান।"
+      ],
+      "sort": 36
+    },
+    {
+      "key": "step_up",
+      "muscle": "legs",
+      "equipment": "bench",
+      "level": "beginner",
+      "nameEn": "Step-up",
+      "nameBn": "স্টেপ-আপ",
+      "stepsEn": [
+        "Stand in front of a bench.",
+        "Step up and stand tall on one leg.",
+        "Step down; switch legs."
+      ],
+      "stepsBn": [
+        "বেঞ্চের সামনে দাঁড়ান।",
+        "উপরে উঠে এক পায়ে সোজা দাঁড়ান।",
+        "নেমে আসুন; পা বদলান।"
+      ],
+      "sort": 37
+    },
+    {
+      "key": "bulgarian_split_squat",
+      "muscle": "legs",
+      "equipment": "dumbbell",
+      "level": "advanced",
+      "nameEn": "Bulgarian split squat",
+      "nameBn": "বুলগেরিয়ান স্প্লিট স্কোয়াট",
+      "stepsEn": [
+        "Back foot on a bench, front foot forward.",
+        "Lower until the front thigh is parallel.",
+        "Push up through the front heel."
+      ],
+      "stepsBn": [
+        "পেছনের পা বেঞ্চে, সামনের পা এগিয়ে রাখুন।",
+        "সামনের উরু সমান্তরাল হওয়া পর্যন্ত নামুন।",
+        "সামনের গোড়ালিতে ভর দিয়ে উঠুন।"
+      ],
+      "sort": 38
+    },
+    {
+      "key": "hip_thrust",
+      "muscle": "glutes",
+      "equipment": "barbell",
+      "level": "intermediate",
+      "nameEn": "Hip thrust",
+      "nameBn": "হিপ থ্রাস্ট",
+      "stepsEn": [
+        "Upper back on the bench, bar over the hips.",
+        "Drive the hips up until the body is straight.",
+        "Lower slowly."
+      ],
+      "stepsBn": [
+        "পিঠের উপরের অংশ বেঞ্চে, বার কোমরের উপরে।",
+        "শরীর সোজা হওয়া পর্যন্ত কোমর উপরে তুলুন।",
+        "ধীরে নামান।"
+      ],
+      "sort": 39
+    },
+    {
+      "key": "glute_bridge",
+      "muscle": "glutes",
+      "equipment": "none",
+      "level": "beginner",
+      "nameEn": "Glute bridge",
+      "nameBn": "গ্লুট ব্রিজ",
+      "stepsEn": [
+        "Lie on your back, knees bent.",
+        "Lift the hips, squeezing the glutes.",
+        "Lower slowly."
+      ],
+      "stepsBn": [
+        "চিত হয়ে শুয়ে হাঁটু ভাঁজ করুন।",
+        "নিতম্ব চেপে কোমর তুলুন।",
+        "ধীরে নামান।"
+      ],
+      "sort": 40
+    },
+    {
+      "key": "kettlebell_swing",
+      "muscle": "glutes",
+      "equipment": "kettlebell",
+      "level": "intermediate",
+      "nameEn": "Kettlebell swing",
+      "nameBn": "কেটলবেল সুইং",
+      "stepsEn": [
+        "Hinge and hold the kettlebell between the legs.",
+        "Snap the hips forward to swing it to chest height.",
+        "Let it fall back between the legs."
+      ],
+      "stepsBn": [
+        "ঝুঁকে দুই পায়ের মাঝে কেটলবেল ধরুন।",
+        "কোমর জোরে সামনে ঠেলে বুক পর্যন্ত দোলান।",
+        "আবার দুই পায়ের মাঝে ফিরে আসতে দিন।"
+      ],
+      "sort": 41
+    },
+    {
+      "key": "cable_kickback",
+      "muscle": "glutes",
+      "equipment": "cable",
+      "level": "beginner",
+      "nameEn": "Cable kickback",
+      "nameBn": "কেবল কিকব্যাক",
+      "stepsEn": [
+        "Ankle strap on, hold the machine.",
+        "Kick the leg straight back.",
+        "Return slowly; switch legs."
+      ],
+      "stepsBn": [
+        "গোড়ালিতে স্ট্র্যাপ লাগিয়ে মেশিন ধরুন।",
+        "পা সোজা পেছনে ছুড়ুন।",
+        "ধীরে ফেরত আনুন; পা বদলান।"
+      ],
+      "sort": 42
+    },
+    {
+      "key": "banded_side_walk",
+      "muscle": "glutes",
+      "equipment": "band",
+      "level": "beginner",
+      "nameEn": "Banded side walk",
+      "nameBn": "ব্যান্ডেড সাইড ওয়াক",
+      "stepsEn": [
+        "Band above the knees, half squat.",
+        "Step sideways, keeping tension.",
+        "Walk back the other way."
+      ],
+      "stepsBn": [
+        "হাঁটুর উপরে ব্যান্ড, আধা বসা অবস্থান।",
+        "টান রেখে পাশে পা ফেলুন।",
+        "উল্টো দিকে ফিরে আসুন।"
+      ],
+      "sort": 43
+    },
+    {
+      "key": "plank",
+      "muscle": "core",
+      "equipment": "none",
+      "level": "beginner",
+      "nameEn": "Plank",
+      "nameBn": "প্ল্যাঙ্ক",
+      "stepsEn": [
+        "Forearms under the shoulders, body straight.",
+        "Tighten the belly and glutes.",
+        "Hold, breathing steadily."
+      ],
+      "stepsBn": [
+        "কনুই কাঁধের নিচে, শরীর সোজা।",
+        "পেট ও নিতম্ব শক্ত করুন।",
+        "স্থির শ্বাস নিয়ে ধরে রাখুন।"
+      ],
+      "sort": 44
+    },
+    {
+      "key": "side_plank",
+      "muscle": "core",
+      "equipment": "none",
+      "level": "intermediate",
+      "nameEn": "Side plank",
+      "nameBn": "সাইড প্ল্যাঙ্ক",
+      "stepsEn": [
+        "On one forearm, feet stacked.",
+        "Lift the hips into a straight line.",
+        "Hold; switch sides."
+      ],
+      "stepsBn": [
+        "এক কনুইয়ে ভর দিন, পা একটার উপর আরেকটা।",
+        "কোমর তুলে শরীর সোজা রাখুন।",
+        "ধরে রাখুন; পাশ বদলান।"
+      ],
+      "sort": 45
+    },
+    {
+      "key": "crunch",
+      "muscle": "core",
+      "equipment": "none",
+      "level": "beginner",
+      "nameEn": "Crunch",
+      "nameBn": "ক্রাঞ্চ",
+      "stepsEn": [
+        "Lie on your back, knees bent.",
+        "Curl the shoulders off the floor.",
+        "Lower slowly."
+      ],
+      "stepsBn": [
+        "চিত হয়ে শুয়ে হাঁটু ভাঁজ করুন।",
+        "কাঁধ মেঝে থেকে তুলুন।",
+        "ধীরে নামান।"
+      ],
+      "sort": 46
+    },
+    {
+      "key": "hanging_leg_raise",
+      "muscle": "core",
+      "equipment": "other",
+      "level": "advanced",
+      "nameEn": "Hanging leg raise",
+      "nameBn": "হ্যাংগিং লেগ রেইজ",
+      "stepsEn": [
+        "Hang from the bar.",
+        "Raise the legs to hip height or higher.",
+        "Lower without swinging."
+      ],
+      "stepsBn": [
+        "বারে ঝুলুন।",
+        "পা কোমরের সমান বা আরও উপরে তুলুন।",
+        "না দুলিয়ে নামান।"
+      ],
+      "sort": 47
+    },
+    {
+      "key": "russian_twist",
+      "muscle": "core",
+      "equipment": "none",
+      "level": "beginner",
+      "nameEn": "Russian twist",
+      "nameBn": "রাশিয়ান টুইস্ট",
+      "stepsEn": [
+        "Sit, lean back a little, feet up or down.",
+        "Turn the body from side to side.",
+        "Keep the back straight."
+      ],
+      "stepsBn": [
+        "বসে সামান্য পেছনে হেলান দিন, পা উপরে বা নিচে।",
+        "শরীর এক পাশ থেকে আরেক পাশে ঘোরান।",
+        "পিঠ সোজা রাখুন।"
+      ],
+      "sort": 48
+    },
+    {
+      "key": "mountain_climber",
+      "muscle": "core",
+      "equipment": "none",
+      "level": "beginner",
+      "nameEn": "Mountain climber",
+      "nameBn": "মাউন্টেন ক্লাইম্বার",
+      "stepsEn": [
+        "Start in a push-up position.",
+        "Drive one knee to the chest, then switch fast.",
+        "Keep the hips low."
+      ],
+      "stepsBn": [
+        "পুশ-আপ অবস্থান থেকে শুরু করুন।",
+        "এক হাঁটু বুকের দিকে আনুন, দ্রুত বদলান।",
+        "কোমর নিচু রাখুন।"
+      ],
+      "sort": 49
+    },
+    {
+      "key": "cable_woodchop",
+      "muscle": "core",
+      "equipment": "cable",
+      "level": "intermediate",
+      "nameEn": "Cable woodchop",
+      "nameBn": "কেবল উডচপ",
+      "stepsEn": [
+        "Cable high, stand side-on.",
+        "Pull down across the body, turning the hips.",
+        "Return slowly."
+      ],
+      "stepsBn": [
+        "কেবল উঁচুতে, পাশ ফিরে দাঁড়ান।",
+        "কোমর ঘুরিয়ে শরীরের উপর দিয়ে নিচে টানুন।",
+        "ধীরে ফেরত দিন।"
+      ],
+      "sort": 50
+    },
+    {
+      "key": "dead_bug",
+      "muscle": "core",
+      "equipment": "none",
+      "level": "beginner",
+      "nameEn": "Dead bug",
+      "nameBn": "ডেড বাগ",
+      "stepsEn": [
+        "Lie on your back, arms up, knees over the hips.",
+        "Lower the opposite arm and leg slowly.",
+        "Return; switch sides."
+      ],
+      "stepsBn": [
+        "চিত হয়ে শুয়ে হাত উপরে, হাঁটু কোমরের উপরে।",
+        "বিপরীত হাত ও পা ধীরে নামান।",
+        "ফেরত আনুন; পাশ বদলান।"
+      ],
+      "sort": 51
+    },
+    {
+      "key": "burpee",
+      "muscle": "full_body",
+      "equipment": "none",
+      "level": "intermediate",
+      "nameEn": "Burpee",
+      "nameBn": "বার্পি",
+      "stepsEn": [
+        "Squat and put the hands down.",
+        "Jump the feet back, then forward again.",
+        "Jump up with the arms overhead."
+      ],
+      "stepsBn": [
+        "বসে হাত মেঝেতে রাখুন।",
+        "পা লাফিয়ে পেছনে নিন, তারপর আবার সামনে।",
+        "হাত মাথার উপরে তুলে লাফ দিন।"
+      ],
+      "sort": 52
+    },
+    {
+      "key": "thruster",
+      "muscle": "full_body",
+      "equipment": "dumbbell",
+      "level": "intermediate",
+      "nameEn": "Thruster",
+      "nameBn": "থ্রাস্টার",
+      "stepsEn": [
+        "Dumbbells at the shoulders, squat down.",
+        "Stand up and press overhead in one move.",
+        "Lower to the shoulders."
+      ],
+      "stepsBn": [
+        "ডাম্বেল কাঁধে রেখে নিচে বসুন।",
+        "এক টানে উঠে মাথার উপরে ঠেলুন।",
+        "কাঁধ পর্যন্ত নামান।"
+      ],
+      "sort": 53
+    },
+    {
+      "key": "clean_and_press",
+      "muscle": "full_body",
+      "equipment": "barbell",
+      "level": "advanced",
+      "nameEn": "Clean and press",
+      "nameBn": "ক্লিন অ্যান্ড প্রেস",
+      "stepsEn": [
+        "Pull the bar from the floor to the shoulders.",
+        "Press it overhead.",
+        "Lower in two steps."
+      ],
+      "stepsBn": [
+        "মেঝে থেকে বার কাঁধ পর্যন্ত টানুন।",
+        "মাথার উপরে ঠেলুন।",
+        "দুই ধাপে নামান।"
+      ],
+      "sort": 54
+    },
+    {
+      "key": "farmer_walk",
+      "muscle": "full_body",
+      "equipment": "dumbbell",
+      "level": "beginner",
+      "nameEn": "Farmer's walk",
+      "nameBn": "ফার্মার্স ওয়াক",
+      "stepsEn": [
+        "Hold heavy dumbbells at the sides.",
+        "Walk tall with short steps.",
+        "Put them down carefully."
+      ],
+      "stepsBn": [
+        "দুই পাশে ভারী ডাম্বেল ধরুন।",
+        "সোজা হয়ে ছোট পায়ে হাঁটুন।",
+        "সাবধানে নামিয়ে রাখুন।"
+      ],
+      "sort": 55
+    },
+    {
+      "key": "kettlebell_goblet_clean",
+      "muscle": "full_body",
+      "equipment": "kettlebell",
+      "level": "intermediate",
+      "nameEn": "Kettlebell clean",
+      "nameBn": "কেটলবেল ক্লিন",
+      "stepsEn": [
+        "Kettlebell between the feet.",
+        "Pull and flip it to the front of the shoulder.",
+        "Lower; switch arms."
+      ],
+      "stepsBn": [
+        "দুই পায়ের মাঝে কেটলবেল রাখুন।",
+        "টেনে ঘুরিয়ে কাঁধের সামনে আনুন।",
+        "নামান; হাত বদলান।"
+      ],
+      "sort": 56
+    },
+    {
+      "key": "treadmill_walk",
+      "muscle": "cardio",
+      "equipment": "machine",
+      "level": "beginner",
+      "nameEn": "Treadmill walk",
+      "nameBn": "ট্রেডমিলে হাঁটা",
+      "stepsEn": [
+        "Start slow, then raise the speed.",
+        "Walk tall, arms swinging.",
+        "Slow down for the last minutes."
+      ],
+      "stepsBn": [
+        "ধীরে শুরু করে গতি বাড়ান।",
+        "সোজা হয়ে হাত দুলিয়ে হাঁটুন।",
+        "শেষ কয়েক মিনিট গতি কমান।"
+      ],
+      "sort": 57
+    },
+    {
+      "key": "treadmill_run",
+      "muscle": "cardio",
+      "equipment": "machine",
+      "level": "intermediate",
+      "nameEn": "Treadmill run",
+      "nameBn": "ট্রেডমিলে দৌড়",
+      "stepsEn": [
+        "Warm up with a walk.",
+        "Run at a pace you can talk at.",
+        "Cool down with a walk."
+      ],
+      "stepsBn": [
+        "হেঁটে ওয়ার্ম-আপ করুন।",
+        "কথা বলা যায় এমন গতিতে দৌড়ান।",
+        "হেঁটে কুল-ডাউন করুন।"
+      ],
+      "sort": 58
+    },
+    {
+      "key": "stationary_bike",
+      "muscle": "cardio",
+      "equipment": "machine",
+      "level": "beginner",
+      "nameEn": "Stationary bike",
+      "nameBn": "স্টেশনারি বাইক",
+      "stepsEn": [
+        "Set the seat to hip height.",
+        "Pedal at a steady pace.",
+        "Raise the resistance for intervals."
+      ],
+      "stepsBn": [
+        "সিট কোমরের উচ্চতায় রাখুন।",
+        "স্থির গতিতে প্যাডেল করুন।",
+        "ইন্টারভালের জন্য রেজিস্ট্যান্স বাড়ান।"
+      ],
+      "sort": 59
+    },
+    {
+      "key": "rowing_machine",
+      "muscle": "cardio",
+      "equipment": "machine",
+      "level": "intermediate",
+      "nameEn": "Rowing machine",
+      "nameBn": "রোয়িং মেশিন",
+      "stepsEn": [
+        "Push with the legs first.",
+        "Then lean back and pull the handle to the ribs.",
+        "Return arms, body, then legs."
+      ],
+      "stepsBn": [
+        "আগে পা দিয়ে ঠেলুন।",
+        "তারপর পেছনে হেলে হ্যান্ডেল পাঁজরের দিকে টানুন।",
+        "হাত, শরীর, তারপর পা ফেরত আনুন।"
+      ],
+      "sort": 60
+    },
+    {
+      "key": "elliptical",
+      "muscle": "cardio",
+      "equipment": "machine",
+      "level": "beginner",
+      "nameEn": "Elliptical",
+      "nameBn": "এলিপটিক্যাল",
+      "stepsEn": [
+        "Stand tall on the pedals.",
+        "Move arms and legs together at a steady pace.",
+        "Change the resistance as you go."
+      ],
+      "stepsBn": [
+        "প্যাডেলে সোজা হয়ে দাঁড়ান।",
+        "স্থির গতিতে হাত ও পা একসাথে চালান।",
+        "চলতে চলতে রেজিস্ট্যান্স বদলান।"
+      ],
+      "sort": 61
+    },
+    {
+      "key": "jump_rope",
+      "muscle": "cardio",
+      "equipment": "other",
+      "level": "beginner",
+      "nameEn": "Jump rope",
+      "nameBn": "দড়ি লাফ",
+      "stepsEn": [
+        "Hold the handles at hip height.",
+        "Turn the rope with the wrists, small jumps.",
+        "Land softly on the balls of the feet."
+      ],
+      "stepsBn": [
+        "হ্যান্ডেল কোমরের সমান উচ্চতায় ধরুন।",
+        "কবজি দিয়ে দড়ি ঘোরান, ছোট লাফ দিন।",
+        "পায়ের সামনের অংশে আলতো নামুন।"
+      ],
+      "sort": 62
+    },
+    {
+      "key": "jumping_jack",
+      "muscle": "cardio",
+      "equipment": "none",
+      "level": "beginner",
+      "nameEn": "Jumping jack",
+      "nameBn": "জাম্পিং জ্যাক",
+      "stepsEn": [
+        "Stand with the feet together.",
+        "Jump the feet out and the arms overhead.",
+        "Jump back to the start."
+      ],
+      "stepsBn": [
+        "পা একসাথে রেখে দাঁড়ান।",
+        "পা দুই দিকে ও হাত মাথার উপরে নিয়ে লাফ দিন।",
+        "শুরুর অবস্থানে ফিরে লাফ দিন।"
+      ],
+      "sort": 63
+    },
+    {
+      "key": "stair_climber",
+      "muscle": "cardio",
+      "equipment": "machine",
+      "level": "intermediate",
+      "nameEn": "Stair climber",
+      "nameBn": "স্টেয়ার ক্লাইম্বার",
+      "stepsEn": [
+        "Stand tall, hold the rails lightly.",
+        "Step at a steady pace.",
+        "Do not lean on the rails."
+      ],
+      "stepsBn": [
+        "সোজা দাঁড়ান, রেলিং হালকা করে ধরুন।",
+        "স্থির গতিতে ধাপ ফেলুন।",
+        "রেলিংয়ে ভর দেবেন না।"
+      ],
+      "sort": 64
+    }
+  ]
+}
