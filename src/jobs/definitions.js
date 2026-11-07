@@ -414,7 +414,8 @@ const JOBS = [
   },
   {
     // M27: locker rentals ending soon are reminded and ended ones free their lockers; products near
-    // their expiry date alert the gym once (09:00 Dhaka, after the morning's renewal reminders).
+    // their expiry date alert the gym once; machines due for service are reminded once (M27-FR-85)
+    // (09:00 Dhaka, after the morning's renewal reminders).
     name: 'gym-ops.daily',
     queue: QUEUES.GYM,
     pattern: '5 9 * * *',
@@ -436,6 +437,14 @@ const JOBS = [
     pattern: '*/15 * * * *',
     tz: 'Asia/Dhaka',
     run: async () => gymOpsJobs.classReminders(),
+  },
+  {
+    // M27-FR-73: staff clock-ins left open past gym_ops.staff_auto_clockout_hours close by themselves (no hours).
+    name: 'gym-ops.staff-clockout',
+    queue: QUEUES.GYM,
+    pattern: '10 * * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => gymOpsJobs.staffClockout(),
   },
   {
     // M27-FR-42: visits left open past gym_manage.visit_auto_close_hours close by themselves.

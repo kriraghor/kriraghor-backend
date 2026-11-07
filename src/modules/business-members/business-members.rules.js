@@ -61,6 +61,9 @@ const PERMISSIONS = Object.freeze({
     'rewards.redeem': false,
     'notices.send': false,
     'leads.manage': false,
+    'clock.in': true,
+    'shifts.manage': false,
+    'assets.manage': false,
   }),
   shop: Object.freeze({
     'orders.view': true,

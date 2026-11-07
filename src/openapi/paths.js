@@ -27,6 +27,7 @@ const gyS = require('../modules/gym/gym.schemas');
 const gmS = require('../modules/gym-manage/gym-manage.schemas');
 const goS = require('../modules/gym-ops/gym-ops.schemas');
 const go2 = require('../modules/gym-ops/gym-ops-round2.schemas');
+const go3 = require('../modules/gym-ops/gym-ops-round3.schemas');
 const orgS = require('../modules/organisations/organisations.schemas');
 const saS = require('../modules/organiser-saas/saas.schemas');
 const evS = require('../modules/esports-events/events.schemas');
@@ -1469,6 +1470,50 @@ function register(registry) {
     summary: 'Ask a gym to call back (no sign-in): name, phone, message, best time; limited per network and per phone; a gym without the feature answers 404 (M27-FR-66)',
     request: { params: go2.slugParam, ...body(go2.enquiryBody) },
     responses: { 202: json(go2.Accepted, 'Accepted'), ...errors({ 404: ['GYM_LEADS_CLOSED'], 422: ['VALIDATION_FAILED'], 429: ['RATE_LIMITED'] }) },
+  });
+  // ------------------------------------------------------------------ M27 gym operations, round 3 (staff attendance, payroll, equipment)
+  const go3S = { params: go3.staffParam };
+  const go3R = { params: go3.runParam };
+  const go3L = { params: go3.lineParam };
+  const go3A = { params: go3.assetParam };
+  gp('get', '/staff-shifts', 'The weekly shifts of every active staff member (shifts.manage or reports.view; feature staff_attendance) (M27-FR-72)', { request: goG, responses: { 200: json(go3.StaffShifts), ...goErr() } });
+  gp('put', '/staff/{staffId}/shifts', 'Replace a staff member’s weekly shifts; no overnight shifts (shifts.manage) (M27-FR-72)', { request: { ...go3S, ...body(go3.shiftsBody) }, responses: { 200: json(go3.StaffShiftsOne), ...goErr({ 422: ['VALIDATION_FAILED', 'GYM_SHIFT_TIMES', 'GYM_SHIFT_LIMIT', 'GYM_STAFF_UNKNOWN'] }) } });
+  gp('get', '/staff-attendance', 'The day’s board: who is clocked in, shifts, clock times, minutes, late (shifts.manage or reports.view) (M27-FR-75)', { request: { ...goG, query: go3.boardQuery }, responses: { 200: json(go3.Board), ...goErr() } });
+  gp('get', '/staff-report', 'A month per staff member: minutes worked, days, late and missed shifts (shifts.manage or reports.view) (M27-FR-74, FR-75)', { request: { ...goG, query: go3.reportQuery }, responses: { 200: json(go3.StaffReport), ...goErr({ 422: ['VALIDATION_FAILED', 'GYM_PAYROLL_PERIOD'] }) } });
+  gp('get', '/staff-times', 'One staff member’s clock rows over at most 62 days (shifts.manage or reports.view)', { request: { ...goG, query: go3.timesQuery }, responses: { 200: json(go3.StaffTimes), ...goErr({ 422: ['VALIDATION_FAILED', 'GYM_STAFF_UNKNOWN'] }) } });
+  gp('post', '/staff-times', 'Clock a staff member in or out at the desk (shifts.manage); append-only (M27-FR-73)', { request: { ...goG, ...body(go3.clockBody) }, responses: { 201: json(go3.Clocked, 'Clocked'), ...goErr({ 409: ['GYM_STAFF_ALREADY_IN', 'GYM_STAFF_NOT_IN'], 422: ['VALIDATION_FAILED', 'GYM_STAFF_UNKNOWN'] }) } });
+  gp('get', '/staff-clock/me', 'My clock at this gym: clocked in or not, today’s shifts and times, minutes this month (clock.in)', { request: goG, responses: { 200: json(go3.MyClock), ...goErr({ 403: [...tier, 'GYM_NOT_STAFF'] }) } });
+  gp('get', '/staff-pay', 'Each active staff member’s pay terms: base, trainer commission on fees, sales commission (owner; feature payroll, Pro) (M27-FR-76)', { request: goG, responses: { 200: json(go3.PayTerms), ...goErr() } });
+  gp('put', '/staff/{staffId}/pay', 'Set a staff member’s pay terms within gym_ops.salary_max_poisha and gym_ops.commission_bps_max (owner) (M27-FR-76)', { request: { ...go3S, ...body(go3.payBody) }, responses: { 200: json(go3.PayTermsOne), ...goErr({ 422: ['VALIDATION_FAILED', 'GYM_AMOUNT_OUT_OF_RANGE', 'GYM_COMMISSION_OUT_OF_RANGE', 'GYM_STAFF_UNKNOWN'] }) } });
+  gp('get', '/payroll', 'The payroll months, newest first (owner) (M27-FR-77)', { request: goG, responses: { 200: json(go3.Runs), ...goErr() } });
+  gp('post', '/payroll', 'Draft a month’s payroll from the pay terms, the fees of each trainer’s members, counter sales and clock times (owner) (M27-FR-77, FR-78)', { request: { ...goG, ...body(go3.runBody) }, responses: { 201: json(go3.Run, 'Drafted'), ...goErr({ 409: ['GYM_PAYROLL_EXISTS'], 422: ['VALIDATION_FAILED', 'GYM_PAYROLL_PERIOD', 'GYM_PAYROLL_EMPTY'] }) } });
+  gp('get', '/payroll/{runId}', 'A payroll month with its lines (owner)', { request: go3R, responses: { 200: json(go3.Run), ...goErr({ 404: ['NOT_FOUND'] }) } });
+  gp('post', '/payroll/{runId}/recalculate', 'A draft takes the latest fees, sales and clock times; bonuses, deductions and notes stay (owner)', { request: go3R, responses: { 200: json(go3.Run), ...goErr({ 404: ['NOT_FOUND'], 409: ['GYM_PAYROLL_STATE'] }) } });
+  gp('post', '/payroll/{runId}/approve', 'Approve a draft: the amounts are frozen (owner) (M27-FR-79)', { request: go3R, responses: { 200: json(go3.Run), ...goErr({ 404: ['NOT_FOUND'], 409: ['GYM_PAYROLL_STATE'] }) } });
+  gp('post', '/payroll/{runId}/void', 'Void a draft, or an approved month with nothing paid, with a reason (owner) (M27-FR-79)', { request: { ...go3R, ...body(go3.voidBody) }, responses: { 200: json(go3.Run), ...goErr({ 404: ['NOT_FOUND'], 409: ['GYM_PAYROLL_STATE'] }) } });
+  gp('patch', '/payroll/{runId}/lines/{lineId}', 'A draft line’s bonus, deduction and note; the net never goes below zero (owner) (M27-FR-78)', { request: { ...go3L, ...body(go3.lineBody) }, responses: { 200: json(go3.Run), ...goErr({ 404: ['NOT_FOUND'], 409: ['GYM_PAYROLL_STATE'], 422: ['VALIDATION_FAILED', 'GYM_AMOUNT_OUT_OF_RANGE', 'GYM_PAYROLL_NEGATIVE'] }) } });
+  gp('post', '/payroll/{runId}/lines/{lineId}/pay', 'Pay a line of an approved month: recorded as a salary expense; the month is paid once every line is (owner) (M27-FR-80)', {
+    request: { ...go3L, headers: idem, ...body(go3.payLineBody) },
+    responses: { 200: json(go3.Run), ...goErr({ 404: ['NOT_FOUND'], 409: ['GYM_PAYROLL_STATE', 'GYM_PAYROLL_LINE_STATE', 'GYM_DRAWER_CLOSED'], 422: ['VALIDATION_FAILED', 'GYM_DATE_OUT_OF_RANGE'] }) },
+  });
+  gp('get', '/payroll/{runId}/lines/{lineId}/payslip', 'A payslip: the owner, or the staff member it belongs to once approved; no-store (M27-FR-81)', { request: go3L, responses: { 200: json(go3.Payslip), ...goErr({ 404: ['NOT_FOUND'] }) } });
+  gp('get', '/my-payslips', 'My approved and paid payslips at this gym (any staff member); no-store (M27-FR-81)', { request: goG, responses: { 200: json(go3.MyPayslips), ...goErr() } });
+  gp('get', '/assets', 'The equipment register with counts and what is due for service (assets.manage or reports.view; feature equipment) (M27-FR-82)', { request: { ...goG, query: go3.assetQuery }, responses: { 200: json(go3.Assets), ...goErr() } });
+  gp('post', '/assets', 'Add a machine; the next service date follows from the interval (assets.manage) (M27-FR-82, FR-83)', { request: { ...goG, ...body(go3.assetBody) }, responses: { 201: json(go3.Asset, 'Added'), ...goErr({ 422: ['VALIDATION_FAILED', 'GYM_ASSET_LIMIT', 'GYM_AMOUNT_OUT_OF_RANGE', 'GYM_DATE_OUT_OF_RANGE'] }) } });
+  gp('patch', '/assets/{assetId}', 'Change a machine, its interval or its status (logged); retired is final (assets.manage) (M27-FR-83, FR-86)', { request: { ...go3A, ...body(go3.assetPatch) }, responses: { 200: json(go3.Asset), ...goErr({ 404: ['NOT_FOUND'], 409: ['GYM_ASSET_STATE'], 422: ['VALIDATION_FAILED', 'GYM_AMOUNT_OUT_OF_RANGE', 'GYM_DATE_OUT_OF_RANGE'] }) } });
+  gp('get', '/assets/{assetId}/logs', 'A machine and its history, newest first (assets.manage or reports.view)', { request: go3A, responses: { 200: json(go3.AssetLogs), ...goErr({ 404: ['NOT_FOUND'] }) } });
+  gp('post', '/assets/{assetId}/logs', 'Log a service, repair or note; a service moves the next date on; a cost can be recorded as an equipment-repair expense (assets.manage) (M27-FR-84)', {
+    request: { ...go3A, headers: idem, ...body(go3.assetLogBody) },
+    responses: { 201: json(go3.AssetLogs, 'Logged'), ...goErr({ 404: ['NOT_FOUND'], 409: ['GYM_ASSET_STATE', 'GYM_DRAWER_CLOSED'], 422: ['VALIDATION_FAILED', 'GYM_AMOUNT_OUT_OF_RANGE', 'GYM_DATE_OUT_OF_RANGE'] }) },
+  });
+  p({
+    method: 'post',
+    path: '/me/gym-staff-clock',
+    tags: gmTag,
+    summary: 'Clock in, or out when in, by scanning the gym’s entrance QR (a staff member with clock.in; the owner is not staff) (M27-FR-73)',
+    security: bearer,
+    request: body(go3.scanBody),
+    responses: { 201: json(go3.Clocked, 'Clocked'), ...errors({ ...COMMON_AUTH, 403: ['GYM_NOT_STAFF', 'PERMISSION_REQUIRED', 'GYM_TIER_REQUIRED'], 422: ['VALIDATION_FAILED', 'GYM_CLOCK_TOKEN_INVALID'] }) },
   });
   // ------------------------------------------------------------------ M14 lite organisations and M22 organiser SaaS (step 1)
   const orgP = { params: saS.orgParam };

@@ -186,3 +186,78 @@ Round 2 brings members back: check-out and the live count, classes with bookings
 - [ ] **Gym page:** the class timetable and the "Ask the gym" form; the thank-you after sending.
 - [ ] **Me → Classes:** book, join the waitlist, cancel; **My membership:** my points and the rewards.
 - [ ] Bangla, phone width, light and dark: no text left in English, no sideways scroll, readable contrast.
+
+---
+
+# M27 round 3a · Staff and equipment: Acceptance Checklist
+
+Request names refer to the **"Kriraghor API: M27 round 3 · Staff and equipment"** collection
+(`postman/kriraghor-gym-ops-r3.postman_collection.json`, rebuilt with `node postman/build-collection-m27-r3.js`).
+
+Round 3a gives the gym its staff and machines: weekly shifts and clocking in by the entrance QR, the day's board and the month's hours, pay terms and the monthly payroll with payslips (Pro, the owner only), and the equipment register with service reminders. Payroll is the gym's own record: paid lines become salary expenses; Kriraghor never pays staff. 🤖 marks cases only the jest suites cover (`tests/e2e/gym-ops-round3.test.js`, `tests/unit/gym-ops-rules.test.js`).
+
+## 0. Setup
+- [ ] `npm run release` applies `20261121000001-gym-ops-round3`: `gym_staff_shifts`, `gym_staff_times` (append-only), `gym_staff_pay`, `gym_payroll_runs` (one live run per month), `gym_payroll_lines` (CHECK net = base + commissions + bonus − deduction), `gym_assets`, `gym_asset_logs` (append-only). It merges `staff_attendance`, `equipment` (standard) and `payroll` (pro) into `gym_saas.feature_min_tiers`.
+- [ ] The seed adds settings v37 (400 settings: the `gym_ops.staff_*`, `shifts_per_staff_max`, `salary_max_poisha`, `commission_bps_max`, `payroll_adjust_max_poisha`, `assets_max`, `asset_*` keys) and templates v29 (GYM_ASSET_SERVICE_DUE, GYM_PAYSLIP_READY).
+- [ ] New staff permissions: `clock.in` (on by default), `shifts.manage`, `assets.manage`. Every role preset in the business panel includes `clock.in`.
+- [ ] Jobs: `gym-ops.staff-clockout` (hourly); the service reminders run in `gym-ops.daily`.
+- [ ] `node postman/run-m27-r3.js` → **0 failed** (54 requests, 76 assertions). The runner resets the test database, makes a Pro gym, a member assigned to the trainer with a month's due, and four staff: Rumi (attendance.mark, members.view, clock.in), Tania (members.view, members.trainer, pos.sell, clock.in), a technician (assets.manage) and Other (members.view). It serves `{{controlUrl}}` (`/backdate`, `/clockout`, `/service`, `/drain`).
+
+## 1. Shifts (M27-FR-72)
+| # | Do | Expect |
+|---|---|---|
+| 1.1 | **An overnight shift** | 422 `GYM_SHIFT_TIMES` |
+| 1.2 | **Rumi works 06:00 to 14:00 every day** / **Everyone's shifts** | seven shifts |
+| 1.3 | **Staff without shifts.manage** | 403 `PERMISSION_REQUIRED` |
+
+## 2. Clocking in and out (M27-FR-73 to FR-75)
+| # | Do | Expect |
+|---|---|---|
+| 2.1 | **Rumi scans in** / **My clock** | in by the entrance QR; today's shift shown |
+| 2.2 | **Rumi scans out** (after two hours) | out, 120 minutes |
+| 2.3 | **The owner is not staff** / **Staff without clock.in** / **Not the entrance code** | 403 `GYM_NOT_STAFF`; 403 `PERMISSION_REQUIRED`; 422 `GYM_CLOCK_TOKEN_INVALID` |
+| 2.4 | **The owner clocks Rumi in at the desk** / **again** | 201 at the desk; 409 `GYM_STAFF_ALREADY_IN` |
+| 2.5 | **The board** | one in, 120 minutes worked today |
+| 2.6 | **The auto-close job** after 15 hours, then **the month** | closed with method auto; still 120 minutes (auto time counts nothing) |
+| 2.7 | Late and missed against the shifts | after the grace minutes = late; a past shift day with no clock-in = missed; today = neither 🤖 |
+| 2.8 | Staff attendance on Basic | 403 `GYM_TIER_REQUIRED` `{feature: staff_attendance, minTier: standard}` 🤖 |
+
+## 3. Pay terms (M27-FR-76)
+| # | Do | Expect |
+|---|---|---|
+| 3.1 | **A commission above the cap** | 422 `GYM_COMMISSION_OUT_OF_RANGE` |
+| 3.2 | **Tania: ৳15,000, 10% of her members' fees, 5% of her sales** / **Other: ৳10,000** | 200 |
+| 3.3 | **Staff cannot see pay** | 403 |
+| 3.4 | **Tania's member pays ৳2,000**, a product, **Tania sells one for ৳900** | the month's facts |
+
+## 4. The month's payroll (M27-FR-77 to FR-81)
+| # | Do | Expect |
+|---|---|---|
+| 4.1 | **A future month** / **Draft this month** / **the same month again** | 422 `GYM_PAYROLL_PERIOD`; a draft with two lines, Tania ৳15,245; 409 `GYM_PAYROLL_EXISTS` |
+| 4.2 | **A deduction larger than the pay** / **Bonus ৳500, deduction ৳200** | 422 `GYM_PAYROLL_NEGATIVE`; net ৳15,545 |
+| 4.3 | **Recalculate** | the bonus and deduction stay |
+| 4.4 | **A draft payslip** (staff) / **Approve** / **Change after approval** | 404; approved; 409 `GYM_PAYROLL_STATE` |
+| 4.5 | **Pay Tania by bank**, **again**, **Pay Other in cash** | paid ৳15,545; 409 `GYM_PAYROLL_LINE_STATE`; the month is paid |
+| 4.6 | **Salaries are in the expenses** | two salary expenses, ৳25,545, in profit and loss |
+| 4.7 | **Void a paid month** | 409 `GYM_PAYROLL_STATE`; a draft voids and the month can be drafted again 🤖 |
+| 4.8 | **Tania's payslips** / **Her payslip** / **Not someone else's** | one, paid; with the note; 404 |
+| 4.9 | Payroll on Standard; nobody with pay terms | 403 `GYM_TIER_REQUIRED` `{feature: payroll, minTier: pro}`; 422 `GYM_PAYROLL_EMPTY` 🤖 |
+
+## 5. Equipment (M27-FR-82 to FR-86)
+| # | Do | Expect |
+|---|---|---|
+| 5.1 | **Staff without assets.manage** | 403 |
+| 5.2 | **A treadmill, serviced every 30 days, bought 29 days ago** | working, next service tomorrow |
+| 5.3 | **The service reminder job** | once per due date to the owner and assets.manage staff (GYM_ASSET_SERVICE_DUE); a second run sends nothing 🤖 |
+| 5.4 | **A service with its cost as a cash expense** | last service today, next in 30 days, the expense linked |
+| 5.5 | **Out of order**, **The counts**, **Retire it**, **Log on a retired machine** | logged; 1 out of order; retired; 409 `GYM_ASSET_STATE` |
+| 5.6 | **The history** | status, status, service |
+
+## 6. Gym app
+- [ ] The sidebar has **Team** (Staff attendance, Payroll for the owner, Equipment) by permission; staff with clock.in get **My work** under Today; a page above the plan shows the upsell.
+- [ ] **Staff attendance:** Today (who is in, shifts, times, late; Clock in or out for shifts.manage), Shifts (edit a person's week), Month (hours, days, late, missed; month by month).
+- [ ] **My work (staff):** Scan to clock in, then out; today's shifts and times; this month's hours; my payslips (print).
+- [ ] **Payroll:** Pay terms (base, trainer %, sales %); Months: draft, edit bonus and deduction with a note, recalculate, approve, pay each line (method, from the drawer), void; payslip print on A4.
+- [ ] **Equipment:** counts (working, needs service, out of order, service due); add or edit a machine; open it for its history; log a service, repair or note with a cost into the expenses; retire.
+- [ ] **Business panel → Team:** the labels for clock.in, shifts.manage and assets.manage (and the round 2 permissions); presets include clocking in.
+- [ ] Bangla, phone width, light and dark: no text left in English, no sideways scroll, readable contrast.

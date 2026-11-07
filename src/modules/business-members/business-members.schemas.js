@@ -29,9 +29,9 @@ const addBody = z.object({
   businessType,
   businessId: id,
   phone: phone.meta({ description: 'The staff member’s verified phone number (they must already have a Kriraghor account)' }),
-  permissions: z.array(permissionKey).max(20).optional().meta({ description: 'Leave out for the defaults of the business type' }),
+  permissions: z.array(permissionKey).max(40).optional().meta({ description: 'Leave out for the defaults of the business type' }),
 });
-const permissionsBody = z.object({ permissions: z.array(permissionKey).max(20) });
+const permissionsBody = z.object({ permissions: z.array(permissionKey).max(40) });
 
 // ---------------- shared by the staff-capable desks' response schemas
 /**

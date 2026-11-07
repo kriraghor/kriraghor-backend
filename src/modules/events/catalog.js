@@ -76,7 +76,7 @@ const docRequestEvent = z.object({ requestId: uuid, userId: uuid, docType: z.str
 const riskFlagEvent = z.object({ flagId: uuid, userId: uuid, ruleKey: z.string().max(40), severity: z.enum(['info', 'medium', 'high', 'critical']) });
 // Round B3 staff accounts for businesses (business-members, identity group).
 const businessMemberEvent = z.object({ businessMemberId: uuid, businessType: z.enum(['venue', 'gym', 'shop']), businessId: uuid, ownerId: uuid, memberId: uuid });
-const permissionList = z.array(z.string().max(40)).max(20);
+const permissionList = z.array(z.string().max(40)).max(40);
 const catalogItem = z.object({ table: z.string(), id: uuid, key: z.string(), version: z.number().int().optional(), isActive: z.boolean().optional() });
 
 const EVENTS = {
@@ -543,6 +543,12 @@ const EVENTS = {
   'gym_points.redeemed': { module: 'M27', version: 1, schema: z.object({ gymId: uuid, memberId: uuid, rewardId: uuid, points: z.number().int().positive(), kind: z.enum(['days', 'discount']) }) },
   'gym_notice.sent': { module: 'M27', version: 1, schema: z.object({ noticeId: uuid, gymId: uuid, targetCount: z.number().int().nonnegative() }) },
   'gym_lead.received': { module: 'M27', version: 1, schema: z.object({ leadId: uuid, gymId: uuid, ownerId: uuid }) },
+  // M27 round 3: staff, payroll, equipment
+  'gym_staff_time.recorded': { module: 'M27', version: 1, schema: z.object({ gymId: uuid, staffId: uuid, kind: z.enum(['in', 'out']), method: z.enum(['desk', 'entrance_qr', 'auto']) }) },
+  'gym_payroll.approved': { module: 'M27', version: 1, schema: z.object({ gymId: uuid, runId: uuid, period: z.string(), staff: z.number().int().nonnegative() }) },
+  'gym_payroll_line.paid': { module: 'M27', version: 1, schema: z.object({ gymId: uuid, runId: uuid, lineId: uuid, userId: uuid, period: z.string() }) },
+  'gym_asset.serviced': { module: 'M27', version: 1, schema: z.object({ gymId: uuid, assetId: uuid, doneOn: z.string() }) },
+  'gym_asset.service_reminded': { module: 'M27', version: 1, schema: z.object({ gymId: uuid, assetId: uuid, item: z.string(), dueOn: z.string() }) },
   'gym_locker.ended': { module: 'M27', version: 1, schema: z.object({ rentalId: uuid, gymId: uuid, lockerId: uuid, memberId: uuid, by: z.enum(['staff', 'job']) }) },
   'gym_due.waived': { module: 'M24', version: 1, schema: gmDue.extend({ amount: poisha }) },
   'gym_fee.recorded': {

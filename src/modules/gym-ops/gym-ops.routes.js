@@ -7,8 +7,10 @@
  * money, a sale or stock (IK).
  *   manageRouter  /manage/gyms/:gymId   expense categories and expenses, the cash drawer, profit and loss,
  *                                       products and stock, counter sales and receipts, lockers and rentals;
- *                                       round 2: classes and sessions, points and rewards, notices, enquiries
- *   meRouter      /me                   my class timetable, bookings and points (linked members)
+ *                                       round 2: classes and sessions, points and rewards, notices, enquiries;
+ *                                       round 3: staff shifts and clocking, pay terms and payroll, equipment
+ *   meRouter      /me                   my class timetable, bookings and points (linked members); staff
+ *                                       clock in and out by the entrance QR
  *   publicRouter  /gym                  the gym page timetable and the enquiry form (no sign-in)
  */
 const { Router } = require('express');
@@ -70,6 +72,10 @@ const classes = require('./classes.service');
 const points = require('./points.service');
 const notices = require('./notices.service');
 const leads = require('./leads.service');
+const r3 = require('./gym-ops-round3.schemas');
+const staff = require('./staff.service');
+const payroll = require('./payroll.service');
+const assets = require('./assets.service');
 
 // Classes (M27-FR-45..54).
 g.get('/class-trainers', async (req, res) => res.json(await classes.trainers(req.user, P(req))));
@@ -102,6 +108,38 @@ g.get('/leads', query(r2.leadQuery), async (req, res) => res.json(await leads.li
 g.patch('/leads/:leadId', params(r2.leadParam), validate(r2.leadPatch), async (req, res) => res.json(await leads.update(req.user, P(req), req.params.leadId, req.body, req)));
 g.post('/leads/:leadId/reveal-phone', params(r2.leadParam), async (req, res) => res.set('Cache-Control', 'no-store').json(await leads.revealPhone(req.user, P(req), req.params.leadId, req)));
 
+// ---------------------------------------------------------------- round 3
+
+// Staff attendance (M27-FR-72..75).
+g.get('/staff-shifts', async (req, res) => res.json(await staff.shifts(req.user, P(req))));
+g.put('/staff/:staffId/shifts', params(r3.staffParam), validate(r3.shiftsBody), async (req, res) => res.json(await staff.setShifts(req.user, P(req), req.params.staffId, req.body, req)));
+g.get('/staff-attendance', query(r3.boardQuery), async (req, res) => res.json(await staff.board(req.user, P(req), req.validQuery)));
+g.get('/staff-report', query(r3.reportQuery), async (req, res) => res.json(await staff.report(req.user, P(req), req.validQuery)));
+g.get('/staff-times', query(r3.timesQuery), async (req, res) => res.json(await staff.times(req.user, P(req), req.validQuery)));
+g.post('/staff-times', validate(r3.clockBody), async (req, res) => res.status(201).json(await staff.clockAtDesk(req.user, P(req), req.body, req)));
+g.get('/staff-clock/me', async (req, res) => res.json(await staff.myClock(req.user, P(req))));
+
+// Payroll (M27-FR-76..81; Pro; the owner, and each staff member's own payslips).
+g.get('/staff-pay', async (req, res) => res.json(await payroll.payTerms(req.user, P(req))));
+g.put('/staff/:staffId/pay', params(r3.staffParam), validate(r3.payBody), async (req, res) => res.json(await payroll.setPayTerms(req.user, P(req), req.params.staffId, req.body, req)));
+g.get('/payroll', async (req, res) => res.json(await payroll.runs(req.user, P(req))));
+g.post('/payroll', validate(r3.runBody), async (req, res) => res.status(201).json(await payroll.create(req.user, P(req), req.body, req)));
+g.get('/payroll/:runId', params(r3.runParam), async (req, res) => res.json(await payroll.run(req.user, P(req), req.params.runId)));
+g.post('/payroll/:runId/recalculate', params(r3.runParam), async (req, res) => res.json(await payroll.recalculate(req.user, P(req), req.params.runId, req)));
+g.post('/payroll/:runId/approve', params(r3.runParam), async (req, res) => res.json(await payroll.approve(req.user, P(req), req.params.runId, req)));
+g.post('/payroll/:runId/void', params(r3.runParam), validate(r3.voidBody), async (req, res) => res.json(await payroll.voidRun(req.user, P(req), req.params.runId, req.body, req)));
+g.patch('/payroll/:runId/lines/:lineId', params(r3.lineParam), validate(r3.lineBody), async (req, res) => res.json(await payroll.updateLine(req.user, P(req), req.params.runId, req.params.lineId, req.body, req)));
+g.post('/payroll/:runId/lines/:lineId/pay', params(r3.lineParam), validate(r3.payLineBody), ik('payroll_pay'), async (req, res) => res.json(await payroll.payLine(req.user, P(req), req.params.runId, req.params.lineId, req.body, req)));
+g.get('/payroll/:runId/lines/:lineId/payslip', params(r3.lineParam), async (req, res) => res.set('Cache-Control', 'no-store').json(await payroll.payslip(req.user, P(req), req.params.runId, req.params.lineId)));
+g.get('/my-payslips', async (req, res) => res.set('Cache-Control', 'no-store').json(await payroll.myPayslips(req.user, P(req))));
+
+// The equipment register (M27-FR-82..86).
+g.get('/assets', query(r3.assetQuery), async (req, res) => res.json(await assets.list(req.user, P(req), req.validQuery)));
+g.post('/assets', validate(r3.assetBody), async (req, res) => res.status(201).json(await assets.create(req.user, P(req), req.body, req)));
+g.patch('/assets/:assetId', params(r3.assetParam), validate(r3.assetPatch), async (req, res) => res.json(await assets.update(req.user, P(req), req.params.assetId, req.body, req)));
+g.get('/assets/:assetId/logs', params(r3.assetParam), async (req, res) => res.json(await assets.logs(req.user, P(req), req.params.assetId)));
+g.post('/assets/:assetId/logs', params(r3.assetParam), validate(r3.assetLogBody), ik('asset_log'), async (req, res) => res.status(201).json(await assets.addLog(req.user, P(req), req.params.assetId, req.body, req)));
+
 // The member (linked account): classes and points.
 // authenticate per route: other modules' /me routes pass through this router.
 const meRouter = Router();
@@ -110,6 +148,8 @@ meRouter.post('/gym-classes/:sessionId/book', authenticate, params(r2.mySessionP
 meRouter.get('/gym-bookings', authenticate, query(r2.myMemberQuery), async (req, res) => res.json(await classes.myBookings(req.user, req.validQuery)));
 meRouter.post('/gym-bookings/:bookingId/cancel', authenticate, params(r2.myBookingParam), async (req, res) => res.json(await classes.myCancel(req.user, req.params.bookingId, req)));
 meRouter.get('/gym-points', authenticate, query(r2.myMemberQuery), async (req, res) => res.json(await points.mine(req.user, req.validQuery)));
+// M27-FR-73: a staff member clocks in or out by scanning the gym's entrance QR.
+meRouter.post('/gym-staff-clock', authenticate, validate(r3.scanBody), async (req, res) => res.status(201).json(await staff.clockByScan(req.user, req.body, req)));
 
 // Public (the gym page): the week's timetable and the enquiry form.
 const publicRouter = Router();
