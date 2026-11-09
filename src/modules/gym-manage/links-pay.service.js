@@ -36,12 +36,15 @@ const notices = require('./notices.service');
 
 const { fail } = c;
 const PURPOSE = 'gym_membership_fee';
-const CHANNELS = ['in_app', 'email'];
+// Prompt 3b: sms when the staff choose it and the SMS add-on allows it (else the other channels carry it).
+const CHANNELS = ['in_app', 'email', 'sms'];
 
 // ---------------------------------------------------------------- links
 
 const tokenOf = (l) => rules.payLinkToken({ linkId: l.id, nonce: l.tokenNonce }, c.sign);
 const urlOf = (l) => `${config.apps.gym}/p/${tokenOf(l)}`;
+/** The short link an SMS carries (prompt 3b): gym.kriraghor.com/p/<10 characters>; links made before have none. */
+const shortUrlOf = (l) => (l.shortCode ? `${config.apps.gym}/p/${l.shortCode}` : urlOf(l));
 /** The status a viewer sees: an open link past its expiry is expired (the job marks it). */
 const statusOf = (l, now = new Date()) => (l.status === 'open' && new Date(l.expiresAt) <= now ? 'expired' : l.status);
 
@@ -88,6 +91,7 @@ async function createLinkIn(transaction, { gym, due, member, requested = null, c
       ownerId: gym.ownerId,
       amountPoisha: r.amount,
       tokenNonce: crypto.randomBytes(12).toString('base64url'),
+      shortCode: rules.shortCode(crypto.randomBytes(10)),
       origin,
       channels: chosen,
       expiresAt: new Date(now.getTime() + c.cfg().payLinkHours * 3600000),
@@ -95,13 +99,14 @@ async function createLinkIn(transaction, { gym, due, member, requested = null, c
     },
     { transaction }
   );
-  const notify = chosen.length ? await notices.logImmediate(transaction, { kind: 'pay_link', member, gym, subjectType: 'link', subjectId: link.id }) : false;
+  const notice = chosen.length ? await notices.logImmediate(transaction, { kind: 'pay_link', member, gym, subjectType: 'link', subjectId: link.id, sms: chosen.includes('sms'), explicit: true }) : { notify: false, sms: null };
+  const notify = notice.notify;
   await c.publish(
     transaction,
     'gym_payment_link.created',
     'gym_payment_link',
     link.id,
-    { linkId: link.id, dueId: due.id, memberId: member.id, gymId: gym.id, ownerId: gym.ownerId, amount: link.amountPoisha, expiresAt: c.iso(link.expiresAt), origin, channels: notify ? chosen : [], sms: null },
+    { linkId: link.id, dueId: due.id, memberId: member.id, gymId: gym.id, ownerId: gym.ownerId, amount: link.amountPoisha, expiresAt: c.iso(link.expiresAt), origin, channels: notify ? chosen : [], sms: notice.sms },
     actor
   );
   return link;
@@ -118,7 +123,7 @@ async function create(principal, gymId, dueId, body, req) {
       if (!due) throw E.notFound('Due');
       const member = await GymMember.findByPk(due.memberId, { transaction });
       if (member.status === 'removed') throw fail('GYM_MEMBER_STATE', { reason: 'removed' });
-      const l = await createLinkIn(transaction, { gym: a.gym, due, member, requested: body.amountPoisha ?? null, channels: body.channels ?? CHANNELS, origin: 'staff', by: principal.id, actor: a.actor, now });
+      const l = await createLinkIn(transaction, { gym: a.gym, due, member, requested: body.amountPoisha ?? null, channels: body.channels ?? ['in_app', 'email'], origin: 'staff', by: principal.id, actor: a.actor, now });
       await c.record({ action: 'gym_payment_link.created', actor: a.actor, entityType: 'gym_payment_link', entityId: l.id, entityCode: member.memberCode, after: { amount: l.amountPoisha, dueId, channels: l.channels, expiresAt: c.iso(l.expiresAt) }, meta: { gymId }, req }, transaction);
       return l;
     });
@@ -191,6 +196,12 @@ async function startPaymentIn(transaction, { link, gym, member, principal, idemp
 
 /** The link behind a public token, or 404 (a token for another link fails the HMAC). */
 async function linkOfToken(token, { transaction, lock = false } = {}) {
+  // Prompt 3b: the short code of an SMS link (10 Crockford characters, unique while set).
+  if (rules.looksLikeShortCode(token)) {
+    const short = await GymPaymentLink.findOne({ where: { shortCode: token }, transaction, ...(lock ? { lock: transaction.LOCK.UPDATE } : {}) });
+    if (!short) throw E.notFound('Payment link');
+    return short;
+  }
   const parsed = rules.parsePayLinkToken(token, { sign: c.sign, equal: require('../../common/crypto').timingSafeEqualHex });
   if (!parsed) throw E.notFound('Payment link');
   const link = await GymPaymentLink.findByPk(parsed.linkId, { transaction, ...(lock ? { lock: transaction.LOCK.UPDATE } : {}) });
@@ -465,4 +476,4 @@ async function releasedWithoutRelease({ limit = 1000 } = {}) {
   return bad;
 }
 
-module.exports = { PURPOSE, CHANNELS, linkView, urlOf, createLinkIn, create, list, cancel, summary, payLink, myDues, payMyDue, onCaptured, releaseDue, expireLinks, refund, onRefundSucceeded, releasedWithoutRelease };
+module.exports = { PURPOSE, CHANNELS, linkView, urlOf, shortUrlOf, createLinkIn, create, list, cancel, summary, payLink, myDues, payMyDue, onCaptured, releaseDue, expireLinks, refund, onRefundSucceeded, releasedWithoutRelease };

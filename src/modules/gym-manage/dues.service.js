@@ -81,13 +81,14 @@ async function recordIn(transaction, { gym, member, due, amount, method, paidOn,
   await due.update({ paidPoisha: paid, status: next.status }, { transaction });
   await cancelLinksIn(transaction, { dueId: due.id, outstanding: next.outstanding, keep: online?.linkId ?? null });
   await fees.chargeReferralIn(transaction, { gym, member, payment, actor, now });
-  if (method !== 'opening') await notices.logImmediate(transaction, { kind: 'receipt', member, gym, subjectType: 'fee_payment', subjectId: payment.id });
+  // Prompt 3b: the receipt goes by SMS too when the gym chose it and units are left.
+  const notice = method !== 'opening' ? await notices.logImmediate(transaction, { kind: 'receipt', member, gym, subjectType: 'fee_payment', subjectId: payment.id, sms: true }) : null;
   await c.publish(
     transaction,
     'gym_fee.recorded',
     'gym_fee_payment',
     payment.id,
-    { feePaymentId: payment.id, dueId: due.id, memberId: member.id, gymId: gym.id, ownerId: gym.ownerId, amount, method, receiptNo, paidOn, outstandingAfter: next.outstanding, by: receivedBy ?? null, sms: null },
+    { feePaymentId: payment.id, dueId: due.id, memberId: member.id, gymId: gym.id, ownerId: gym.ownerId, amount, method, receiptNo, paidOn, outstandingAfter: next.outstanding, by: receivedBy ?? null, sms: notice?.sms ?? null },
     actor
   );
   if (next.status === 'paid') await c.publish(transaction, 'gym_due.paid', 'gym_due', due.id, { dueId: due.id, memberId: member.id, gymId: gym.id, amount: due.amountPoisha }, actor);

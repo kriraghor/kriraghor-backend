@@ -448,6 +448,10 @@ const ACTIONS = {
   'gym_payment_link.cancelled': A('M24', 'info', 'Cancelled a fee payment link', 'ফির পেমেন্ট লিংক বাতিল'),
   'gym_fee.refunded': A('M24', 'notice', 'Refunded {after.amount} of online fee {entityCode}', 'অনলাইন ফি {entityCode} থেকে {after.amount} ফেরত'),
   'gym_manage.exported': A('M24', 'notice', 'Exported the gym {meta.dataset} list ({meta.rows} rows)', 'জিমের {meta.dataset} তালিকা এক্সপোর্ট ({meta.rows}টি সারি)'),
+  // M24 prompt 3b, the SMS add-on.
+  'gym_sms_addon.started': A('M24', 'notice', 'Switched the SMS add-on on', 'SMS অ্যাড-অন চালু করা'),
+  'gym_sms_addon.ended': A('M24', 'notice', 'Switched the SMS add-on off', 'SMS অ্যাড-অন বন্ধ করা'),
+  'gym_sms.adjusted': A('M24', 'critical', 'Changed a gym owner’s SMS balance by {meta.units}', 'জিম মালিকের SMS ব্যালেন্স {meta.units} বদলানো'),
   'gym_subscription.founding_set': A('M24', 'critical', 'Set founding partner {after.foundingPartner} for a gym owner', 'জিম মালিকের ফাউন্ডিং পার্টনার {after.foundingPartner}'),
   'gym_invoice.voided': A('M24', 'critical', 'Voided gym invoice {entityCode}', 'জিম চালান {entityCode} বাতিল'),
   'gym_fee_override.set': A('M24', 'critical', 'Set a special {after.key} of {after.value} for a gym owner or gym', 'জিম মালিক বা জিমের জন্য বিশেষ {after.key} {after.value}'),

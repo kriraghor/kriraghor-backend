@@ -3,7 +3,7 @@
 /**
  * M24 invariants (§7.2), registered with the M06 invariants runner (nightly, and the gym-manage
  * reconcile job): a due's paid amount is the sum of its payment rows; a due's status matches §6.2; a
- * released online fee has a matching M06 release. Read-only; any failure is reported by M06
+ * released online fee has a matching M06 release; no owner's SMS balance is below 0 (prompt 3b). Read-only; any failure is reported by M06
  * (ledger.invariant_failed) and logged by the reconcile job.
  */
 const { QueryTypes } = require('sequelize');
@@ -41,6 +41,11 @@ const CHECKS = {
   gym_fee_released_has_release: async () => {
     const bad = await require('./links-pay.service').releasedWithoutRelease();
     return { ok: bad.length === 0, detail: bad.length ? `Released without an M06 release: ${bad.join(', ')}` : null };
+  },
+  // Prompt 3b (§7.2): no owner's SMS balance below 0.
+  gym_sms_balance_not_negative: async () => {
+    const rows = await require('./sms.service').negativeBalances();
+    return { ok: rows.length === 0, detail: rows.length ? `SMS balance below 0: ${rows.map((r) => r.ownerId).join(', ')}` : null };
   },
 };
 

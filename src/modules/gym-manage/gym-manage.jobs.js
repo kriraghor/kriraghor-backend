@@ -144,6 +144,9 @@ const reminders = (now = new Date()) => require('./reminders.service').run(now);
 const morningSummary = (now = new Date()) => require('./reminders.service').morningSummary(now);
 // M24 trial visits: yesterday's open visits become no-shows; after the morning time the gym's list of today's guests and each guest's reminder go out once.
 const visitsDaily = (now = new Date()) => require('./guests.service').daily(now);
+// Prompt 3b, the SMS add-on (§6.7): the monthly allowance; expiring bundles, stale holds, unpaid bundle invoices.
+const smsAllowance = (now = new Date()) => require('./sms.service').allowance(now);
+const smsDaily = (now = new Date()) => require('./sms.service').daily(now);
 const monthlyReport = (now = new Date()) => require('./reminders.service').monthlyReport(now);
 const activeCount = (now = new Date()) => require('./invoices.service').activeCount(now);
 const invoiceCycle = (now = new Date()) => require('./invoices.service').cycle(now);
@@ -153,4 +156,4 @@ const onlineFeeRelease = (now = new Date()) => require('./links-pay.service').re
 const overridesEnd = (now = new Date()) => require('./fees.service').overridesEnd(now);
 const reconcile = () => require('./invariants').reconcile();
 
-module.exports = { daily, duesOverdue, requestsExpire, importHousekeeping, reminders, morningSummary, visitsDaily, monthlyReport, activeCount, invoiceCycle, invoiceDunning, linksExpire, onlineFeeRelease, overridesEnd, reconcile };
+module.exports = { daily, duesOverdue, requestsExpire, importHousekeeping, reminders, morningSummary, visitsDaily, smsAllowance, smsDaily, monthlyReport, activeCount, invoiceCycle, invoiceDunning, linksExpire, onlineFeeRelease, overridesEnd, reconcile };

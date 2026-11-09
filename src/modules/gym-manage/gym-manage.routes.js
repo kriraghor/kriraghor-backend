@@ -83,6 +83,10 @@ manageRouter.get('/billing', run, async (req, res) => res.json(await billing.get
 manageRouter.put('/billing/tier', run, validate(s.tierBody), async (req, res) => res.json(await billing.setTier(req.user, req.body, req)));
 // Prompt 2: the owner's invoices (M24-FR-84, FR-85) and the all-gyms reports (FR-74).
 manageRouter.get('/billing/invoices', run, async (req, res) => res.json(await invoices.mine(req.user)));
+// Prompt 3b, the SMS add-on (M24-FR-96 to FR-99): switch on or off, buy bundles, the entries.
+manageRouter.put('/billing/sms-addon', run, validate(s.smsAddonBody), async (req, res) => res.json(await require('./sms.service').setAddon(req.user, req.body, req)));
+manageRouter.post('/billing/sms-bundles', run, validate(s.smsBundlesBody), ik('sms_bundle'), async (req, res) => res.status(201).json(await require('./sms.service').buyBundles(req.user, req.body, req.idempotencyKey)));
+manageRouter.get('/billing/sms-entries', run, query(s.smsEntriesQuery), async (req, res) => res.json(await require('./sms.service').entries(req.user, req.validQuery)));
 manageRouter.get('/billing/invoices/:invoiceId', run, params(s.invoiceParam), async (req, res) => res.json(await invoices.mineOne(req.user, req.params.invoiceId)));
 manageRouter.post('/billing/invoices/:invoiceId/pay', run, params(s.invoiceParam), ik('invoice_pay'), async (req, res) => res.status(201).json(await invoices.pay(req.user, req.params.invoiceId, req.idempotencyKey)));
 manageRouter.get('/reports', run, query(s.reportQuery), async (req, res) => res.json(await reports.allGyms(req.user, req.validQuery)));
@@ -311,6 +315,9 @@ adminRouter.get('/owners', reads, query(s.adminOwnersQuery), async (req, res) =>
 adminRouter.get('/owners/:ownerId', reads, params(s.ownerParam), async (req, res) => res.json(await invoices.ownerDetail(req.params.ownerId)));
 adminRouter.put('/owners/:ownerId/founding-partner', requireMaster, params(s.ownerParam), validate(s.foundingBody), requireStepUp('settings.write'), async (req, res) =>
   res.json(await invoices.setFounding(req.user, req.params.ownerId, req.body, req))
+);
+adminRouter.post('/owners/:ownerId/sms-adjust', requireMaster, params(s.ownerParam), validate(s.smsAdjustBody), requireStepUp('settings.write'), async (req, res) =>
+  res.json(await require('./sms.service').adjust(req.user, req.params.ownerId, req.body, req))
 );
 adminRouter.get('/invoices', reads, query(s.adminInvoicesQuery), async (req, res) => res.json(await invoices.adminInvoices(req.validQuery)));
 adminRouter.post('/invoices/:invoiceId/void', requireMaster, params(s.invoiceParam), validate(s.reasonBody), requireStepUp('escrow.manage'), async (req, res) =>

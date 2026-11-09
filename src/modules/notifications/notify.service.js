@@ -4,6 +4,13 @@
  * NotificationService (M08). Routing (FR-01 to FR-03, FR-06, FR-10), delivery with suppression, rate
  * limits, logging and retries (FR-08, FR-11 to FR-13, FR-15), OTP on the priority route (FR-08), the
  * bell API (FR-04, FR-05) and preferences (§4.3).
+ *
+ * Billed SMS (M24 prompt 3b, §6.7): a gym member notice whose event carries sms.billingRef (the gym owner
+ * held units for it) gets one SMS for that member, on the account's phone (a linked member) or on the
+ * phone the gym typed (an unlinked one, through the gym_member adapter). Whatever happens to it, M08
+ * publishes notification.sms_settled { billingRef, segments, status } once: sent, failed or not_sent
+ * (no SMS was made, the member turned gym SMS off, no phone, rate limit, suppressed). No other gym
+ * notice is ever sent by SMS (M24-FR-57).
  */
 const { Op } = require('sequelize');
 const config = require('../../config');
@@ -66,8 +73,13 @@ async function unreadCount(userId) {
  */
 async function route(entry, event, { transaction }) {
   const userIds = [...new Set(await entry.recipients(event))];
-  const external = entry.external ? await routeExternal(entry, event, { transaction }) : 0;
-  if (!userIds.length) return { created: external };
+  // One billed SMS at most (M24 §6.7): the first reachable member; an unused one is settled not_sent.
+  const billed = { ref: entry.sms ? event.payload?.sms?.billingRef ?? null : null, used: false };
+  const external = entry.external ? await routeExternal(entry, event, { transaction, billed }) : 0;
+  if (!userIds.length) {
+    await settleUnused(transaction, billed);
+    return { created: external };
+  }
   const contacts = await directory.contactFor(userIds);
   const prefs = await prefsFor(userIds, transaction);
   const now = new Date();
@@ -125,11 +137,34 @@ async function route(entry, event, { transaction }) {
       );
       if (delivery.status === 'queued') transaction.afterCommit(() => dispatchDeliver(delivery.id));
     }
+    // M24 prompt 3b: the billed SMS, unless the member turned SMS off for gym notices.
+    if (billed.ref && !billed.used && userPrefs.get(`${entry.category}:sms`) !== false) {
+      billed.used = true;
+      const at = rules.deliverAt({ now, urgent: Boolean(entry.urgent), channel: 'sms', quietStart, quietEnd, quietEnabled });
+      const smsRow = await NotificationDelivery.create({ notificationId: notification.id, userId, channel: 'sms', status: at > now ? 'deferred' : 'queued', deliverAt: at, billingRef: billed.ref }, { transaction });
+      if (smsRow.status === 'queued') transaction.afterCommit(() => dispatchDeliver(smsRow.id));
+    }
     transaction.afterCommit(async () => {
       realtime.toUser(userId, 'notification.created', { notificationId: notification.id, unreadCount: await unreadCount(userId).catch(() => null) });
     });
   }
+  await settleUnused(transaction, billed);
   return { created: created + external };
+}
+
+/** notification.sms_settled (M24 §6.7), inside the caller's transaction (the outbox). */
+async function publishSettled(transaction, { billingRef, segments = 0, status }) {
+  await require('../events').events.publish(transaction, { name: 'notification.sms_settled', aggregateType: 'sms', aggregateId: billingRef, payload: { billingRef, segments, status } });
+}
+/** A billed SMS that no delivery took: the units go back at once. */
+async function settleUnused(transaction, billed) {
+  if (billed.ref && !billed.used) await publishSettled(transaction, { billingRef: billed.ref, status: 'not_sent' });
+  billed.used = true;
+}
+/** After a delivery ends (sent, failed for good, suppressed, rate limited), in its own transaction. */
+async function settleDelivery(billingRef, { segments = 0, status }) {
+  if (!billingRef) return;
+  await sequelize.transaction((transaction) => publishSettled(transaction, { billingRef, segments, status }));
 }
 
 /**
@@ -138,8 +173,9 @@ async function route(entry, event, { transaction }) {
  * delivery row each, with the user deliveries' quiet hours and dedupe window; nothing in the bell and
  * no address stored. Returns the rows created.
  */
-async function routeExternal(entry, event, { transaction }) {
-  if (!entry.channels.includes('email')) return 0;
+async function routeExternal(entry, event, { transaction, billed = { ref: null, used: true } }) {
+  const wantsEmail = entry.channels.includes('email');
+  if (!wantsEmail && !billed.ref) return 0;
   const refs = (await entry.external(event)) ?? [];
   const seen = new Set();
   const now = new Date();
@@ -151,47 +187,52 @@ async function routeExternal(entry, event, { transaction }) {
     const who = await recipients.resolve(ref.type, ref.id);
     if (!who) continue;
     const values = await entry.values(event, { locale: who.locale, userId: null });
-    const rendered = await templates.renderFor(entry.code, 'email', who.locale, values); // fails closed (FR-07)
-    const at = rules.deliverAt({ now, urgent: Boolean(entry.urgent), channel: 'email', quietStart: settings.get('notify.quiet_hours_start'), quietEnd: settings.get('notify.quiet_hours_end') });
-    let row;
-    try {
-      row = await sequelize.transaction({ transaction }, (savepoint) =>
-        NotificationExternalDelivery.create(
-          {
-            code: entry.code,
-            category: entry.category,
-            recipientType: ref.type,
-            recipientId: ref.id,
-            channel: 'email',
-            locale: rendered.locale,
-            values,
-            link: entry.link?.(event, { userId: null }) ?? null,
-            templateVersion: rendered.version,
-            sourceEventId: event.id,
-            dedupeKey: rules.dedupeKey({ code: entry.code, subjectId: event.id, userId: key, at: now, windowHours: settings.get('notify.dedupe_hours') }),
-            status: at > now ? 'deferred' : 'queued',
-            deliverAt: at,
-          },
-          { transaction: savepoint }
-        )
-      );
-    } catch (err) {
-      if (err?.name === 'SequelizeUniqueConstraintError') continue; // FR-02
-      throw err;
+    const channels = [...(wantsEmail && who.email ? ['email'] : []), ...(billed.ref && !billed.used && who.phone ? ['sms'] : [])];
+    for (const channel of channels) {
+      const rendered = await templates.renderFor(entry.code, channel, who.locale, values); // fails closed (FR-07)
+      const at = rules.deliverAt({ now, urgent: Boolean(entry.urgent), channel, quietStart: settings.get('notify.quiet_hours_start'), quietEnd: settings.get('notify.quiet_hours_end') });
+      let row;
+      try {
+        row = await sequelize.transaction({ transaction }, (savepoint) =>
+          NotificationExternalDelivery.create(
+            {
+              code: entry.code,
+              category: entry.category,
+              recipientType: ref.type,
+              recipientId: ref.id,
+              channel,
+              locale: rendered.locale,
+              values,
+              link: entry.link?.(event, { userId: null }) ?? null,
+              templateVersion: rendered.version,
+              sourceEventId: event.id,
+              dedupeKey: rules.dedupeKey({ code: entry.code, subjectId: event.id, userId: channel === 'email' ? key : `${key}:sms`, at: now, windowHours: settings.get('notify.dedupe_hours') }),
+              status: at > now ? 'deferred' : 'queued',
+              deliverAt: at,
+              billingRef: channel === 'sms' ? billed.ref : null,
+            },
+            { transaction: savepoint }
+          )
+        );
+      } catch (err) {
+        if (err?.name === 'SequelizeUniqueConstraintError') continue; // FR-02
+        throw err;
+      }
+      if (channel === 'sms') billed.used = true;
+      created += 1;
+      if (row.status === 'queued') transaction.afterCommit(() => dispatchExternal(row.id));
     }
-    created += 1;
-    if (row.status === 'queued') transaction.afterCommit(() => dispatchExternal(row.id));
   }
   return created;
 }
 
 // ---------------------------------------------------------------- delivery
 /** FR-11: Redis counters per user per hour and day. True when the SMS may go out. */
-async function smsAllowed(userId) {
+async function smsAllowed(who) {
   const redis = getRedis();
   const now = new Date();
-  const hourKey = `${config.redis.prefix}:notify:sms:${userId}:h:${now.toISOString().slice(0, 13)}`;
-  const dayKey = `${config.redis.prefix}:notify:sms:${userId}:d:${now.toISOString().slice(0, 10)}`;
+  const hourKey = `${config.redis.prefix}:notify:sms:${who}:h:${now.toISOString().slice(0, 13)}`;
+  const dayKey = `${config.redis.prefix}:notify:sms:${who}:d:${now.toISOString().slice(0, 10)}`;
   const [[, hour], , [, day]] = await redis.multi().incr(hourKey).expire(hourKey, 3600).incr(dayKey).expire(dayKey, 86400).exec();
   return hour <= settings.get('notify.sms_per_user_per_hour') && day <= settings.get('notify.sms_per_user_per_day');
 }
@@ -224,7 +265,11 @@ async function deliver({ deliveryId, externalId }, { attemptsMade = 0 } = {}) {
   const n = await Notification.findByPk(d.notificationId);
   const contact = (await directory.contactFor([d.userId])).get(d.userId);
 
-  const suppress = (code) => d.update({ status: 'suppressed', errorCode: code }).then(() => ({ status: 'suppressed', code }));
+  const suppress = async (code) => {
+    await d.update({ status: 'suppressed', errorCode: code });
+    await settleDelivery(d.billingRef, { status: 'not_sent' });
+    return { status: 'suppressed', code };
+  };
   // Edge case 5: inactive users get only security and money messages.
   if (!contact || (contact.status !== 'active' && !['security', 'money'].includes(n.category))) return suppress('user_inactive');
   if (d.channel === 'push') return deliverPush(d, n, attemptsMade);
@@ -232,6 +277,7 @@ async function deliver({ deliveryId, externalId }, { attemptsMade = 0 } = {}) {
   if (d.channel === 'email' && !contact.email) return suppress('no_email');
   if (d.channel === 'sms' && !(await smsAllowed(d.userId))) {
     await d.update({ status: 'rate_limited', errorCode: 'sms_rate_limit' });
+    await settleDelivery(d.billingRef, { status: 'not_sent' });
     return { status: 'rate_limited' };
   }
 
@@ -246,11 +292,13 @@ async function deliver({ deliveryId, externalId }, { attemptsMade = 0 } = {}) {
     }
     const now = new Date();
     await d.update({ status: result.delivered ? 'delivered' : 'sent', attempts: d.attempts + 1, provider: result.provider, providerMessageId: result.messageId, sentAt: now, deliveredAt: result.delivered ? now : null, errorCode: null });
+    if (d.channel === 'sms') await settleDelivery(d.billingRef, { segments: rules.smsSegments(rendered.body).segments, status: 'sent' });
     return { status: d.status };
   } catch (err) {
     const last = attemptsMade + 1 >= MAX_DELIVERY_ATTEMPTS;
     await d.update({ attempts: d.attempts + 1, errorCode: String(err?.code ?? err?.message ?? 'send_failed').slice(0, 60), ...(last ? { status: 'failed' } : {}) });
     logger.warn({ deliveryId, channel: d.channel, attempt: attemptsMade + 1, err: err?.message }, last ? 'delivery failed' : 'delivery will retry');
+    if (last) await settleDelivery(d.billingRef, { status: 'failed' });
     throw err;
   }
 }
@@ -287,19 +335,37 @@ async function deliverExternal(externalId, attemptsMade) {
   if (!d || d.status !== 'queued') return { status: d?.status ?? 'missing', skipped: true };
   if (d.deliverAt > new Date()) return { status: 'deferred', skipped: true };
   const who = await recipients.resolve(d.recipientType, d.recipientId);
-  if (!who) {
-    await d.update({ status: 'suppressed', errorCode: 'no_email' });
-    return { status: 'suppressed', code: 'no_email' };
+  const isSms = d.channel === 'sms';
+  const to = isSms ? who?.phone : who?.email;
+  if (!to) {
+    const code = isSms ? 'no_phone' : 'no_email';
+    await d.update({ status: 'suppressed', errorCode: code });
+    await settleDelivery(d.billingRef, { status: 'not_sent' });
+    return { status: 'suppressed', code };
   }
-  const rendered = await templates.renderFor(d.code, 'email', d.locale, d.values ?? {});
+  // FR-11 for a phone-only member: the same counters, keyed by the phone's hash (never the number).
+  if (isSms && !(await smsAllowed(`ext:${hmac(`phone:${to}`)}`))) {
+    await d.update({ status: 'rate_limited', errorCode: 'sms_rate_limit' });
+    await settleDelivery(d.billingRef, { status: 'not_sent' });
+    return { status: 'rate_limited', external: true };
+  }
+  const rendered = await templates.renderFor(d.code, d.channel, d.locale, d.values ?? {});
   try {
-    const result = await email.send({ to: who.email, subject: rendered.title, text: rendered.body, html: emailHtml(rendered, d.locale) });
+    let result;
+    if (isSms) {
+      result = await sms.send({ to, text: rendered.body, route: 'trans' });
+      await logSms({ route: 'trans', phone: to, text: rendered.body, result, status: 'sent' });
+    } else {
+      result = await email.send({ to, subject: rendered.title, text: rendered.body, html: emailHtml(rendered, d.locale) });
+    }
     await d.update({ status: result.delivered ? 'delivered' : 'sent', attempts: d.attempts + 1, provider: result.provider, providerMessageId: result.messageId, sentAt: new Date(), errorCode: null });
+    if (isSms) await settleDelivery(d.billingRef, { segments: rules.smsSegments(rendered.body).segments, status: 'sent' });
     return { status: d.status, external: true };
   } catch (err) {
     const last = attemptsMade + 1 >= MAX_DELIVERY_ATTEMPTS;
     await d.update({ attempts: d.attempts + 1, errorCode: String(err?.code ?? err?.message ?? 'send_failed').slice(0, 60), ...(last ? { status: 'failed' } : {}) });
-    logger.warn({ externalId, channel: 'email', attempt: attemptsMade + 1, err: err?.message }, last ? 'external delivery failed' : 'external delivery will retry');
+    logger.warn({ externalId, channel: d.channel, attempt: attemptsMade + 1, err: err?.message }, last ? 'external delivery failed' : 'external delivery will retry');
+    if (last) await settleDelivery(d.billingRef, { status: 'failed' });
     throw err;
   }
 }

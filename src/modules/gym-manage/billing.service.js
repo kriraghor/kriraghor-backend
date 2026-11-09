@@ -5,7 +5,7 @@
  * owner chooses (features unlock or lock at once, FR-82), today's active members and this month's peak
  * against the plan's limit (FR-83, G7), and the public pricing from settings (never hard-coded, §4.1).
  * Prompt 2 adds to the billing page the open invoices, the founding partner status and the fees that
- * apply to this owner (FR-88, FR-90; invoices.service). The SMS add-on comes in prompt 3b.
+ * apply to this owner (FR-88, FR-90; invoices.service), and the SMS add-on card (prompt 3b, sms.service).
  */
 const { QueryTypes } = require('sequelize');
 const { AppError } = require('../../common/errors');
@@ -105,7 +105,7 @@ async function billingView(principal, gyms) {
     gyms: gyms.map((g) => ({ id: g.id, name: g.name, listingStatus: g.status })),
     fees: extras.fees,
     founding: extras.founding,
-    smsAddon: { available: false, status: null, balance: 0 },
+    smsAddon: await require('./sms.service').view(principal.id, sub),
     openInvoices: extras.openInvoices,
   };
 }

@@ -516,6 +516,8 @@ NotificationDelivery.init(
     errorCode: DataTypes.STRING(60),
     sentAt: DataTypes.DATE(3),
     deliveredAt: DataTypes.DATE(3),
+    // M24 prompt 3b: the reservation an SMS paid from a gym owner's units settles (notification.sms_settled).
+    billingRef: DataTypes.UUID,
   },
   { sequelize, modelName: 'NotificationDelivery', tableName: 'notification_deliveries' }
 );
@@ -532,20 +534,21 @@ NotificationExternalDelivery.init(
     category: { type: DataTypes.STRING(30), allowNull: false },
     recipientType: { type: DataTypes.ENUM('gym_member'), allowNull: false },
     recipientId: { type: DataTypes.UUID, allowNull: false },
-    channel: { type: DataTypes.ENUM('email'), allowNull: false },
+    channel: { type: DataTypes.ENUM('email', 'sms'), allowNull: false },
     locale: { type: DataTypes.ENUM('en', 'bn'), allowNull: false },
     values: { type: DataTypes.JSONB, allowNull: false, defaultValue: {} },
     link: DataTypes.STRING(500),
     templateVersion: DataTypes.INTEGER,
     sourceEventId: DataTypes.UUID,
     dedupeKey: { type: DataTypes.STRING(200), allowNull: false },
-    status: { type: DataTypes.ENUM('queued', 'deferred', 'sent', 'delivered', 'failed', 'suppressed'), allowNull: false, defaultValue: 'queued' },
+    status: { type: DataTypes.ENUM('queued', 'deferred', 'sent', 'delivered', 'failed', 'rate_limited', 'suppressed'), allowNull: false, defaultValue: 'queued' },
     deliverAt: { type: DataTypes.DATE(3), allowNull: false },
     attempts: { type: DataTypes.SMALLINT, allowNull: false, defaultValue: 0 },
     provider: DataTypes.STRING(30),
     providerMessageId: DataTypes.STRING(200),
     sentAt: DataTypes.DATE(3),
     errorCode: DataTypes.STRING(60),
+    billingRef: DataTypes.UUID,
   },
   { sequelize, modelName: 'NotificationExternalDelivery', tableName: 'notification_external_deliveries' }
 );

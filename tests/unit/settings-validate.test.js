@@ -174,6 +174,13 @@ describe('cross-key rules (§6.5)', () => {
     'gym_manage.online_fee_provider_bps': { bkash: 200, nagad: 200, card: 250 },
     'gym_manage.overdue_remind_days': [3],
     'gym_manage.renewal_remind_days': [7, 3, 1],
+    // M24 prompt 3b, the SMS add-on (off, prices 0 until the gateway, G9).
+    'notify.sms_max_segments': 3,
+    'gym_saas.sms_reserve_units': 2,
+    'gym_saas.sms_addon_enabled': false,
+    'gym_saas.sms_addon_price_poisha': 0,
+    'gym_saas.sms_bundle_size': 0,
+    'gym_saas.sms_bundle_price_poisha': 0,
   };
   const lookupWith = (over = {}) => (k) => (k in over ? over[k] : defaults[k]);
   const broken = (over, changed) => crossRuleViolations(lookupWith(over), changed).map((r) => r.id);
@@ -204,6 +211,12 @@ describe('cross-key rules (§6.5)', () => {
     ['gym_saas.tier_prices_order', { 'gym_saas.tier_basic_price_poisha': 150001 }],
     ['gym_saas.tier_prices_order', { 'gym_saas.tier_pro_price_poisha': 149999 }],
     ['gym_saas.feature_tiers_known', { 'gym_saas.feature_min_tiers': { attendance: 'gold' } }],
+    // M24 prompt 3b: the SMS reserve fits the longest SMS; switching the add-on on needs its prices and bundle.
+    ['gym_saas.sms_reserve_fits', { 'gym_saas.sms_reserve_units': 4 }],
+    ['gym_saas.sms_addon_priced', { 'gym_saas.sms_addon_enabled': true }],
+    ['gym_saas.sms_addon_priced', { 'gym_saas.sms_addon_enabled': true, 'gym_saas.sms_addon_price_poisha': 5000, 'gym_saas.sms_bundle_size': 100 }],
+    ['gym_saas.sms_addon_priced', { 'gym_saas.sms_addon_enabled': true, 'gym_saas.sms_addon_price_poisha': 5000, 'gym_saas.sms_bundle_price_poisha': 5000 }],
+    ['gym_saas.sms_addon_priced', { 'gym_saas.sms_addon_enabled': true, 'gym_saas.sms_bundle_size': 100, 'gym_saas.sms_bundle_price_poisha': 5000 }],
     // M24 §6.12: provider charge per method 0 to 500 bps; one to three overdue reminders of 1 to 30 days.
     ['gym_manage.provider_bps_range', { 'gym_manage.online_fee_provider_bps': { bkash: 501, nagad: 200, card: 250 } }],
     ['gym_manage.provider_bps_range', { 'gym_manage.online_fee_provider_bps': { bkash: 200, nagad: 2.5, card: 250 } }],
@@ -216,8 +229,12 @@ describe('cross-key rules (§6.5)', () => {
 
   it('every rule is covered by the cases above', () => {
     expect(CROSS_RULES.map((r) => r.id).sort()).toEqual(
-      ['booking.advance_order', 'booking.advance_covers_fee', 'booking.refund_tiers', 'booking.grid_order', 'ground.price_band', 'market.offer_order', 'market.return_window', 'market.photos_order', 'market.mto_default', 'market.qty_default', 'esports.checkin_order', 'esports.room_reveal', 'money.refund_below_payout_threshold', 'money.auto_release_below_payout_threshold', 'gym_saas.tier_limits_order', 'gym_saas.tier_prices_order', 'gym_saas.feature_tiers_known', 'gym_manage.provider_bps_range', 'gym_manage.overdue_remind_days_range', 'gym_manage.renewal_remind_days_range'].sort()
+      ['booking.advance_order', 'booking.advance_covers_fee', 'booking.refund_tiers', 'booking.grid_order', 'ground.price_band', 'market.offer_order', 'market.return_window', 'market.photos_order', 'market.mto_default', 'market.qty_default', 'esports.checkin_order', 'esports.room_reveal', 'money.refund_below_payout_threshold', 'money.auto_release_below_payout_threshold', 'gym_saas.tier_limits_order', 'gym_saas.tier_prices_order', 'gym_saas.feature_tiers_known', 'gym_saas.sms_reserve_fits', 'gym_saas.sms_addon_priced', 'gym_manage.provider_bps_range', 'gym_manage.overdue_remind_days_range', 'gym_manage.renewal_remind_days_range'].sort()
     );
+  });
+
+  it('the SMS add-on can be switched on once priced (M24 §6.12)', () => {
+    expect(broken({ 'gym_saas.sms_addon_enabled': true, 'gym_saas.sms_addon_price_poisha': 5000, 'gym_saas.sms_bundle_size': 100, 'gym_saas.sms_bundle_price_poisha': 5000 })).toEqual([]);
   });
 
   it('only checks the rules a change can break', () => {
