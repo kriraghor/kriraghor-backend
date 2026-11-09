@@ -12,7 +12,9 @@
  *  - gym-manage.morning-summary (every 15 minutes): at or after gym_manage.morning_summary_time, once a
  *    day per gym; nothing is sent when all four numbers are 0 (FR-60).
  *  - gym-manage.monthly-report (the 1st, 08:00): the month before, per gym, for the `reports` feature (FR-72).
- *  - GET …/reminders (owner): the kinds and offsets, members reachable only by SMS, and the log of the
+ *  - Prompt 3b: with the SMS add-on, the kinds the gym chose for SMS also go by SMS while units are left.
+ *  - GET …/reminders (owner): the kinds and offsets, the SMS add-on and the kinds chosen for it, members
+ *    reachable only by SMS, and the log of the
  *    last gym_manage.reminder_log_days (kind, date, channel, member code, status; no text, no phone) (FR-59, FR-61).
  */
 const { Op, QueryTypes } = require('sequelize');
@@ -23,6 +25,14 @@ const c = require('./gym-manage.common');
 const notices = require('./notices.service');
 
 const MEMBER_KINDS = ['renewal_due', 'ends_today', 'expired', 'overdue'];
+/** The kinds a gym may send by SMS with the add-on (prompt 3b, M24-FR-97). */
+const SMS_KINDS = ['renewal_due', 'ends_today', 'overdue', 'receipt', 'pay_link'];
+
+/** The reminders page's SMS line: the add-on's state and balance (no prices; the billing page has them). */
+async function smsCard(ownerId) {
+  const v = await require('./sms.service').view(ownerId);
+  return { available: v.available, active: v.status === 'active', balance: v.balance };
+}
 const KINDS = ['renewal_due', 'ends_today', 'overdue', 'expired', 'receipt', 'pay_link', 'morning', 'monthly'];
 
 /**
@@ -53,12 +63,15 @@ async function payableLinkId(dueIds, now, transaction) {
 
 /**
  * Claim one reminder and publish its event when this run won the key; a member nobody can reach is
- * logged as skipped (no_contact). Returns true when published.
+ * logged as skipped (no_contact). Prompt 3b: when the SMS add-on allows the kind, the units are held and
+ * the event carries sms.billingRef, which also makes a phone-only member reachable. Returns true when
+ * published.
  */
 async function sendOnce({ kind, gym, member, subjectType, subjectId, offsetKey, event }) {
   return sequelize.transaction(async (transaction) => {
-    const reach = member.userId || member.emailEnc;
-    const won = await c.claimReminder(transaction, {
+    const plan = await notices.smsPlan(transaction, { kind, gym });
+    const reach = Boolean(member.userId || member.emailEnc || plan.ok);
+    const reminderId = await c.claimReminderId(transaction, {
       ownerId: gym.ownerId,
       gymId: gym.id,
       kind,
@@ -66,12 +79,14 @@ async function sendOnce({ kind, gym, member, subjectType, subjectId, offsetKey, 
       subjectId,
       offsetKey,
       memberId: member.id,
-      channels: reach ? notices.channelsOf(member).filter((ch) => kind !== 'expired' || ch !== 'email') : [],
+      channels: reach ? notices.reachOf(member, plan.ok).filter((ch) => kind !== 'expired' || ch !== 'email') : [],
       status: reach ? 'published' : 'skipped',
       skipReason: reach ? null : 'no_contact',
     });
-    if (!won || !reach) return false;
-    await c.publish(transaction, event.name, event.aggregateType, subjectId, await event.payload(transaction));
+    if (!reminderId || !reach) return false;
+    const payload = await event.payload(transaction);
+    if ('sms' in payload) payload.sms = await notices.holdSms(transaction, { plan, gym, reminderId });
+    await c.publish(transaction, event.name, event.aggregateType, subjectId, payload);
     return true;
   });
 }
@@ -265,7 +280,7 @@ async function page(principal, gymId) {
     restricted: sub.status === 'restricted',
     kinds: KINDS.map((kind) => ({ kind, on: !(s?.remindersOff ?? []).includes(kind), member: MEMBER_KINDS.includes(kind) || ['receipt', 'pay_link'].includes(kind) })),
     offsets: { renewalRemindDays: cfg.renewalRemindDays, overdueRemindDays: cfg.overdueRemindDays, morningSummaryTime: cfg.morningSummaryTime },
-    sms: { available: false, kinds: s?.smsKinds ?? [] },
+    sms: { ...(await smsCard(a.gym.ownerId)), kinds: s?.smsKinds ?? [], choosable: SMS_KINDS },
     reachability: { activeMembers: reach.activeMembers, smsOnly: reach.smsOnly },
     log: {
       days: cfg.reminderLogDays,
@@ -274,4 +289,4 @@ async function page(principal, gymId) {
   };
 }
 
-module.exports = { KINDS, MEMBER_KINDS, eligibleGyms, run, morningCounts, morningSummary, monthFigures, monthlyReport, page };
+module.exports = { KINDS, MEMBER_KINDS, SMS_KINDS, eligibleGyms, run, morningCounts, morningSummary, monthFigures, monthlyReport, page };

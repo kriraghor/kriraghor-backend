@@ -8,7 +8,8 @@
  *    account and are announced (M24-FR-14);
  *  - refund.succeeded (M06, prompt 2): the reversal row of a refunded online fee (M24-FR-44);
  *  - business_member.removed and business_member.permissions_changed (M01, prompt 3): a removed trainer,
- *    or one left with neither members.trainer nor plans.manage, is taken off their members (M24-FR-21).
+ *    or one left with neither members.trainer nor plans.manage, is taken off their members (M24-FR-21);
+ *  - notification.sms_settled (M08, prompt 3b): the SMS hold is settled (§6.7).
  * Prompt 2 also loads the M06 purpose hooks (gym_membership_fee, gym_saas_invoice), registers the M08
  * recipient adapter `gym_member` (email to unlinked members, §11.1) and the M24 ledger-side invariants.
  */
@@ -21,6 +22,8 @@ function registerGymManageConsumers() {
   onEvent('refund.succeeded', 'gym-manage.fee-refund-reversal', (e, { transaction }) => require('./links-pay.service').onRefundSucceeded(e.payload, { transaction }));
   onEvent('business_member.removed', 'gym-manage.trainer-removed', (e, { transaction }) => require('./trainers.service').onStaffRemoved(e.payload, { transaction }));
   onEvent('business_member.permissions_changed', 'gym-manage.trainer-permissions', (e, { transaction }) => require('./trainers.service').onPermissionsChanged(e.payload, { transaction }));
+  // Prompt 3b: M08 reports a billed SMS; the hold is settled (§6.7).
+  onEvent('notification.sms_settled', 'gym-manage.sms-settle', (e, { transaction }) => require('./sms.service').settle(e.payload, { transaction }));
   // M06 purpose hooks load with their services.
   require('./links-pay.service');
   require('./invoices.service');

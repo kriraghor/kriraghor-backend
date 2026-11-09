@@ -1262,6 +1262,19 @@ function register(registry) {
     request: { ...gmG, query: gmS.exportQuery },
     responses: { 200: gmCsv, ...errors({ ...GM, 403: [...GM[403], 'GYM_TIER_REQUIRED'], 422: ['VALIDATION_FAILED', 'EXPORT_TOO_LARGE'], 429: ['EXPORT_LIMIT'] }) },
   });
+  // Prompt 3b, the SMS add-on (M24-FR-96 to FR-99): switched off on the platform until the SMS gateway is signed (G9).
+  const SMS_ERR = { ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'ROLE_SUSPENDED', 'PERMISSION_REQUIRED'] };
+  p({ method: 'put', path: '/manage/billing/sms-addon', tags: gmTag, summary: 'Switch the SMS add-on on (paid plan, gym_saas.sms_addon_enabled; grants the month’s allowance) or off (M24-FR-96)', security: bearer, request: body(gmS.smsAddonBody), responses: { 200: json(gmS.SmsAddonView), ...errors({ ...SMS_ERR, 409: ['GYM_SMS_ADDON_UNAVAILABLE'], ...VALIDATION }) } });
+  p({
+    method: 'post',
+    path: '/manage/billing/sms-bundles',
+    tags: gmTag,
+    summary: 'Buy SMS bundles: a bundle invoice paid at once through M06 (purpose gym_saas_invoice); the units arrive at capture, valid gym_saas.sms_bundle_valid_days (M24-FR-98)',
+    security: bearer,
+    request: { headers: idem, ...body(gmS.smsBundlesBody) },
+    responses: { 201: json(gmS.SmsBundleBought, 'Invoice and payment'), ...errors({ ...SMS_ERR, 409: ['GYM_SMS_ADDON_UNAVAILABLE', 'GYM_SMS_ADDON_OFF'], ...VALIDATION }) },
+  });
+  p({ method: 'get', path: '/manage/billing/sms-entries', tags: gmTag, summary: 'My SMS units: the balance and the latest entries (grant, purchase, reserve, settle, expire, adjust)', security: bearer, request: { query: gmS.smsEntriesQuery }, responses: { 200: json(gmS.SmsEntries), ...errors(SMS_ERR) } });
   p({ method: 'get', path: '/manage/billing/invoices', tags: gmTag, summary: 'My gym plan invoices, newest first (gate run_gym)', security: bearer, responses: { 200: json(gmS.InvoiceList), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'ROLE_SUSPENDED'] }) } });
   p({ method: 'get', path: '/manage/billing/invoices/{invoiceId}', tags: gmTag, summary: 'One invoice with its lines (gate run_gym; print to PDF from the page)', security: bearer, request: gmInv, responses: { 200: json(gmS.Invoice), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'ROLE_SUSPENDED'], 404: ['NOT_FOUND'] }) } });
   p({ method: 'post', path: '/manage/billing/invoices/{invoiceId}/pay', tags: gmTag, summary: 'Pay an issued or overdue invoice: an M06 payment (purpose gym_saas_invoice) → the gym app’s pay page (M24-FR-85)', security: bearer,
@@ -1281,6 +1294,8 @@ function register(registry) {
   p({ method: 'get', path: '/admin/gym-manage/owners/{ownerId}', tags: gmTag, summary: 'One owner: subscription, gyms (counts only), invoices, overrides, imports, fees that apply (manage_gyms or view_payouts)', security: adminBearer, request: gmOwner, responses: { 200: json(gmS.AdminOwnerDetail), ...errors(GMA) } });
   p({ method: 'put', path: '/admin/gym-manage/owners/{ownerId}/founding-partner', tags: gmTag, summary: 'Founding partner on or off (master, step-up settings.write; up to gym_saas.founding_partner_limit) (M24-FR-88)', security: adminBearer,
     request: { ...gmOwner, ...stepUp('settings.write'), ...body(gmS.foundingBody) }, responses: { 200: json(gmS.Subscription), ...errors({ ...GMA, 403: [...ADMIN_AUTH[403], 'STEP_UP_REQUIRED'], 409: ['GYM_FOUNDING_FULL'] }) } });
+  p({ method: 'post', path: '/admin/gym-manage/owners/{ownerId}/sms-adjust', tags: gmTag, summary: 'Add or take SMS units with a note (master, step-up settings.write); never below 0 (M24 prompt 3b)', security: adminBearer,
+    request: { ...gmOwner, ...stepUp('settings.write'), ...body(gmS.smsAdjustBody) }, responses: { 200: json(gmS.SmsAdjusted), ...errors({ ...GMA, 403: [...ADMIN_AUTH[403], 'STEP_UP_REQUIRED'], 404: ['NOT_FOUND'], 409: ['GYM_SMS_BALANCE_SHORT'] }) } });
   p({ method: 'get', path: '/admin/gym-manage/invoices', tags: gmTag, summary: 'All gym plan invoices with totals per status (manage_gyms or view_payouts)', security: adminBearer, request: { query: gmS.adminInvoicesQuery }, responses: { 200: json(gmS.AdminInvoices), ...errors(GMA) } });
   p({ method: 'post', path: '/admin/gym-manage/invoices/{invoiceId}/void', tags: gmTag, summary: 'Void an unpaid invoice (master, step-up escrow.manage): referral lines return to pending; the owner is restored when nothing is overdue (M24-FR-89)', security: adminBearer,
     request: { ...gmInv, ...stepUp('escrow.manage'), ...body(gmS.reasonBody) }, responses: { 200: json(gmS.Invoice), ...errors({ ...GMA, 403: [...ADMIN_AUTH[403], 'STEP_UP_REQUIRED'], 409: ['GYM_INVOICE_STATE'] }) } });

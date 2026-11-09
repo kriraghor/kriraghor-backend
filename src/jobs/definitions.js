@@ -486,6 +486,23 @@ const JOBS = [
     run: async () => gymManage.visitsDaily(),
   },
   {
+    // M24 prompt 3b (§10): the month's SMS allowance left expires and the new month's is granted.
+    name: 'gym-manage.sms-allowance',
+    queue: QUEUES.GYM,
+    pattern: '10 0 1 * *',
+    tz: 'Asia/Dhaka',
+    run: async () => gymManage.smsAllowance(),
+  },
+  {
+    // M24 prompt 3b (§10): bundles past their date expire, holds open for a day are settled as failed,
+    // unpaid SMS bundle invoices past their days are voided.
+    name: 'gym-manage.sms-daily',
+    queue: QUEUES.GYM,
+    pattern: '20 0 * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => gymManage.smsDaily(),
+  },
+  {
     // Fee overrides past valid_to → ended (M24-FR-94).
     name: 'gym-manage.overrides-end',
     queue: QUEUES.GYM,

@@ -352,6 +352,8 @@ GymPaymentLink.init(
     ownerId: req(DataTypes.UUID),
     amountPoisha: poisha('amountPoisha'),
     tokenNonce: req(DataTypes.STRING(24)),
+    // M24 prompt 3b: the short pay link in an SMS (gym.kriraghor.com/p/<code>).
+    shortCode: DataTypes.STRING(10),
     origin: enumOf(['staff', 'member']),
     channels: { type: DataTypes.JSONB, allowNull: false, defaultValue: [] },
     status: enumOf(['open', 'paid', 'expired', 'cancelled'], { defaultValue: 'open' }),
@@ -383,6 +385,42 @@ GymReminder.init(
     skipReason: DataTypes.STRING(12),
   },
   { sequelize, modelName: 'GymReminder', tableName: 'gym_reminders', updatedAt: false }
+);
+
+/** M24 prompt 3b (M24-FR-96): the owner's SMS add-on; one live row per owner and add-on. */
+class GymOwnerAddon extends Model {}
+GymOwnerAddon.init(
+  {
+    id,
+    subscriptionId: req(DataTypes.UUID),
+    ownerId: req(DataTypes.UUID),
+    addon: enumOf(['sms']),
+    status: enumOf(['active', 'paused', 'ended']),
+    pricePoisha: poisha('pricePoisha'),
+    startedAt: req(DataTypes.DATE(3)),
+    pausedAt: DataTypes.DATE(3),
+    endedAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'GymOwnerAddon', tableName: 'gym_owner_addons' }
+);
+
+/** M24 prompt 3b (§6.7): the owner's SMS units, append-only; balance = Σ units. */
+class GymSmsEntry extends Model {}
+GymSmsEntry.init(
+  {
+    id,
+    ownerId: req(DataTypes.UUID),
+    kind: enumOf(['grant', 'purchase', 'reserve', 'settle', 'expire', 'adjust']),
+    units: req(DataTypes.INTEGER),
+    expiresOn: DataTypes.DATEONLY,
+    billingRef: DataTypes.UUID,
+    invoiceId: DataTypes.UUID,
+    gymId: DataTypes.UUID,
+    reminderId: DataTypes.UUID,
+    note: DataTypes.STRING(200),
+    createdBy: DataTypes.UUID,
+  },
+  { sequelize, modelName: 'GymSmsEntry', tableName: 'gym_sms_entries', updatedAt: false }
 );
 
 class GymActiveMemberCount extends Model {}
@@ -550,6 +588,8 @@ GymPlanLog.init(
 );
 
 module.exports = {
+  GymOwnerAddon,
+  GymSmsEntry,
   GymManageSettings,
   GymVisit,
   GymMember,

@@ -597,7 +597,7 @@ describe('to-dos, active counts and privacy (M19, M24-FR-83, FR-106 to FR-108)',
     expect(await jobs.activeCount(new Date())).toMatchObject({ counted: 1 });
     expect(await jobs.activeCount(new Date())).toMatchObject({ counted: 1 });
     expect(await models.GymActiveMemberCount.count()).toBe(1);
-    expect(await jobs.reconcile()).toEqual({ gym_dues_paid_match: true, gym_dues_status_match: true, gym_fee_released_has_release: true });
+    expect(await jobs.reconcile()).toEqual({ gym_dues_paid_match: true, gym_dues_status_match: true, gym_fee_released_has_release: true, gym_sms_balance_not_negative: true });
 
     for (const e of h.events.recorded().filter((x) => x.name.startsWith('gym_'))) {
       expect(JSON.stringify(e.payload)).not.toMatch(PHONE);

@@ -1695,10 +1695,12 @@ const CATALOGUE = [
     channels: ['in_app', 'email'],
     recipients: gmUsers('renewal_due'),
     external: gmExternal('renewal_due'),
+    sms: true, // M24 prompt 3b: one SMS when the event carries the owner's billingRef
     values: async (e, { locale }) => ({
       gym: await gymName(e.payload.gymId),
       endsOn: dayText(e.payload.endsOn, locale),
       link: (await gmFacts().payLinkUrl(e.payload.linkId)) ?? gymUrl(`/me/memberships/${e.payload.memberId}`),
+      smsLink: (await gmFacts().payLinkShortUrl(e.payload.linkId)) ?? gymUrl('/me'),
     }),
     link: (e) => gymUrl(`/me/memberships/${e.payload.memberId}`),
   },
@@ -1709,6 +1711,7 @@ const CATALOGUE = [
     channels: ['in_app', 'email'],
     recipients: gmUsers('ends_today'),
     external: gmExternal('ends_today'),
+    sms: true,
     values: async (e) => ({ gym: await gymName(e.payload.gymId), link: gymUrl(`/me/memberships/${e.payload.memberId}`) }),
     link: (e) => gymUrl(`/me/memberships/${e.payload.memberId}`),
   },
@@ -1719,11 +1722,13 @@ const CATALOGUE = [
     channels: ['in_app', 'email'],
     recipients: gmUsers('overdue'),
     external: gmExternal('overdue'),
+    sms: true,
     values: async (e, { locale }) => ({
       gym: await gymName(e.payload.gymId),
       outstanding: e.payload.outstanding,
       dueOn: dayText(e.payload.dueOn, locale),
       link: (await gmFacts().payLinkUrl(e.payload.linkId)) ?? gymUrl('/me/dues'),
+      smsLink: (await gmFacts().payLinkShortUrl(e.payload.linkId)) ?? gymUrl('/me/dues'),
     }),
     link: () => gymUrl('/me/dues'),
   },
@@ -1744,6 +1749,7 @@ const CATALOGUE = [
     // Opening balances of an import are never announced (M24-FR-78).
     recipients: async (e) => (e.payload.method === 'opening' ? [] : gmUsers('receipt')(e)),
     external: async (e) => (e.payload.method === 'opening' ? [] : gmExternal('receipt')(e)),
+    sms: true,
     values: async (e) => ({ gym: await gymName(e.payload.gymId), amount: e.payload.amount, receiptNo: e.payload.receiptNo, outstandingAfter: e.payload.outstandingAfter, link: gmFacts().receiptUrl(e.payload.feePaymentId) }),
     link: (e) => gmFacts().receiptUrl(e.payload.feePaymentId),
   },
@@ -1768,7 +1774,13 @@ const CATALOGUE = [
     // Only when the gym chose to send it (an empty list: shown as a QR at the counter, or the member's own link).
     recipients: async (e) => (e.payload.channels.length ? gmUsers('pay_link')(e) : []),
     external: async (e) => (e.payload.channels.length ? gmExternal('pay_link')(e) : []),
-    values: async (e) => ({ gym: await gymName(e.payload.gymId), amount: e.payload.amount, link: (await gmFacts().payLinkUrl(e.payload.linkId)) ?? gymUrl('/me/dues') }),
+    sms: true,
+    values: async (e) => ({
+      gym: await gymName(e.payload.gymId),
+      amount: e.payload.amount,
+      link: (await gmFacts().payLinkUrl(e.payload.linkId)) ?? gymUrl('/me/dues'),
+      smsLink: (await gmFacts().payLinkShortUrl(e.payload.linkId)) ?? gymUrl('/me/dues'),
+    }),
     link: () => gymUrl('/me/dues'),
   },
   {
@@ -1859,6 +1871,25 @@ const CATALOGUE = [
     recipients: async (e) => [e.payload.ownerId, ...(await staffOf('gym', e.payload.gymId, 'leads.manage'))],
     values: async (e) => ({ gym: await gymName(e.payload.gymId) }),
     link: (e) => gymUrl(`/manage/${e.payload.gymId}/leads`),
+  },
+  // ---------------- M24 prompt 3b, the SMS add-on (M24-FR-100): the owner hears once per crossing.
+  {
+    code: 'GYM_SMS_BALANCE_LOW',
+    events: ['gym_sms.low_reached'],
+    category: 'gym_business',
+    channels: ['in_app', 'email'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e) => ({ balance: e.payload.balance, link: gymUrl('/manage/billing') }),
+    link: () => gymUrl('/manage/billing'),
+  },
+  {
+    code: 'GYM_SMS_DEPLETED',
+    events: ['gym_sms.depleted'],
+    category: 'gym_business',
+    channels: ['in_app', 'email'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async () => ({ link: gymUrl('/manage/billing') }),
+    link: () => gymUrl('/manage/billing'),
   },
   // ---------------- M24 trial visits (9 Nov 2026): free visits before joining. The gym (owner and staff
   // with attendance.mark) hears of each booking and gets the morning list; the guest gets the confirmation

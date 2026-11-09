@@ -319,6 +319,52 @@ function normalizeVisitCode(text) {
 /** A booked visit whose day has passed without a check-in becomes a no-show. */
 const visitNoShow = (visit, today) => visit.status === 'booked' && visit.visitDate < today;
 
+// ---------------------------------------------------------------- the SMS add-on (prompt 3b, M24-FR-96 to FR-100, §6.7)
+
+/**
+ * Why a member notice cannot go by SMS now, or null (§6.7): the platform switch is off (`off`), the plan
+ * is Free (`tier`), the owner's add-on is not active (`addon`), the gym did not choose this kind for SMS
+ * and it was not chosen for this one message (`kind`), the balance does not cover the hold (`balance`).
+ */
+function smsBlock({ enabled, tier, addonStatus, kind, kinds = [], explicit = false, balance, reserve }) {
+  if (!enabled) return 'off';
+  if (tier === 'free') return 'tier';
+  if (addonStatus !== 'active') return 'addon';
+  if (!explicit && !kinds.includes(kind)) return 'kind';
+  return balance >= reserve ? null : 'balance';
+}
+
+/**
+ * The settle entry's units (§6.7): a message that was not sent gives the whole hold back; a sent one
+ * keeps its segments, never more than the hold and what is left after it, so the balance never goes
+ * below 0. May be 0 (exactly what was held) or negative (more than was held, while units are left).
+ */
+function smsSettleUnits({ reserve, segments, sent, balanceAfterReserve }) {
+  if (!sent) return reserve;
+  const used = Math.min(Math.max(0, segments), reserve + Math.max(0, balanceAfterReserve));
+  return reserve - used;
+}
+
+/** The balance crossing a debit makes (FR-100): `depleted` below one hold, `low` below the low mark, else null. */
+function smsCrossing({ before, after, low, reserve }) {
+  if (before >= reserve && after < reserve) return 'depleted';
+  if (before >= low && after < low && after >= reserve) return 'low';
+  return null;
+}
+
+/** The month's allowance still unused: the allowance is spent first (§6.7). */
+const smsAllowanceLeft = ({ granted, used }) => Math.max(0, granted - Math.max(0, used));
+
+/**
+ * What is left of a bought bundle when it expires: the units beyond the allowance are bundle units, spent
+ * oldest first, so a bundle keeps at most what the newer bundles do not account for.
+ */
+const smsBundleLeft = ({ units, pool, newer }) => Math.max(0, Math.min(units, pool - newer));
+
+/** A short code for a pay link in an SMS (10 Crockford characters, ~50 bits). */
+const shortCode = (bytes) => Array.from(bytes.subarray(0, 10), (b) => CROCKFORD[b % 32]).join('');
+const looksLikeShortCode = (text) => /^[0-9A-HJKMNP-TV-Z]{10}$/.test(String(text ?? ''));
+
 /** The receipt link token (M24-FR-37): v1.<feePaymentId>.<sig>, no expiry. */
 const receiptToken = (id, sign) => `v1.${id}.${sign(`gym-receipt:${id}`).slice(0, 32)}`;
 
@@ -545,7 +591,7 @@ const TIER_LABELS = { free: ['Free', 'ফ্রি'], basic: ['Basic', 'বে�
  *   total       = max(0, subtotal) + vat; 0 → no invoice
  * Lines carry kind, EN and BN descriptions, quantity, unit and amount (discounts negative).
  */
-function invoiceLines({ periodStart, periodEnd, tier, prices, startedOn, founding, referrals = [], vat }) {
+function invoiceLines({ periodStart, periodEnd, tier, prices, startedOn, founding, referrals = [], smsAddon = null, vat }) {
   const lines = [];
   const price = tier === 'free' ? 0 : prices[tier];
   let base = 0;
@@ -573,10 +619,21 @@ function invoiceLines({ periodStart, periodEnd, tier, prices, startedOn, foundin
   for (const [amount, n] of [...byAmount].sort((a, b) => b[0] - a[0])) {
     lines.push({ kind: 'referral', descriptionEn: `Referral fee × ${n}`, descriptionBn: `রেফারেল ফি × ${n}`, quantity: n, unitPoisha: amount, amountPoisha: amount * n });
   }
+  // M24 prompt 3b (§6.6): the SMS add-on when it was active on any day of the month, at the price then.
+  if (smsAddon?.price > 0) lines.push({ kind: 'sms_addon', descriptionEn: 'SMS add-on', descriptionBn: 'SMS অ্যাড-অন', quantity: 1, unitPoisha: smsAddon.price, amountPoisha: smsAddon.price });
   const subtotal = Math.max(0, lines.reduce((s, l) => s + l.amountPoisha, 0));
   const vatPoisha = vat?.enabled ? Math.round((subtotal * vat.pct) / 100) : 0;
   if (vatPoisha > 0) lines.push({ kind: 'vat', descriptionEn: `VAT ${vat.pct}%`, descriptionBn: `ভ্যাট ${vat.pct}%`, quantity: 1, unitPoisha: vatPoisha, amountPoisha: vatPoisha });
   return { lines, subtotal, vat: vatPoisha, total: subtotal + vatPoisha };
+}
+
+/** An SMS bundle invoice (M24-FR-98): one line of bundles × price, and VAT when enabled. */
+function bundleInvoiceLines({ bundles, size, price, vat }) {
+  const amount = bundles * price;
+  const lines = [{ kind: 'sms_bundle', descriptionEn: `SMS bundle: ${bundles} × ${size} SMS`, descriptionBn: `SMS বান্ডেল: ${bundles} × ${size}টি SMS`, quantity: bundles, unitPoisha: price, amountPoisha: amount }];
+  const vatPoisha = vat?.enabled ? Math.round((amount * vat.pct) / 100) : 0;
+  if (vatPoisha > 0) lines.push({ kind: 'vat', descriptionEn: `VAT ${vat.pct}%`, descriptionBn: `ভ্যাট ${vat.pct}%`, quantity: 1, unitPoisha: vatPoisha, amountPoisha: vatPoisha });
+  return { lines, subtotal: amount, vat: vatPoisha, total: amount + vatPoisha, units: bundles * size };
 }
 
 // ---------------------------------------------------------------- dunning (M24-FR-86, §8.6, §8.7)
@@ -834,6 +891,14 @@ module.exports = {
   visitCode,
   normalizeVisitCode,
   visitNoShow,
+  smsBlock,
+  bundleInvoiceLines,
+  smsSettleUnits,
+  smsCrossing,
+  smsAllowanceLeft,
+  smsBundleLeft,
+  shortCode,
+  looksLikeShortCode,
   visitMinutes,
   bmiOf,
   vatPart,

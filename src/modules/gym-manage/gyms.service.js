@@ -200,6 +200,8 @@ async function patchSettings(principal, gymId, input, req) {
   if (input.vatBps !== undefined && input.vatBps !== null && input.vatBps > c.cfg().vatMaxBps) {
     throw E.validation([{ field: 'vatBps', message: `At most ${c.cfg().vatMaxBps}` }]);
   }
+  // Prompt 3b (M24-FR-97): the kinds that go by SMS can be chosen only while the SMS add-on is active.
+  if (input.smsKinds?.length && (await require('./sms.service').liveAddon(a.gym.ownerId))?.status !== 'active') throw c.fail('GYM_SMS_ADDON_OFF');
   // Trial visits: the cap and the per-person limit within the platform maximums.
   const capMax = settingsFacade.get('gym_manage.visit_daily_cap_max');
   if (input.visitDailyCap !== undefined && input.visitDailyCap !== null && input.visitDailyCap > capMax) throw E.validation([{ field: 'visitDailyCap', message: `At most ${capMax}` }]);
@@ -244,6 +246,12 @@ async function payLinkUrl(linkId) {
   return l ? require('./links-pay.service').urlOf(l) : null;
 }
 
+/** M08 facts (prompt 3b): the short link of a payment link, for an SMS. */
+async function payLinkShortUrl(linkId) {
+  const l = linkId ? await GymPaymentLink.findByPk(linkId) : null;
+  return l ? require('./links-pay.service').shortUrlOf(l) : null;
+}
+
 /** M08 facts: a membership's package title and kind. */
 async function membershipFacts(membershipId) {
   const ms = membershipId ? await GymMembership.findByPk(membershipId, { attributes: ['title', 'packageKind'] }) : null;
@@ -263,4 +271,4 @@ async function reversedReceipt(reversalId) {
   return o ? { receiptNo: o.receiptNo, url: c.receiptUrlOf(o.id) } : null;
 }
 
-module.exports = { planOf, listMine, overview, packages, settingsView, getSettings, patchSettings, memberFacts, membershipFacts, payLinkUrl, importFacts, reversedReceipt };
+module.exports = { planOf, listMine, overview, packages, settingsView, getSettings, patchSettings, memberFacts, membershipFacts, payLinkUrl, payLinkShortUrl, importFacts, reversedReceipt };

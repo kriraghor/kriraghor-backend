@@ -189,6 +189,20 @@ const CROSS_RULES = [
     ok: (v) => v('gym_saas.tier_basic_price_poisha') <= v('gym_saas.tier_standard_price_poisha') && v('gym_saas.tier_standard_price_poisha') <= v('gym_saas.tier_pro_price_poisha'),
   },
   {
+    // M24 §6.12: the units held for one SMS fit the longest SMS M08 sends.
+    id: 'gym_saas.sms_reserve_fits',
+    text: 'gym_saas.sms_reserve_units ≤ notify.sms_max_segments',
+    keys: ['gym_saas.sms_reserve_units', 'notify.sms_max_segments'],
+    ok: (v) => v('gym_saas.sms_reserve_units') <= v('notify.sms_max_segments'),
+  },
+  {
+    // M24 §6.12 (G9): the add-on is offered only with its price and a bundle to buy.
+    id: 'gym_saas.sms_addon_priced',
+    text: 'gym_saas.sms_addon_enabled needs gym_saas.sms_addon_price_poisha, gym_saas.sms_bundle_size and gym_saas.sms_bundle_price_poisha above 0',
+    keys: ['gym_saas.sms_addon_enabled', 'gym_saas.sms_addon_price_poisha', 'gym_saas.sms_bundle_size', 'gym_saas.sms_bundle_price_poisha'],
+    ok: (v) => !v('gym_saas.sms_addon_enabled') || (v('gym_saas.sms_addon_price_poisha') > 0 && v('gym_saas.sms_bundle_size') > 0 && v('gym_saas.sms_bundle_price_poisha') > 0),
+  },
+  {
     id: 'gym_saas.feature_tiers_known',
     text: 'every gym_saas.feature_min_tiers value is free, basic, standard or pro',
     keys: ['gym_saas.feature_min_tiers'],

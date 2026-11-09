@@ -69,6 +69,10 @@ const ERRORS = {
   GYM_PLAN_ASSIGN_SCOPE: [403, 'You can only give plans to members you can see'],
   GYM_PLAN_STATE: [409, 'The plan cannot do that in its current state'],
   GYM_PLAN_LOG_WINDOW: [422, 'You can tick today and a few days back only'],
+  // Prompt 3b (§9.4): the SMS add-on.
+  GYM_SMS_ADDON_UNAVAILABLE: [409, 'The SMS add-on is not available on this plan right now'],
+  GYM_SMS_ADDON_OFF: [409, 'Switch the SMS add-on on first'],
+  GYM_SMS_BALANCE_SHORT: [409, 'That would take the SMS balance below 0'],
 };
 const fail = (code, meta, detail) => new AppError(ERRORS[code][0], code, ERRORS[code][1], { ...(meta ? { meta } : {}), ...(detail ? { detail } : {}) });
 
@@ -324,15 +328,17 @@ async function requireOnlineFees(gym, opts) {
  * Insert the gym_reminders once-key first (ON CONFLICT DO NOTHING) and say whether this caller won it:
  * only the winner publishes. Runs in the caller's transaction.
  */
-async function claimReminder(transaction, { ownerId, gymId = null, kind, subjectType, subjectId, offsetKey, memberId = null, channels = [], status = 'published', skipReason = null }) {
+async function claimReminderId(transaction, { ownerId, gymId = null, kind, subjectType, subjectId, offsetKey, memberId = null, channels = [], status = 'published', skipReason = null }) {
   const [rows] = await sequelize.query(
     `INSERT INTO gym_reminders (id, owner_id, gym_id, kind, subject_type, subject_id, offset_key, member_id, channels, status, skip_reason, created_at)
      VALUES (:id, :ownerId, :gymId, :kind, :subjectType, :subjectId, :offsetKey, :memberId, CAST(:channels AS jsonb), :status, :skipReason, NOW())
      ON CONFLICT (kind, subject_id, offset_key) DO NOTHING RETURNING id`,
     { replacements: { id: uuid7(), ownerId, gymId, kind, subjectType, subjectId, offsetKey, memberId, channels: JSON.stringify(channels), status, skipReason }, transaction }
   );
-  return rows.length > 0;
+  return rows[0]?.id ?? null;
 }
+/** The send-once claim as a yes or no (the row's id: claimReminderId). */
+const claimReminder = async (transaction, args) => Boolean(await claimReminderId(transaction, args));
 
 // ---------------------------------------------------------------- cursors
 
@@ -356,6 +362,7 @@ module.exports = {
   onlineFees,
   requireOnlineFees,
   claimReminder,
+  claimReminderId,
   iso,
   today,
   phoneHash,

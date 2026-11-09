@@ -29,6 +29,7 @@ module.exports = {
     membership: (...args) => require('./gyms.service').membershipFacts(...args),
     receiptUrl: (...args) => require('./gym-manage.common').receiptUrlOf(...args),
     payLinkUrl: (...args) => require('./gyms.service').payLinkUrl(...args),
+    payLinkShortUrl: (...args) => require('./gyms.service').payLinkShortUrl(...args),
     importUpload: (...args) => require('./gyms.service').importFacts(...args),
     reversedReceipt: (...args) => require('./gyms.service').reversedReceipt(...args),
     plan: (...args) => require('./plans.service').planFacts(...args),

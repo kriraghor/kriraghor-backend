@@ -164,6 +164,31 @@ const waiveBody = z.object({ amountPoisha: z.number().int().positive(), reason: 
 const importQuery = z.object({ fileName: z.string().trim().max(200).optional() });
 const consentBody = z.object({ grant: z.boolean() });
 const tierBody = z.object({ tier: z.enum(rules.TIERS) });
+// Prompt 3b, the SMS add-on (M24-FR-96 to FR-100).
+const smsAddonBody = z.object({ enabled: z.boolean() });
+const smsBundlesBody = z.object({ bundles: z.number().int().min(1).max(20) });
+const smsEntriesQuery = z.object({ limit: z.coerce.number().int().min(1).max(200).optional() });
+const smsAdjustBody = z.object({ units: z.number().int().min(-100000).max(100000).refine((v) => v !== 0, 'Not 0'), note: text(3, 200) });
+const SmsAddonView = z
+  .object({
+    available: z.boolean().meta({ description: 'The platform switch is on and the plan is paid' }),
+    enabled: z.boolean().meta({ description: 'gym_saas.sms_addon_enabled' }),
+    status: z.enum(['active', 'paused', 'ended']).nullable(),
+    startedAt: z.string().nullable(),
+    balance: z.number().int(),
+    allowanceLeft: z.number().int(),
+    pricePoisha: z.number().int(),
+    included: z.number().int(),
+    bundle: z.object({ size: z.number().int(), pricePoisha: z.number().int(), validDays: z.number().int() }),
+    reserveUnits: z.number().int(),
+    lowBalance: z.number().int(),
+    bundles: z.array(z.object({ units: z.number().int(), expiresOn: z.string() })),
+  })
+  .meta({ id: 'GymSmsAddon' });
+const SmsEntry = z.object({ id, kind: z.enum(['grant', 'purchase', 'reserve', 'settle', 'expire', 'adjust']), units: z.number().int(), expiresOn: z.string().nullable(), gymId: id.nullable(), invoiceId: id.nullable(), note: z.string().nullable(), createdAt: z.string() });
+const SmsEntries = z.object({ balance: z.number().int(), items: z.array(SmsEntry) }).meta({ id: 'GymSmsEntries' });
+const SmsBundleBought = z.object({ invoice: z.object({}).passthrough(), units: z.number().int(), payment: z.object({ id, payUrl: z.string() }) }).meta({ id: 'GymSmsBundleBought' });
+const SmsAdjusted = z.object({ balance: z.number().int(), entry: SmsEntry }).meta({ id: 'GymSmsAdjusted' });
 const meRequestsQuery = z.object({ status: z.enum(REQUEST_STATUSES).optional(), direction: z.enum(['gym_invite', 'join_request']).optional().meta({ description: 'Default both: invites to me and my join requests' }) });
 const healthNoteBody = z.object({ text: nullable(z.string().max(500)) });
 /** M27-FR-30: the member's own health profile (linked; encrypted conditions). */
@@ -543,7 +568,8 @@ const Pricing = z
   })
   .meta({ id: 'GymPricing' });
 // ---------------- prompt 2 (online money, reminders and billing)
-const LINK_CHANNELS = ['in_app', 'email'];
+// Prompt 3b: sms with the SMS add-on (falls back to the other channels when it cannot go).
+const LINK_CHANNELS = ['in_app', 'email', 'sms'];
 const LINK_STATUSES = ['open', 'paid', 'expired', 'cancelled'];
 const INVOICE_STATUSES = ['issued', 'overdue', 'paid', 'void'];
 const SUB_STATUSES = ['active', 'past_due', 'restricted', 'closed'];
@@ -556,7 +582,7 @@ const ownerParam = z.object({ ownerId: id });
 const overrideParam = z.object({ overrideId: id });
 const linkBody = z.object({
   amountPoisha: z.number().int().positive().optional().meta({ description: 'Up to the outstanding; default all of it (M24-FR-40)' }),
-  channels: z.array(z.enum(LINK_CHANNELS)).max(2).optional().meta({ description: 'Send the link in-app (and by push) and by email; default both. [] only shows the QR. SMS needs the add-on (prompt 3b)' }),
+  channels: z.array(z.enum(LINK_CHANNELS)).max(3).optional().meta({ description: 'Send the link in-app (and by push), by email and, with the SMS add-on, by SMS; default in-app and email. [] only shows the QR' }),
 });
 const linksQuery = z.object({ dueId: id.optional(), status: z.enum(LINK_STATUSES).optional() });
 const refundBody = z.object({ amountPoisha: z.number().int().positive(), reason: text(2, 300) });
@@ -651,7 +677,7 @@ const RemindersPage = z
     restricted: z.boolean(),
     kinds: z.array(z.object({ kind: z.enum(REMINDER_KINDS), on: z.boolean(), member: z.boolean() })),
     offsets: z.object({ renewalRemindDays: z.array(z.number().int()), overdueRemindDays: z.array(z.number().int()), morningSummaryTime: z.string() }),
-    sms: z.object({ available: z.boolean().meta({ description: 'The SMS add-on (prompt 3b); false in prompt 2' }), kinds: z.array(z.string()) }),
+    sms: z.object({ available: z.boolean().meta({ description: 'The SMS add-on can be switched on (platform switch and a paid plan)' }), active: z.boolean(), balance: z.number().int(), kinds: z.array(z.string()), choosable: z.array(z.string()) }),
     reachability: z.object({ activeMembers: z.number().int(), smsOnly: z.number().int().meta({ description: 'Active members with no linked account and no email (reachable only by SMS, M24-FR-59)' }) }),
     log: z.object({
       days: z.number().int(),
@@ -813,7 +839,7 @@ const AdminOwnerDetail = z
     invoices: z.array(Invoice),
     overrides: z.array(FeeOverride),
     imports: z.array(z.object({ id, gymId: id, status: z.enum(IMPORT_STATUSES), rowsOk: z.number().int(), rowsFailed: z.number().int(), uploadedAs: z.enum(['owner', 'staff']), createdAt: dateTime, appliedAt: nullable(dateTime), undoneAt: nullable(dateTime) })),
-    smsAddon: z.object({ available: z.boolean(), status: z.null(), balance: z.number().int() }),
+    smsAddon: SmsAddonView,
   })
   .meta({ id: 'GymAdminOwnerDetail' });
 const AdminInvoices = z
@@ -849,7 +875,7 @@ const Billing = z
     gyms: z.array(z.object({ id, name: z.string(), listingStatus: z.string() })),
     fees: Fees.meta({ description: 'The fees that apply to this owner: standard or a special rate until a date (M24-FR-90)' }),
     founding: Founding,
-    smsAddon: z.object({ available: z.boolean(), status: z.null(), balance: z.number().int() }).meta({ description: 'The SMS add-on (prompt 3b)' }),
+    smsAddon: SmsAddonView,
     openInvoices: z.array(Invoice),
   })
   .meta({ id: 'GymBilling' });
@@ -1298,6 +1324,14 @@ module.exports = {
   importQuery,
   consentBody,
   tierBody,
+  smsAddonBody,
+  smsBundlesBody,
+  smsEntriesQuery,
+  smsAdjustBody,
+  SmsAddonView,
+  SmsEntries,
+  SmsBundleBought,
+  SmsAdjusted,
   meRequestsQuery,
   healthNoteBody,
   healthBody,

@@ -15,6 +15,8 @@
  *    Paying (or a master voiding) every overdue invoice restores active at once.
  *  - Paying (owner, Idempotency-Key, FR-85): M06 purpose gym_saas_invoice, collected to
  *    fee_revenue:gym_saas at capture. A capture of a paid or void invoice is refunded (late capture).
+ *  - Prompt 3b: the SMS add-on line on the monthly invoice; bundle invoices (kind sms_bundle) are paid
+ *    at once, add their units at capture and are never dunned (sms.service voids them unpaid).
  *  - Admin (/admin/gym-manage): owners, invoices, void (master, step-up escrow.manage; referrals back to
  *    pending, FR-89), founding partners (master, step-up settings.write; GYM_FOUNDING_FULL, FR-88).
  */
@@ -30,6 +32,7 @@ const {
   GymReferral,
   GymFeeOverride,
   GymImport,
+  GymOwnerAddon,
 } = require('../../models');
 const payments = require('../payments');
 const settings = require('../settings').settings;
@@ -58,6 +61,7 @@ const SNAPSHOT_KEYS = [
   'gym_saas.vat_pct',
   'gym_saas.invoice_due_days',
   'gym_manage.active_window_days',
+  'gym_saas.sms_addon_price_poisha',
 ];
 
 // ---------------------------------------------------------------- views
@@ -150,6 +154,12 @@ async function issueMonthlyIn(transaction, sub, period, now) {
   const tier = rules.billedTier({ monthMaxTier: monthMax, fit });
   if (tier !== 'free' && !sub.paidTierSince) await sub.update({ paidTierSince: period.start }, { transaction });
   const referrals = await GymReferral.findAll({ where: { ownerId: sub.ownerId, status: 'pending', createdAt: { [Op.lt]: rules.instantOf(rules.addDays(period.end, 1)) } }, transaction, lock: transaction.LOCK.UPDATE });
+  // Prompt 3b (§6.6): the SMS add-on when it was active on any day of the month, at today's price.
+  const addon = await GymOwnerAddon.findOne({
+    where: { ownerId: sub.ownerId, addon: 'sms', startedAt: { [Op.lt]: rules.instantOf(rules.addDays(period.end, 1)) }, [Op.or]: [{ endedAt: null }, { endedAt: { [Op.gte]: rules.instantOf(period.start) } }] },
+    attributes: ['id'],
+    transaction,
+  });
   const calc = rules.invoiceLines({
     periodStart: period.start,
     periodEnd: period.end,
@@ -158,6 +168,7 @@ async function issueMonthlyIn(transaction, sub, period, now) {
     startedOn: sub.startedOn,
     founding: { partner: sub.foundingPartner, paidTierSince: sub.paidTierSince, freeMonths: s.foundingFreeMonths, discountMonths: s.foundingDiscountMonths, discountPct: s.foundingDiscountPct },
     referrals: referrals.map((r) => ({ id: r.id, amount: r.amountPoisha })),
+    smsAddon: addon ? { price: require('./sms.service').cfg().addonPrice } : null,
     vat: { enabled: s.vatEnabled, pct: s.vatPct },
   });
   if (calc.total <= 0) return null;
@@ -218,7 +229,8 @@ async function cycle(now = new Date()) {
 
 /** The subscription follows its invoices (§8.6): past_due, restricted, or restored; events on each step. */
 async function syncSubscriptionIn(transaction, sub, { now = new Date(), actor = null } = {}) {
-  const invoices = await GymSubscriptionInvoice.findAll({ where: { subscriptionId: sub.id, status: OPEN }, order: [['dueAt', 'ASC']], transaction });
+  // Bundle invoices (prompt 3b) never make a subscription past due: unpaid, they are voided instead.
+  const invoices = await GymSubscriptionInvoice.findAll({ where: { subscriptionId: sub.id, status: OPEN, kind: 'monthly' }, order: [['dueAt', 'ASC']], transaction });
   const next = rules.subscriptionStatus({ status: sub.status, invoices, now, graceDays: c.saasCfg().graceDays });
   if (next === sub.status) return sub.status;
   const first = invoices.find((i) => i.status === 'overdue') ?? null;
@@ -241,7 +253,7 @@ async function dunning(now = new Date()) {
   const today = c.today(now);
   const s = c.saasCfg();
   const out = { reminded: 0, overdue: 0, pastDue: 0, restricted: 0, restored: 0 };
-  for (const { id } of await GymSubscriptionInvoice.findAll({ where: { status: 'issued' }, attributes: ['id'] })) {
+  for (const { id } of await GymSubscriptionInvoice.findAll({ where: { status: 'issued', kind: 'monthly' }, attributes: ['id'] })) {
     await sequelize.transaction(async (transaction) => {
       const inv = await GymSubscriptionInvoice.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
       if (inv.status !== 'issued') return;
@@ -312,6 +324,8 @@ async function onCaptured({ payment, transaction }) {
   const hold = await payments.escrow.lockHoldForPayment(payment.id, transaction);
   if (hold) await payments.escrow.collectToRevenueInTx(hold, { transaction });
   await c.publish(transaction, 'gym_invoice.paid', 'gym_subscription_invoice', inv.id, invoicePayload(inv));
+  // Prompt 3b (M24-FR-98): a bundle's units arrive with the payment.
+  if (inv.kind === 'sms_bundle') await require('./sms.service').onBundlePaid(transaction, inv);
   const sub = await GymOwnerSubscription.findByPk(inv.subscriptionId, { transaction, lock: transaction.LOCK.UPDATE });
   await syncSubscriptionIn(transaction, sub, { now });
   return 'accept';
@@ -408,7 +422,7 @@ async function ownerDetail(ownerId) {
     invoices: invoices.map((i) => invoiceView(i)),
     overrides: overrides.map(fees.overrideView),
     imports: imports.map((i) => ({ id: i.id, gymId: i.gymId, status: i.status, rowsOk: i.rowsOk, rowsFailed: i.rowsFailed, uploadedAs: i.uploadedAs, createdAt: c.iso(i.createdAt), appliedAt: c.iso(i.appliedAt), undoneAt: c.iso(i.undoneAt) })),
-    smsAddon: { available: false, status: null, balance: 0 },
+    smsAddon: await require('./sms.service').view(ownerId, sub),
   };
 }
 

@@ -224,3 +224,18 @@ Collection `kriraghor-gym-visits.postman_collection.json`, unattended `node post
 | TV.12 | **Notices** | the owner and desk staff: `GYM_VISIT_BOOKED` for each booking and `GYM_VISIT_CANCELLED_BY_GUEST`; Ana `GYM_VISIT_CONFIRMED`; Cy `GYM_VISIT_CANCELLED`; Bo none for his own cancel 🤖 (FR-118) |
 | TV.13 | **The morning job at 08:30 / again** | the owner gets `GYM_GUESTS_TODAY`, Bo `GYM_VISIT_REMINDER`; nothing more the second time (FR-119). Before the morning time only no-shows 🤖; a visit whose time has passed gets no reminder 🤖; a no-show counts against the limit 🤖 |
 | TV.14 | **A Free gym: on / its page / its list / booking there / an unknown gym** | 200; closed; 403 `GYM_TIER_REQUIRED` {visits, basic}; 409 `GYM_VISITS_CLOSED`; 404 (FR-120) |
+
+## SA The SMS add-on (prompt 3b, M24-FR-96 to FR-100, §18)
+Collection `kriraghor-gym-sms.postman_collection.json`, unattended `node postman/run-m24-sms.js` (memory SMS driver). A Basic gym whose owner can take fees online, a phone-only member and a second member each with a month's due, a Free gym, a master. The platform switch starts off (as in production until the gateway, G9); the runner turns it on with prices as a master would. 🤖 = covered by `tests/e2e/gym-sms.test.js`, `tests/unit/gym-sms-rules.test.js` and `tests/unit/settings-validate.test.js`.
+
+| # | Do | Expect |
+|---|---|---|
+| SA.1 | **The billing page / switch on / choose SMS kinds, while off** | `smsAddon.available` false, balance 0; 409 `GYM_SMS_ADDON_UNAVAILABLE`; 409 `GYM_SMS_ADDON_OFF`. A counter payment sends no SMS at all (no `trans` SMS log row) 🤖 (FR-57) |
+| SA.2 | **(switch on) a Free plan / the Basic owner / again** | 409; active with the month's allowance (10) once; still 10 (FR-96). The switch on needs a price, a bundle size and a bundle price; the hold at most `notify.sms_max_segments` 🤖 |
+| SA.3 | **Receipts by SMS / the reminders page** | saved; `sms.active`, the balance, the kinds, five choosable (FR-97) |
+| SA.4 | **A cash payment of a phone-only member / entries / deliver / entries** | 201; a hold of 2 (balance 8); M08 sends one SMS and settles; a settle (the taka sign makes it Unicode, 2 segments) (FR-99). A linked member gets it on the account's phone; a member who turned gym SMS off gets none and the hold comes back 🤖 |
+| SA.5 | **A payment link by SMS / the member's SMS / the pay page by the code / a made-up code** | 201; `gym.kriraghor.com/p/<10 characters>`; 200 with the link; 404 |
+| SA.6 | **Buy two bundles / 21 bundles / pay / billing / the invoice** | an `sms_bundle` invoice of ৳1,000 for 200 SMS; 422; the units arrive with the payment; paid with one bundle line (FR-98). Unpaid, it is never dunned and is voided after `gym_saas.sms_bundle_invoice_days` 🤖 |
+| SA.7 | **The daily job / the allowance job on the 1st** | nothing stale; last month's allowance left expires and the new month is granted, once 🤖. A hold open for a day is settled as failed 🤖; three parallel holds never overdraw 🤖; low and empty notices once per crossing 🤖 (FR-100) |
+| SA.8 | **Adjust: no step-up / below 0 / +25 / the admin desk** | 403; 409 `GYM_SMS_BALANCE_SHORT`; an `adjust` entry, audited `gym_sms.adjusted`; the owner shows the add-on and balance |
+| SA.9 | **Switch off / choose kinds** | ended; 409 `GYM_SMS_ADDON_OFF`. The monthly invoice bills `sms_addon` for a month it was on 🤖 |
