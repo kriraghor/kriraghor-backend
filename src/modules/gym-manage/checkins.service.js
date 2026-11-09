@@ -65,7 +65,8 @@ async function policyOf(gymId) {
 
 /**
  * GET /manage/gyms/:gymId/desk/search?q (attendance.mark): members by name, phone (exact, on its hash),
- * member code or member QR token; and the M20 pass a token or backup code names (with desk.admit).
+ * member code or member QR token; the M20 pass a token or backup code names (with desk.admit); and a
+ * trial-visit guest by their QR or code (plan feature visits).
  */
 async function search(principal, gymId, { q }) {
   const a = await c.gymAccess(principal, gymId, 'attendance.mark');
@@ -85,8 +86,10 @@ async function search(principal, gymId, { q }) {
   }
   const items = [];
   for (const m of members) items.push(await card(a, m, await facts(m, today), today, { policy }));
-  const pass = a.can('desk.admit') && !rules.looksLikeMemberToken(text) ? await gymDesk.lookup(gymId, text) : null;
-  return c.shown(a, { items, pass });
+  const pass = a.can('desk.admit') && !rules.looksLikeMemberToken(text) && !rules.looksLikeVisitToken(text) ? await gymDesk.lookup(gymId, text) : null;
+  // Trial visits (9 Nov 2026): a guest's QR or 6-character code (only where the plan has visits).
+  const visit = !rules.looksLikeMemberToken(text) && (await require('./ops.service').featureOn(gymId, 'visits')) ? await require('./guests.service').deskLookup(gymId, text) : null;
+  return c.shown(a, { items, pass, visit });
 }
 
 /** The member a check-in names: by id, or by the rotating QR token (current or previous window; FR-50). */

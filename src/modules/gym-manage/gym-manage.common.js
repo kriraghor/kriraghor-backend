@@ -363,6 +363,7 @@ module.exports = {
   dec,
   decJson,
   sign,
+  equal,
   receiptTokenOf,
   receiptUrlOf,
   parseReceipt,

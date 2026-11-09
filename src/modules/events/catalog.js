@@ -543,6 +543,13 @@ const EVENTS = {
   'gym_points.redeemed': { module: 'M27', version: 1, schema: z.object({ gymId: uuid, memberId: uuid, rewardId: uuid, points: z.number().int().positive(), kind: z.enum(['days', 'discount']) }) },
   'gym_notice.sent': { module: 'M27', version: 1, schema: z.object({ noticeId: uuid, gymId: uuid, targetCount: z.number().int().nonnegative() }) },
   'gym_lead.received': { module: 'M27', version: 1, schema: z.object({ leadId: uuid, gymId: uuid, ownerId: uuid }) },
+  // Trial visits (product owner, 9 Nov 2026): ids, dates and times only.
+  'gym_visit.booked': { module: 'M24', version: 1, schema: z.object({ visitId: uuid, gymId: uuid, ownerId: uuid, userId: uuid, date: z.string(), arriveAt: z.string() }) },
+  'gym_visit.cancelled': { module: 'M24', version: 1, schema: z.object({ visitId: uuid, gymId: uuid, ownerId: uuid.nullable(), userId: uuid, by: z.enum(['guest', 'gym']), date: z.string(), arriveAt: z.string() }) },
+  'gym_visit.attended': { module: 'M24', version: 1, schema: z.object({ visitId: uuid, gymId: uuid, userId: uuid }) },
+  'gym_visit.converted': { module: 'M24', version: 1, schema: z.object({ visitId: uuid, gymId: uuid, userId: uuid, memberId: uuid }) },
+  'gym_visit.reminded': { module: 'M24', version: 1, schema: z.object({ visitId: uuid, gymId: uuid, userId: uuid, date: z.string(), arriveAt: z.string() }) },
+  'gym_visits.listed': { module: 'M24', version: 1, schema: z.object({ gymId: uuid, ownerId: uuid, date: z.string(), count: z.number().int().positive(), firstAt: z.string() }) },
   // M27 round 3: staff, payroll, equipment
   'gym_staff_time.recorded': { module: 'M27', version: 1, schema: z.object({ gymId: uuid, staffId: uuid, kind: z.enum(['in', 'out']), method: z.enum(['desk', 'entrance_qr', 'auto']) }) },
   'gym_payroll.approved': { module: 'M27', version: 1, schema: z.object({ gymId: uuid, runId: uuid, period: z.string(), staff: z.number().int().nonnegative() }) },

@@ -91,12 +91,6 @@ function openWindowAt(hours, at) {
   return windowsOn(hours, dowOf(date)).find((w) => minute >= toMin(w.openTime) && minute < toMin(w.closeTime)) ?? null;
 }
 
-/** When the gym closes for the last time on a date (null when it does not open). */
-function closingOn(hours, date) {
-  const w = windowsOn(hours, dowOf(date));
-  return w.length ? instantOf(date, Math.max(...w.map((x) => toMin(x.closeTime)))) : null;
-}
-
 // ---------------------------------------------------------------- packages
 
 /** The days a package of a kind covers (custom: the days the owner chose, M24-FR-24). */
@@ -136,34 +130,26 @@ function validity({ days, from, today, advanceDays }) {
  */
 function redeemBlock({ pass, gymId, today, usedTodayAt = null }) {
   if (pass.gymId !== gymId) return { code: 'PASS_WRONG_GYM' };
-  if (pass.status === 'redeemed') return { code: 'PASS_ALREADY_REDEEMED', at: pass.lastRedeemedAt };
   if (pass.status !== 'active') return { code: 'PASS_NOT_ACTIVE', status: pass.status };
   if (today < pass.validFrom || today > pass.validTo) return { code: 'PASS_NOT_VALID_TODAY', validFrom: pass.validFrom, validTo: pass.validTo };
   if (usedTodayAt) return { code: 'PASS_ALREADY_REDEEMED', at: usedTodayAt };
   return null;
 }
 
-/** What an admission does to the pass: a day pass is used up; the first admission releases the money. */
-const admission = (pass) => ({ status: pass.kind === 'day' ? 'redeemed' : 'active', release: !pass.firstRedeemedAt });
+/** What an admission does to the pass: it stays active; the first admission releases the money (M20 §23: no day passes). */
+const admission = (pass) => ({ status: 'active', release: !pass.firstRedeemedAt });
 
 // ---------------------------------------------------------------- cancelling and expiry (Q110)
 
-/**
- * The member's cancel: a day pass before its date, a month or quarter pass before its first use (and
- * before it ends), refunded in full; otherwise refused.
- */
+/** The member's cancel: a pass before its first use (and before it ends), refunded in full; otherwise refused. */
 function cancelPlan({ pass, today }) {
   if (pass.status !== 'active') return { block: 'PASS_NOT_ACTIVE' };
-  if (pass.kind === 'day') return today < pass.validFrom ? { refund: pass.pricePoisha } : { block: 'PASS_NOT_REFUNDABLE' };
   if (pass.firstRedeemedAt || today > pass.validTo) return { block: 'PASS_NOT_REFUNDABLE' };
   return { refund: pass.pricePoisha };
 }
 
-/** When an active pass expires: a day pass when the gym closes on its date; others after their last day. */
-function expiresAt(pass, hours) {
-  if (pass.kind === 'day') return closingOn(hours, pass.validFrom) ?? instantOf(addDays(pass.validFrom, 1));
-  return instantOf(addDays(pass.validTo, 1));
-}
+/** When an active pass expires: after its last day. */
+const expiresAt = (pass) => instantOf(addDays(pass.validTo, 1));
 
 // ---------------------------------------------------------------- QR token and backup code
 
@@ -270,7 +256,6 @@ module.exports = {
   opensOn,
   hasOpenDay,
   openWindowAt,
-  closingOn,
   daysOf,
   packageErrors,
   validity,

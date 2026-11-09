@@ -54,6 +54,7 @@ const fees = require('./fees.service');
 const joins = require('./joins.service');
 const trainers = require('./trainers.service');
 const plans = require('./plans.service');
+const guests = require('./guests.service');
 
 const params = (schema) => validate(schema, 'params');
 const query = (schema) => validate(schema, 'query');
@@ -100,6 +101,16 @@ g.patch('/settings', validate(s.settingsPatch), async (req, res) => res.json(awa
 g.get('/desk/search', query(s.deskSearchQuery), async (req, res) => res.json(await checkins.search(req.user, P(req), req.validQuery)));
 // M27-FR-40: the desk checks a member out.
 g.post('/checkins/:attendanceId/out', validate(s.attendanceParam, 'params'), async (req, res) => res.json(await require('./visits.service').checkOut(req.user, P(req), req.params.attendanceId, req)));
+// Trial visits (product owner, 9 Nov 2026): today's guests, check in, cancel, the phone, make a member.
+const vp = params(s.visitParam);
+g.get('/visits', query(s.visitsQuery), async (req, res) => res.json(await guests.list(req.user, P(req), req.validQuery)));
+g.post('/visits/:visitId/check-in', vp, async (req, res) => res.json(await guests.checkIn(req.user, P(req), req.params.visitId, req)));
+g.post('/visits/:visitId/cancel', vp, validate(s.visitCancelBody), async (req, res) => res.json(await guests.cancelByGym(req.user, P(req), req.params.visitId, req.body, req)));
+g.post('/visits/:visitId/reveal-phone', vp, async (req, res) => {
+  noStore(res);
+  res.json(await guests.revealPhone(req.user, P(req), req.params.visitId, req));
+});
+g.post('/visits/:visitId/convert', vp, async (req, res) => res.status(201).json(await guests.convert(req.user, P(req), req.params.visitId, req)));
 g.post('/checkins', validate(s.checkinBody), async (req, res) => {
   const r = await checkins.checkIn(req.user, P(req), req.body, req);
   res.status(r.status).json(r.body);
@@ -238,6 +249,20 @@ const meJoins = Router();
 meJoins.use(authenticate);
 meJoins.post('/', requireGate('join_gym'), validate(s.joinRequestBody), async (req, res) => res.status(201).json(await joins.create(req.user, req.body, req)));
 
+// Trial visits: book a free visit (gate join_gym), my visits with the QR, cancel.
+const meVisits = Router();
+meVisits.use(authenticate);
+meVisits.get('/', async (req, res) => {
+  noStore(res);
+  res.json(await guests.mine(req.user));
+});
+meVisits.post('/', requireGate('join_gym'), validate(s.visitBody), ik('visit_book'), async (req, res) => res.status(201).json(await guests.book(req.user, req.body, req)));
+meVisits.post('/:visitId/cancel', params(s.meVisitParam), async (req, res) => res.json(await guests.cancelMine(req.user, req.params.visitId, req)));
+
+// Trial visits on the gym page (no sign-in): the days ahead with their hours and places left.
+const publicVisits = Router();
+publicVisits.get('/gyms/:slug/visit-slots', params(s.visitSlugParam), async (req, res) => res.set('Cache-Control', 'public, max-age=60').json(await guests.slots(req.params.slug)));
+
 // Prompt 3: my plans and diet charts (M24-FR-65 to FR-69).
 const mePlans = Router();
 mePlans.use(authenticate);
@@ -297,4 +322,4 @@ adminRouter.post('/fee-overrides/:overrideId/end', requireMaster, params(s.overr
   res.json(await fees.endOverride(req.user, req.params.overrideId, req.body, req))
 );
 
-module.exports = { manageRouter, pricingRouter, receiptRouter, payRouter, meDues, meRequests, meJoins, mePlans, meCheckins, meMemberships, meReceipts, adminRouter };
+module.exports = { manageRouter, pricingRouter, receiptRouter, payRouter, meDues, meRequests, meJoins, meVisits, publicVisits, mePlans, meCheckins, meMemberships, meReceipts, adminRouter };

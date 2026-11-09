@@ -204,3 +204,23 @@ Prompt 3 opens the gym to members on the platform: join requests from a live gym
 | P3.5.1 | **The tablet's code / a cashier** | `v1.ge.…`, 30 seconds, `no-store`; 403 `attendance.mark` (FR-51). Free → 403 `GYM_TIER_REQUIRED` 🤖 |
 | P3.5.2 | **Ayesha scans it / again** | 201 counted, method `entrance_qr`; 200 a repeat with the first time |
 | P3.5.3 | **An old code / someone not linked / block for a member with no membership** | 422 `GYM_CHECKIN_TOKEN_INVALID`; 403 `GYM_NOT_A_MEMBER`; 409 `GYM_ENTRY_BLOCKED` with the gym's message and no override; `warn` lets them in with the reasons 🤖 |
+
+## TV Trial visits (product owner, 9 Nov 2026; M24 §17)
+Collection `kriraghor-gym-visits.postman_collection.json`, unattended `node postman/run-m24-visits.js`. A Basic gym published and open 06:00 to 22:00, a desk staff member with `attendance.mark`, guests Ana, Bo and Cy with a verified phone, and a Free-tier gym. 🤖 = covered by `tests/e2e/gym-visits.test.js` and `tests/unit/gym-visits-rules.test.js`.
+
+| # | Do | Expect |
+|---|---|---|
+| TV.1 | **The gym page while off / Ana books** | `{open: false, days: []}`; 409 `GYM_VISITS_CLOSED` (FR-109) |
+| TV.2 | **A cap of 51 / staff switch it on / the owner: on, 2 a day, 1 each, a note** | 422; 403; 200 with `visitDailyCapMax` 50 and `visitPerPersonMax` 3 (FR-109) |
+| TV.3 | **The gym page** | open, the note, 15 days, tomorrow 06:00–22:00 with 2 places (FR-110) |
+| TV.4 | **The owner / staff / 23:00 / 20 days ahead / yesterday / no Idempotency-Key** | 409 `GYM_VISIT_OWN_GYM` twice; 422 `GYM_VISIT_HOURS`; 422 `GYM_VISIT_DATE` twice; 400 (FR-111) |
+| TV.5 | **Ana books tomorrow 18:00 / a second day / Bo / Cy** | 201 booked with a 6-character code and a `v1.gv.` QR; 409 `GYM_VISIT_LIMIT`; 201; 409 `GYM_VISIT_FULL` (FR-111). A member with a running membership → 409 `GYM_VISIT_MEMBER` 🤖; more than `gym_manage.visits_per_user_day` bookings in 24 hours → 429 🤖 |
+| TV.6 | **My visits** | the code while booked; `no-store` (FR-112) |
+| TV.7 | **Tomorrow's guests at the desk** | 2 booked, cap 2; the guest's name and last 4 digits; never the code (FR-113) |
+| TV.8 | **Check in tomorrow's visit / (moved to today) find by code / by QR / the dashboard / check in / twice / my visit** | 409 `GYM_VISIT_NOT_TODAY`; the visit twice; `guestsToday` 1; attended; 409 `GYM_VISIT_STATE`; no code or QR any more (FR-114, FR-120). A forged QR finds nothing 🤖 |
+| TV.9 | **The phone: desk / owner** | 403; the phone, `no-store`, one audit row 🤖 (FR-116) |
+| TV.10 | **Make member: desk / owner / again / the member** | 403; 201; 409 `GYM_VISIT_STATE`; linked, source `desk`, so no referral fee (FR-117) |
+| TV.11 | **Bo cancels / twice / Cy cancels Bo's / Cy books the freed place / the gym cancels Cy's with a reason / Cy's visits** | cancelled by the guest; 409; 404; 201; cancelled by the gym; the reason, no QR (FR-112, FR-115). Inside `gym_manage.visit_cancel_cutoff_minutes` → 409 `GYM_VISIT_CANCEL_CLOSED` 🤖 |
+| TV.12 | **Notices** | the owner and desk staff: `GYM_VISIT_BOOKED` for each booking and `GYM_VISIT_CANCELLED_BY_GUEST`; Ana `GYM_VISIT_CONFIRMED`; Cy `GYM_VISIT_CANCELLED`; Bo none for his own cancel 🤖 (FR-118) |
+| TV.13 | **The morning job at 08:30 / again** | the owner gets `GYM_GUESTS_TODAY`, Bo `GYM_VISIT_REMINDER`; nothing more the second time (FR-119). Before the morning time only no-shows 🤖; a visit whose time has passed gets no reminder 🤖; a no-show counts against the limit 🤖 |
+| TV.14 | **A Free gym: on / its page / its list / booking there / an unknown gym** | 200; closed; 403 `GYM_TIER_REQUIRED` {visits, basic}; 409 `GYM_VISITS_CLOSED`; 404 (FR-120) |

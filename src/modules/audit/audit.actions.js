@@ -409,6 +409,12 @@ const ACTIONS = {
   'gym_notice.sent': A('M27', 'notice', 'Sent a notice to {after.targetCount} members', '{after.targetCount} জন সদস্যকে নোটিশ'),
   'gym_lead.updated': A('M27', 'info', 'Updated an enquiry ({after.status})', 'জিজ্ঞাসা হালনাগাদ ({after.status})'),
   'gym_lead.phone_revealed': A('M27', 'notice', 'Showed the phone of an enquiry', 'জিজ্ঞাসার ফোন দেখানো'),
+  // Trial visits (9 Nov 2026)
+  'gym_visit.booked': A('M24', 'info', 'Booked a trial visit ({after.date} {after.arriveAt})', 'ট্রায়াল ভিজিট বুক ({after.date} {after.arriveAt})'),
+  'gym_visit.cancelled': A('M24', 'info', 'Cancelled a trial visit ({after.by})', 'ট্রায়াল ভিজিট বাতিল ({after.by})'),
+  'gym_visit.attended': A('M24', 'info', 'Checked a trial-visit guest in', 'ট্রায়াল ভিজিটের অতিথি চেক-ইন'),
+  'gym_visit.converted': A('M24', 'notice', 'Made a trial-visit guest a member', 'ট্রায়াল ভিজিটের অতিথিকে সদস্য করা'),
+  'gym_visit.phone_revealed': A('M24', 'notice', 'Showed a trial-visit guest’s phone', 'ট্রায়াল ভিজিটের অতিথির ফোন দেখানো'),
   // round 3
   'gym_staff.shifts_set': A('M27', 'info', 'Set the weekly shifts of a staff member ({after.shifts})', 'কর্মীর সাপ্তাহিক শিফট ({after.shifts})'),
   'gym_staff.clocked_in': A('M27', 'info', 'A staff member clocked in ({after.method})', 'কর্মী ক্লক-ইন ({after.method})'),

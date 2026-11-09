@@ -54,8 +54,6 @@ describe('opening hours', () => {
     expect(r.windowsOn(HOURS, 6).map((w) => w.openTime)).toEqual(['08:00', '10:00']);
     expect(r.openWindowAt(HOURS, dhaka('2026-10-24', '09:00')).womenOnly).toBe(true);
     expect(r.openWindowAt(HOURS, dhaka('2026-10-22', '23:00'))).toBeNull();
-    expect(r.closingOn(HOURS, '2026-10-24').toISOString()).toBe(dhaka('2026-10-24', '22:00').toISOString());
-    expect(r.closingOn(HOURS, '2026-10-23')).toBeNull();
   });
 });
 
@@ -103,7 +101,7 @@ describe('buying a pass (FR-03)', () => {
 });
 
 describe('the front desk (FR-05)', () => {
-  const pass = { gymId: 'g1', kind: 'day', status: 'active', validFrom: '2026-10-22', validTo: '2026-10-22', firstRedeemedAt: null, lastRedeemedAt: null };
+  const pass = { gymId: 'g1', kind: 'month', status: 'active', validFrom: '2026-10-22', validTo: '2026-11-20', firstRedeemedAt: null, lastRedeemedAt: null };
   const at = dhaka('2026-10-22', '07:42');
   const check = (over = {}, more = {}) => r.redeemBlock({ pass: { ...pass, ...over }, gymId: 'g1', today: '2026-10-22', ...more });
   it('admits an active pass of this gym, valid today', () => {
@@ -111,36 +109,29 @@ describe('the front desk (FR-05)', () => {
   });
   it('says why not, the wrong gym first', () => {
     expect(check({ gymId: 'g2', status: 'expired' })).toEqual({ code: 'PASS_WRONG_GYM' });
-    expect(check({ status: 'redeemed', lastRedeemedAt: at })).toEqual({ code: 'PASS_ALREADY_REDEEMED', at });
+    // A day pass used up before 10 Nov 2026 is simply not active now (M20 §23).
+    expect(check({ status: 'redeemed', lastRedeemedAt: at })).toEqual({ code: 'PASS_NOT_ACTIVE', status: 'redeemed' });
     expect(check({ status: 'refunded' })).toEqual({ code: 'PASS_NOT_ACTIVE', status: 'refunded' });
     expect(check({ validFrom: '2026-10-23', validTo: '2026-10-23' })).toMatchObject({ code: 'PASS_NOT_VALID_TODAY' });
     expect(check({ validFrom: '2026-09-22', validTo: '2026-10-21' })).toMatchObject({ code: 'PASS_NOT_VALID_TODAY' });
     expect(check({ kind: 'month', validFrom: '2026-10-01', validTo: '2026-10-30' }, { usedTodayAt: at })).toEqual({ code: 'PASS_ALREADY_REDEEMED', at });
   });
-  it('a day pass is used up; the first admission releases the money', () => {
-    expect(r.admission({ kind: 'day', firstRedeemedAt: null })).toEqual({ status: 'redeemed', release: true });
+  it('a pass stays active; the first admission releases the money', () => {
     expect(r.admission({ kind: 'month', firstRedeemedAt: null })).toEqual({ status: 'active', release: true });
     expect(r.admission({ kind: 'quarter', firstRedeemedAt: at })).toEqual({ status: 'active', release: false });
   });
 });
 
 describe('cancelling and expiry (FR-06, Q110)', () => {
-  const day = { kind: 'day', status: 'active', validFrom: '2026-10-24', validTo: '2026-10-24', pricePoisha: 40000, firstRedeemedAt: null };
-  const month = { ...day, kind: 'month', validFrom: '2026-10-22', validTo: '2026-11-20', pricePoisha: 450000 };
-  it('refunds a day pass in full before its date, never on it', () => {
-    expect(r.cancelPlan({ pass: day, today: '2026-10-23' })).toEqual({ refund: 40000 });
-    expect(r.cancelPlan({ pass: day, today: '2026-10-24' })).toEqual({ block: 'PASS_NOT_REFUNDABLE' });
-  });
+  const month = { kind: 'month', status: 'active', validFrom: '2026-10-22', validTo: '2026-11-20', pricePoisha: 450000, firstRedeemedAt: null };
   it('refunds a month pass until its first use', () => {
     expect(r.cancelPlan({ pass: month, today: '2026-10-25' })).toEqual({ refund: 450000 });
     expect(r.cancelPlan({ pass: { ...month, firstRedeemedAt: new Date() }, today: '2026-10-25' })).toEqual({ block: 'PASS_NOT_REFUNDABLE' });
     expect(r.cancelPlan({ pass: month, today: '2026-11-21' })).toEqual({ block: 'PASS_NOT_REFUNDABLE' });
     expect(r.cancelPlan({ pass: { ...month, status: 'redeemed' }, today: '2026-10-25' })).toEqual({ block: 'PASS_NOT_ACTIVE' });
   });
-  it('a day pass expires at closing on its date; others after their last day', () => {
-    expect(r.expiresAt({ ...day, validFrom: '2026-10-22' }, HOURS).toISOString()).toBe(dhaka('2026-10-22', '23:00').toISOString());
-    expect(r.expiresAt({ ...day, validFrom: '2026-10-23' }, HOURS).toISOString()).toBe(r.instantOf('2026-10-24').toISOString());
-    expect(r.expiresAt(month, HOURS).toISOString()).toBe(r.instantOf('2026-11-21').toISOString());
+  it('a pass expires after its last day', () => {
+    expect(r.expiresAt(month).toISOString()).toBe(r.instantOf('2026-11-21').toISOString());
   });
 });
 

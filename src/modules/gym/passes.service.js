@@ -136,7 +136,7 @@ async function voidUnpaid(p, reason, { transaction }) {
   await p.update({ status: 'void', closedAt: new Date(), closeReason: reason, payBy: null }, { transaction });
 }
 
-/** payment.failed / payment.expired (purpose gym_package): the unpaid pass is void (capacity frees). */
+/** payment.failed / payment.expired (purpose gym_package): the unpaid pass is void. */
 async function onPaymentClosed(paymentId, { transaction }) {
   const p = await GymPass.findOne({ where: { paymentId }, transaction, lock: transaction.LOCK.UPDATE });
   if (!p || p.status !== 'pending_payment') return null;
@@ -197,13 +197,11 @@ async function sweep(now = new Date()) {
       out.voided += 1;
     });
   }
-  const due = await GymPass.findAll({ where: { status: 'active', validTo: { [Op.lte]: c.today(now) } }, attributes: ['id', 'gymId'] });
-  const hoursOf = new Map();
-  for (const { id, gymId } of due) {
-    if (!hoursOf.has(gymId)) hoursOf.set(gymId, (await Gym.findByPk(gymId, { attributes: ['liveSnapshot'] }))?.liveSnapshot?.hours ?? []);
+  const due = await GymPass.findAll({ where: { status: 'active', validTo: { [Op.lt]: c.today(now) } }, attributes: ['id'] });
+  for (const { id } of due) {
     await sequelize.transaction(async (transaction) => {
       const p = await c.lockPass(id, transaction);
-      if (p.status !== 'active' || rules.expiresAt(p, hoursOf.get(gymId)) > now) return;
+      if (p.status !== 'active' || rules.expiresAt(p) > now) return;
       const moved = await c.release(p, { transaction });
       await p.update({ status: 'expired', closedAt: now, closeReason: p.firstRedeemedAt ? 'ended' : 'unused' }, { transaction });
       await c.publishPass(transaction, 'gym_pass.expired', p, { used: Boolean(p.firstRedeemedAt), released: moved.gross, net: moved.net });

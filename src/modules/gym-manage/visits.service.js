@@ -69,16 +69,18 @@ async function exitIn(transaction, { gymId, member, visits, method, now, byUser 
 
 /**
  * The live desk feed (M27-FR-44): after commit, to the owner and staff with attendance.mark. Never throws.
- * `kind` in | out; the member as the desk list shows it (code, name, photo), the decision and the count now.
+ * `kind` in | out | guest; the member as the desk list shows it (code, name, photo), or for a trial-visit guest
+ * `guest` { visitId, name } (member null, sent as `gym.desk_guest`); the decision and the count now.
  */
-function feedAfterCommit(transaction, { gymId, kind, member, attendanceId, at, decision = null, reasons = [], counted = null, visitMinutes = null }) {
+function feedAfterCommit(transaction, { gymId, kind, member = null, guest = null, attendanceId = null, at, decision = null, reasons = [], counted = null, visitMinutes = null }) {
   const send = async () => {
     try {
       const gym = await gymFacade.get(gymId);
       if (!gym) return;
       const to = new Set([gym.ownerId, ...(await staffFacade.staffRecipients('gym', gymId, 'attendance.mark'))]);
-      const data = { gymId, kind, attendanceId, at, member: view.memberSummary(member), decision, reasons, counted, visitMinutes, inGymNow: await inGymNow(gymId) };
-      for (const userId of to) realtime.toUser(userId, 'gym.desk_feed', data);
+      const data = { gymId, kind, attendanceId, at, member: member ? view.memberSummary(member) : null, guest, decision, reasons, counted, visitMinutes, inGymNow: await inGymNow(gymId) };
+      // A guest goes on its own event, so desks built before trial visits (which expect a member) never see one.
+      for (const userId of to) realtime.toUser(userId, kind === 'guest' ? 'gym.desk_guest' : 'gym.desk_feed', data);
     } catch {
       /* best effort: the desk re-reads the day's list */
     }

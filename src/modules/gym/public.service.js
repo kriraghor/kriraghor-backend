@@ -39,7 +39,6 @@ function card(g, { areas, facilities }, now = new Date(), distanceM = null) {
     area: areas.get(s.areaId) ?? null,
     cover: s.photos[0] ? storage.publicUrl(s.photos[0].key) : null,
     facilities: (s.facilityIds ?? []).map((id) => facilities.get(id)).filter(Boolean),
-    dayPrice: null, // no day pass since 2 Nov 2026; installed apps read this until their update reaches them
     monthPrice: price('month'),
     quarterPrice: price('quarter'),
     womenOnlyHours: s.hours.some((h) => h.womenOnly),

@@ -1860,6 +1860,65 @@ const CATALOGUE = [
     values: async (e) => ({ gym: await gymName(e.payload.gymId) }),
     link: (e) => gymUrl(`/manage/${e.payload.gymId}/leads`),
   },
+  // ---------------- M24 trial visits (9 Nov 2026): free visits before joining. The gym (owner and staff
+  // with attendance.mark) hears of each booking and gets the morning list; the guest gets the confirmation
+  // and a morning reminder. A cancellation goes to the other side. Free, so never SMS.
+  {
+    code: 'GYM_VISIT_BOOKED',
+    events: ['gym_visit.booked'],
+    category: 'gym_business',
+    channels: ['in_app', 'push'],
+    recipients: gymOwnerAnd('attendance.mark'),
+    values: async (e, { locale }) => ({ gym: await gymName(e.payload.gymId), guest: await nameOf(e.payload.userId), day: dayText(e.payload.date, locale), time: e.payload.arriveAt }),
+    link: (e) => gymUrl(`/manage/${e.payload.gymId}/desk`),
+  },
+  {
+    code: 'GYM_VISIT_CONFIRMED',
+    events: ['gym_visit.booked'],
+    category: 'gym',
+    channels: ['in_app', 'push', 'email'],
+    recipients: (e) => [e.payload.userId],
+    values: async (e, { locale }) => ({ gym: await gymName(e.payload.gymId), day: dayText(e.payload.date, locale), time: e.payload.arriveAt, link: gymUrl('/me/visits') }),
+    link: () => gymUrl('/me/visits'),
+  },
+  {
+    code: 'GYM_VISIT_REMINDER',
+    events: ['gym_visit.reminded'],
+    category: 'gym',
+    channels: ['in_app', 'push'],
+    recipients: (e) => [e.payload.userId],
+    values: async (e) => ({ gym: await gymName(e.payload.gymId), time: e.payload.arriveAt }),
+    link: () => gymUrl('/me/visits'),
+  },
+  {
+    code: 'GYM_GUESTS_TODAY',
+    events: ['gym_visits.listed'],
+    category: 'gym_business',
+    channels: ['in_app', 'push'],
+    recipients: gymOwnerAnd('attendance.mark'),
+    values: async (e) => ({ gym: await gymName(e.payload.gymId), count: e.payload.count, firstAt: e.payload.firstAt }),
+    link: (e) => gymUrl(`/manage/${e.payload.gymId}/desk`),
+  },
+  {
+    // The guest cancelled: the gym hears.
+    code: 'GYM_VISIT_CANCELLED_BY_GUEST',
+    events: ['gym_visit.cancelled'],
+    category: 'gym_business',
+    channels: ['in_app'],
+    recipients: async (e) => (e.payload.by === 'guest' ? gymOwnerAnd('attendance.mark')(e) : []),
+    values: async (e, { locale }) => ({ gym: await gymName(e.payload.gymId), guest: await nameOf(e.payload.userId), day: dayText(e.payload.date, locale), time: e.payload.arriveAt }),
+    link: (e) => gymUrl(`/manage/${e.payload.gymId}/desk`),
+  },
+  {
+    // The gym cancelled: the guest hears.
+    code: 'GYM_VISIT_CANCELLED',
+    events: ['gym_visit.cancelled'],
+    category: 'gym',
+    channels: ['in_app', 'push', 'email'],
+    recipients: (e) => (e.payload.by === 'gym' ? [e.payload.userId] : []),
+    values: async (e, { locale }) => ({ gym: await gymName(e.payload.gymId), day: dayText(e.payload.date, locale), time: e.payload.arriveAt }),
+    link: () => gymUrl('/me/visits'),
+  },
   {
     // M27-FR-85: a machine is due for service (the owner and staff with assets.manage).
     code: 'GYM_ASSET_SERVICE_DUE',
