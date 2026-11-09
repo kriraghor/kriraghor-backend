@@ -478,6 +478,14 @@ const JOBS = [
     run: async () => gymManage.morningSummary(),
   },
   {
+    // M24 trial visits: no-shows, then the gym's guests-today list and the guests' reminders at or after
+    // gym_manage.morning_summary_time, once a day each (the send-once log, kinds guests_today and visit_reminder).
+    name: 'gym-manage.visits-daily',
+    queue: QUEUES.GYM,
+    every: 15 * 60 * 1000,
+    run: async () => gymManage.visitsDaily(),
+  },
+  {
     // Fee overrides past valid_to → ended (M24-FR-94).
     name: 'gym-manage.overrides-end',
     queue: QUEUES.GYM,

@@ -102,13 +102,13 @@ describe('M20 gym', () => {
     expect(todo).toEqual([expect.objectContaining({ key: 'gym_changes_requested', count: 1, href: `${config.apps.gym}/manage` })]);
   });
 
-  it('a day pass sold before 2 Nov 2026: paid, shown as a QR, admitted once by token; the owner gets ৳380 (FR-03 to FR-05)', async () => {
+  it('a month pass: paid, shown as a QR, admitted by token once a day; the owner gets ৳4,275 at the first use (FR-03 to FR-05)', async () => {
     const owner = await g.gymOwner(docsReviewer);
-    const gym = await g.withOldDayPass(await g.liveGym(owner, reviewer));
+    const gym = await g.liveGym(owner, reviewer);
     const member = await h.signupUser({ name: 'Fahim Rahman' });
-    await buy(member, pkg(gym, 'day'), g.inDays(9), 422);
-    const r = await buy(member, pkg(gym, 'day'), g.today());
-    expect(r.body.pass).toMatchObject({ status: 'pending_payment', kind: 'day', validFrom: g.today(), token: null, backupCode: null, money: { price: 40000 } });
+    await buy(member, pkg(gym, 'month'), g.inDays(9), 422);
+    const r = await buy(member, pkg(gym, 'month'), g.today());
+    expect(r.body.pass).toMatchObject({ status: 'pending_payment', kind: 'month', validFrom: g.today(), token: null, backupCode: null, money: { price: 450000 } });
     expect(r.body.payment.payUrl).toMatch(/\/pay\//);
     await h.payWithSimulator(member, r.body.payment.id);
     await h.drainEvents();
@@ -125,16 +125,16 @@ describe('M20 gym', () => {
     expect((await redeem(other, otherGym.id, { token: pass.token })).body.code).toBe('PASS_WRONG_GYM');
     expect((await redeem(owner, gym.id, { token: `${pass.token.slice(0, -1)}${pass.token.endsWith('0') ? '1' : '0'}` })).body.code).toBe('INVALID_PASS_TOKEN');
     const admitted = await redeem(owner, gym.id, { token: pass.token }).expect(201);
-    expect(admitted.body).toMatchObject({ passCode: pass.code, kind: 'day', status: 'redeemed', holder: { displayName: 'Fahim Rahman' }, released: 38000 });
-    // A used day pass no longer answers to its code as a pass, but the desk hears when it was used.
+    expect(admitted.body).toMatchObject({ passCode: pass.code, kind: 'month', status: 'active', holder: { displayName: 'Fahim Rahman' }, released: 427500 });
+    // Once a day: the code and the token answer with the time it was used today.
     const again = await redeem(owner, gym.id, { code: pass.backupCode.toLowerCase() }).expect(409);
     expect(again.body).toMatchObject({ code: 'PASS_ALREADY_REDEEMED', at: admitted.body.redeemedAt });
     expect((await redeem(owner, gym.id, { code: 'ZZZZZZ' })).body.code).toBe('INVALID_PASS_TOKEN');
     expect((await redeem(owner, gym.id, { token: pass.token })).body).toMatchObject({ code: 'PASS_ALREADY_REDEEMED' });
-    expect(await payable(owner)).toBe(38000);
-    expect(await ledger.balance('fee_revenue:gym')).toBe(2000);
+    expect(await payable(owner)).toBe(427500);
+    expect(await ledger.balance('fee_revenue:gym')).toBe(22500);
     expect((await api().get(`${P}/me/gyms/${gym.id}/redemptions`).set(h.bearer(owner)).expect(200)).body.items).toHaveLength(1);
-    expect((await api().get(`${P}/me/passes/${pass.code}`).set(h.bearer(member)).expect(200)).body.pass).toMatchObject({ status: 'redeemed', token: null, backupCode: null });
+    expect((await api().get(`${P}/me/passes/${pass.code}`).set(h.bearer(member)).expect(200)).body.pass).toMatchObject({ status: 'active', token: pass.token });
   });
 
   it('two scans at once admit one; a month pass is once a day and pays the gym at its first use', async () => {
@@ -191,25 +191,21 @@ describe('M20 gym', () => {
     expect(r.body).toMatchObject({ passCode: pass.code, status: 'active' });
   });
 
-  it('a day pass sold before 2 Nov 2026: cancel before the date refunds in full; unused it pays the gym at closing (FR-06, Q110)', async () => {
+  it('a pass: cancel before its first use refunds in full; unused, it pays the gym after its last day (FR-06, Q110)', async () => {
     const owner = await g.gymOwner(docsReviewer);
-    const gym = await g.withOldDayPass(await g.liveGym(owner, reviewer));
+    const gym = await g.liveGym(owner, reviewer);
     const member = await h.signupUser({ name: 'Rafi Ahmed' });
-    const tomorrow = await paidPass(member, gym, 'day', g.inDays(1));
-    const cancelled = await api().post(`${P}/me/passes/${tomorrow.id}/cancel`).set(h.bearer(member)).expect(200);
-    expect(cancelled.body.pass).toMatchObject({ status: 'refunded', money: { refunded: 40000 } });
-    const todayPass = await paidPass(member, gym, 'day', g.today());
-    expect((await api().post(`${P}/me/passes/${todayPass.id}/cancel`).set(h.bearer(member)).expect(409)).body.code).toBe('PASS_NOT_REFUNDABLE');
+    const later = await paidPass(member, gym, 'month', g.inDays(2));
+    const cancelled = await api().post(`${P}/me/passes/${later.id}/cancel`).set(h.bearer(member)).expect(200);
+    expect(cancelled.body.pass).toMatchObject({ status: 'refunded', money: { refunded: 450000 } });
+    const unused = await paidPass(member, gym, 'month', g.today());
     expect((await gymJobs.tick(new Date())).expired).toBe(0);
-    const out = await gymJobs.tick(rules.instantOf(g.inDays(1), 1));
+    const out = await gymJobs.tick(rules.instantOf(rules.addDays(unused.validTo, 1), 1));
     expect(out.expired).toBe(1);
-    expect(await models.GymPass.findByPk(todayPass.id)).toMatchObject({ status: 'expired', closeReason: 'unused', releasedPoisha: 40000 });
-    expect(await payable(owner)).toBe(38000);
-    // A month pass unused before its first day refunds in full.
-    const month = await paidPass(member, gym, 'month', g.inDays(2));
-    await api().post(`${P}/me/passes/${month.id}/cancel`).set(h.bearer(member)).expect(200);
+    expect(await models.GymPass.findByPk(unused.id)).toMatchObject({ status: 'expired', closeReason: 'unused', releasedPoisha: 450000 });
+    expect(await payable(owner)).toBe(427500);
     // Unpaid passes void after the payment window.
-    const unpaid = await buy(member, pkg(gym, 'day'), g.inDays(3));
+    const unpaid = await buy(member, pkg(gym, 'month'), g.inDays(3));
     expect((await gymJobs.tick(new Date(Date.now() + 60 * 60000))).voided).toBe(1);
     expect((await models.GymPass.findByPk(unpaid.body.pass.id)).status).toBe('void');
   });
@@ -294,20 +290,20 @@ describe('M20 gym', () => {
 
   it('staff: a pass with its escrow, a platform cancel with step-up, suspend a gym; gates', async () => {
     const owner = await g.gymOwner(docsReviewer);
-    const gym = await g.withOldDayPass(await g.liveGym(owner, reviewer));
+    const gym = await g.liveGym(owner, reviewer);
     const member = await h.signupUser({ name: 'Fahim Rahman' });
-    const pass = await paidPass(member, gym, 'day', g.inDays(1));
+    const pass = await paidPass(member, gym, 'month', g.inDays(1));
     const seen = (await api().get(`${P}/admin/gym/passes/${pass.code}`).set(h.bearer(reviewer)).expect(200)).body;
-    expect(seen).toMatchObject({ code: pass.code, token: null, backupCode: null, escrow: { held: 40000, status: 'holding' } });
+    expect(seen).toMatchObject({ code: pass.code, token: null, backupCode: null, escrow: { held: 450000, status: 'holding' } });
     await api().post(`${P}/admin/gym/passes/${pass.code}/cancel`).set(h.bearer(reviewer)).send({ reason: 'The gym closed for repairs' }).expect(403);
     const done = await api().post(`${P}/admin/gym/passes/${pass.code}/cancel`).set(h.bearer(master)).set('X-Step-Up', await h.stepUp(master, 'escrow.manage')).send({ reason: 'The gym closed for repairs' }).expect(200);
-    expect(done.body).toMatchObject({ status: 'refunded', money: { refunded: 40000 } });
+    expect(done.body).toMatchObject({ status: 'refunded', money: { refunded: 450000 } });
     const mod = await f.staffWith(master, ['manage_users']);
     await api().post(`${P}/admin/gym/gyms/${gym.id}/suspend`).set(h.bearer(mod)).send({ reason: 'Fake photos reported' }).expect(200);
     // The Moderation desk panel reads one gym's working copy.
     expect((await api().get(`${P}/admin/gym/gyms/${gym.id}`).set(h.bearer(reviewer)).expect(200)).body).toMatchObject({ id: gym.id, status: 'suspended', ownerId: owner.user.id, packages: expect.any(Array) });
     await api().get(`${P}/admin/gym/gyms/${member.user.id}`).set(h.bearer(reviewer)).expect(404);
-    expect((await buy(member, pkg(gym, 'day'), g.inDays(1), 409)).body.code).toBe('GYM_NOT_AVAILABLE');
+    expect((await buy(member, pkg(gym, 'month'), g.inDays(1), 409)).body.code).toBe('GYM_NOT_AVAILABLE');
     await api().get(`${P}/gym/gyms/${gym.slug}`).expect(404);
     await api().post(`${P}/admin/gym/gyms/${gym.id}/restore`).set(h.bearer(master)).send({ reason: 'Photos checked on site' }).expect(200);
     // Gates: buying needs a verified phone; listing needs the gym_owner role.

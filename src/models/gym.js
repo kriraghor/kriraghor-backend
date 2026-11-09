@@ -45,7 +45,6 @@ Gym.init(
     lng: num('lng', DataTypes.DECIMAL(9, 6)),
     about: DataTypes.TEXT,
     facilityIds: { type: DataTypes.ARRAY(DataTypes.UUID), allowNull: false, defaultValue: [] },
-    dailyCapacity: DataTypes.INTEGER,
     status: {
       type: DataTypes.ENUM('draft', 'pending_review', 'changes_requested', 'live', 'paused', 'rejected', 'withdrawn', 'suspended', 'removed'),
       allowNull: false,
@@ -61,7 +60,6 @@ Gym.init(
     statusChangedAt: DataTypes.DATE(3),
     publicName: DataTypes.STRING(120),
     publicAreaId: DataTypes.UUID,
-    publicDayPricePoisha: poisha('publicDayPricePoisha', { allowNull: true }),
     publicMonthPricePoisha: poisha('publicMonthPricePoisha', { allowNull: true }),
     ratingAvg: num('ratingAvg', DataTypes.DECIMAL(3, 2)),
     ratingCount: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },

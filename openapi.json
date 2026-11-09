@@ -23867,14 +23867,6 @@
               ]
             }
           },
-          "dayPrice": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "minimum": 0,
-            "description": "Always null: gyms sell no day pass since 2 Nov 2026. Installed apps still read it; it goes in a later release."
-          },
           "monthPrice": {
             "type": [
               "integer",
@@ -23922,7 +23914,6 @@
           "area",
           "cover",
           "facilities",
-          "dayPrice",
           "monthPrice",
           "quarterPrice",
           "womenOnlyHours",
@@ -24012,14 +24003,6 @@
                 "icon"
               ]
             }
-          },
-          "dayPrice": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "minimum": 0,
-            "description": "Always null: gyms sell no day pass since 2 Nov 2026. Installed apps still read it; it goes in a later release."
           },
           "monthPrice": {
             "type": [
@@ -24206,7 +24189,6 @@
           "area",
           "cover",
           "facilities",
-          "dayPrice",
           "monthPrice",
           "quarterPrice",
           "womenOnlyHours",
@@ -26151,6 +26133,9 @@
                     },
                     "payroll": {
                       "type": "boolean"
+                    },
+                    "visits": {
+                      "type": "boolean"
                     }
                   }
                 },
@@ -26254,6 +26239,9 @@
                     "type": "boolean"
                   },
                   "payroll": {
+                    "type": "boolean"
+                  },
+                  "visits": {
                     "type": "boolean"
                   }
                 }
@@ -26363,6 +26351,9 @@
               },
               "payroll": {
                 "type": "boolean"
+              },
+              "visits": {
+                "type": "boolean"
               }
             }
           },
@@ -26413,6 +26404,9 @@
                 "type": "integer"
               },
               "overdueCount": {
+                "type": "integer"
+              },
+              "guestsToday": {
                 "type": "integer"
               },
               "collectedTodayPoisha": {
@@ -26679,6 +26673,33 @@
           "vatMaxBps": {
             "type": "integer"
           },
+          "visitsOpen": {
+            "type": "boolean"
+          },
+          "visitDailyCap": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "visitDailyCapDefault": {
+            "type": "integer"
+          },
+          "visitDailyCapMax": {
+            "type": "integer"
+          },
+          "visitPerPerson": {
+            "type": "integer"
+          },
+          "visitPerPersonMax": {
+            "type": "integer"
+          },
+          "visitNote": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "importConsentUntil": {
             "type": [
               "string",
@@ -26709,6 +26730,13 @@
           "vatEnabled",
           "vatBps",
           "vatMaxBps",
+          "visitsOpen",
+          "visitDailyCap",
+          "visitDailyCapDefault",
+          "visitDailyCapMax",
+          "visitPerPerson",
+          "visitPerPersonMax",
+          "visitNote",
           "importConsentUntil",
           "nextMemberCode"
         ]
@@ -26789,6 +26817,109 @@
               "method"
             ],
             "description": "An M20 pass (desk.admit); admit it with POST /me/gyms/{id}/redemptions"
+          },
+          "visit": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "guest": {
+                "type": "object",
+                "properties": {
+                  "userId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "phoneLast4": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "userId",
+                  "name",
+                  "phoneLast4"
+                ]
+              },
+              "date": {
+                "type": "string",
+                "format": "date"
+              },
+              "arriveAt": {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "booked",
+                  "attended",
+                  "cancelled",
+                  "no_show"
+                ]
+              },
+              "cancelledBy": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "guest",
+                  "gym",
+                  null
+                ]
+              },
+              "cancelReason": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "attendedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "memberId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uuid"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "guest",
+              "date",
+              "arriveAt",
+              "status",
+              "cancelledBy",
+              "cancelReason",
+              "attendedAt",
+              "memberId",
+              "createdAt"
+            ],
+            "description": "A trial-visit guest named by their QR or code (plan feature visits); check in with POST …/visits/{visitId}/check-in"
           }
         },
         "required": [
@@ -29724,6 +29855,9 @@
               },
               "payroll": {
                 "type": "boolean"
+              },
+              "visits": {
+                "type": "boolean"
               }
             }
           },
@@ -29772,7 +29906,8 @@
                       "leads",
                       "staff_attendance",
                       "equipment",
-                      "payroll"
+                      "payroll",
+                      "visits"
                     ]
                   }
                 },
@@ -30217,7 +30352,8 @@
                       "leads",
                       "staff_attendance",
                       "equipment",
-                      "payroll"
+                      "payroll",
+                      "visits"
                     ]
                   }
                 },
@@ -38013,6 +38149,398 @@
         },
         "required": [
           "accepted"
+        ]
+      },
+      "GymVisits": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "open": {
+            "type": "boolean"
+          },
+          "cap": {
+            "type": "integer"
+          },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "booked": {
+                "type": "integer"
+              },
+              "attended": {
+                "type": "integer"
+              },
+              "cancelled": {
+                "type": "integer"
+              },
+              "no_show": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "booked",
+              "attended",
+              "cancelled",
+              "no_show"
+            ]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GymVisit"
+            }
+          }
+        },
+        "required": [
+          "date",
+          "open",
+          "cap",
+          "counts",
+          "items"
+        ]
+      },
+      "GymVisit": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "guest": {
+            "type": "object",
+            "properties": {
+              "userId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "phoneLast4": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "userId",
+              "name",
+              "phoneLast4"
+            ]
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "arriveAt": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "booked",
+              "attended",
+              "cancelled",
+              "no_show"
+            ]
+          },
+          "cancelledBy": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "guest",
+              "gym",
+              null
+            ]
+          },
+          "cancelReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "attendedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "memberId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "guest",
+          "date",
+          "arriveAt",
+          "status",
+          "cancelledBy",
+          "cancelReason",
+          "attendedAt",
+          "memberId",
+          "createdAt"
+        ]
+      },
+      "GymVisitOne": {
+        "type": "object",
+        "properties": {
+          "visit": {
+            "$ref": "#/components/schemas/GymVisit"
+          }
+        },
+        "required": [
+          "visit"
+        ]
+      },
+      "GymVisitPhone": {
+        "type": "object",
+        "properties": {
+          "visitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "phone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "visitId",
+          "phone"
+        ]
+      },
+      "GymVisitConverted": {
+        "type": "object",
+        "properties": {
+          "member": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "member"
+        ]
+      },
+      "MyGymVisits": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyGymVisit"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "MyGymVisit": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "gym": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              },
+              "slug": {
+                "type": "string"
+              },
+              "addressLine": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "slug",
+              "addressLine"
+            ]
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "arriveAt": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "booked",
+              "attended",
+              "cancelled",
+              "no_show"
+            ]
+          },
+          "code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The 6-character code for the desk, while booked and not past"
+          },
+          "token": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The QR text for the desk (v1.gv…), while booked and not past"
+          },
+          "cancelledBy": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "guest",
+              "gym",
+              null
+            ]
+          },
+          "cancelReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "attendedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "gym",
+          "date",
+          "arriveAt",
+          "status",
+          "code",
+          "token",
+          "cancelledBy",
+          "cancelReason",
+          "attendedAt",
+          "createdAt"
+        ]
+      },
+      "MyGymVisitOne": {
+        "type": "object",
+        "properties": {
+          "visit": {
+            "$ref": "#/components/schemas/MyGymVisit"
+          }
+        },
+        "required": [
+          "visit"
+        ]
+      },
+      "GymVisitSlots": {
+        "type": "object",
+        "properties": {
+          "open": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "perPerson": {
+            "type": "integer"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "windows": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "openTime": {
+                        "type": "string",
+                        "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                      },
+                      "closeTime": {
+                        "type": "string",
+                        "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                      },
+                      "womenOnly": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "openTime",
+                      "closeTime",
+                      "womenOnly"
+                    ]
+                  }
+                },
+                "placesLeft": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "date",
+                "windows",
+                "placesLeft"
+              ]
+            }
+          }
+        },
+        "required": [
+          "open",
+          "note",
+          "days"
         ]
       },
       "GymStaffShifts": {
@@ -91412,7 +91940,7 @@
             }
           },
           "422": {
-            "description": "Error. Codes: PACKAGE_UNKNOWN, DATE_OUT_OF_RANGE, GYM_CLOSED_ON_DATE, VALIDATION_FAILED",
+            "description": "Error. Codes: PACKAGE_UNKNOWN, DATE_OUT_OF_RANGE, VALIDATION_FAILED",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -92700,7 +93228,7 @@
         "tags": [
           "gym"
         ],
-        "summary": "Every active package (M24-FR-24): month, quarter, 6 months, 12 months (one each) and custom days (at most gym_manage.max_custom_packages); admission fee, channel desk/online/both, visit limit, order. A day pass sold online (within gym.day_pass_min/max_poisha) is needed only to submit",
+        "summary": "Every active package (M24-FR-24): month, quarter, 6 months, 12 months (one each) and custom days (at most gym_manage.max_custom_packages); admission fee, channel desk/online/both, visit limit, order. At least one package sold online is needed to submit (M20 §23)",
         "security": [
           {
             "bearer": []
@@ -95098,6 +95626,34 @@
                     "minimum": 1,
                     "maximum": 10000,
                     "description": "The VAT rate in basis points (15% = 1500), at most gym_manage.vat_max_bps"
+                  },
+                  "visitsOpen": {
+                    "type": "boolean",
+                    "description": "Trial visits: people book a free visit from the gym page (plan feature visits)"
+                  },
+                  "visitDailyCap": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 1,
+                    "maximum": 1000,
+                    "description": "Visits a day, at most gym_manage.visit_daily_cap_max; null = gym_manage.visit_daily_cap_default"
+                  },
+                  "visitPerPerson": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "description": "Visits one person may book at this gym, at most gym_manage.visit_per_person_max"
+                  },
+                  "visitNote": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "maxLength": 300,
+                    "description": "What to bring and where to go, shown with the booking"
                   }
                 }
               }
@@ -111507,6 +112063,780 @@
           },
           "429": {
             "description": "Error. Codes: RATE_LIMITED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/visits": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Trial visits on a day (default today), booked first by time; the guest’s name and the last 4 digits of the phone (attendance.mark or members.view; feature visits) (M24-FR-113)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "required": false,
+            "name": "date",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "booked",
+                "attended",
+                "cancelled",
+                "no_show"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymVisits"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: GYM_TIER_REQUIRED, PERMISSION_REQUIRED, GYM_ACCOUNT_RESTRICTED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/visits/{visitId}/check-in": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "The guest has come: the visit is attended and the desk feed hears it (attendance.mark; today only) (M24-FR-114)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "visitId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymVisitOne"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: GYM_TIER_REQUIRED, PERMISSION_REQUIRED, GYM_ACCOUNT_RESTRICTED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_VISIT_STATE, GYM_VISIT_NOT_TODAY",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/visits/{visitId}/cancel": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Cancel a booked visit with a reason; the guest is told (attendance.mark) (M24-FR-115)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "visitId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymVisitOne"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: GYM_TIER_REQUIRED, PERMISSION_REQUIRED, GYM_ACCOUNT_RESTRICTED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_VISIT_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/visits/{visitId}/reveal-phone": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "The guest’s full phone number: no-store, audited, rate-limited per person (members.view) (M24-FR-116)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "visitId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymVisitPhone"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: GYM_TIER_REQUIRED, PERMISSION_REQUIRED, GYM_ACCOUNT_RESTRICTED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error. Codes: RATE_LIMITED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/visits/{visitId}/convert": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Make the guest a member: links their account (or the member already linked) with source desk, so no referral fee (members.edit) (M24-FR-117)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "visitId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymVisitConverted"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: GYM_TIER_REQUIRED, PERMISSION_REQUIRED, GYM_ACCOUNT_RESTRICTED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_VISIT_STATE, GYM_ALREADY_LINKED, GYM_MEMBER_PHONE_TAKEN",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/gym-visits": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "My trial visits, newest first; a booked visit carries its QR token and 6-character code (no-store) (M24-FR-112)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyGymVisits"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Book a free trial visit: a verified phone, inside the gym’s hours, within the days ahead, the daily cap and the gym’s visits per person; confirmed at once (M24-FR-111)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "8–80 letters, digits, - or _. Retries with the same key and body replay the first response"
+            },
+            "required": true,
+            "description": "8–80 letters, digits, - or _. Retries with the same key and body replay the first response",
+            "name": "idempotency-key",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "gymId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "arriveAt": {
+                    "type": "string",
+                    "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                  }
+                },
+                "required": [
+                  "gymId",
+                  "date",
+                  "arriveAt"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Booked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyGymVisitOne"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PHONE_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_VISITS_CLOSED, GYM_VISIT_OWN_GYM, GYM_VISIT_MEMBER, GYM_VISIT_LIMIT, GYM_VISIT_FULL",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, GYM_VISIT_DATE, GYM_VISIT_HOURS",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error. Codes: RATE_LIMITED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/gym-visits/{visitId}/cancel": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Cancel my visit up to gym_manage.visit_cancel_cutoff_minutes before it; the gym is told (M24-FR-112)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "visitId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyGymVisitOne"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_VISIT_STATE, GYM_VISIT_CANCEL_CLOSED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/gym/gyms/{slug}/visit-slots": {
+      "get": {
+        "tags": [
+          "gym"
+        ],
+        "summary": "Trial visits on a gym page (no sign-in): whether they are on, the note, and each open day ahead with its hours and places left (M24-FR-110)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            },
+            "required": true,
+            "name": "slug",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymVisitSlots"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
             "content": {
               "application/problem+json": {
                 "schema": {

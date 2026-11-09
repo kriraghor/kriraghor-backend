@@ -137,7 +137,6 @@ const GymCard = z
     area: nullable(named),
     cover: nullable(z.string()),
     facilities: z.array(named.extend({ icon: nullable(z.string()) })),
-    dayPrice: nullable(poisha).meta({ description: 'Always null: gyms sell no day pass since 2 Nov 2026. Installed apps still read it; it goes in a later release.' }),
     monthPrice: nullable(poisha),
     quarterPrice: nullable(poisha),
     womenOnlyHours: z.boolean(),

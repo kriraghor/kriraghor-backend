@@ -75,6 +75,10 @@ const settingsPatch = z
     smsKinds: z.array(z.enum(SMS_KINDS)).max(SMS_KINDS.length).optional(),
     vatEnabled: z.boolean().optional().meta({ description: 'M27-FR-28: show VAT on member receipts (prices include it); needs vatBps' }),
     vatBps: nullable(z.number().int().min(1).max(10000)).optional().meta({ description: 'The VAT rate in basis points (15% = 1500), at most gym_manage.vat_max_bps' }),
+    visitsOpen: z.boolean().optional().meta({ description: 'Trial visits: people book a free visit from the gym page (plan feature visits)' }),
+    visitDailyCap: nullable(z.number().int().min(1).max(1000)).optional().meta({ description: 'Visits a day, at most gym_manage.visit_daily_cap_max; null = gym_manage.visit_daily_cap_default' }),
+    visitPerPerson: z.number().int().min(1).max(100).optional().meta({ description: 'Visits one person may book at this gym, at most gym_manage.visit_per_person_max' }),
+    visitNote: nullable(text(1, 300)).optional().meta({ description: 'What to bring and where to go, shown with the booking' }),
   })
   .refine((b) => Object.keys(b).length > 0, 'Nothing to change');
 const deskSearchQuery = z.object({ q: text(1, 200) });
@@ -347,10 +351,66 @@ const DeskCard = z
     outstandingPoisha: money(poisha),
   })
   .meta({ id: 'GymDeskCard' });
+// ---------------- trial visits (product owner, 9 Nov 2026)
+const VISIT_HHMM = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'HH:MM, 24-hour, Dhaka time');
+const visitParam = z.object({ gymId: id, visitId: id });
+const meVisitParam = z.object({ visitId: id });
+const visitSlugParam = z.object({ slug: z.string().min(1).max(120) });
+const visitsQuery = z.object({ date: date.optional(), status: z.enum(['booked', 'attended', 'cancelled', 'no_show']).optional() });
+const visitBody = z.object({ gymId: id, date, arriveAt: VISIT_HHMM });
+const visitCancelBody = z.object({ reason: text(3, 300) });
+const VisitStatus = z.enum(['booked', 'attended', 'cancelled', 'no_show']);
+const GymVisitView = z
+  .object({
+    id,
+    guest: z.object({ userId: id, name: nullable(z.string()), phoneLast4: nullable(z.string()) }),
+    date,
+    arriveAt: VISIT_HHMM,
+    status: VisitStatus,
+    cancelledBy: nullable(z.enum(['guest', 'gym'])),
+    cancelReason: nullable(z.string()),
+    attendedAt: nullable(dateTime),
+    memberId: nullable(id),
+    createdAt: dateTime,
+  })
+  .meta({ id: 'GymVisit' });
+const GymVisits = z
+  .object({ date, open: z.boolean(), cap: z.number().int(), counts: z.object({ booked: z.number().int(), attended: z.number().int(), cancelled: z.number().int(), no_show: z.number().int() }), items: z.array(GymVisitView) })
+  .meta({ id: 'GymVisits' });
+const GymVisitOne = z.object({ visit: GymVisitView }).meta({ id: 'GymVisitOne' });
+const VisitPhone = z.object({ visitId: id, phone: z.string() }).meta({ id: 'GymVisitPhone' });
+const VisitConverted = z.object({ member: z.object({}).passthrough() }).meta({ id: 'GymVisitConverted' });
+const MyVisit = z
+  .object({
+    id,
+    gym: nullable(z.object({ id, name: z.string(), slug: z.string(), addressLine: nullable(z.string()) })),
+    date,
+    arriveAt: VISIT_HHMM,
+    status: VisitStatus,
+    code: nullable(z.string()).meta({ description: 'The 6-character code for the desk, while booked and not past' }),
+    token: nullable(z.string()).meta({ description: 'The QR text for the desk (v1.gv…), while booked and not past' }),
+    cancelledBy: nullable(z.enum(['guest', 'gym'])),
+    cancelReason: nullable(z.string()),
+    attendedAt: nullable(dateTime),
+    createdAt: dateTime,
+  })
+  .meta({ id: 'MyGymVisit' });
+const MyVisits = z.object({ items: z.array(MyVisit) }).meta({ id: 'MyGymVisits' });
+const MyVisitOne = z.object({ visit: MyVisit }).meta({ id: 'MyGymVisitOne' });
+const VisitSlots = z
+  .object({
+    open: z.boolean(),
+    note: nullable(z.string()),
+    perPerson: z.number().int().optional(),
+    days: z.array(z.object({ date, windows: z.array(z.object({ openTime: VISIT_HHMM, closeTime: VISIT_HHMM, womenOnly: z.boolean() })), placesLeft: z.number().int() })),
+  })
+  .meta({ id: 'GymVisitSlots' });
+
 const DeskSearch = z
   .object({
     items: z.array(DeskCard),
     pass: nullable(z.object({ passCode: z.string(), kind: z.enum(KINDS), title: z.string(), validFrom: date, validTo: date, status: z.string(), holder: z.object({ displayName: nullable(z.string()) }), method: z.enum(['qr', 'code']) })).meta({ description: 'An M20 pass (desk.admit); admit it with POST /me/gyms/{id}/redemptions' }),
+    visit: nullable(GymVisitView).optional().meta({ description: 'A trial-visit guest named by their QR or code (plan feature visits); check in with POST …/visits/{visitId}/check-in' }),
   })
   .meta({ id: 'GymDeskSearch' });
 const CheckinDay = z
@@ -412,6 +472,7 @@ const Overview = z
       requestsWaiting: z.number().int(),
       dueTodayCount: z.number().int(),
       overdueCount: z.number().int(),
+      guestsToday: z.number().int().optional(),
       collectedTodayPoisha: poisha.optional().meta({ description: 'Owner and reports.view only' }),
       dueTodayPoisha: poisha.optional().meta({ description: 'Owner and reports.view only' }),
     }),
@@ -458,6 +519,13 @@ const Settings = z
     vatEnabled: z.boolean(),
     vatBps: nullable(z.number().int()),
     vatMaxBps: z.number().int(),
+    visitsOpen: z.boolean(),
+    visitDailyCap: nullable(z.number().int()),
+    visitDailyCapDefault: z.number().int(),
+    visitDailyCapMax: z.number().int(),
+    visitPerPerson: z.number().int(),
+    visitPerPersonMax: z.number().int(),
+    visitNote: nullable(z.string()),
     importConsentUntil: nullable(dateTime),
     nextMemberCode: nullable(z.string()),
   })
@@ -1146,6 +1214,20 @@ const EntranceCheckin = z
 const EntranceScan = z.union([EntranceCheckin, EntranceCheckout]).meta({ id: 'MyGymEntranceScan' });
 
 module.exports = {
+  visitParam,
+  meVisitParam,
+  visitSlugParam,
+  visitsQuery,
+  visitBody,
+  visitCancelBody,
+  GymVisitView,
+  GymVisits,
+  GymVisitOne,
+  VisitPhone,
+  VisitConverted,
+  MyVisits,
+  MyVisitOne,
+  VisitSlots,
   joinRequestBody,
   joinAcceptBody,
   joinDeclineBody,

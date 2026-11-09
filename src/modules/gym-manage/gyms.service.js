@@ -120,6 +120,8 @@ async function overview(principal, gymId) {
     requestsWaiting: row.requestsWaiting,
     dueTodayCount: row.dueTodayCount,
     overdueCount: row.overdueCount,
+    // M24 trial visits: today's booked and attended guests, when the plan has visits.
+    ...((await require('./ops.service').featureOn(gymId, 'visits')) ? { guestsToday: await require('./guests.service').todayCount(gymId) } : {}),
     // FR-70: the money tiles only for the owner and reports.view.
     ...(money ? { collectedTodayPoisha: Number(row.collectedTodayPoisha), dueTodayPoisha: Number(row.dueTodayPoisha) } : {}),
   };
@@ -164,6 +166,14 @@ function settingsView(gym, s) {
     vatEnabled: s?.vatEnabled ?? false,
     vatBps: s?.vatBps ?? null,
     vatMaxBps: c.cfg().vatMaxBps,
+    // Trial visits (9 Nov 2026).
+    visitsOpen: s?.visitsOpen ?? false,
+    visitDailyCap: s?.visitDailyCap ?? null,
+    visitDailyCapDefault: settingsFacade.get('gym_manage.visit_daily_cap_default'),
+    visitDailyCapMax: settingsFacade.get('gym_manage.visit_daily_cap_max'),
+    visitPerPerson: s?.visitPerPerson ?? 1,
+    visitPerPersonMax: settingsFacade.get('gym_manage.visit_per_person_max'),
+    visitNote: s?.visitNote ?? null,
     importConsentUntil: c.iso(s?.importConsentUntil),
     nextMemberCode: s ? rules.memberCode(s.shortCode, s.memberSeq + 1) : null,
   };
@@ -190,10 +200,15 @@ async function patchSettings(principal, gymId, input, req) {
   if (input.vatBps !== undefined && input.vatBps !== null && input.vatBps > c.cfg().vatMaxBps) {
     throw E.validation([{ field: 'vatBps', message: `At most ${c.cfg().vatMaxBps}` }]);
   }
+  // Trial visits: the cap and the per-person limit within the platform maximums.
+  const capMax = settingsFacade.get('gym_manage.visit_daily_cap_max');
+  if (input.visitDailyCap !== undefined && input.visitDailyCap !== null && input.visitDailyCap > capMax) throw E.validation([{ field: 'visitDailyCap', message: `At most ${capMax}` }]);
+  const perMax = settingsFacade.get('gym_manage.visit_per_person_max');
+  if (input.visitPerPerson !== undefined && input.visitPerPerson > perMax) throw E.validation([{ field: 'visitPerPerson', message: `At most ${perMax}` }]);
   try {
     await sequelize.transaction(async (transaction) => {
       const s = await c.settingsOf(gymId, { transaction, lock: true });
-      const fields = ['shortCode', 'tin', 'bin', 'receiptFooter', 'entryPolicy', 'absentAlertDays', 'joinRequestsOpen', 'remindersOff', 'smsKinds', 'vatEnabled', 'vatBps'].filter((k) => input[k] !== undefined);
+      const fields = ['shortCode', 'tin', 'bin', 'receiptFooter', 'entryPolicy', 'absentAlertDays', 'joinRequestsOpen', 'remindersOff', 'smsKinds', 'vatEnabled', 'vatBps', 'visitsOpen', 'visitDailyCap', 'visitPerPerson', 'visitNote'].filter((k) => input[k] !== undefined);
       const changes = Object.fromEntries(fields.map((k) => [k, input[k]]));
       if (changes.shortCode) {
         const taken = await GymManageSettings.findOne({ where: { ownerId: a.gym.ownerId, shortCode: changes.shortCode, gymId: { [Op.ne]: gymId } }, attributes: ['gymId'], transaction });

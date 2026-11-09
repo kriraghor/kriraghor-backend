@@ -521,6 +521,16 @@ async function publicBySlug(slug, { transaction } = {}) {
   return g && ['live', 'paused'].includes(g.status) && g.liveVersion > 0 ? gymRef(g) : null;
 }
 
+/**
+ * Trial visits (9 Nov 2026): the published opening windows of a gym on a Dhaka date, earliest first
+ * → [{ openTime, closeTime, womenOnly }]; [] when it is closed that day or has no public page.
+ */
+async function liveWindowsOn(gymId, date, { transaction } = {}) {
+  const g = await Gym.findByPk(gymId, { attributes: ['id', 'status', 'liveSnapshot'], transaction });
+  if (!g || g.status === 'removed') return [];
+  return rules.windowsOn(g.liveSnapshot?.hours ?? [], rules.dowOf(date)).map((w) => ({ openTime: w.openTime, closeTime: w.closeTime, womenOnly: Boolean(w.womenOnly) }));
+}
+
 /** An owner's gyms (not removed), oldest first. */
 async function ofOwner(ownerId, { transaction } = {}) {
   const rows = await Gym.findAll({ where: { ownerId, status: { [Op.ne]: 'removed' } }, attributes: ['id', 'ownerId', 'name', 'slug', 'status', 'areaId', 'addressLine'], order: [['createdAt', 'ASC']], transaction });
@@ -554,6 +564,7 @@ async function packagesForGym(gymId, { status = 'active', transaction } = {}) {
 }
 
 module.exports = {
+  liveWindowsOn,
   get,
   ofOwner,
   publicBySlug,

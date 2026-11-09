@@ -25,7 +25,7 @@ const DAY_MS = 86400000;
 
 const TIERS = Object.freeze(['free', 'basic', 'standard', 'pro']);
 // M27 round 1 adds expenses (with the cash drawer), lockers, pos (counter shop and stock) and pnl (profit and loss).
-const FEATURES = Object.freeze(['attendance', 'reminders', 'online_fees', 'reports', 'trainers', 'plans', 'multi_gym', 'expenses', 'lockers', 'pos', 'pnl', 'classes', 'points', 'notices', 'leads', 'staff_attendance', 'equipment', 'payroll']);
+const FEATURES = Object.freeze(['attendance', 'reminders', 'online_fees', 'reports', 'trainers', 'plans', 'multi_gym', 'expenses', 'lockers', 'pos', 'pnl', 'classes', 'points', 'notices', 'leads', 'staff_attendance', 'equipment', 'payroll', 'visits']);
 const METHODS = Object.freeze(['cash', 'owner_bkash', 'owner_nagad', 'card_counter', 'other']);
 const LEFT_REASONS = Object.freeze(['price', 'moved', 'injury', 'other_gym', 'schedule', 'unknown', 'other']);
 const SHORT_CODE = /^[A-Z]{2,6}$/;
@@ -250,6 +250,74 @@ function parseMemberToken(token, { sign, equal = (a, b) => a === b, nowMs, secon
   if (window !== current && window !== current - 1) return null;
   return equal(sig, sign(`gym-member:${memberId}:${window}`).slice(0, 32)) ? { memberId } : null;
 }
+
+// ---------------------------------------------------------------- trial visits (product owner, 9 Nov 2026)
+
+const HHMM = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
+const minuteOfDay = (hhmm) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+/** Minutes after midnight in Dhaka of an instant. */
+const dhakaMinute = (at) => Math.floor(((new Date(at).getTime() + DHAKA_MS) % DAY_MS) / 60000);
+/** The instant a visit starts: its Dhaka date and arrival time. */
+const visitStartAt = (date, arriveAt) => new Date(instantOf(date).getTime() + minuteOfDay(arriveAt) * 60000);
+
+/**
+ * Why a person cannot book a free visit, or null. Checked in this order: the gym takes visits (switched on
+ * and on its plan); not the gym's own owner or staff; not already a member with a running membership; the
+ * day is today or within `aheadDays`, and later today the time has not passed; the time falls inside one of
+ * the gym's opening windows that day; the person's visits at this gym (booked, attended, no-show) are
+ * under the gym's limit; the day still has a place.
+ */
+function visitBlock({ open, own, member, date, arriveAt, today, nowMinute, aheadDays, windows, usedByPerson, perPerson, bookedThatDay, cap }) {
+  if (!open) return 'GYM_VISITS_CLOSED';
+  if (own) return 'GYM_VISIT_OWN_GYM';
+  if (member) return 'GYM_VISIT_MEMBER';
+  if (!isDate(date) || !HHMM.test(arriveAt ?? '')) return 'GYM_VISIT_DATE';
+  if (date < today || date > addDays(today, aheadDays)) return 'GYM_VISIT_DATE';
+  const minute = minuteOfDay(arriveAt);
+  if (date === today && minute <= nowMinute) return 'GYM_VISIT_DATE';
+  if (!windows.some((w) => minute >= minuteOfDay(w.openTime) && minute < minuteOfDay(w.closeTime))) return 'GYM_VISIT_HOURS';
+  if (usedByPerson >= perPerson) return 'GYM_VISIT_LIMIT';
+  if (bookedThatDay >= cap) return 'GYM_VISIT_FULL';
+  return null;
+}
+
+/** Why a visit cannot be cancelled, or null: only a booked one; the guest up to `cutoffMinutes` before the start, the gym until the day ends. */
+function visitCancelBlock({ visit, by, now, cutoffMinutes, today }) {
+  if (visit.status !== 'booked') return 'GYM_VISIT_STATE';
+  if (by === 'guest' && now.getTime() > visitStartAt(visit.visitDate, visit.arriveAt).getTime() - cutoffMinutes * 60000) return 'GYM_VISIT_CANCEL_CLOSED';
+  if (by === 'gym' && visit.visitDate < today) return 'GYM_VISIT_STATE';
+  return null;
+}
+
+/** Why the desk cannot check a guest in, or null: a booked visit for today. */
+function visitCheckInBlock({ visit, today }) {
+  if (visit.status !== 'booked') return 'GYM_VISIT_STATE';
+  return visit.visitDate === today ? null : 'GYM_VISIT_NOT_TODAY';
+}
+
+/** The guest's QR for the desk: v1.gv.<visitId>.<nonce>.<sig> (HMAC domain gym-visit:); no personal data. */
+const visitToken = ({ visitId, nonce }, sign) => `v1.gv.${visitId}.${nonce}.${sign(`gym-visit:${visitId}:${nonce}`).slice(0, 32)}`;
+const looksLikeVisitToken = (text) => String(text ?? '').trim().startsWith('v1.gv.');
+
+/** { visitId, nonce } of a well-formed, correctly signed visit token, else null. */
+function parseVisitToken(token, { sign, equal = (a, b) => a === b }) {
+  const parts = String(token ?? '').trim().split('.');
+  if (parts.length !== 5 || parts[0] !== 'v1' || parts[1] !== 'gv' || !UUID.test(parts[2]) || !/^[0-9a-f]{16,32}$/.test(parts[3]) || !SIG.test(parts[4])) return null;
+  const [, , visitId, nonce, sig] = parts;
+  return equal(sig, sign(`gym-visit:${visitId}:${nonce}`).slice(0, 32)) ? { visitId, nonce } : null;
+}
+
+const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+/** A 6-character visit code (Crockford base32) from random bytes. */
+const visitCode = (bytes) => Array.from(bytes.subarray(0, 6), (b) => CROCKFORD[b % 32]).join('');
+/** A typed code as stored: upper case, without spaces or dashes, I/L read as 1 and O as 0; else null. */
+function normalizeVisitCode(text) {
+  const v = String(text ?? '').toUpperCase().replace(/[\s-]/g, '').replace(/[IL]/g, '1').replace(/O/g, '0');
+  return /^[0-9A-HJKMNP-TV-Z]{6}$/.test(v) ? v : null;
+}
+
+/** A booked visit whose day has passed without a check-in becomes a no-show. */
+const visitNoShow = (visit, today) => visit.status === 'booked' && visit.visitDate < today;
 
 /** The receipt link token (M24-FR-37): v1.<feePaymentId>.<sig>, no expiry. */
 const receiptToken = (id, sign) => `v1.${id}.${sign(`gym-receipt:${id}`).slice(0, 32)}`;
@@ -755,6 +823,17 @@ function vatPart(amount, bps) {
 const visitMinutes = (checkedInAt, checkedOutAt) => Math.max(0, Math.floor((new Date(checkedOutAt).getTime() - new Date(checkedInAt).getTime()) / 60000));
 
 module.exports = {
+  visitStartAt,
+  dhakaMinute,
+  visitBlock,
+  visitCancelBlock,
+  visitCheckInBlock,
+  visitToken,
+  looksLikeVisitToken,
+  parseVisitToken,
+  visitCode,
+  normalizeVisitCode,
+  visitNoShow,
   visitMinutes,
   bmiOf,
   vatPart,

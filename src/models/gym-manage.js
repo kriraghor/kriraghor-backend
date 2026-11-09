@@ -55,6 +55,11 @@ GymManageSettings.init(
     // M27-FR-28: VAT on member receipts, off by default; the owner enters the rate.
     vatEnabled: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
     vatBps: DataTypes.INTEGER,
+    // Trial visits (9 Nov 2026): off by default; null cap = the platform default.
+    visitsOpen: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    visitDailyCap: DataTypes.SMALLINT,
+    visitPerPerson: { type: DataTypes.SMALLINT, allowNull: false, defaultValue: 1 },
+    visitNote: DataTypes.STRING(300),
     updatedBy: DataTypes.UUID,
   },
   { sequelize, modelName: 'GymManageSettings', tableName: 'gym_manage_settings' }
@@ -242,6 +247,28 @@ GymAttendance.init(
   { sequelize, modelName: 'GymAttendance', tableName: 'gym_attendance', updatedAt: false }
 );
 
+/** Trial visits (9 Nov 2026): a free visit a signed-in person books before joining; never deleted. */
+class GymVisit extends Model {}
+GymVisit.init(
+  {
+    id,
+    gymId: req(DataTypes.UUID),
+    userId: req(DataTypes.UUID),
+    visitDate: req(DataTypes.DATEONLY),
+    arriveAt: req(DataTypes.STRING(5)),
+    status: enumOf(['booked', 'attended', 'cancelled', 'no_show'], { defaultValue: 'booked' }),
+    code: req(DataTypes.STRING(6)),
+    qrNonce: req(DataTypes.STRING(32)),
+    cancelBy: { type: DataTypes.ENUM('guest', 'gym'), allowNull: true },
+    cancelReason: DataTypes.STRING(300),
+    cancelledAt: DataTypes.DATE(3),
+    attendedAt: DataTypes.DATE(3),
+    attendedBy: DataTypes.UUID,
+    memberId: DataTypes.UUID,
+  },
+  { sequelize, modelName: 'GymVisit', tableName: 'gym_visits' }
+);
+
 /** M27-FR-40: a visit's check-out (append-only), by the desk, a second entrance scan or the auto-close job. */
 class GymAttendanceExit extends Model {}
 GymAttendanceExit.init(
@@ -345,8 +372,8 @@ GymReminder.init(
     id,
     ownerId: req(DataTypes.UUID),
     gymId: DataTypes.UUID,
-    kind: enumOf(['renewal_due', 'ends_today', 'overdue', 'expired', 'receipt', 'pay_link', 'plan', 'morning', 'monthly', 'tier_notice', 'invoice_due', 'sms_low', 'sms_empty']),
-    subjectType: enumOf(['membership', 'due', 'fee_payment', 'link', 'assignment', 'gym', 'owner', 'invoice']),
+    kind: enumOf(['renewal_due', 'ends_today', 'overdue', 'expired', 'receipt', 'pay_link', 'plan', 'morning', 'monthly', 'tier_notice', 'invoice_due', 'sms_low', 'sms_empty', 'guests_today', 'visit_reminder']),
+    subjectType: enumOf(['membership', 'due', 'fee_payment', 'link', 'assignment', 'gym', 'owner', 'invoice', 'visit']),
     subjectId: req(DataTypes.UUID),
     offsetKey: req(DataTypes.STRING(20)),
     memberId: DataTypes.UUID,
@@ -524,6 +551,7 @@ GymPlanLog.init(
 
 module.exports = {
   GymManageSettings,
+  GymVisit,
   GymMember,
   GymLinkRequest,
   GymMembership,

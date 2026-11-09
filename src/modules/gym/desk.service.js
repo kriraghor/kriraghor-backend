@@ -3,10 +3,10 @@
 /**
  * M20 front desk (FR-05) in the gym app on gym.kriraghor.com (/manage/:id/desk): the gym owner admits a pass by its QR token or its
  * 6-character backup code. Every check runs on the server (no offline admission): the pass is this
- * gym's, active, valid today (Dhaka), not yet used today, and the gym is open now (its live hours).
+ * gym's, active, valid today (Dhaka) and not yet used today, at any hour (M20-FR-05, 3 Nov 2026).
  * The admission row (UNIQUE pass and day) and the pass row lock settle two scans at once: one admits,
  * the other answers "Already used at 07:42". The first admission releases the pass's money to the
- * owner minus fees.gym_pct; a day pass sold before 2 Nov 2026 is then used up.
+ * owner minus fees.gym_pct. Day passes are gone (M20 §23, cleaned up 10 Nov 2026).
  *
  * Round B3: the gym's staff work the desk too (business-members actFor): desk.admit admits,
  * desk.admissions lists the day, passes.view lists passes sold without any money. Staff never see the
@@ -48,10 +48,6 @@ async function findPass(g, { token, code }) {
   if (!normalized) throw fail('INVALID_PASS_TOKEN');
   const p = await GymPass.findOne({ where: { gymId: g.id, backupCode: normalized, status: { [Op.in]: ['active'] } }, attributes: ['id'] });
   if (p) return { id: p.id, method: 'code' };
-  // A day pass used up today no longer answers to its code: tell the desk when it was used rather
-  // than "not a pass" (codes are unique among active passes only, so look at today's admissions here).
-  const used = await GymPass.findOne({ where: { gymId: g.id, backupCode: normalized, status: 'redeemed', lastRedeemedAt: { [Op.gte]: rules.instantOf(c.today()) } }, order: [['lastRedeemedAt', 'DESC']], attributes: ['id', 'lastRedeemedAt'] });
-  if (used) throw fail('PASS_ALREADY_REDEEMED', { at: used.lastRedeemedAt.toISOString() });
   throw fail('INVALID_PASS_TOKEN');
 }
 

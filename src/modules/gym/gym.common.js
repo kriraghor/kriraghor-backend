@@ -34,7 +34,6 @@ const ERRORS = {
   GYM_NOT_AVAILABLE: [409, 'This gym is not selling passes right now'],
   PACKAGE_UNKNOWN: [422, 'Choose one of the gym’s packages'],
   DATE_OUT_OF_RANGE: [422, 'Choose a date in the range offered'],
-  GYM_CLOSED_ON_DATE: [422, 'The gym is closed on that date'],
   PASS_NOT_ACTIVE: [409, 'This pass cannot be used'],
   PASS_NOT_REFUNDABLE: [409, 'This pass can no longer be cancelled'],
   PASS_WRONG_GYM: [409, 'This pass is for another gym'],

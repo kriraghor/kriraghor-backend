@@ -1080,7 +1080,7 @@ function register(registry) {
   p({ method: 'get', path: '/gym/trainers', tags: ['gym'], summary: 'Fitness trainers (M11 profiles in role fitness_trainer) with their monthly plans', request: { query: gyS.trainersQuery }, responses: { 200: json(gyS.TrainerList) } });
   p({ method: 'get', path: '/gym/trainers/{id}/plans', tags: ['gym'], summary: 'The active monthly plans of a trainer profile', request: gyId, responses: { 200: json(gyS.PlanOffer) } });
   p({ method: 'post', path: '/gym/passes', tags: ['gym'], summary: 'Buy a package for a date (gate buy_gym_pass: a verified phone); one payment into escrow (FR-03)', security: bearer,
-    request: { headers: idem, ...body(gyS.buyBody) }, responses: { 201: json(gyS.PassResult, 'Created'), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED'], 409: ['GYM_NOT_AVAILABLE'], 422: ['PACKAGE_UNKNOWN', 'DATE_OUT_OF_RANGE', 'GYM_CLOSED_ON_DATE', 'VALIDATION_FAILED'] }) } });
+    request: { headers: idem, ...body(gyS.buyBody) }, responses: { 201: json(gyS.PassResult, 'Created'), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED'], 409: ['GYM_NOT_AVAILABLE'], 422: ['PACKAGE_UNKNOWN', 'DATE_OUT_OF_RANGE', 'VALIDATION_FAILED'] }) } });
   p({ method: 'get', path: '/me/passes', tags: ['gym'], summary: 'My passes (active, used, expired)', security: bearer, request: { query: gyS.passesQuery }, responses: { 200: json(gyS.PassList), ...errors(COMMON_AUTH) } });
   p({ method: 'get', path: '/me/passes/{code}', tags: ['gym'], summary: 'One pass with its QR token and backup code while it can be used (no-store)', security: bearer, request: { params: gyS.codeParam }, responses: { 200: json(gyS.PassResult), ...errors(GYM_MEMBER) } });
   p({ method: 'post', path: '/me/passes/{id}/cancel', tags: ['gym'], summary: 'Cancel: a pass before its first use, in full (FR-06)', security: bearer, request: gyId, responses: { 200: json(gyS.PassResult), ...errors({ ...GYM_MEMBER, 409: ['PASS_NOT_ACTIVE', 'PASS_NOT_REFUNDABLE'] }) } });
@@ -1098,7 +1098,7 @@ function register(registry) {
   p({ method: 'patch', path: '/me/gyms/{id}', tags: ['gym'], summary: 'Edit the working copy (an edit of a live gym waits for review)', security: bearer, request: { ...gyId, ...body(gyS.updateGym) }, responses: { 200: json(gyS.OwnerGym), ...errors({ ...GYM_OWNER, ...VALIDATION }) } });
   p({ method: 'put', path: '/me/gyms/{id}/hours', tags: ['gym'], summary: 'The week of opening windows (some women-only)', security: bearer, request: { ...gyId, ...body(gyS.hoursBody) }, responses: { 200: json(gyS.OwnerGym), ...errors({ ...GYM_OWNER, ...VALIDATION }) } });
   p({ method: 'post', path: '/me/gyms/{id}/remove', tags: ['gym'], summary: 'Remove my gym (M20-FR-15): type its name; never deleted, the status becomes removed; refused while members hold paid online packages', security: bearer, request: { ...gyId, ...body(gyS.removeGym) }, responses: { 200: json(z.object({ id: z.string().uuid(), status: z.literal('removed') })), ...errors({ ...GYM_OWNER, 409: ['GYM_STATE', 'GYM_HAS_ACTIVE_PASSES'], 422: ['GYM_NAME_MISMATCH'] }) } });
-  p({ method: 'put', path: '/me/gyms/{id}/packages', tags: ['gym'], summary: 'Every active package (M24-FR-24): month, quarter, 6 months, 12 months (one each) and custom days (at most gym_manage.max_custom_packages); admission fee, channel desk/online/both, visit limit, order. A day pass sold online (within gym.day_pass_min/max_poisha) is needed only to submit', security: bearer, request: { ...gyId, ...body(gyS.packagesBody) }, responses: { 200: json(gyS.OwnerGym), ...errors({ ...GYM_OWNER, ...VALIDATION }) } });
+  p({ method: 'put', path: '/me/gyms/{id}/packages', tags: ['gym'], summary: 'Every active package (M24-FR-24): month, quarter, 6 months, 12 months (one each) and custom days (at most gym_manage.max_custom_packages); admission fee, channel desk/online/both, visit limit, order. At least one package sold online is needed to submit (M20 §23)', security: bearer, request: { ...gyId, ...body(gyS.packagesBody) }, responses: { 200: json(gyS.OwnerGym), ...errors({ ...GYM_OWNER, ...VALIDATION }) } });
   p({ method: 'post', path: '/me/gyms/{id}/photos', tags: ['gym'], summary: 'Upload a photo (raw JPEG, PNG or WebP, checked by its first bytes) to the public bucket', security: bearer,
     request: { ...gyId, body: gyPhoto('The photo itself, up to ground.photo_max_bytes') }, responses: { 201: json(z.object({ id: z.uuid(), url: z.string() }), 'Created'), ...errors({ ...GYM_OWNER, 409: ['GYM_IN_REVIEW', 'GYM_STATE', 'PHOTO_LIMIT'], 413: ['FILE_TOO_LARGE'], 415: ['FILE_TYPE_NOT_ALLOWED', 'FILE_TYPE_MISMATCH'], 422: ['FILE_EMPTY'], 429: ['UPLOAD_RATE_LIMITED'] }) } });
   p({ method: 'put', path: '/me/gyms/{id}/photos/order', tags: ['gym'], summary: 'Every active photo id, first = cover', security: bearer, request: { ...gyId, ...body(gyS.photoOrder) }, responses: { 200: json(gyS.OwnerGym), ...errors({ ...GYM_OWNER, 422: ['PHOTOS_MISMATCH'] }) } });
@@ -1471,6 +1471,30 @@ function register(registry) {
     request: { params: go2.slugParam, ...body(go2.enquiryBody) },
     responses: { 202: json(go2.Accepted, 'Accepted'), ...errors({ 404: ['GYM_LEADS_CLOSED'], 422: ['VALIDATION_FAILED'], 429: ['RATE_LIMITED'] }) },
   });
+  // ------------------------------------------------------------------ M24 trial visits (9 Nov 2026): free visits before joining (M24-FR-109..120)
+  const gvP = { params: gmS.visitParam };
+  const GV = { 404: ['NOT_FOUND'], 409: ['GYM_VISIT_STATE'] };
+  gp('get', '/visits', 'Trial visits on a day (default today), booked first by time; the guest’s name and the last 4 digits of the phone (attendance.mark or members.view; feature visits) (M24-FR-113)', { request: { ...goG, query: gmS.visitsQuery }, responses: { 200: json(gmS.GymVisits), ...goErr() } });
+  gp('post', '/visits/{visitId}/check-in', 'The guest has come: the visit is attended and the desk feed hears it (attendance.mark; today only) (M24-FR-114)', { request: gvP, responses: { 200: json(gmS.GymVisitOne), ...goErr({ ...GV, 409: ['GYM_VISIT_STATE', 'GYM_VISIT_NOT_TODAY'] }) } });
+  gp('post', '/visits/{visitId}/cancel', 'Cancel a booked visit with a reason; the guest is told (attendance.mark) (M24-FR-115)', { request: { ...gvP, ...body(gmS.visitCancelBody) }, responses: { 200: json(gmS.GymVisitOne), ...goErr(GV) } });
+  gp('post', '/visits/{visitId}/reveal-phone', 'The guest’s full phone number: no-store, audited, rate-limited per person (members.view) (M24-FR-116)', { request: gvP, responses: { 200: json(gmS.VisitPhone), ...goErr({ 404: ['NOT_FOUND'], 429: ['RATE_LIMITED'] }) } });
+  gp('post', '/visits/{visitId}/convert', 'Make the guest a member: links their account (or the member already linked) with source desk, so no referral fee (members.edit) (M24-FR-117)', { request: gvP, responses: { 201: json(gmS.VisitConverted, 'Member'), ...goErr({ 404: ['NOT_FOUND'], 409: ['GYM_VISIT_STATE', 'GYM_ALREADY_LINKED', 'GYM_MEMBER_PHONE_TAKEN'] }) } });
+  const visitErr = (extra = {}) => errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], ...extra });
+  p({ method: 'get', path: '/me/gym-visits', tags: gmTag, summary: 'My trial visits, newest first; a booked visit carries its QR token and 6-character code (no-store) (M24-FR-112)', security: bearer, request: {}, responses: { 200: json(gmS.MyVisits), ...visitErr() } });
+  p({
+    method: 'post',
+    path: '/me/gym-visits',
+    tags: gmTag,
+    summary: 'Book a free trial visit: a verified phone, inside the gym’s hours, within the days ahead, the daily cap and the gym’s visits per person; confirmed at once (M24-FR-111)',
+    security: bearer,
+    request: { headers: idem, ...body(gmS.visitBody) },
+    responses: {
+      201: json(gmS.MyVisitOne, 'Booked'),
+      ...visitErr({ 403: ['PHONE_REQUIRED'], 409: ['GYM_VISITS_CLOSED', 'GYM_VISIT_OWN_GYM', 'GYM_VISIT_MEMBER', 'GYM_VISIT_LIMIT', 'GYM_VISIT_FULL'], 422: ['VALIDATION_FAILED', 'GYM_VISIT_DATE', 'GYM_VISIT_HOURS'], 429: ['RATE_LIMITED'] }),
+    },
+  });
+  p({ method: 'post', path: '/me/gym-visits/{visitId}/cancel', tags: gmTag, summary: 'Cancel my visit up to gym_manage.visit_cancel_cutoff_minutes before it; the gym is told (M24-FR-112)', security: bearer, request: { params: gmS.meVisitParam }, responses: { 200: json(gmS.MyVisitOne), ...visitErr({ 409: ['GYM_VISIT_STATE', 'GYM_VISIT_CANCEL_CLOSED'] }) } });
+  p({ method: 'get', path: '/gym/gyms/{slug}/visit-slots', tags: ['gym'], summary: 'Trial visits on a gym page (no sign-in): whether they are on, the note, and each open day ahead with its hours and places left (M24-FR-110)', request: { params: gmS.visitSlugParam }, responses: { 200: json(gmS.VisitSlots), ...errors({ 404: ['NOT_FOUND'] }) } });
   // ------------------------------------------------------------------ M27 gym operations, round 3 (staff attendance, payroll, equipment)
   const go3S = { params: go3.staffParam };
   const go3R = { params: go3.runParam };
