@@ -9,6 +9,7 @@
  *   node scripts/demo-seed.js --profile=full                         everything, payments through the simulator (never production)
  *   node scripts/demo-seed.js --access-only [--confirm-live]         the demo business staff (B3) and the demo sign-in accounts (needs DEMO_PASSWORD)
  *   node scripts/demo-seed.js --sports-only [--confirm-live]         only the sports events: closes the retired ones, adds the new ones (listings must exist)
+ *   node scripts/demo-seed.js --gym-only [--confirm-live]            only the demo gym's own panel: members, counter fees, books, classes, staff, visits (listings must exist)
  *
  * Every record is created through the real API and approved on the Moderation desk, and is listed in
  * demo_records so `npm run demo:hide` can hide it all later. Re-running skips what already exists.
@@ -60,6 +61,12 @@ async function signIns(master) {
   for (const r of rows) console.log(`  ${r.phone.replace('+880', '0')}  ${r.name.padEnd(22)} ${r.kind.padEnd(35)} ${r.where}  [${r.result}]`);
 }
 
+/** The demo gym's own panel (steps/gym-panel.js): members, counter fees, the books, classes, staff, trial visits. */
+async function gymPanel() {
+  const r = await step('gym panel (members, fees, books, classes, staff, visits)', () => require('./demo/steps/gym-panel').run());
+  console.log(r.missing ? `  missing: ${r.missing}` : `  ${r.gym}: ${Object.entries(r).filter(([k]) => k !== 'gym').map(([k, v]) => `${k} ${v}`).join(', ')}`);
+}
+
 /** Round B3 business staff (steps/team.js): added by their owners through POST /me/team. */
 async function businessStaff() {
   const rows = await step('business staff (venue and gym front desks, shop packer)', () => team.run());
@@ -83,6 +90,12 @@ async function main() {
   if (args['access-only']) {
     await businessStaff();
     await signIns(master);
+    return;
+  }
+  if (args['gym-only']) {
+    await gymPanel();
+    await signIns(master);
+    console.log(`Finished in ${((Date.now() - started) / 60000).toFixed(1)} min.`);
     return;
   }
   if (args['sports-only']) {
@@ -109,6 +122,8 @@ async function main() {
   if (profile === 'full') {
     const full = require('./demo/steps/full');
     await full.run({ master, reviewer, owner, step });
+    // After the paid gym visits of the full profile, so a pass buyer who is also a gym member is linked once.
+    await gymPanel();
   }
 
   await signIns(master);

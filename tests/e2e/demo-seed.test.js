@@ -9,6 +9,7 @@
 const path = require('path');
 const { execFile } = require('child_process');
 const h = require('../helpers');
+const { Op } = require('sequelize');
 const { closeAllRedis } = require('../../src/common/redis');
 
 const { api, P, models } = h;
@@ -81,6 +82,36 @@ describe('demo data', () => {
     await run('demo-seed.js', ['--access-only']);
     expect(await models.BusinessMember.count()).toBe(3);
 
+    // The demo gym's own panel (steps/gym-panel.js): members with counter payments, the books, classes,
+    // staff, equipment and trial visits, all through the real routes and without any online payment.
+    const G = D.GYM_PANEL;
+    const gymOut = await run('demo-seed.js', ['--gym-only']);
+    expect(gymOut).toContain(`${G.gym}: members ${G.members.length + G.linked.length}`);
+    const gymId = (await models.DemoRecord.findOne({ where: { entity: 'gym', label: `gym:${G.gym}` } })).entityId;
+    const inGym = (model, where = {}) => model.count({ where: { gymId, ...where } });
+    expect(await models.LedgerTransaction.count()).toBe(0);
+    expect(await inGym(models.GymMember, { userId: { [Op.ne]: null } })).toBe(G.linked.length);
+    expect(await inGym(models.GymFeePayment)).toBe([...G.members, ...G.linked].filter((m) => m.pkg && m.pay !== 'none').length);
+    expect(await inGym(models.GymDue, { status: ['unpaid', 'partial'] })).toBe(G.members.filter((m) => m.pkg && m.pay !== 'full').length);
+    expect(await inGym(models.GymAttendance)).toBe(G.checkIns.length);
+    expect(await inGym(models.GymExpense, { status: 'recorded' })).toBeGreaterThanOrEqual(G.expenses.length);
+    expect(await inGym(models.GymProduct)).toBe(G.products.length);
+    expect(await inGym(models.GymLocker)).toBe(G.lockers.numbers.length);
+    expect(await inGym(models.GymClass)).toBe(G.classes.length);
+    expect(await inGym(models.GymAsset)).toBe(G.assets.length);
+    expect(await inGym(models.GymPlan)).toBe(2);
+    expect(await inGym(models.GymVisit, { status: 'booked' })).toBe(G.visits.length);
+    expect(await inGym(models.GymLinkRequest, { direction: 'join_request', status: 'pending' })).toBe(1);
+    // The trainer joined the team; the front desk has its wider permissions; the owner is on the plan.
+    const gymTeam = await models.BusinessMember.findAll({ where: { businessId: gymId, status: 'active' } });
+    expect(gymTeam.map((m) => [...m.permissions].sort().join()).sort()).toEqual([G.frontDesk, G.trainer].map((x) => [...x.permissions].sort().join()).sort());
+    expect((await models.GymOwnerSubscription.findOne({ where: { ownerId: (await models.Gym.findByPk(gymId)).ownerId } })).chosenTier).toBe(G.tier);
+    // A second run adds nothing.
+    const gymCounts = async () => [await inGym(models.GymMember), await inGym(models.GymFeePayment), await inGym(models.GymAttendance), await inGym(models.GymExpense), await inGym(models.GymVisit), await models.BusinessMember.count()];
+    const gymBefore = await gymCounts();
+    await run('demo-seed.js', ['--gym-only']);
+    expect(await gymCounts()).toEqual(gymBefore);
+
     const full = await run('demo-seed.js', ['--profile=full']);
     expect(await count('/esports/top-players')).toBeGreaterThan(0);
     expect(await models.Booking.count({ where: { status: 'completed' } })).toBe(24);
@@ -103,6 +134,6 @@ describe('demo data', () => {
     }
     // The business staff are suspended with the other demo accounts; nothing is deleted.
     expect(await models.User.count({ where: { id: staffUsers.map((u) => u.id), status: 'suspended' } })).toBe(3);
-    expect(await models.BusinessMember.count()).toBe(3);
+    expect(await models.BusinessMember.count()).toBe(4); // the three of Round B3 and the demo gym's trainer
   }, 20 * 60000);
 });

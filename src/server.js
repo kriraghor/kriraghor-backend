@@ -101,6 +101,8 @@ async function main() {
  *                       DEMO_PASSWORD; listings must exist)
  *   DEMO_SEED=sports    only the demo sports events: closes the retired ones, adds the new ones (listings
  *                       must exist); touches nothing else
+ *   DEMO_SEED=gym       only the demo gym's own panel: members, counter fees, books, classes, staff, trial
+ *                       visits (listings must exist; no online payment is taken)
  *   DEMO_SEED=hide      the hide command (cancels demo events, suspends demo accounts; deletes nothing)
  * Remove the variable when the log shows the run finished.
  */
@@ -108,6 +110,7 @@ const DEMO_COMMANDS = {
   listings: ['scripts/demo-seed.js', '--profile=listings', '--confirm-live'],
   access: ['scripts/demo-seed.js', '--access-only', '--confirm-live'],
   sports: ['scripts/demo-seed.js', '--sports-only', '--confirm-live'],
+  gym: ['scripts/demo-seed.js', '--gym-only', '--confirm-live'],
   hide: ['scripts/demo-hide.js', '--confirm-live'],
 };
 
@@ -133,7 +136,7 @@ function startDemoSeed() {
   const mode = process.env.DEMO_SEED;
   if (!mode) return;
   if (!DEMO_COMMANDS[mode]) {
-    logger.warn({ mode }, 'DEMO_SEED ignored: use "listings", "access", "sports" or "hide"');
+    logger.warn({ mode }, 'DEMO_SEED ignored: use "listings", "access", "sports", "gym" or "hide"');
     return;
   }
   logger.info({ mode }, 'DEMO_SEED: starting the demo command in the background');
