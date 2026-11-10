@@ -347,16 +347,31 @@ async function guests({ gymId }) {
 async function run() {
   const ctx = await context();
   if (!ctx) return { missing: 'run the listings seed first (the demo gym and its owner are not there)' };
-  await plan(ctx);
-  const team = await staff(ctx);
-  const roster = await members(ctx);
-  await checkIns(ctx, roster.have);
-  await trainerAndPlans(ctx, team, roster);
-  await books(ctx, roster.have);
-  await engage(ctx, team, roster);
-  await work(ctx, team);
-  await guests(ctx);
-  await rt.drain();
+  // One line per part as it ends: on a slow host the whole step takes many minutes, and a failure names
+  // the part it stopped in. A second run skips what the finished parts made.
+  let first = true;
+  const part = async (name, fn) => {
+    const t = Date.now();
+    try {
+      const r = await fn();
+      process.stdout.write(`${first ? '\n' : ''}    ${name}: ${((Date.now() - t) / 1000).toFixed(1)} s\n`);
+      first = false;
+      return r;
+    } catch (err) {
+      err.message = `gym panel, ${name}: ${err.message}`;
+      throw err;
+    }
+  };
+  await part('plan and settings', () => plan(ctx));
+  const team = await part('staff', () => staff(ctx));
+  const roster = await part('members and fees', () => members(ctx));
+  await part('check-ins', () => checkIns(ctx, roster.have));
+  await part('trainer and plans', () => trainerAndPlans(ctx, team, roster));
+  await part('expenses, drawer, counter shop, lockers', () => books(ctx, roster.have));
+  await part('classes, points, notice, enquiries', () => engage(ctx, team, roster));
+  await part('shifts, payroll, equipment', () => work(ctx, team));
+  await part('trial visits and the join request', () => guests(ctx));
+  await part('events', () => rt.drain());
   const count = async (table) => Number((await models.sequelize.query(`SELECT COUNT(*) AS n FROM ${table} WHERE gym_id = :id`, { replacements: { id: ctx.gymId }, type: models.sequelize.QueryTypes.SELECT }))[0].n);
   return {
     gym: G.gym,
