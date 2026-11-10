@@ -374,6 +374,138 @@ const BUSINESS_STAFF = [
   { n: 196, name: 'Shohel Rana', owner: 8, businessType: 'shop', business: 'Iron Supply Tejgaon', kind: 'Shop staff, Iron Supply Tejgaon' },
 ];
 
+// ---------------------------------------------------------------- the gym's own panel (M24, M27; steps/gym-panel.js)
+// One demo gym is run like a real one: its owner picks a plan, the staff get desk and trainer permissions,
+// members join with packages and pay at the counter, and the gym's books, classes, points, staff and
+// equipment are filled. Nothing here takes an online payment. `start` is the membership's first day in days
+// from today (at most gym_manage.backdate_days back); `pay` is what was paid at the counter: 'full', 'part'
+// (poisha) or 'none'. Members without `n` have no Kriraghor account: their phone is a demo number (100+).
+const GYM_PANEL = {
+  gym: 'PowerHouse Gym Mirpur',
+  owner: 10,
+  shortCode: 'PH',
+  tier: 'pro',
+  visitNote: 'Bring a towel and indoor shoes. Ask for Moushumi at the front desk.',
+  // The front desk from BUSINESS_STAFF gets what a receptionist needs; the trainer is new.
+  frontDesk: { n: 195, permissions: ['desk.admit', 'desk.admissions', 'attendance.mark', 'members.view', 'members.edit', 'fees.collect', 'pos.sell', 'lockers.manage', 'leads.manage', 'cash.drawer', 'clock.in'] },
+  trainer: { n: 197, name: 'Tania Akter', kind: 'Gym trainer (staff), PowerHouse Gym Mirpur', permissions: ['members.view', 'members.trainer', 'plans.manage', 'classes.manage', 'attendance.mark', 'clock.in'] },
+  // Members with a Kriraghor account (linked): the demo member and three demo players.
+  linked: [
+    { n: 90, start: -9, pkg: 'month', pay: 'full', method: 'cash', trainer: true, plans: true, health: { heightCm: 162, weightKg: 58, bloodGroup: 'B+' } },
+    { n: 54, start: -16, pkg: 'month', pay: 'full', method: 'owner_bkash', trainer: true, plans: true },
+    { n: 57, start: -11, pkg: 'quarter', pay: 'full', method: 'card_counter' },
+    { n: 60, start: -4, pkg: 'month', pay: 'full', method: 'cash' },
+  ],
+  members: [
+    { name: 'Imran Kabir', start: -29, pkg: 'month', pay: 'full', method: 'cash', gender: 'male' },
+    { name: 'Rafiq Ahmed', start: -27, pkg: 'month', pay: 'full', method: 'cash', gender: 'male' },
+    { name: 'Sumaiya Akter', start: -26, pkg: 'month', pay: 'full', method: 'owner_bkash', gender: 'female' },
+    { name: 'Farida Yasmin', start: -25, pkg: 'quarter', pay: 'full', method: 'card_counter', gender: 'female' },
+    { name: 'Asif Mahmud', start: -22, pkg: 'month', pay: 'full', method: 'cash', gender: 'male', freeze: { from: 0, to: 6, reason: 'Travelling to Sylhet for a week' } },
+    { name: 'Tanjila Rahman', start: -20, pkg: 'month', pay: 'full', method: 'owner_nagad', gender: 'female' },
+    { name: 'Rasel Mia', start: -18, pkg: 'month', pay: 'full', method: 'cash', gender: 'male' },
+    { name: 'Shakil Ahmed', start: -15, pkg: 'month', pay: 'full', method: 'cash', gender: 'male', trainer: true },
+    { name: 'Sharmin Jahan', start: -14, pkg: 'month', pay: 'full', method: 'owner_bkash', gender: 'female', trainer: true },
+    { name: 'Mitu Begum', start: -12, pkg: 'quarter', pay: 'full', method: 'cash', gender: 'female' },
+    { name: 'Hasibul Islam', start: -10, pkg: 'month', pay: 100000, method: 'cash', gender: 'male' },
+    { name: 'Rumana Parvin', start: -8, pkg: 'month', pay: 'none', gender: 'female' },
+    { name: 'Babul Sarker', start: -6, pkg: 'month', pay: 'full', method: 'cash', gender: 'male' },
+    { name: 'Jewel Rana', start: -5, pkg: 'month', pay: 'none', gender: 'male' },
+    { name: 'Nasrin Sultana', start: -3, pkg: 'month', pay: 'full', method: 'owner_bkash', gender: 'female', referredBy: 'Sumaiya Akter' },
+    { name: 'Kawsar Ali', start: -2, pkg: 'month', pay: 'full', method: 'cash', gender: 'male' },
+    { name: 'Popy Khatun', start: -1, pkg: 'month', pay: 'full', method: 'cash', gender: 'female' },
+    { name: 'Shirin Akhter', start: 0, pkg: 'month', pay: 'full', method: 'card_counter', gender: 'female' },
+    { name: 'Mamun Hossain', start: 0, pkg: 'month', pay: 'none', gender: 'male' },
+    { name: 'Lubna Chowdhury', gender: 'female' },
+  ],
+  // Who came in today (the desk checks them in); the first one has already left.
+  checkIns: ['Rafiq Ahmed', 'Sumaiya Akter', 'Tanjila Rahman', 'Rasel Mia', 'Shakil Ahmed', 'Mitu Begum', 'Babul Sarker', 'Kawsar Ali'],
+  // The month's costs (days from today); the gym's own books, never the ledger.
+  expenses: [
+    { category: 'rent', amount: 6000000, daysAgo: 28, method: 'bank', payee: 'Mirpur Plaza (landlord)' },
+    { category: 'electricity', amount: 850000, daysAgo: 20, method: 'owner_bkash', payee: 'DESCO' },
+    { category: 'internet', amount: 120000, daysAgo: 15, method: 'owner_bkash', payee: 'Link3' },
+    { category: 'cleaning', amount: 200000, daysAgo: 10, method: 'cash', payee: 'Cleaning supplies' },
+    { category: 'equipment_repair', amount: 350000, daysAgo: 4, method: 'cash', payee: 'FitFix Service', note: 'Cable machine pulley' },
+    { category: 'marketing', amount: 250000, daysAgo: 1, method: 'owner_bkash', payee: 'Facebook page boost' },
+  ],
+  drawerOpening: 200000,
+  products: [
+    { name: 'Mineral water 500 ml', category: 'drink', price: 2000, cost: 1300, stock: 48, reorder: 12 },
+    { name: 'Protein shake (glass)', category: 'drink', price: 15000, cost: 9000, stock: 20, reorder: 5 },
+    { name: 'Whey sachet 30 g', category: 'supplement', price: 9000, cost: 6000, stock: 3, reorder: 5, batchNo: 'WS-2611', expiresInDays: 200, importer: 'Demo Nutrition Ltd, BSTI DM-0000' },
+    { name: 'Gym towel', category: 'accessory', price: 25000, cost: 16000, stock: 10, reorder: 3 },
+    { name: 'Lifting gloves', category: 'gear', price: 45000, cost: 30000, stock: 6, reorder: 2 },
+  ],
+  sales: [
+    { lines: [['Mineral water 500 ml', 2], ['Protein shake (glass)', 1]], method: 'cash' },
+    { lines: [['Gym towel', 1]], method: 'owner_bkash', member: 'Rafiq Ahmed' },
+    { lines: [['Whey sachet 30 g', 1], ['Mineral water 500 ml', 1]], method: 'cash' },
+  ],
+  lockers: { numbers: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'], zone: 'Changing room', monthlyFee: 30000, rented: [['1', 'Rafiq Ahmed', 30, 'cash'], ['2', 'Farida Yasmin', 30, 'owner_bkash'], ['3', 'Shakil Ahmed', 20, null]] },
+  // Weekly classes (0 = Sunday … 6 = Saturday); the trainer leads them.
+  classes: [
+    { name: 'Morning HIIT', description: 'Thirty minutes of intervals, all levels.', capacity: 12, minutes: 30, room: 'Functional zone', days: [0, 2, 4], time: '07:00' },
+    { name: 'Zumba', description: 'Dance cardio for everyone.', capacity: 15, minutes: 45, room: 'Studio', days: [6, 1, 3], time: '18:30' },
+    { name: 'Yoga and stretch', description: 'Mobility, breathing and a long cool-down.', capacity: 10, minutes: 60, room: 'Studio', days: [5], time: '16:00' },
+  ],
+  rewards: [
+    { title: 'Three extra days', points: 150, kind: 'days', value: 3 },
+    { title: '৳200 off your next fee', points: 300, kind: 'discount', value: 20000 },
+  ],
+  welcomePoints: { points: 120, note: 'Welcome gift from the gym' },
+  notice: { title: 'New Zumba batch', body: 'Zumba now runs on Saturday, Monday and Wednesday at 6:30 pm. Book your place in the app.', segment: { kind: 'active' } },
+  // People who asked the gym to call back from its page (demo numbers, no account).
+  enquiries: [
+    { name: 'Tamanna Islam', phoneN: 140, message: 'Is there a ladies-only batch in the morning?', bestTime: 'After 5 pm' },
+    { name: 'Rakib Hasan', phoneN: 141, message: 'What is the fee for three months?', bestTime: 'Any time' },
+  ],
+  // Staff shifts (every day but Friday), pay terms and last month's payroll.
+  shifts: { 195: ['06:00', '14:00'], 197: ['15:00', '22:00'] },
+  pay: {
+    195: { basePoisha: 1200000, ptCommissionBps: 0, salesCommissionBps: 300 },
+    197: { basePoisha: 1500000, ptCommissionBps: 1000, salesCommissionBps: 0 },
+  },
+  assets: [
+    { name: 'Treadmill 1', category: 'cardio', brand: 'RunMax', serial: 'RM-T-0417', location: 'Cardio floor', boughtDaysAgo: 400, cost: 18000000, serviceEveryDays: 90, lastServiceDaysAgo: 88 },
+    { name: 'Treadmill 2', category: 'cardio', brand: 'RunMax', serial: 'RM-T-0418', location: 'Cardio floor', boughtDaysAgo: 400, cost: 18000000, serviceEveryDays: 90, lastServiceDaysAgo: 30 },
+    { name: 'Cable crossover', category: 'strength', brand: 'IronCore', location: 'Strength area', boughtDaysAgo: 700, cost: 22000000, serviceEveryDays: 180, lastServiceDaysAgo: 20, service: { costPoisha: 350000, note: 'Pulley replaced and cables greased' } },
+    { name: 'Squat rack', category: 'bench_rack', brand: 'IronCore', location: 'Strength area', boughtDaysAgo: 700, cost: 9000000 },
+    { name: 'Dumbbell set 5–30 kg', category: 'free_weight', brand: 'IronCore', location: 'Free weights', boughtDaysAgo: 700, cost: 15000000 },
+    { name: 'Spin bike 3', category: 'cardio', brand: 'CycleOne', location: 'Cardio floor', boughtDaysAgo: 250, cost: 6500000, status: 'out_of_order', note: 'Pedal crank is loose; waiting for the part' },
+  ],
+  // Free trial visits (M24 §17): demo players book; the first is today when the gym is still open.
+  visits: [
+    { n: 41, inDays: 0, at: '20:00' },
+    { n: 44, inDays: 1, at: '18:00' },
+    { n: 47, inDays: 2, at: '07:30' },
+  ],
+  joinRequest: { n: 50, note: 'I live near Mirpur 1 and want the monthly package.' },
+  workoutPlan: {
+    title: 'Beginner full body, 3 days',
+    content: {
+      kind: 'workout',
+      days: [
+        { key: 'd1', name: { en: 'Day 1: push', bn: 'দিন ১: পুশ' }, items: [{ ref: 'a1', name: { en: 'Bench press', bn: 'বেঞ্চ প্রেস' }, sets: 3, reps: '10', restSec: 90 }, { ref: 'a2', name: { en: 'Shoulder press', bn: 'শোল্ডার প্রেস' }, sets: 3, reps: '10', restSec: 75 }, { ref: 'a3', name: { en: 'Triceps pushdown', bn: 'ট্রাইসেপস পুশডাউন' }, sets: 3, reps: '12' }] },
+        { key: 'd2', name: { en: 'Day 2: pull', bn: 'দিন ২: পুল' }, items: [{ ref: 'b1', name: { en: 'Lat pulldown', bn: 'ল্যাট পুলডাউন' }, sets: 3, reps: '10', restSec: 90 }, { ref: 'b2', name: { en: 'Seated row', bn: 'সিটেড রো' }, sets: 3, reps: '10' }, { ref: 'b3', name: { en: 'Biceps curl', bn: 'বাইসেপস কার্ল' }, sets: 3, reps: '12' }] },
+        { key: 'd3', name: { en: 'Day 3: legs', bn: 'দিন ৩: পা' }, items: [{ ref: 'c1', name: { en: 'Squat', bn: 'স্কোয়াট' }, sets: 4, reps: '8', restSec: 120 }, { ref: 'c2', name: { en: 'Leg press', bn: 'লেগ প্রেস' }, sets: 3, reps: '12' }, { ref: 'c3', name: { en: 'Plank', bn: 'প্ল্যাঙ্ক' }, sets: 3, reps: '40 sec' }] },
+      ],
+    },
+  },
+  dietChart: {
+    title: 'Balanced 1,800 kcal',
+    content: {
+      kind: 'diet',
+      meals: [
+        { ref: 'm1', name: { en: 'Breakfast', bn: 'সকালের নাস্তা' }, time: '08:00', items: [{ ref: 'f1', name: { en: 'Two boiled eggs', bn: 'দুটি সিদ্ধ ডিম' }, portion: '2 pcs', kcal: 140, proteinG: 12 }, { ref: 'f2', name: { en: 'Two ruti with vegetables', bn: 'সবজি দিয়ে দুটি রুটি' }, portion: '2 pcs', kcal: 260 }] },
+        { ref: 'm2', name: { en: 'Lunch', bn: 'দুপুরের খাবার' }, time: '13:30', items: [{ ref: 'f3', name: { en: 'Rice', bn: 'ভাত' }, portion: '1.5 cups', kcal: 300 }, { ref: 'f4', name: { en: 'Fish curry', bn: 'মাছের তরকারি' }, portion: '1 piece', kcal: 220, proteinG: 22 }, { ref: 'f5', name: { en: 'Dal and salad', bn: 'ডাল ও সালাদ' }, portion: '1 bowl', kcal: 150 }] },
+        { ref: 'm3', name: { en: 'Dinner', bn: 'রাতের খাবার' }, time: '20:30', items: [{ ref: 'f6', name: { en: 'Chicken with vegetables', bn: 'সবজি দিয়ে মুরগি' }, portion: '150 g', kcal: 330, proteinG: 30 }, { ref: 'f7', name: { en: 'Two ruti', bn: 'দুটি রুটি' }, portion: '2 pcs', kcal: 200 }] },
+      ],
+      notes: { en: 'Drink 3 litres of water a day. Given by your gym, not medical advice.', bn: 'দিনে ৩ লিটার পানি পান করুন। জিমের দেওয়া পরামর্শ, চিকিৎসা পরামর্শ নয়।' },
+    },
+  },
+};
+
 // ---------------------------------------------------------------- Round B1: availability calendars (M11)
 // Weekly repeats (weekdays: 0 = Sunday … 6 = Saturday, Dhaka) and one-off blocks `inDays` from today, Dhaka time.
 const AVAILABILITY = [
@@ -430,4 +562,4 @@ const GYM_REVIEWS = [
   { member: 60, gym: 'PowerHouse Gym Mirpur', review: [4, 'Friendly trainers and open late, perfect after office. The changing room needs more lockers.'] },
 ];
 
-module.exports = { OWNERS, VENUES, SHOPS, GYMS, PROS, TRAINERS, PLAYERS, ESPORTS, SHOWCASE, FINISHED, SPORTS_ORG, SPORTS_EVENTS, RETIRED_SPORTS_EVENTS, MEMBER, BUSINESS_STAFF, AVAILABILITY, HIRE_HISTORY, HIRE_DECLINED, SHOP_REVIEWS, MEMBER_SHOP_REVIEW, GYM_REVIEWS };
+module.exports = { OWNERS, VENUES, SHOPS, GYMS, PROS, TRAINERS, PLAYERS, ESPORTS, SHOWCASE, FINISHED, SPORTS_ORG, SPORTS_EVENTS, RETIRED_SPORTS_EVENTS, MEMBER, BUSINESS_STAFF, GYM_PANEL, AVAILABILITY, HIRE_HISTORY, HIRE_DECLINED, SHOP_REVIEWS, MEMBER_SHOP_REVIEW, GYM_REVIEWS };

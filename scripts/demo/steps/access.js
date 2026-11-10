@@ -34,6 +34,8 @@ const MEMBERS = [
   { n: 90, kind: 'Member (books, buys, hires)', where: 'kriraghor.com', create: true },
   // Round B3 business staff: made and added to their owner's team by steps/team.js (POST /me/team).
   ...D.BUSINESS_STAFF.map((s) => ({ n: s.n, kind: s.kind, where: 'vendor.kriraghor.com' })),
+  // The demo gym's trainer (steps/gym-panel.js): there once the gym panel is seeded.
+  { n: D.GYM_PANEL.trainer.n, kind: D.GYM_PANEL.trainer.kind, where: 'gym.kriraghor.com' },
 ];
 
 /** Demo staff: their own accounts in the demo phone block, a few permissions each, never master. */
@@ -43,7 +45,7 @@ const STAFF = [
   { n: 193, label: 'esports', name: 'Demo Esports Desk', team: 'Esports', employeeId: 'KG-DEMO-ESP', permissions: ['manage_esports', 'enter_results'] },
 ];
 
-const nameOf = (n) => [...D.OWNERS, ...D.PROS, ...D.TRAINERS, ...D.PLAYERS, D.MEMBER, ...D.BUSINESS_STAFF].find((p) => p.n === n)?.name;
+const nameOf = (n) => [...D.OWNERS, ...D.PROS, ...D.TRAINERS, ...D.PLAYERS, D.MEMBER, ...D.BUSINESS_STAFF, D.GYM_PANEL.trainer].find((p) => p.n === n)?.name;
 
 /** True when the step should run; explains why not otherwise. */
 function enabled() {
