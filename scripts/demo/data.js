@@ -442,7 +442,7 @@ const GYM_PANEL = {
     { lines: [['Gym towel', 1]], method: 'owner_bkash', member: 'Rafiq Ahmed' },
     { lines: [['Whey sachet 30 g', 1], ['Mineral water 500 ml', 1]], method: 'cash' },
   ],
-  lockers: { numbers: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'], zone: 'Changing room', monthlyFee: 30000, rented: [['1', 'Rafiq Ahmed', 30, 'cash'], ['2', 'Farida Yasmin', 30, 'owner_bkash'], ['3', 'Shakil Ahmed', 20, null]] },
+  lockers: { numbers: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'], zone: 'Changing room', monthlyFee: 30000, rented: [['1', 'Rafiq Ahmed', 29, 'cash'], ['2', 'Farida Yasmin', 29, 'owner_bkash'], ['3', 'Shakil Ahmed', 20, null]] },
   // Weekly classes (0 = Sunday … 6 = Saturday); the trainer leads them.
   classes: [
     { name: 'Morning HIIT', description: 'Thirty minutes of intervals, all levels.', capacity: 12, minutes: 30, room: 'Functional zone', days: [0, 2, 4], time: '07:00' },
