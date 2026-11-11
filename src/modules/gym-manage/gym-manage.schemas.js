@@ -79,6 +79,7 @@ const settingsPatch = z
     visitDailyCap: nullable(z.number().int().min(1).max(1000)).optional().meta({ description: 'Visits a day, at most gym_manage.visit_daily_cap_max; null = gym_manage.visit_daily_cap_default' }),
     visitPerPerson: z.number().int().min(1).max(100).optional().meta({ description: 'Visits one person may book at this gym, at most gym_manage.visit_per_person_max' }),
     visitNote: nullable(text(1, 300)).optional().meta({ description: 'What to bring and where to go, shown with the booking' }),
+    selfRenewOpen: z.boolean().optional().meta({ description: 'M24-FR-121: linked members may renew their own membership in the app' }),
   })
   .refine((b) => Object.keys(b).length > 0, 'Nothing to change');
 const deskSearchQuery = z.object({ q: text(1, 200) });
@@ -233,6 +234,7 @@ const Membership = z
     discountReason: nullable(z.string()),
     visitLimit: nullable(z.number().int()),
     origin: z.enum(['new', 'renewal', 'change', 'rejoin', 'import']),
+    createdVia: z.enum(['desk', 'member']).meta({ description: 'M24-FR-126: made at the desk, or by the member in the app' }),
     previousId: nullable(id),
     startsOn: date,
     endsOn: date,
@@ -551,6 +553,8 @@ const Settings = z
     visitPerPerson: z.number().int(),
     visitPerPersonMax: z.number().int(),
     visitNote: nullable(z.string()),
+    selfRenewOpen: z.boolean(),
+    selfRenewDaysBefore: z.number().int(),
     importConsentUntil: nullable(dateTime),
     nextMemberCode: nullable(z.string()),
   })
@@ -577,6 +581,71 @@ const OVERRIDE_KEYS = ['fees.gym_referral_poisha', 'fees.gym_pct'];
 const FEE_SOURCES = ['setting', 'owner_override', 'gym_override'];
 const linkParam = z.object({ gymId: id, linkId: id });
 const meDueParam = z.object({ dueId: id });
+
+// ---------------- M24 §19: a member renews by themselves
+const renewMineBody = z.object({
+  packageId: id.optional().meta({ description: 'One of the packages the renewal read offers; left out: the current package' }),
+  pay: z.enum(['online', 'counter']).meta({ description: 'online: the payment to open comes back; counter: the fee waits as an unpaid due' }),
+});
+const RenewalChoice = z.object({ packageId: id, title: z.string(), kind: z.enum(KINDS), days: z.number().int(), pricePoisha: poisha, startsOn: date, endsOn: date, current: z.boolean() });
+const MyRenewal = z
+  .object({
+    memberId: id,
+    gym: z.object({ id, name: z.string(), slug: z.string() }),
+    can: z.boolean(),
+    reason: nullable(z.string()).meta({ description: 'Why not: GYM_SELF_RENEW_OFF, GYM_MEMBER_STATE, GYM_RENEWAL_EXISTS, GYM_NOTHING_TO_RENEW or GYM_RENEW_TOO_EARLY' }),
+    opensOn: nullable(date).meta({ description: 'When it is too early: the first day a renewal can be made' }),
+    daysBefore: z.number().int(),
+    current: nullable(z.object({ title: z.string(), packageKind: z.enum(KINDS), endsOn: date, status: z.enum(MS_STATUSES) })),
+    packages: z.array(RenewalChoice),
+    renewal: nullable(
+      z.object({ membershipId: id, title: z.string(), packageKind: z.enum(KINDS), startsOn: date, endsOn: date, createdVia: z.enum(['desk', 'member']), dueId: nullable(id), amountPoisha: poisha, outstandingPoisha: poisha, cancellable: z.boolean() })
+    ).meta({ description: 'A renewal that already waits to start' }),
+    onlineFees: z.boolean(),
+    onlineFeesReason: nullable(z.string()),
+  })
+  .meta({ id: 'MyGymRenewal' });
+const RenewedByMember = z
+  .object({
+    membership: Membership,
+    due: z.object({ dueId: id, amountPoisha: poisha, dueOn: date, status: z.string() }),
+    payment: nullable(z.object({ paymentId: id, payUrl: z.string(), amountPoisha: poisha })).meta({ description: 'Only when paying online: open payUrl' }),
+  })
+  .meta({ id: 'GymRenewedByMember' });
+
+// ---------------- M24 §20: body progress
+const measure = (min, max) => z.number().min(min).max(max).multipleOf(0.1).nullable().optional();
+const bodyEntryBody = z
+  .object({
+    measuredOn: date.optional().meta({ description: 'Today when left out; up to gym_manage.body_backdate_days back' }),
+    weightKg: measure(10, 400),
+    bodyFatPct: measure(2, 70),
+    chestCm: measure(10, 300),
+    waistCm: measure(10, 300),
+    hipsCm: measure(10, 300),
+    armCm: measure(10, 300),
+    thighCm: measure(10, 300),
+  })
+  .meta({ description: 'At least one measurement. A second entry for the same date replaces the first' });
+const meBodyEntryParam = z.object({ memberId: id, entryId: id });
+const bodyEntryParam = z.object({ gymId: id, memberId: id, entryId: id });
+const num = nullable(z.number());
+const BodyEntry = z.object({ id, measuredOn: date, weightKg: num, bodyFatPct: num, chestCm: num, waistCm: num, hipsCm: num, armCm: num, thighCm: num, byRole: z.enum(['member', 'staff']), createdAt: dateTime, bmi: num });
+const BodyChange = nullable(z.object({ from: z.number(), to: z.number(), delta: z.number(), fromOn: date, toOn: date }));
+const BodyRange = z.object({ min: z.number(), max: z.number() });
+const BodyProgress = z
+  .object({
+    memberId: id,
+    on: z.boolean().meta({ description: 'false: the gym’s plan does not include body progress' }),
+    heightCm: nullable(z.number().int()),
+    entries: z.array(BodyEntry).meta({ description: 'Oldest first' }),
+    change: z.object({ weightKg: BodyChange, bodyFatPct: BodyChange, chestCm: BodyChange, waistCm: BodyChange, hipsCm: BodyChange, armCm: BodyChange, thighCm: BodyChange }),
+    limits: z.object({
+      backdateDays: z.number().int(),
+      fields: z.object({ weightKg: BodyRange, bodyFatPct: BodyRange, chestCm: BodyRange, waistCm: BodyRange, hipsCm: BodyRange, armCm: BodyRange, thighCm: BodyRange }),
+    }),
+  })
+  .meta({ id: 'GymBodyProgress' });
 const invoiceParam = z.object({ invoiceId: id });
 const ownerParam = z.object({ ownerId: id });
 const overrideParam = z.object({ overrideId: id });
@@ -1384,6 +1453,13 @@ module.exports = {
   HealthProfile,
   linkParam,
   meDueParam,
+  renewMineBody,
+  MyRenewal,
+  RenewedByMember,
+  bodyEntryBody,
+  meBodyEntryParam,
+  bodyEntryParam,
+  BodyProgress,
   invoiceParam,
   ownerParam,
   overrideParam,

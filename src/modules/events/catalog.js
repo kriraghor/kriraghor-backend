@@ -519,6 +519,8 @@ const EVENTS = {
   'gym_link.cancelled': { module: 'M24', version: 1, schema: gmLink },
   'gym_membership.started': { module: 'M24', version: 1, schema: gmMembership.extend({ packageKind: gmKind, startsOn: day, endsOn: day, userId: uuid.nullable() }) },
   'gym_membership.renewed': { module: 'M24', version: 1, schema: gmMembership.extend({ packageKind: gmKind, startsOn: day, endsOn: day, userId: uuid.nullable() }) },
+  // M24-FR-124: a member renewed by themselves (the gym is told; pay: online | counter).
+  'gym_membership.self_renewed': { module: 'M24', version: 1, schema: gmMembership.extend({ ownerId: uuid, userId: uuid, dueId: uuid, amount: poisha, title: z.string(), startsOn: day, endsOn: day, pay: z.enum(['online', 'counter']) }) },
   'gym_membership.changed': { module: 'M24', version: 1, schema: gmMembership.extend({ packageKind: gmKind, startsOn: day, endsOn: day, userId: uuid.nullable(), previousId: uuid }) },
   'gym_membership.frozen': { module: 'M24', version: 1, schema: gmMembership.extend({ fromOn: day, toOn: day, endsOn: day }) },
   'gym_membership.unfrozen': { module: 'M24', version: 1, schema: gmMembership.extend({ fromOn: day, toOn: day, endsOn: day }) },

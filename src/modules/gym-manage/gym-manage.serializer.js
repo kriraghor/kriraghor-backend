@@ -42,6 +42,7 @@ function membershipView(ms, { today, freezes = [], dueId = null } = {}) {
     discountReason: ms.discountReason ?? null,
     visitLimit: ms.visitLimit ?? null,
     origin: ms.origin,
+    createdVia: ms.createdVia ?? 'desk',
     previousId: ms.previousId ?? null,
     startsOn: ms.startsOn,
     endsOn: ms.endsOn,

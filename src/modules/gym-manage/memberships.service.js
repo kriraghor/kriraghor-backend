@@ -69,7 +69,7 @@ const startedEvent = { new: 'gym_membership.started', rejoin: 'gym_membership.st
  * Create a membership and its due on a locked member. `endsOn` and `status` are given by imports only;
  * `amount` overrides the due (a package change). Publishes the membership event and gym_due.created.
  */
-async function createIn(transaction, { gym, member, pkg, startsOn, endsOn = null, status = null, admissionFee = 0, discount = 0, discountReason = null, origin, previousId = null, amount = null, actor, today }) {
+async function createIn(transaction, { gym, member, pkg, startsOn, endsOn = null, status = null, admissionFee = 0, discount = 0, discountReason = null, origin, previousId = null, amount = null, actor, today, createdVia = 'desk' }) {
   const end = endsOn ?? rules.endsOn({ startsOn, days: pkg.days });
   const days = endsOn ? rules.daysBetween(startsOn, endsOn) + 1 : pkg.days;
   const state = status ?? rules.statusByDate({ startsOn, endsOn: end, today });
@@ -93,6 +93,7 @@ async function createIn(transaction, { gym, member, pkg, startsOn, endsOn = null
           discountReason: discount ? discountReason : null,
           visitLimit: pkg.visitLimit ?? null,
           origin,
+          createdVia,
           previousId,
           startsOn,
           endsOn: end,
