@@ -46,6 +46,12 @@ const ERRORS = {
   ALREADY_SUBSCRIBED: [409, 'You already have this plan'],
   SUBSCRIPTION_STATE: [409, 'The subscription cannot do that now'],
   RENEWAL_NOT_OPEN: [409, 'Renewal opens closer to the end of the month'],
+  // M20-FR-16: holidays and special hours
+  GYM_SPECIAL_DAY_DATES: [422, 'Choose dates from today on, within the range allowed'],
+  GYM_SPECIAL_DAY_HOURS: [422, 'A closed day has no hours; a day with changed hours needs valid opening times'],
+  GYM_SPECIAL_DAY_OVERLAP: [409, 'These dates overlap another holiday or special hours'],
+  GYM_SPECIAL_DAY_LIMIT: [409, 'This gym has the most holidays and special hours allowed'],
+  GYM_SPECIAL_DAY_STATE: [409, 'Only a coming or running holiday can be removed'],
 };
 const fail = (code, meta) => new AppError(ERRORS[code][0], code, ERRORS[code][1], meta ? { meta } : undefined);
 

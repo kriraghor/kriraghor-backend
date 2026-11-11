@@ -18,6 +18,8 @@ const HOUR = 3600000;
 
 beforeEach(async () => {
   await h.resetDb();
+  // The enquiry form's counters live in Redis and outlast resetDb: start each test from zero.
+  await h.clearVelocity('gym_lead_');
   await h.createSignedInMaster();
   realtime.clearEmitted();
 });

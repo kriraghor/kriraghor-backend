@@ -38,6 +38,8 @@ module.exports = {
   fees: lazy('./fees.service', ['passFee']),
   reads: lazy('./reads.service', ['pendingActions', 'staffActions']),
   joins: lazy('./joins.service', ['openFor']),
+  // M20-FR-17: how many booked trial visits a holiday or special hours would cancel (the owner's preview in gym).
+  visits: lazy('./guests.service', ['specialDayHits']),
   consumers: lazy('./gym-manage.consumers', ['registerGymManageConsumers']),
   ops: Object.freeze({
     access: (...args) => require('./gym-manage.common').gymAccess(...args),
@@ -62,5 +64,7 @@ module.exports = {
     // round 3
     parseEntranceToken: (...args) => require('./gym-manage.common').parseEntranceToken(...args),
     feesByTrainer: (...args) => require('./ops.service').feesByTrainer(...args),
+    // the conversion report (M27-FR-88)
+    conversionFacts: (...args) => require('./ops.service').conversionFacts(...args),
   }),
 };

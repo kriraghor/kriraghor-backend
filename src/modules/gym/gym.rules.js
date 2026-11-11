@@ -84,11 +84,56 @@ const windowsOn = (hours, dow) => hours.filter((h) => h.dow === dow).sort((a, b)
 const opensOn = (hours, date) => windowsOn(hours, dowOf(date)).length > 0;
 const hasOpenDay = (hours) => hours.length > 0;
 
-/** The window open at an instant, or null. */
-function openWindowAt(hours, at) {
-  const date = dhakaDate(at);
+// ---------------------------------------------------------------- holidays and special hours (M20-FR-16 to FR-22)
+
+const SPECIAL_KINDS = ['closed', 'hours'];
+const byOpen = (a, b) => toMin(a.openTime) - toMin(b.openTime);
+
+/** The special day covering a Dhaka date ({ fromOn, toOn, kind, windows }), or null. */
+const specialOn = (specialDays, date) => specialDays.find((d) => d.fromOn <= date && date <= d.toOn) ?? null;
+
+/**
+ * The opening windows of a date (M20-FR-18): none on a closed day, the special windows on a day with
+ * changed hours, else the week's windows of that weekday. Earliest first.
+ */
+function windowsFor(hours, specialDays, date) {
+  const s = specialOn(specialDays, date);
+  if (s) return s.kind === 'closed' ? [] : [...s.windows].sort(byOpen);
+  return windowsOn(hours, dowOf(date));
+}
+
+/** The window open at an instant, or null. Special days (when given) come before the weekly hours. */
+function openWindowAt(hours, at, specialDays = []) {
   const minute = minuteOf(at);
-  return windowsOn(hours, dowOf(date)).find((w) => minute >= toMin(w.openTime) && minute < toMin(w.closeTime)) ?? null;
+  return windowsFor(hours, specialDays, dhakaDate(at)).find((w) => minute >= toMin(w.openTime) && minute < toMin(w.closeTime)) ?? null;
+}
+
+/** Is a clock time ("HH:MM") inside one of the windows? */
+const insideWindows = (windows, hhmm) => windows.some((w) => toMin(hhmm) >= toMin(w.openTime) && toMin(hhmm) < toMin(w.closeTime));
+
+/** Where a special day stands today: upcoming, running or past (a past one is read-only). */
+const specialPhase = (d, today) => (d.toOn < today ? 'past' : d.fromOn > today ? 'upcoming' : 'running');
+
+/**
+ * Why a special day cannot be saved, or null (M20-FR-16, FR-17). `others` are the gym's active special
+ * days that have not ended. It starts today or later, runs at most `maxDays`, starts within `aheadDays`,
+ * overlaps no other one, and a gym keeps at most `maxActive` of them. A closed day carries no windows; a
+ * day with changed hours carries valid windows (the same checks as a weekday of the weekly hours).
+ */
+function specialDayBlock({ fromOn, toOn, kind, windows = [], today, others = [], maxDays, aheadDays, maxActive }) {
+  if (toOn < fromOn) return { code: 'GYM_SPECIAL_DAY_DATES', meta: { reason: 'order' } };
+  if (fromOn < today) return { code: 'GYM_SPECIAL_DAY_DATES', meta: { reason: 'past' } };
+  if (daysBetween(fromOn, toOn) + 1 > maxDays) return { code: 'GYM_SPECIAL_DAY_DATES', meta: { reason: 'too_long', maxDays } };
+  if (daysBetween(today, fromOn) > aheadDays) return { code: 'GYM_SPECIAL_DAY_DATES', meta: { reason: 'too_far', aheadDays } };
+  if (kind === 'closed' && windows.length) return { code: 'GYM_SPECIAL_DAY_HOURS', meta: { reason: 'closed_has_windows' } };
+  if (kind === 'hours') {
+    if (!windows.length) return { code: 'GYM_SPECIAL_DAY_HOURS', meta: { reason: 'no_windows' } };
+    const errors = hoursErrors(windows.map((w) => ({ ...w, dow: 0 })));
+    if (errors.length) return { code: 'GYM_SPECIAL_DAY_HOURS', meta: { reason: 'invalid', message: errors[0].message } };
+  }
+  if (others.some((o) => o.fromOn <= toOn && fromOn <= o.toOn)) return { code: 'GYM_SPECIAL_DAY_OVERLAP' };
+  if (others.length >= maxActive) return { code: 'GYM_SPECIAL_DAY_LIMIT', meta: { max: maxActive } };
+  return null;
 }
 
 // ---------------------------------------------------------------- packages
@@ -256,6 +301,12 @@ module.exports = {
   opensOn,
   hasOpenDay,
   openWindowAt,
+  SPECIAL_KINDS,
+  specialOn,
+  windowsFor,
+  insideWindows,
+  specialPhase,
+  specialDayBlock,
   daysOf,
   packageErrors,
   validity,

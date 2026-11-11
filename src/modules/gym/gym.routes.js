@@ -28,6 +28,7 @@ const limits = require('../../middlewares/rateLimit');
 require('./gym.moderation'); // the M05 adapter loads with the routes
 const gyms = require('./gyms.service');
 const pub = require('./public.service');
+const specialDays = require('./special-days.service');
 const passes = require('./passes.service');
 const desk = require('./desk.service');
 const subs = require('./subscriptions.service');
@@ -43,7 +44,7 @@ const publicRouter = Router();
 publicRouter.get('/gyms', validate(s.listQuery, 'query'), async (req, res) => res.json(await pub.list(req.validQuery)));
 publicRouter.get('/gyms/:slug', validate(s.slugParam, 'params'), async (req, res) => {
   const body = await pub.detail(req.params.slug);
-  sendCached(req, res, body, crypto.createHash('sha1').update(JSON.stringify({ ...body, openNow: undefined })).digest('hex'));
+  sendCached(req, res, body, crypto.createHash('sha1').update(JSON.stringify({ ...body, openNow: undefined, specialToday: undefined })).digest('hex'));
 });
 publicRouter.get('/trainers', optionalAuth, validate(s.trainersQuery, 'query'), async (req, res) => res.json(await pub.trainers(req.validQuery, req.user?.id ?? null)));
 publicRouter.get('/trainers/:id/plans', id, async (req, res) => res.json(await subs.plansOf(req.params.id)));
@@ -88,6 +89,11 @@ ownerRouter.post('/', owner, validate(s.createGym), async (req, res) => res.stat
 ownerRouter.get('/:id', owner, id, async (req, res) => res.json(await gyms.getMine(req.user, req.params.id)));
 ownerRouter.patch('/:id', owner, id, validate(s.updateGym), async (req, res) => res.json(await gyms.update(req.user, req.params.id, req.body, req)));
 ownerRouter.put('/:id/hours', owner, id, validate(s.hoursBody), async (req, res) => res.json(await gyms.setHours(req.user, req.params.id, req.body.hours, req)));
+// M20-FR-16 to FR-22: holidays and special hours (applied at once, no review).
+ownerRouter.get('/:id/special-days', owner, id, validate(s.specialDaysQuery, 'query'), async (req, res) => res.json(await specialDays.list(req.user, req.params.id, req.validQuery)));
+ownerRouter.post('/:id/special-days/preview', owner, id, validate(s.specialDayBody), async (req, res) => res.json(await specialDays.preview(req.user, req.params.id, req.body)));
+ownerRouter.post('/:id/special-days', owner, id, validate(s.specialDayBody), async (req, res) => res.status(201).json(await specialDays.create(req.user, req.params.id, req.body, req)));
+ownerRouter.post('/:id/special-days/:specialDayId/remove', owner, validate(s.specialDayParams, 'params'), async (req, res) => res.json(await specialDays.remove(req.user, req.params.id, req.params.specialDayId, req)));
 ownerRouter.put('/:id/packages', owner, id, validate(s.packagesBody), async (req, res) => res.json(await gyms.setPackages(req.user, req.params.id, req.body.packages, req)));
 ownerRouter.post('/:id/photos', owner, id, limits.groundPhoto, raw, async (req, res) =>
   res.status(201).json(await gyms.addPhoto(req.user, req.params.id, { contentType: req.get('content-type'), body: req.body }, req))

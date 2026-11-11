@@ -22,6 +22,8 @@ module.exports = {
   reviewSource: lazy('./gym.reviews', ['register']),
   reads: lazy('./gym.reads', ['exportPassKpiFacts', 'passFacts', 'passKpiFact', 'pendingActions']),
   gyms: lazy('./gyms.service', ['facts', 'get', 'ofOwner', 'publicBySlug', 'liveWindowsOn']),
+  // M20-FR-18: the active holidays and special hours of a range of dates (class sessions and staff shifts in gym-ops).
+  specialDays: lazy('./special-days.service', ['activeFor']),
   packages: Object.freeze({
     get: (...args) => require('./gyms.service').packageGet(...args),
     forGym: (...args) => require('./gyms.service').packagesForGym(...args),

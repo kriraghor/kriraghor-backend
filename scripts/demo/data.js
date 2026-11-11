@@ -481,6 +481,9 @@ const GYM_PANEL = {
     { n: 47, inDays: 2, at: '07:30' },
   ],
   joinRequest: { n: 50, note: 'I live near Mirpur 1 and want the monthly package.' },
+  // A holiday (M20 §26): the gym is closed for one day soon, so the gym page, the visit slots and the class
+  // timetable show what a closed day does. After the free visits above, so none of them is cancelled.
+  specialDay: { inDays: 9, kind: 'closed', title: 'Machine servicing day' },
   workoutPlan: {
     title: 'Beginner full body, 3 days',
     content: {

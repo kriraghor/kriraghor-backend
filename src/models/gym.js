@@ -74,6 +74,25 @@ GymHours.init(
   { sequelize, modelName: 'GymHours', tableName: 'gym_hours', updatedAt: false }
 );
 
+/** M20-FR-16: a range of dates that is closed or has its own opening windows; applied at once, never deleted. */
+class GymSpecialDay extends Model {}
+GymSpecialDay.init(
+  {
+    id,
+    gymId: req(DataTypes.UUID),
+    fromOn: req(DataTypes.DATEONLY),
+    toOn: req(DataTypes.DATEONLY),
+    kind: req(DataTypes.ENUM('closed', 'hours')),
+    windows: { type: DataTypes.JSONB, allowNull: false, defaultValue: [] },
+    title: req(DataTypes.STRING(80)),
+    status: { type: DataTypes.ENUM('active', 'removed'), allowNull: false, defaultValue: 'active' },
+    createdBy: req(DataTypes.UUID),
+    removedBy: DataTypes.UUID,
+    removedAt: DataTypes.DATE(3),
+  },
+  { sequelize, modelName: 'GymSpecialDay', tableName: 'gym_special_days' }
+);
+
 class GymPhoto extends Model {}
 GymPhoto.init(
   {
@@ -232,4 +251,4 @@ TrainerSubscriptionPeriod.init(
 TrainerSubscription.hasMany(TrainerSubscriptionPeriod, { as: 'periods', foreignKey: 'subscriptionId' });
 TrainerSubscriptionPeriod.belongsTo(TrainerSubscription, { as: 'subscription', foreignKey: 'subscriptionId' });
 
-module.exports = { Gym, GymHours, GymPhoto, GymPackage, GymPass, PassRedemption, TrainerPlan, TrainerSubscription, TrainerSubscriptionPeriod };
+module.exports = { Gym, GymHours, GymSpecialDay, GymPhoto, GymPackage, GymPass, PassRedemption, TrainerPlan, TrainerSubscription, TrainerSubscriptionPeriod };

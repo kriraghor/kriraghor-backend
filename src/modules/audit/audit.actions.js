@@ -235,6 +235,8 @@ const ACTIONS = {
   'gym.created': A('M20', 'info', 'Created a gym listing ({after.name})', 'জিমের তালিকা তৈরি ({after.name})'),
   'gym.updated': A('M20', 'info', 'Edited a gym listing', 'জিমের তালিকা সম্পাদনা'),
   'gym.hours_set': A('M20', 'info', 'Set the opening hours ({after.windows} windows)', 'খোলার সময় ঠিক করা ({after.windows}টি সময়)'),
+  'gym.special_day_added': A('M20', 'info', 'Added a holiday or special hours ({after.fromOn} to {after.toOn})', 'ছুটি বা বিশেষ সময় যোগ করেছেন ({after.fromOn} থেকে {after.toOn})'),
+  'gym.special_day_removed': A('M20', 'info', 'Removed a holiday or special hours ({before.fromOn} to {before.toOn})', 'ছুটি বা বিশেষ সময় সরিয়েছেন ({before.fromOn} থেকে {before.toOn})'),
   'gym.packages_set': A('M20', 'info', 'Set the gym packages', 'জিমের প্যাকেজ ঠিক করা'),
   'gym_photo.added': A('M20', 'info', 'Added a gym photo', 'জিমের ছবি যোগ'),
   'gym_photo.reordered': A('M20', 'info', 'Reordered the gym photos', 'জিমের ছবির ক্রম বদল'),
@@ -407,6 +409,7 @@ const ACTIONS = {
   'gym_points.adjusted': A('M27', 'notice', 'Adjusted points by {after.points}', 'পয়েন্ট {after.points} সমন্বয়'),
   'gym_member.referred': A('M27', 'info', 'Recorded who referred the member ({after.referrer})', 'সদস্যকে কে এনেছেন তা লেখা ({after.referrer})'),
   'gym_notice.sent': A('M27', 'notice', 'Sent a notice to {after.targetCount} members', '{after.targetCount} জন সদস্যকে নোটিশ'),
+  'gym_ops.conversion_exported': A('M27', 'notice', 'Exported the conversion report of {meta.month}', '{meta.month} মাসের রূপান্তর রিপোর্ট এক্সপোর্ট'),
   'gym_lead.updated': A('M27', 'info', 'Updated an enquiry ({after.status})', 'জিজ্ঞাসা হালনাগাদ ({after.status})'),
   'gym_lead.phone_revealed': A('M27', 'notice', 'Showed the phone of an enquiry', 'জিজ্ঞাসার ফোন দেখানো'),
   // Trial visits (9 Nov 2026)
