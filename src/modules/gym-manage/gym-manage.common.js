@@ -82,6 +82,14 @@ const ERRORS = {
   GYM_BODY_EMPTY: [422, 'Enter at least one measurement'],
   GYM_BODY_RANGE: [422, 'That measurement is outside what can be recorded'],
   GYM_BODY_ENTRY_STATE: [409, 'This entry cannot be removed'],
+  // M24 §21: desk mode with a PIN.
+  GYM_DESK_LOCKED: [423, 'The desk is locked. Choose your name and enter your PIN'],
+  GYM_DESK_SCOPE: [403, 'This device is in desk mode and only does this gym’s work'],
+  GYM_DESK_STATE: [409, 'Desk mode cannot do that now'],
+  GYM_DESK_PIN_REQUIRED: [409, 'Set your own desk PIN first'],
+  GYM_DESK_PIN_WEAK: [422, 'Choose a PIN that is harder to guess'],
+  GYM_DESK_PIN_WRONG: [403, 'That PIN is not right'],
+  GYM_DESK_PIN_LOCKED: [423, 'Too many wrong tries. Wait and try again'],
 };
 const fail = (code, meta, detail) => new AppError(ERRORS[code][0], code, ERRORS[code][1], { ...(meta ? { meta } : {}), ...(detail ? { detail } : {}) });
 
@@ -125,6 +133,12 @@ const cfg = () => ({
   // M24 §19 and §20: a member's own renewal, and body progress.
   selfRenewDaysBefore: settings.get('gym_manage.self_renew_days_before'),
   bodyBackdateDays: settings.get('gym_manage.body_backdate_days'),
+  // M24 §21: desk mode with a PIN.
+  deskIdleMinutes: settings.get('gym_manage.desk_idle_minutes'),
+  deskPinFailLimit: settings.get('gym_manage.desk_pin_fail_limit'),
+  deskPinLockMinutes: settings.get('gym_manage.desk_pin_lock_minutes'),
+  deskPinMaxLockouts: settings.get('gym_manage.desk_pin_max_lockouts'),
+  deskDeviceFailLimit: settings.get('gym_manage.desk_device_fail_limit'),
 });
 
 /** The owner's invoices, founding partners and VAT (§6.6, §6.12). */

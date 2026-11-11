@@ -288,6 +288,63 @@ GymBodyEntry.init(
   { sequelize, modelName: 'GymBodyEntry', tableName: 'gym_body_entries', updatedAt: false }
 );
 
+/** M24 §21 (ADR-010): a person's own desk PIN at a gym. Only a hash is kept; wrong tries are counted here. */
+class GymDeskPin extends Model {}
+GymDeskPin.init(
+  {
+    id,
+    gymId: req(DataTypes.UUID),
+    userId: req(DataTypes.UUID),
+    pinHash: DataTypes.STRING(200),
+    status: enumOf(['active', 'cleared'], { defaultValue: 'active' }),
+    failedCount: { type: DataTypes.SMALLINT, allowNull: false, defaultValue: 0 },
+    lockouts: { type: DataTypes.SMALLINT, allowNull: false, defaultValue: 0 },
+    lockedUntil: DataTypes.DATE(3),
+    setAt: req(DataTypes.DATE(3)),
+    clearedAt: DataTypes.DATE(3),
+    clearedBy: DataTypes.UUID,
+  },
+  { sequelize, modelName: 'GymDeskPin', tableName: 'gym_desk_pins' }
+);
+
+/** M24 §21: a device in desk mode, bound to the sign-in's session family. One open row per family. */
+class GymDeskSession extends Model {}
+GymDeskSession.init(
+  {
+    id,
+    gymId: req(DataTypes.UUID),
+    ownerId: req(DataTypes.UUID),
+    openedBy: req(DataTypes.UUID),
+    familyId: req(DataTypes.UUID),
+    openedSessionId: req(DataTypes.UUID),
+    status: enumOf(['open', 'closed'], { defaultValue: 'open' }),
+    deviceFailCount: { type: DataTypes.SMALLINT, allowNull: false, defaultValue: 0 },
+    deviceLockedUntil: DataTypes.DATE(3),
+    openedAt: req(DataTypes.DATE(3)),
+    closedAt: DataTypes.DATE(3),
+    closedBy: DataTypes.UUID,
+    closeReason: { type: DataTypes.ENUM('ended', 'ended_by_owner', 'signed_out', 'opener_left'), allowNull: true },
+  },
+  { sequelize, modelName: 'GymDeskSession', tableName: 'gym_desk_sessions' }
+);
+
+/** M24 §21: who unlocked a desk and until when. One live row per desk session; never deleted. */
+class GymDeskUnlock extends Model {}
+GymDeskUnlock.init(
+  {
+    id,
+    deskSessionId: req(DataTypes.UUID),
+    gymId: req(DataTypes.UUID),
+    userId: req(DataTypes.UUID),
+    unlockedAt: req(DataTypes.DATE(3)),
+    lastTouchAt: req(DataTypes.DATE(3)),
+    expiresAt: req(DataTypes.DATE(3)),
+    endedAt: DataTypes.DATE(3),
+    endReason: { type: DataTypes.ENUM('locked', 'idle', 'switched', 'closed', 'pin_reset', 'removed'), allowNull: true },
+  },
+  { sequelize, modelName: 'GymDeskUnlock', tableName: 'gym_desk_unlocks', updatedAt: false }
+);
+
 class GymVisit extends Model {}
 GymVisit.init(
   {
@@ -634,6 +691,9 @@ module.exports = {
   GymManageSettings,
   GymVisit,
   GymBodyEntry,
+  GymDeskPin,
+  GymDeskSession,
+  GymDeskUnlock,
   GymMember,
   GymLinkRequest,
   GymMembership,
