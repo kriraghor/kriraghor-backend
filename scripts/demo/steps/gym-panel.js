@@ -11,7 +11,8 @@
  *  - the gym's books (expenses, the cash drawer, the counter shop and stock, sales, lockers), classes and
  *    bookings, rewards and points, a notice, enquiries from the gym page, staff shifts, clocking, pay terms
  *    and last month's payroll, the equipment register, a workout plan and a diet chart;
- *  - free trial visits booked by demo players, and a join request waiting for the owner.
+ *  - free trial visits booked by demo players, and a join request waiting for the owner;
+ *  - a holiday a few days ahead (M20 §26), which closes the gym for a day and cancels that day's class.
  * No online payment is taken (counter money is bookkeeping only, M24-FR-34), so it suits both profiles.
  *
  * Re-running adds nothing that exists: each part is looked up first (by name, number or title in the gym's
@@ -343,6 +344,16 @@ async function guests({ gymId }) {
   }
 }
 
+// ---------------------------------------------------------------- a holiday
+
+/** One closed day ahead (M20-FR-16), unless the gym already has that one coming. */
+async function holiday({ gymId, owner }) {
+  const s = G.specialDay;
+  const base = `/me/gyms/${gymId}/special-days`;
+  if ((await rt.get(owner, base)).items.some((d) => d.title === s.title)) return;
+  accept(await rt.post(owner, base, { fromOn: day(s.inDays), toOn: day(s.inDays), kind: s.kind, title: s.title }, { ok: [409, 422] }), ['GYM_SPECIAL_DAY_OVERLAP', 'GYM_SPECIAL_DAY_LIMIT'], 'holiday');
+}
+
 /** Runs every part. → a one-line report, or { missing } when the listings are not there yet. */
 async function run() {
   const ctx = await context();
@@ -371,6 +382,7 @@ async function run() {
   await part('classes, points, notice, enquiries', () => engage(ctx, team, roster));
   await part('shifts, payroll, equipment', () => work(ctx, team));
   await part('trial visits and the join request', () => guests(ctx));
+  await part('holiday', () => holiday(ctx));
   await part('events', () => rt.drain());
   const count = async (table) => Number((await models.sequelize.query(`SELECT COUNT(*) AS n FROM ${table} WHERE gym_id = :id`, { replacements: { id: ctx.gymId }, type: models.sequelize.QueryTypes.SELECT }))[0].n);
   return {

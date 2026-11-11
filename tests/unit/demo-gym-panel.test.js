@@ -133,4 +133,17 @@ describe('the demo gym panel', () => {
     for (const v of G.visits) expect(v.inDays).toBeLessThanOrEqual(setting('gym_manage.visit_book_ahead_days'));
     expect(G.visitNote.length).toBeLessThanOrEqual(300);
   });
+
+  it('closes the gym for one day the special-day rules accept, after the demo visits', () => {
+    const gym = require('../../src/modules/gym/gym.rules');
+    const s = G.specialDay;
+    const today = '2026-11-11';
+    const on = require('../../src/modules/gym-manage/gym-manage.rules').addDays(today, s.inDays);
+    expect(gym.specialDayBlock({ fromOn: on, toOn: on, kind: s.kind, windows: [], today, others: [], maxDays: setting('gym.special_day_max_days'), aheadDays: setting('gym.special_days_ahead_days'), maxActive: setting('gym.special_days_max_active') })).toBeNull();
+    expect(s.title.length).toBeGreaterThanOrEqual(2);
+    expect(s.title.length).toBeLessThanOrEqual(80);
+    // Shown on the public page at once, and no demo visit falls on it.
+    expect(s.inDays).toBeLessThanOrEqual(setting('gym.special_days_public_days'));
+    expect(Math.max(...G.visits.map((v) => v.inDays)) + 1).toBeLessThan(s.inDays);
+  });
 });
