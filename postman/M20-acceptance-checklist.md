@@ -90,3 +90,50 @@ Step 2 brings front-desk staff accounts, gym reviews (M17) and closures with aut
 | 5.4 | **Suspend the gym**, **Buying now**, **The public page** | Suspended; 409 `GYM_NOT_AVAILABLE`; 404 |
 | 5.5 | **Master: restore**, **ledger still balanced** | Live again; invariants hold |
 | 5.6 | Gates 🤖 | `buy_gym_pass` needs a verified phone; `list_gym` the `gym_owner` role |
+
+# M20 · Holidays and special hours: Acceptance Checklist
+
+Product owner, 11 Nov 2026; M20-FR-16 to FR-22 ([M20 §26](../../kriraghor-docs/modules/M20-gym.md)). Collection `kriraghor-gym-special-days.postman_collection.json` (it also holds the M27 conversion report, checklist in `M27-acceptance-checklist.md`).
+
+## 0. Setup
+- [ ] `npx jest --runInBand --coverage=false --runTestsByPath tests/unit/gym-special-days-rules.test.js tests/e2e/gym-special-days.test.js` passes.
+- [ ] `node postman/run-m20-special-days.js` → **0 failed** (46 requests, 80 assertions). The runner resets the test database, publishes a Standard gym open 06:00 to 22:00 with trial visits on, a class tomorrow at 06:30 with one member booked, a guest's visit tomorrow at 18:00, desk staff, an accountant and another gym's owner. M03 counts 419 settings (seed v40).
+
+## 1. The list, the checks and the preview (FR-16, FR-17)
+| # | Do | Expect |
+|---|---|---|
+| 1.1 | **Nothing yet, with the limits** | No items; 60 days long, 365 days ahead, 30 active, 30 days on the public page |
+| 1.2 | **A past day**, **Dates out of order**, **Longer than 60 days** | 422 `GYM_SPECIAL_DAY_DATES` with the reason |
+| 1.3 | **Hours on a closed day**, **Changed hours without hours**, **A one-letter title** | 422 `GYM_SPECIAL_DAY_HOURS` twice, then `VALIDATION_FAILED` |
+| 1.4 | **Staff cannot add one**, **Staff cannot list them**, **Another gym's owner** | 403 each (the last `NOT_OWNER`) |
+| 1.5 | **The preview**, **The preview saved nothing** | One class session and one visit would be cancelled; the list is still empty |
+
+## 2. A holiday closes the gym (FR-18, FR-19, FR-20, FR-22)
+| # | Do | Expect |
+|---|---|---|
+| 2.1 | **Eid-ul-Fitr, tomorrow and the day after** | 201, active, upcoming, no hours |
+| 2.2 | **An overlapping one** | 409 `GYM_SPECIAL_DAY_OVERLAP` |
+| 2.3 | **The gym page lists it** | One special day with public fields only; today is an ordinary day |
+| 2.4 | **Trial-visit slots skip both days**, **Booking a visit on the holiday** | 13 of 15 days; 422 `GYM_VISIT_HOURS` |
+| 2.5 | Runner: deliver the events, **The guest's visit…**, **The class session…** | Both cancelled with "The gym is closed: Eid-ul-Fitr" |
+
+## 3. Special hours (FR-18, FR-20)
+| # | Do | Expect |
+|---|---|---|
+| 3.1 | **Ramadan hours in five days** | 201 with the window 10:00 to 14:00 |
+| 3.2 | **That day's slots follow them**, **A visit at 18:00**, **A visit at 11:00** | One window; 422 `GYM_VISIT_HOURS`; 201 |
+| 3.3 | **The gym page lists both** | Nearest first |
+
+## 4. Removing a holiday (FR-21)
+| # | Do | Expect |
+|---|---|---|
+| 4.1 | **Staff cannot remove it**, **The owner removes Eid-ul-Fitr**, **Removing it again** | 403; removed; 409 `GYM_SPECIAL_DAY_STATE` |
+| 4.2 | Runner: deliver the events, **The class session is back, empty** | Scheduled, no reason, nobody booked |
+| 4.3 | **The guest's visit stays cancelled**, **Tomorrow takes visits again** | Still cancelled; tomorrow is in the slots |
+| 4.4 | **Coming**, **Past and removed** | Only the Ramadan hours; Eid-ul-Fitr kept as removed |
+
+## 5. Gym app and phone app
+- [ ] **Gym page editor** (owner): "Holidays and special hours" under the weekly hours. Add: name, first and last day, Closed or Special hours; **Check** shows what it would cancel, then **Save**. Remove asks first and says what comes back.
+- [ ] **Public gym page and card**: "Closed today: {name}" on a holiday; the coming special days under the opening hours. The same in the phone app.
+- [ ] A closed date is missing from **Book a free visit**; the class of that day shows as cancelled with the reason.
+- [ ] Bangla, phone width, light and dark.

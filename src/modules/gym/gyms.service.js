@@ -523,12 +523,14 @@ async function publicBySlug(slug, { transaction } = {}) {
 
 /**
  * Trial visits (9 Nov 2026): the published opening windows of a gym on a Dhaka date, earliest first
- * → [{ openTime, closeTime, womenOnly }]; [] when it is closed that day or has no public page.
+ * → [{ openTime, closeTime, womenOnly }]; [] when it is closed that day (also by a holiday, M20-FR-18) or has no public page.
  */
 async function liveWindowsOn(gymId, date, { transaction } = {}) {
   const g = await Gym.findByPk(gymId, { attributes: ['id', 'status', 'liveSnapshot'], transaction });
   if (!g || g.status === 'removed') return [];
-  return rules.windowsOn(g.liveSnapshot?.hours ?? [], rules.dowOf(date)).map((w) => ({ openTime: w.openTime, closeTime: w.closeTime, womenOnly: Boolean(w.womenOnly) }));
+  // M20-FR-18: a holiday closes the day, special hours replace the week's windows.
+  const special = await require('./special-days.service').activeFor(gymId, { from: date, to: date }, { transaction });
+  return rules.windowsFor(g.liveSnapshot?.hours ?? [], special, date).map((w) => ({ openTime: w.openTime, closeTime: w.closeTime, womenOnly: Boolean(w.womenOnly) }));
 }
 
 /** An owner's gyms (not removed), oldest first. */
@@ -564,6 +566,7 @@ async function packagesForGym(gymId, { status = 'active', transaction } = {}) {
 }
 
 module.exports = {
+  owned,
   liveWindowsOn,
   get,
   ofOwner,

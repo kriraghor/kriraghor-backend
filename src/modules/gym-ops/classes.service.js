@@ -20,6 +20,7 @@ const { sequelize, GymClass, GymClassSchedule, GymClassSession, GymClassBooking 
 const directory = require('../users').directory;
 const staffFacade = require('../business-members').members;
 const gymFacade = require('../gym').gyms;
+const specialDaysOf = require('../gym').specialDays;
 const rules = require('./gym-ops.rules');
 const c = require('./gym-ops.common');
 
@@ -94,11 +95,14 @@ function sessionView(s, k, counts, names) {
 /** Make the sessions of these slots from today for the weeks ahead (idempotent: one per slot and date). */
 async function sessionsAheadIn(transaction, { klass, slots, today }) {
   let made = 0;
+  // M20-FR-20: no session on a date and time a holiday or special hours leave shut.
+  const special = await specialDaysOf.activeFor(klass.gymId, { from: today, to: rules.addDays(today, c.cfg().classWeeksAhead * 7) }, { transaction });
   for (const slot of slots) {
     if (slot.status !== 'active') continue;
     for (const d of rules.datesAhead(today, c.cfg().classWeeksAhead, slot.dow)) {
       const { startsAt, endsAt } = rules.sessionWindow(d, slot.startTime, klass.minutes);
       if (startsAt <= new Date()) continue;
+      if (rules.shutBy(special, d, rules.minutesOf(slot.startTime))) continue;
       const [, created] = await GymClassSession.findOrCreate({
         where: { scheduleId: slot.id, localDate: d },
         defaults: { gymId: klass.gymId, classId: klass.id, scheduleId: slot.id, localDate: d, startsAt, endsAt, capacity: klass.capacity, trainerUserId: klass.trainerUserId ?? null },
@@ -512,7 +516,42 @@ async function sessionFacts(sessionId) {
   return { name: k?.name ?? '', startsAt: s.startsAt, gymId: s.gymId, localDate: s.localDate };
 }
 
+// ---------------------------------------------------------------- holidays and special hours (M20-FR-20, FR-21)
+
+/** The scheduled sessions ahead that a special day ({ fromOn, toOn, kind, windows }) leaves shut. */
+async function sessionsHitBy(gymId, day, { transaction, lock = false } = {}) {
+  const rows = await GymClassSession.findAll({ where: { gymId, status: 'scheduled', localDate: { [Op.between]: [day.fromOn, day.toOn] }, startsAt: { [Op.gt]: new Date() } }, order: [['startsAt', 'ASC']], transaction, ...(lock ? { lock: transaction.LOCK.UPDATE } : {}) });
+  return rows.filter((s) => rules.outsideSpecialDay(day, rules.dhakaMinutes(s.startsAt)));
+}
+
+/** For the owner's preview (M20-FR-17): how many class sessions a special day would cancel. */
+const sessionsHit = async (gymId, day) => (await sessionsHitBy(gymId, day)).length;
+
+/** Consumer of gym_special_day.created: cancel those sessions (everyone booked or waiting is told) and remember why. */
+async function onSpecialDay(p, { transaction }) {
+  const sessions = await sessionsHitBy(p.gymId, p, { transaction, lock: true });
+  if (!sessions.length) return;
+  await cancelSessionsIn(transaction, { sessions, reason: rules.specialDayReason(p), by: null, actor: null });
+  await GymClassSession.update({ specialDayId: p.specialDayId }, { where: { id: sessions.map((s) => s.id) }, transaction });
+}
+
+/**
+ * Consumer of gym_special_day.removed: the sessions it cancelled that have not started come back, empty (bookings
+ * are not restored), when their class and weekly time are still active.
+ */
+async function onSpecialDayRemoved(p, { transaction }) {
+  const rows = await GymClassSession.findAll({ where: { gymId: p.gymId, specialDayId: p.specialDayId, status: 'cancelled', startsAt: { [Op.gt]: new Date() } }, transaction, lock: transaction.LOCK.UPDATE });
+  if (!rows.length) return;
+  const classes = new Set((await GymClass.findAll({ where: { id: [...new Set(rows.map((s) => s.classId))], status: 'active' }, attributes: ['id'], transaction })).map((k) => k.id));
+  const slots = new Set((await GymClassSchedule.findAll({ where: { id: [...new Set(rows.map((s) => s.scheduleId))], status: 'active' }, attributes: ['id'], transaction })).map((x) => x.id));
+  const back = rows.filter((s) => classes.has(s.classId) && slots.has(s.scheduleId)).map((s) => s.id);
+  if (back.length) await GymClassSession.update({ status: 'scheduled', cancelReason: null, cancelledBy: null, cancelledAt: null, specialDayId: null }, { where: { id: back }, transaction });
+}
+
 module.exports = {
+  sessionsHit,
+  onSpecialDay,
+  onSpecialDayRemoved,
   trainers,
   list,
   create,

@@ -397,6 +397,13 @@ const EVENTS = {
   'gym.paused': { module: 'M20', version: 1, schema: gymEvent.extend({ reason: z.string().max(40).optional() }) },
   'gym.resumed': { module: 'M20', version: 1, schema: gymEvent },
   'gym.removed': { module: 'M20', version: 1, schema: gymEvent },
+  // M20-FR-16: a holiday or special hours (gym-manage cancels trial visits, gym-ops cancels class sessions).
+  'gym_special_day.created': {
+    module: 'M20',
+    version: 1,
+    schema: gymEvent.extend({ specialDayId: uuid, fromOn: z.string(), toOn: z.string(), kind: z.enum(['closed', 'hours']), windows: z.array(z.object({ openTime: z.string(), closeTime: z.string(), womenOnly: z.boolean() })), title: z.string().max(80) }),
+  },
+  'gym_special_day.removed': { module: 'M20', version: 1, schema: gymEvent.extend({ specialDayId: uuid, fromOn: z.string(), toOn: z.string() }) },
   'gym.suspended': { module: 'M20', version: 1, schema: gymEvent.extend({ reason: reasonText }) },
   'gym.restored': { module: 'M20', version: 1, schema: gymEvent.extend({ reason: reasonText }) },
   'gym_pass.paid': { module: 'M20', version: 1, schema: gymPassEvent.extend({ validFrom: iso, validTo: iso, paymentId: uuid }) },

@@ -324,7 +324,7 @@ async function convert(principal, gymId, visitId, req) {
       member = await members.createIn(transaction, { gym: a.gym, settings: settingsRow, input: { displayName, phone }, source: 'desk', actor: a.actor, today, userId: v.userId });
       await c.record({ action: 'gym_member.added', actor: a.actor, entityType: 'gym_member', entityId: member.id, entityCode: member.memberCode, after: { displayName: member.displayName, phone: 'set', source: 'desk', visitId: v.id }, meta: { gymId }, req }, transaction);
     }
-    await v.update({ memberId: member.id }, { transaction });
+    await v.update({ memberId: member.id, convertedAt: new Date() }, { transaction });
     await c.publish(transaction, 'gym_visit.converted', 'gym_visit', v.id, { visitId: v.id, gymId, userId: v.userId, memberId: member.id }, a.actor);
     await c.record({ action: 'gym_visit.converted', actor: a.actor, entityType: 'gym_visit', entityId: v.id, after: { memberId: member.id }, meta: { gymId }, req }, transaction);
     return member;
@@ -388,4 +388,26 @@ async function daily(now = new Date()) {
   return out;
 }
 
-module.exports = { ERRORS, slots, book, mine, cancelMine, list, checkIn, cancelByGym, revealPhone, convert, deskLookup, todayCount, daily, openFor };
+// ---------------------------------------------------------------- holidays and special hours (M20-FR-20)
+
+/** The booked visits a special day ({ fromOn, toOn, kind, windows }) leaves without an open hour. */
+async function visitsHitBy(gymId, day, { transaction, lock = false } = {}) {
+  const rows = await GymVisit.findAll({ where: { gymId, status: 'booked', visitDate: { [Op.between]: [day.fromOn, day.toOn] } }, order: [['visitDate', 'ASC'], ['arriveAt', 'ASC']], transaction, ...(lock ? { lock: transaction.LOCK.UPDATE } : {}) });
+  return rows.filter((v) => rules.outsideSpecialDay(day, v.arriveAt));
+}
+
+/** For the owner's preview (M20-FR-17): how many booked visits a special day would cancel. */
+const specialDayHits = async (gymId, day) => (await visitsHitBy(gymId, day)).length;
+
+/** Consumer of gym_special_day.created: the gym cancels those visits; each guest is told with the day’s title. */
+async function onSpecialDay(p, { transaction }) {
+  const now = new Date();
+  const reason = rules.specialDayReason(p);
+  for (const v of await visitsHitBy(p.gymId, p, { transaction, lock: true })) {
+    await v.update({ status: 'cancelled', cancelBy: 'gym', cancelReason: reason, cancelledAt: now }, { transaction });
+    await c.publish(transaction, 'gym_visit.cancelled', 'gym_visit', v.id, { visitId: v.id, gymId: v.gymId, ownerId: p.ownerId ?? null, userId: v.userId, by: 'gym', date: v.visitDate, arriveAt: v.arriveAt }, null);
+    await c.record({ action: 'gym_visit.cancelled', actor: null, entityType: 'gym_visit', entityId: v.id, reason, after: { by: 'gym' }, meta: { gymId: v.gymId, specialDayId: p.specialDayId } }, transaction);
+  }
+}
+
+module.exports = { ERRORS, slots, book, mine, cancelMine, list, checkIn, cancelByGym, revealPhone, convert, deskLookup, todayCount, daily, openFor, specialDayHits, onSpecialDay };

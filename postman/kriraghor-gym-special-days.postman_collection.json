@@ -1,0 +1,2240 @@
+{
+  "info": {
+    "name": "Kriraghor API: M20 · Holidays and special hours, M27 · Conversion report",
+    "description": "Holidays and special hours (product owner, 11 Nov 2026): the owner closes the gym for a range of dates or gives those dates their own hours. It applies at once, without review: open now and the public page follow it, trial-visit slots follow it, and class sessions and booked visits it leaves shut are cancelled with the title as the reason. Removing one brings its class sessions back empty; bookings and visits are not restored. Memberships are not extended.\n\nThe conversion report: for the enquiries, free trial visits and join requests that came in during a month, what became of them by today, and the month’s new members by source. Counts only. Read by the owner and staff with reports.view; the CSV is the owner’s.\n\nRequests named \"Runner\" go to the local test runner (delivering events as the worker would, moving the visits to today).\n\nUnattended: `node postman/run-m20-special-days.js`. Rebuild this file with: node postman/build-collection-m20-special-days.js",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000/api/v1"
+    },
+    {
+      "key": "controlUrl",
+      "value": ""
+    },
+    {
+      "key": "ownerToken",
+      "value": ""
+    },
+    {
+      "key": "deskToken",
+      "value": ""
+    },
+    {
+      "key": "accountToken",
+      "value": ""
+    },
+    {
+      "key": "anaToken",
+      "value": ""
+    },
+    {
+      "key": "boToken",
+      "value": ""
+    },
+    {
+      "key": "otherOwnerToken",
+      "value": ""
+    },
+    {
+      "key": "gymId",
+      "value": ""
+    },
+    {
+      "key": "slug",
+      "value": ""
+    },
+    {
+      "key": "sessionId",
+      "value": ""
+    },
+    {
+      "key": "today",
+      "value": ""
+    },
+    {
+      "key": "tomorrow",
+      "value": ""
+    },
+    {
+      "key": "in2",
+      "value": ""
+    },
+    {
+      "key": "in5",
+      "value": ""
+    },
+    {
+      "key": "in7",
+      "value": ""
+    },
+    {
+      "key": "in61",
+      "value": ""
+    },
+    {
+      "key": "yesterday",
+      "value": ""
+    },
+    {
+      "key": "month",
+      "value": ""
+    },
+    {
+      "key": "eidId",
+      "value": ""
+    },
+    {
+      "key": "ramadanId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. The list, the checks and the preview (M20-FR-16, FR-17)",
+      "item": [
+        {
+          "name": "Nothing yet, with the limits",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"empty\", () => { pm.expect(j.items.length === 0).to.eql(true); });",
+                  "pm.test(\"limits from the settings\", () => { pm.expect(j.limits.maxDays === 60 && j.limits.aheadDays === 365 && j.limits.maxActive === 30 && j.limits.publicDays === 30).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/special-days",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "special-days"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A past day (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 GYM_SPECIAL_DAY_DATES', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('GYM_SPECIAL_DAY_DATES');",
+                  "});",
+                  "pm.test(\"reason past\", () => { pm.expect(j.reason === 'past').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromOn\": \"{{yesterday}}\",\n  \"toOn\": \"{{in2}}\",\n  \"kind\": \"closed\",\n  \"title\": \"Eid-ul-Fitr\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/special-days",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "special-days"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Dates out of order (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 GYM_SPECIAL_DAY_DATES', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('GYM_SPECIAL_DAY_DATES');",
+                  "});",
+                  "pm.test(\"reason order\", () => { pm.expect(j.reason === 'order').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromOn\": \"{{in2}}\",\n  \"toOn\": \"{{tomorrow}}\",\n  \"kind\": \"closed\",\n  \"title\": \"Eid-ul-Fitr\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/special-days",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "special-days"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Longer than 60 days (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 GYM_SPECIAL_DAY_DATES', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('GYM_SPECIAL_DAY_DATES');",
+                  "});",
+                  "pm.test(\"reason too_long\", () => { pm.expect(j.reason === 'too_long').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromOn\": \"{{tomorrow}}\",\n  \"toOn\": \"{{in61}}\",\n  \"kind\": \"closed\",\n  \"title\": \"Eid-ul-Fitr\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/special-days",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "special-days"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Hours on a closed day (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 GYM_SPECIAL_DAY_HOURS', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('GYM_SPECIAL_DAY_HOURS');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromOn\": \"{{tomorrow}}\",\n  \"toOn\": \"{{in2}}\",\n  \"kind\": \"closed\",\n  \"title\": \"Eid-ul-Fitr\",\n  \"windows\": [\n    {\n      \"openTime\": \"10:00\",\n      \"closeTime\": \"12:00\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/special-days",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "special-days"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Changed hours without hours (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 GYM_SPECIAL_DAY_HOURS', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('GYM_SPECIAL_DAY_HOURS');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromOn\": \"{{tomorrow}}\",\n  \"toOn\": \"{{in2}}\",\n  \"kind\": \"hours\",\n  \"title\": \"Eid-ul-Fitr\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/special-days",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "special-days"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A one-letter title (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 VALIDATION_FAILED', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('VALIDATION_FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromOn\": \"{{tomorrow}}\",\n  \"toOn\": \"{{in2}}\",\n  \"kind\": \"closed\",\n  \"title\": \"x\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/special-days",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "special-days"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff cannot add one (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromOn\": \"{{tomorrow}}\",\n  \"toOn\": \"{{in2}}\",\n  \"kind\": \"closed\",\n  \"title\": \"Eid-ul-Fitr\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/special-days",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "special-days"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff cannot list them (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/special-days",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "special-days"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Another gym’s owner (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 NOT_OWNER', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('NOT_OWNER');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{otherOwnerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromOn\": \"{{tomorrow}}\",\n  \"toOn\": \"{{in2}}\",\n  \"kind\": \"closed\",\n  \"title\": \"Eid-ul-Fitr\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/special-days",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "special-days"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The preview: one class session and one visit",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"counts what it would cancel\", () => { pm.expect(j.ok === true && j.affected.classSessions === 1 && j.affected.visits === 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromOn\": \"{{tomorrow}}\",\n  \"toOn\": \"{{in2}}\",\n  \"kind\": \"closed\",\n  \"title\": \"Eid-ul-Fitr\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/special-days/preview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "special-days",
+                "preview"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The preview saved nothing",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"still empty\", () => { pm.expect(j.items.length === 0).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/special-days",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "special-days"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. A holiday closes the gym (M20-FR-18, FR-19, FR-20, FR-22)",
+      "item": [
+        {
+          "name": "Eid-ul-Fitr, tomorrow and the day after",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('eidId', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"active and upcoming, without hours\", () => { pm.expect(j.status === 'active' && j.phase === 'upcoming' && j.kind === 'closed' && j.windows.length === 0 && j.title === 'Eid-ul-Fitr').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromOn\": \"{{tomorrow}}\",\n  \"toOn\": \"{{in2}}\",\n  \"kind\": \"closed\",\n  \"title\": \"Eid-ul-Fitr\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/special-days",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "special-days"
+              ]
+            }
+          }
+        },
+        {
+          "name": "It is in the list",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"one item\", () => { pm.expect(j.items.length === 1 && j.items[0].id === pm.variables.get('eidId')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/special-days",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "special-days"
+              ]
+            }
+          }
+        },
+        {
+          "name": "An overlapping one (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 GYM_SPECIAL_DAY_OVERLAP', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('GYM_SPECIAL_DAY_OVERLAP');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromOn\": \"{{in2}}\",\n  \"toOn\": \"{{in5}}\",\n  \"kind\": \"closed\",\n  \"title\": \"Repairs\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/special-days",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "special-days"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The gym page lists it",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"one special day, public fields only\", () => { pm.expect(j.specialDays.length === 1 && j.specialDays[0].title === 'Eid-ul-Fitr' && j.specialDays[0].kind === 'closed' && !('createdBy' in j.specialDays[0])).to.eql(true); });",
+                  "pm.test(\"today is an ordinary day\", () => { pm.expect(j.specialToday === null).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/gym/gyms/{{slug}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "gym",
+                "gyms",
+                "{{slug}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Trial-visit slots skip both days",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"13 of 15 days\", () => { pm.expect(j.days.length === 13 && !j.days.find((x) => x.date === pm.variables.get('tomorrow')) && !j.days.find((x) => x.date === pm.variables.get('in2'))).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/gym/gyms/{{slug}}/visit-slots",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "gym",
+                "gyms",
+                "{{slug}}",
+                "visit-slots"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Booking a visit on the holiday (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 GYM_VISIT_HOURS', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('GYM_VISIT_HOURS');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{boToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "sd-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gymId\": \"{{gymId}}\",\n  \"date\": \"{{tomorrow}}\",\n  \"arriveAt\": \"10:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/gym-visits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gym-visits"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: deliver the events",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/drain",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "drain"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The guest’s visit was cancelled by the gym, with the reason",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"cancelled: the gym is closed\", () => { pm.expect(j.items[0].status === 'cancelled' && j.items[0].cancelledBy === 'gym' && j.items[0].cancelReason === 'The gym is closed: Eid-ul-Fitr').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{anaToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/gym-visits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gym-visits"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The class session was cancelled, with the reason",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"cancelled: the gym is closed\", () => { pm.expect((() => { const s = j.items.find((x) => x.id === pm.variables.get('sessionId')); return s.status === 'cancelled' && s.cancelReason === 'The gym is closed: Eid-ul-Fitr'; })()).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/class-sessions?from={{today}}&to={{in7}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "class-sessions"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{today}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{in7}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Special hours replace the week’s (M20-FR-18, FR-20)",
+      "item": [
+        {
+          "name": "Ramadan hours in five days, 10:00 to 14:00",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('ramadanId', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"with its hours\", () => { pm.expect(j.kind === 'hours' && j.windows.length === 1 && j.windows[0].openTime === '10:00' && j.windows[0].closeTime === '14:00').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromOn\": \"{{in5}}\",\n  \"toOn\": \"{{in5}}\",\n  \"kind\": \"hours\",\n  \"windows\": [\n    {\n      \"openTime\": \"10:00\",\n      \"closeTime\": \"14:00\"\n    }\n  ],\n  \"title\": \"Ramadan hours\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/special-days",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "special-days"
+              ]
+            }
+          }
+        },
+        {
+          "name": "That day’s slots follow them",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"10:00 to 14:00 only\", () => { pm.expect((() => { const d = j.days.find((x) => x.date === pm.variables.get('in5')); return d.windows.length === 1 && d.windows[0].openTime === '10:00' && d.windows[0].closeTime === '14:00'; })()).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/gym/gyms/{{slug}}/visit-slots",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "gym",
+                "gyms",
+                "{{slug}}",
+                "visit-slots"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A visit at 18:00 that day (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 GYM_VISIT_HOURS', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('GYM_VISIT_HOURS');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{boToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "sd-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gymId\": \"{{gymId}}\",\n  \"date\": \"{{in5}}\",\n  \"arriveAt\": \"18:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/gym-visits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gym-visits"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A visit at 11:00 that day",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{boToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "sd-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gymId\": \"{{gymId}}\",\n  \"date\": \"{{in5}}\",\n  \"arriveAt\": \"11:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/gym-visits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gym-visits"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The gym page lists both, the nearest first",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"two special days in date order\", () => { pm.expect(j.specialDays.length === 2 && j.specialDays[0].title === 'Eid-ul-Fitr' && j.specialDays[1].title === 'Ramadan hours' && j.specialDays[1].windows[0].openTime === '10:00').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/gym/gyms/{{slug}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "gym",
+                "gyms",
+                "{{slug}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Removing a holiday (M20-FR-21)",
+      "item": [
+        {
+          "name": "Staff cannot remove it (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/special-days/{{eidId}}/remove",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "special-days",
+                "{{eidId}}",
+                "remove"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The owner removes Eid-ul-Fitr",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"removed\", () => { pm.expect(j.status === 'removed').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/special-days/{{eidId}}/remove",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "special-days",
+                "{{eidId}}",
+                "remove"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Removing it again (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 GYM_SPECIAL_DAY_STATE', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('GYM_SPECIAL_DAY_STATE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/special-days/{{eidId}}/remove",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "special-days",
+                "{{eidId}}",
+                "remove"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: deliver the events",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/drain",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "drain"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The class session is back, empty",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"scheduled again with no one booked\", () => { pm.expect((() => { const s = j.items.find((x) => x.id === pm.variables.get('sessionId')); return s.status === 'scheduled' && s.cancelReason === null && s.booked === 0; })()).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/class-sessions?from={{today}}&to={{in7}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "class-sessions"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{today}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{in7}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "The guest’s visit stays cancelled",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"still cancelled\", () => { pm.expect(j.items[0].status === 'cancelled').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{anaToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/gym-visits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gym-visits"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tomorrow takes visits again",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"tomorrow is back\", () => { pm.expect(Boolean(j.days.find((x) => x.date === pm.variables.get('tomorrow')))).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/gym/gyms/{{slug}}/visit-slots",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "gym",
+                "gyms",
+                "{{slug}}",
+                "visit-slots"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Coming: only the Ramadan hours",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"one left\", () => { pm.expect(j.items.length === 1 && j.items[0].id === pm.variables.get('ramadanId')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/special-days",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "special-days"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Past and removed: Eid-ul-Fitr is kept",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"kept as removed\", () => { pm.expect(j.items.length === 1 && j.items[0].id === pm.variables.get('eidId') && j.items[0].status === 'removed').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/gyms/{{gymId}}/special-days?scope=past",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gyms",
+                "{{gymId}}",
+                "special-days"
+              ],
+              "query": [
+                {
+                  "key": "scope",
+                  "value": "past"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Where members come from (M27-FR-87 to FR-91)",
+      "item": [
+        {
+          "name": "An enquiry from the gym page",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 202', () => {",
+                  "  pm.response.to.have.status(202);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nadia\",\n  \"phone\": \"01711000111\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/gym/gyms/{{slug}}/enquiries",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "gym",
+                "gyms",
+                "{{slug}}",
+                "enquiries"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A second enquiry",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 202', () => {",
+                  "  pm.response.to.have.status(202);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Omar\",\n  \"phone\": \"01711000222\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/gym/gyms/{{slug}}/enquiries",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "gym",
+                "gyms",
+                "{{slug}}",
+                "enquiries"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Runner: date the visits today, so this month holds them",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/visits-today",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "visits-today"
+              ]
+            }
+          }
+        },
+        {
+          "name": "This month’s report",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"this month\", () => { pm.expect(j.period.month === pm.variables.get('month')).to.eql(true); });",
+                  "pm.test(\"two enquiries, both new, none joined\", () => { pm.expect(j.enquiries.received === 2 && j.enquiries.open === 2 && j.enquiries.joined === 0 && j.enquiries.joinedPct === 0).to.eql(true); });",
+                  "pm.test(\"two visits: one cancelled, one to come\", () => { pm.expect(j.visits.booked === 2 && j.visits.cancelled === 1 && j.visits.waiting === 1 && j.visits.joined === 0).to.eql(true); });",
+                  "pm.test(\"no join requests: no share to show\", () => { pm.expect(j.joinRequests.received === 0 && j.joinRequests.joinedPct === null).to.eql(true); });",
+                  "pm.test(\"one new member, added at the desk\", () => { pm.expect(j.members.total === 1 && j.members.bySource.desk === 1 && j.members.fromVisit === 0).to.eql(true); });",
+                  "pm.test(\"counts only\", () => { pm.expect(!/Nadia|Omar|0171/.test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/reports/conversion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "reports",
+                "conversion"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A month with nothing",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"January 2020, all zero\", () => { pm.expect(j.period.from === '2020-01-01' && j.period.to === '2020-01-31' && j.enquiries.received === 0 && j.members.total === 0).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/reports/conversion?month=2020-01",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "reports",
+                "conversion"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "2020-01"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "A month ahead falls back to this one",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"this month\", () => { pm.expect(j.period.month === pm.variables.get('month')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/reports/conversion?month=2999-01",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "reports",
+                "conversion"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "2999-01"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "A malformed month (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 VALIDATION_FAILED', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('VALIDATION_FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/reports/conversion?month=11-2026",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "reports",
+                "conversion"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "11-2026"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff with reports.view read it",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"the same numbers\", () => { pm.expect(j.enquiries.received === 2).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accountToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/reports/conversion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "reports",
+                "conversion"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Desk staff do not (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 PERMISSION_REQUIRED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('PERMISSION_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/reports/conversion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "reports",
+                "conversion"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The CSV is the owner’s (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accountToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/reports/conversion/export",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "reports",
+                "conversion",
+                "export"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The owner’s CSV",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"a CSV file named after the month\", () => { pm.expect(pm.response.headers.get('Content-Type').includes('text/csv') && pm.response.headers.get('Content-Disposition').includes('conversion-' + pm.variables.get('month') + '.csv')).to.eql(true); });",
+                  "pm.test(\"counts only\", () => { pm.expect(pm.response.text().includes('\"Enquiries\",\"Received\",\"2\"') && !/Nadia|0171/.test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/reports/conversion/export?month={{month}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "reports",
+                "conversion",
+                "export"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "{{month}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

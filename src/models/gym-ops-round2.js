@@ -53,6 +53,8 @@ GymClassSession.init(
     cancelReason: DataTypes.STRING(300),
     cancelledBy: DataTypes.UUID,
     cancelledAt: DataTypes.DATE(3),
+    // M20-FR-20: the holiday or special hours that cancelled this session (so removing it can bring the session back).
+    specialDayId: DataTypes.UUID,
     remindedAt: DataTypes.DATE(3),
   },
   { sequelize, modelName: 'GymClassSession', tableName: 'gym_class_sessions' }
@@ -142,6 +144,7 @@ GymLead.init(
     status: enumOf(['new', 'contacted', 'joined', 'lost'], { defaultValue: 'new' }),
     note: DataTypes.STRING(300),
     memberId: DataTypes.UUID,
+    joinedAt: DataTypes.DATE(3),
     source: enumOf(['gym_page', 'desk'], { defaultValue: 'gym_page' }),
     updatedBy: DataTypes.UUID,
   },

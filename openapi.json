@@ -23887,6 +23887,29 @@
           "openNow": {
             "type": "boolean"
           },
+          "specialToday": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "closed",
+                  "hours"
+                ]
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "title"
+            ],
+            "description": "M20-FR-19: today is a holiday (closed) or has special hours"
+          },
           "ratingAvg": {
             "type": [
               "number",
@@ -23918,6 +23941,7 @@
           "quarterPrice",
           "womenOnlyHours",
           "openNow",
+          "specialToday",
           "ratingAvg",
           "ratingCount",
           "taking",
@@ -24024,6 +24048,29 @@
           "openNow": {
             "type": "boolean"
           },
+          "specialToday": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "closed",
+                  "hours"
+                ]
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "title"
+            ],
+            "description": "M20-FR-19: today is a holiday (closed) or has special hours"
+          },
           "ratingAvg": {
             "type": [
               "number",
@@ -24109,6 +24156,13 @@
               ]
             }
           },
+          "specialDays": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GymSpecialDayRef"
+            },
+            "description": "M20-FR-19: holidays and special hours from today to gym.special_days_public_days ahead"
+          },
           "packages": {
             "type": "array",
             "items": {
@@ -24193,6 +24247,7 @@
           "quarterPrice",
           "womenOnlyHours",
           "openNow",
+          "specialToday",
           "ratingAvg",
           "ratingCount",
           "taking",
@@ -24203,10 +24258,70 @@
           "about",
           "photos",
           "hours",
+          "specialDays",
           "packages",
           "advanceDays",
           "today",
           "joinRequestsOpen"
+        ]
+      },
+      "GymSpecialDayRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fromOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "toOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "closed",
+              "hours"
+            ]
+          },
+          "windows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "openTime": {
+                  "type": "string",
+                  "pattern": "^(([01][0-9]|2[0-3]):[0-5][0-9]|24:00)$"
+                },
+                "closeTime": {
+                  "type": "string",
+                  "pattern": "^(([01][0-9]|2[0-3]):[0-5][0-9]|24:00)$"
+                },
+                "womenOnly": {
+                  "type": "boolean",
+                  "default": false
+                }
+              },
+              "required": [
+                "openTime",
+                "closeTime"
+              ]
+            }
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "fromOn",
+          "toOn",
+          "kind",
+          "windows",
+          "title"
         ]
       },
       "GymTrainerList": {
@@ -25363,6 +25478,173 @@
           "channel",
           "visitLimit",
           "sort"
+        ]
+      },
+      "GymSpecialDayList": {
+        "type": "object",
+        "properties": {
+          "today": {
+            "type": "string",
+            "format": "date"
+          },
+          "limits": {
+            "type": "object",
+            "properties": {
+              "maxDays": {
+                "type": "integer"
+              },
+              "aheadDays": {
+                "type": "integer"
+              },
+              "maxActive": {
+                "type": "integer"
+              },
+              "publicDays": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "maxDays",
+              "aheadDays",
+              "maxActive",
+              "publicDays"
+            ]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GymSpecialDay"
+            }
+          }
+        },
+        "required": [
+          "today",
+          "limits",
+          "items"
+        ]
+      },
+      "GymSpecialDay": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fromOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "toOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "closed",
+              "hours"
+            ]
+          },
+          "windows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "openTime": {
+                  "type": "string",
+                  "pattern": "^(([01][0-9]|2[0-3]):[0-5][0-9]|24:00)$"
+                },
+                "closeTime": {
+                  "type": "string",
+                  "pattern": "^(([01][0-9]|2[0-3]):[0-5][0-9]|24:00)$"
+                },
+                "womenOnly": {
+                  "type": "boolean",
+                  "default": false
+                }
+              },
+              "required": [
+                "openTime",
+                "closeTime"
+              ]
+            }
+          },
+          "title": {
+            "type": "string"
+          },
+          "gymId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "removed"
+            ]
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "upcoming",
+              "running",
+              "past"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "removedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "fromOn",
+          "toOn",
+          "kind",
+          "windows",
+          "title",
+          "gymId",
+          "status",
+          "phase",
+          "createdAt",
+          "removedAt"
+        ]
+      },
+      "GymSpecialDayPreview": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "affected": {
+            "type": "object",
+            "properties": {
+              "classSessions": {
+                "type": "integer"
+              },
+              "visits": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "classSessions",
+              "visits"
+            ]
+          }
+        },
+        "required": [
+          "ok",
+          "affected"
         ]
       },
       "GymAdmission": {
@@ -37856,6 +38138,196 @@
           "reach",
           "sentToday",
           "dailyCap"
+        ]
+      },
+      "GymConversionReport": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "object",
+            "properties": {
+              "month": {
+                "type": "string"
+              },
+              "from": {
+                "type": "string",
+                "format": "date"
+              },
+              "to": {
+                "type": "string",
+                "format": "date"
+              }
+            },
+            "required": [
+              "month",
+              "from",
+              "to"
+            ]
+          },
+          "today": {
+            "type": "string",
+            "format": "date"
+          },
+          "enquiries": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "received": {
+                "type": "integer"
+              },
+              "open": {
+                "type": "integer"
+              },
+              "contacted": {
+                "type": "integer"
+              },
+              "joined": {
+                "type": "integer"
+              },
+              "lost": {
+                "type": "integer"
+              },
+              "joinedPct": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "Percent with one decimal; null when there is nothing to divide by"
+              }
+            },
+            "required": [
+              "received",
+              "open",
+              "contacted",
+              "joined",
+              "lost",
+              "joinedPct"
+            ],
+            "description": "null when the plan has no enquiries"
+          },
+          "visits": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "booked": {
+                "type": "integer"
+              },
+              "attended": {
+                "type": "integer"
+              },
+              "missed": {
+                "type": "integer"
+              },
+              "cancelled": {
+                "type": "integer"
+              },
+              "waiting": {
+                "type": "integer"
+              },
+              "joined": {
+                "type": "integer"
+              },
+              "joinedPct": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "Percent with one decimal; null when there is nothing to divide by"
+              }
+            },
+            "required": [
+              "booked",
+              "attended",
+              "missed",
+              "cancelled",
+              "waiting",
+              "joined",
+              "joinedPct"
+            ],
+            "description": "null when the plan has no trial visits"
+          },
+          "joinRequests": {
+            "type": "object",
+            "properties": {
+              "received": {
+                "type": "integer"
+              },
+              "accepted": {
+                "type": "integer"
+              },
+              "closed": {
+                "type": "integer"
+              },
+              "waiting": {
+                "type": "integer"
+              },
+              "joinedPct": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "Percent with one decimal; null when there is nothing to divide by"
+              }
+            },
+            "required": [
+              "received",
+              "accepted",
+              "closed",
+              "waiting",
+              "joinedPct"
+            ]
+          },
+          "members": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer"
+              },
+              "bySource": {
+                "type": "object",
+                "properties": {
+                  "desk": {
+                    "type": "integer"
+                  },
+                  "platform": {
+                    "type": "integer"
+                  },
+                  "import": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "desk",
+                  "platform",
+                  "import"
+                ]
+              },
+              "fromVisit": {
+                "type": "integer"
+              },
+              "fromEnquiry": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "total",
+              "bySource",
+              "fromVisit",
+              "fromEnquiry"
+            ]
+          }
+        },
+        "required": [
+          "period",
+          "today",
+          "enquiries",
+          "visits",
+          "joinRequests",
+          "members"
         ]
       },
       "GymLeads": {
@@ -93365,6 +93837,486 @@
         }
       }
     },
+    "/me/gyms/{id}/special-days": {
+      "get": {
+        "tags": [
+          "gym"
+        ],
+        "summary": "My gym’s holidays and special hours (M20-FR-16): the coming ones, or past and removed ones",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "upcoming",
+                "past"
+              ],
+              "default": "upcoming"
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymSpecialDayList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_OWNER, ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_IN_REVIEW, GYM_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "gym"
+        ],
+        "summary": "Add a holiday (closed) or special hours for a range of dates (M20-FR-16). Applies at once, without review; affected class sessions and trial visits are cancelled and the people told",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fromOn": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "First day (Dhaka), today or later"
+                  },
+                  "toOn": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "Last day; the same day for one day"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "closed",
+                      "hours"
+                    ],
+                    "description": "closed: no opening that day; hours: the windows below replace the week’s"
+                  },
+                  "windows": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "openTime": {
+                          "type": "string",
+                          "pattern": "^(([01][0-9]|2[0-3]):[0-5][0-9]|24:00)$"
+                        },
+                        "closeTime": {
+                          "type": "string",
+                          "pattern": "^(([01][0-9]|2[0-3]):[0-5][0-9]|24:00)$"
+                        },
+                        "womenOnly": {
+                          "type": "boolean",
+                          "default": false
+                        }
+                      },
+                      "required": [
+                        "openTime",
+                        "closeTime"
+                      ]
+                    },
+                    "maxItems": 4,
+                    "default": [],
+                    "description": "Only for kind hours"
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 80,
+                    "description": "Shown to the public, e.g. Eid-ul-Fitr"
+                  }
+                },
+                "required": [
+                  "fromOn",
+                  "toOn",
+                  "kind",
+                  "title"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymSpecialDay"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_OWNER, ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_SPECIAL_DAY_OVERLAP, GYM_SPECIAL_DAY_LIMIT",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, GYM_SPECIAL_DAY_DATES, GYM_SPECIAL_DAY_HOURS",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/gyms/{id}/special-days/preview": {
+      "post": {
+        "tags": [
+          "gym"
+        ],
+        "summary": "Check a holiday or special hours and count what it would cancel: class sessions and booked trial visits (M20-FR-17). Writes nothing",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fromOn": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "First day (Dhaka), today or later"
+                  },
+                  "toOn": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "Last day; the same day for one day"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "closed",
+                      "hours"
+                    ],
+                    "description": "closed: no opening that day; hours: the windows below replace the week’s"
+                  },
+                  "windows": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "openTime": {
+                          "type": "string",
+                          "pattern": "^(([01][0-9]|2[0-3]):[0-5][0-9]|24:00)$"
+                        },
+                        "closeTime": {
+                          "type": "string",
+                          "pattern": "^(([01][0-9]|2[0-3]):[0-5][0-9]|24:00)$"
+                        },
+                        "womenOnly": {
+                          "type": "boolean",
+                          "default": false
+                        }
+                      },
+                      "required": [
+                        "openTime",
+                        "closeTime"
+                      ]
+                    },
+                    "maxItems": 4,
+                    "default": [],
+                    "description": "Only for kind hours"
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 80,
+                    "description": "Shown to the public, e.g. Eid-ul-Fitr"
+                  }
+                },
+                "required": [
+                  "fromOn",
+                  "toOn",
+                  "kind",
+                  "title"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymSpecialDayPreview"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_OWNER, ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_SPECIAL_DAY_OVERLAP, GYM_SPECIAL_DAY_LIMIT",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, GYM_SPECIAL_DAY_DATES, GYM_SPECIAL_DAY_HOURS",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/gyms/{id}/special-days/{specialDayId}/remove": {
+      "post": {
+        "tags": [
+          "gym"
+        ],
+        "summary": "Remove a coming or running holiday (M20-FR-21); never deleted. Its class sessions come back empty",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "specialDayId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymSpecialDay"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: NOT_OWNER, ROLE_REQUIRED, ROLE_PENDING, KYC_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_SPECIAL_DAY_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/me/gyms/{id}/remove": {
       "post": {
         "tags": [
@@ -111890,6 +112842,190 @@
           },
           "422": {
             "description": "Error. Codes: GYM_NOTICE_SEGMENT",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/reports/conversion": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Where members come from (M27-FR-87 to FR-90): for the enquiries, free trial visits and join requests that came in during a month, what became of them by today, and the month’s new members by source. Counts only (owner or reports.view; feature reports; a group the plan lacks is null)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+              "description": "A month (Dhaka); default this month"
+            },
+            "required": false,
+            "description": "A month (Dhaka); default this month",
+            "name": "month",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymConversionReport"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: GYM_TIER_REQUIRED, PERMISSION_REQUIRED, GYM_ACCOUNT_RESTRICTED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/reports/conversion/export": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "The conversion report as CSV (owner; feature reports): counts only, no names or phones; at most analytics.exports_per_hour; audited (M27-FR-91)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+              "description": "A month (Dhaka); default this month"
+            },
+            "required": false,
+            "description": "A month (Dhaka); default this month",
+            "name": "month",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CSV (UTF-8 with a byte-order mark; taka with two decimals; +06:00 times)",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: GYM_TIER_REQUIRED, PERMISSION_REQUIRED, GYM_ACCOUNT_RESTRICTED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, EXPORT_TOO_LARGE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Error. Codes: EXPORT_LIMIT",
             "content": {
               "application/problem+json": {
                 "schema": {

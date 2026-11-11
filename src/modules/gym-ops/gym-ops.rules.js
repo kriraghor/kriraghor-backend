@@ -284,18 +284,35 @@ const workedMinutes = (intervals) => intervals.reduce((n, x) => (x.outAt && !x.a
 /** Minutes after midnight in Dhaka of an instant. */
 const dhakaMinutes = (at) => Math.floor(((new Date(at).getTime() + DHAKA_OFFSET_MS) % DAY_MS) / 60000);
 
+// ---------------------------------------------------------------- holidays and special hours (M20-FR-20, FR-22)
+
+const clockMin = (hhmm) => (hhmm === '24:00' ? 1440 : minutesOf(hhmm));
+/** Is a Dhaka minute of the day outside what a special day leaves open? Closed: always; changed hours: outside its windows. */
+const outsideSpecialDay = (day, minute) => day.kind === 'closed' || !day.windows.some((w) => minute >= clockMin(w.openTime) && minute < clockMin(w.closeTime));
+/** The special day (of a list) that leaves a date and minute shut, or null. */
+const shutBy = (specialDays, date, minute) => specialDays.find((d) => d.fromOn <= date && date <= d.toOn && outsideSpecialDay(d, minute)) ?? null;
+/** The dates within [from, to] that holidays close for the whole day. */
+function closedDates(specialDays, from, to) {
+  const out = new Set();
+  for (const d of specialDays) if (d.kind === 'closed') for (let x = d.fromOn < from ? from : d.fromOn; x <= d.toOn && x <= to; x = addDays(x, 1)) out.add(x);
+  return out;
+}
+/** The reason everyone booked reads when a special day cancels a class session. */
+const specialDayReason = (day) => `${day.kind === 'closed' ? 'The gym is closed' : 'The gym’s hours changed'}: ${day.title}`.slice(0, 300);
+
 /**
  * M27-FR-74: late and missed shifts of one staff member over [from, to]. A shift is late when the first
  * clock-in of its date is more than graceMinutes after its start; missed when its date is before today and
  * there was no clock-in that date. Shifts on dates from today on are neither. One clock-in covers every
- * shift of its date.
+ * shift of its date. A date the gym was closed for a holiday (`closed`, M20-FR-22) has no late or missed shift.
  */
-function shiftMarks({ shifts, times, from, to, today, graceMinutes }) {
+function shiftMarks({ shifts, times, from, to, today, graceMinutes, closed = new Set() }) {
   const firstIn = new Map();
   for (const t of times) if (t.kind === 'in' && (!firstIn.has(t.localDate) || new Date(t.at) < new Date(firstIn.get(t.localDate)))) firstIn.set(t.localDate, t.at);
   let late = 0;
   let missed = 0;
   for (let d = from; d <= to && d < today; d = addDays(d, 1)) {
+    if (closed.has(d)) continue;
     const dow = dowOf(d);
     for (const sh of shifts) {
       if (sh.dow !== dow) continue;
@@ -314,6 +331,45 @@ const periodRange = (period) => ({ from: `${period}-01`, to: lastOfMonth(`${peri
 
 /** M27-FR-77: a payroll month is valid and not after the current one → null or the code. */
 const periodBlock = (period, today) => (/^\d{4}-(0[1-9]|1[0-2])$/.test(period ?? '') && period <= today.slice(0, 7) ? null : 'GYM_PAYROLL_PERIOD');
+
+// ---------------------------------------------------------------- conversion report (M27-FR-87 to FR-91)
+
+/** The month a conversion report covers: "YYYY-MM", today's month when missing, malformed or in the future. */
+function conversionPeriod(month, today) {
+  const m = /^\d{4}-(0[1-9]|1[0-2])$/.test(month ?? '') && month <= today.slice(0, 7) ? month : today.slice(0, 7);
+  return { month: m, ...periodRange(m) };
+}
+
+/** A share in percent with one decimal, or null when there is nothing to divide by. */
+const sharePct = (part, whole) => (whole > 0 ? Math.round((part * 1000) / whole) / 10 : null);
+
+/**
+ * M27-FR-88: the report from its counts. Each group is the people who came in during the month and what became
+ * of them by today. Joined %: enquiries that joined of those received; visits that became members of those not
+ * cancelled; join requests accepted of those received. A group the plan lacks is null.
+ */
+function conversionReport({ period, today, leads, visits, joinRequests, members }) {
+  return {
+    period,
+    today,
+    enquiries: leads ? { ...leads, joinedPct: sharePct(leads.joined, leads.received) } : null,
+    visits: visits ? { ...visits, joinedPct: sharePct(visits.joined, visits.booked - visits.cancelled) } : null,
+    joinRequests: { ...joinRequests, joinedPct: sharePct(joinRequests.accepted, joinRequests.received) },
+    members,
+  };
+}
+
+/** M27-FR-91: the report as CSV rows [group, stage, count]: counts only, no names and no phones. */
+function conversionRows(r) {
+  const rows = [];
+  const group = (name, o, stages) => o && stages.forEach(([label, key]) => rows.push([name, label, o[key]]));
+  group('Enquiries', r.enquiries, [['Received', 'received'], ['Still new', 'open'], ['Contacted', 'contacted'], ['Joined', 'joined'], ['Lost', 'lost']]);
+  group('Trial visits', r.visits, [['Booked', 'booked'], ['Attended', 'attended'], ['Missed', 'missed'], ['Cancelled', 'cancelled'], ['Still to come', 'waiting'], ['Became members', 'joined']]);
+  group('Join requests', r.joinRequests, [['Received', 'received'], ['Accepted', 'accepted'], ['Declined, expired or cancelled', 'closed'], ['Waiting', 'waiting']]);
+  rows.push(['New members', 'All', r.members.total], ['New members', 'Added at the desk', r.members.bySource.desk], ['New members', 'From Kriraghor', r.members.bySource.platform], ['New members', 'Imported', r.members.bySource.import]);
+  rows.push(['New members', 'Came from a trial visit', r.members.fromVisit], ['New members', 'Came from an enquiry', r.members.fromEnquiry]);
+  return rows;
+}
 
 /** A commission: base × bps ÷ 10000, rounded half up to the poisha. */
 const commissionOf = (base, bps) => Math.floor((base * bps + 5000) / 10000);
@@ -366,8 +422,17 @@ module.exports = {
   clockIntervals,
   workedMinutes,
   dhakaMinutes,
+  minutesOf,
+  outsideSpecialDay,
+  shutBy,
+  closedDates,
+  specialDayReason,
   shiftMarks,
   periodRange,
+  conversionPeriod,
+  sharePct,
+  conversionReport,
+  conversionRows,
   periodBlock,
   commissionOf,
   payTermsBlock,

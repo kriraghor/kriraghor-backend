@@ -16,6 +16,7 @@ const { Area, Facility } = require('../catalog').reference;
 const hireDirectory = require('../hire').directory;
 const rules = require('./gym.rules');
 const c = require('./gym.common');
+const specialDays = require('./special-days.service');
 
 /** M17: the average shows once there are reviews.min_count_display published reviews (FR-35). */
 const shownRating = (x) => (x.ratingCount >= require('../settings').settings.get('reviews.min_count_display') ? (x.ratingAvg ?? null) : null);
@@ -29,8 +30,10 @@ async function lookups(gyms) {
   return { areas: new Map(areas.map((a) => [a.id, named(a)])), facilities: new Map(facilities.map((f) => [f.id, { ...named(f), icon: f.icon ?? null }])) };
 }
 
-function card(g, { areas, facilities }, now = new Date(), distanceM = null) {
+/** `special`: the gym's special days covering today (M20-FR-19), so a holiday shows as closed. */
+function card(g, { areas, facilities }, now = new Date(), distanceM = null, special = []) {
   const s = g.liveSnapshot;
+  const todays = rules.specialOn(special, rules.dhakaDate(now));
   const price = (k) => s.packages.find((p) => p.kind === k)?.price ?? null;
   return {
     id: g.id,
@@ -42,7 +45,8 @@ function card(g, { areas, facilities }, now = new Date(), distanceM = null) {
     monthPrice: price('month'),
     quarterPrice: price('quarter'),
     womenOnlyHours: s.hours.some((h) => h.womenOnly),
-    openNow: Boolean(rules.openWindowAt(s.hours, now)),
+    openNow: Boolean(rules.openWindowAt(s.hours, now, special)),
+    specialToday: todays ? { kind: todays.kind, title: todays.title } : null,
     ratingAvg: shownRating(g),
     ratingCount: g.ratingCount,
     taking: g.status === 'live',
@@ -86,7 +90,8 @@ async function list({ areaId, facility, q, priceMax, lat, lng, radiusKm, sort, c
   const page = filtered.slice(offset, offset + limit);
   const maps = await lookups(page);
   const now = new Date();
-  return { items: page.map((g) => card(g, maps, now, distance.get(g.id) ?? null)), total: filtered.length, nextCursor: offset + limit < filtered.length ? String(offset + limit) : null };
+  const special = await specialDays.onDateFor(page.map((g) => g.id), rules.dhakaDate(now));
+  return { items: page.map((g) => card(g, maps, now, distance.get(g.id) ?? null, special.get(g.id) ?? [])), total: filtered.length, nextCursor: offset + limit < filtered.length ? String(offset + limit) : null };
 }
 
 /** GET /gym/gyms/:slug: the gym page (live or paused gyms; a paused gym sells nothing). */
@@ -96,14 +101,17 @@ async function detail(slug) {
   const s = g.liveSnapshot;
   const maps = await lookups([g]);
   const cfg = c.config();
+  const now = new Date();
+  const special = await specialDays.publicFor(g.id, rules.dhakaDate(now));
   return {
-    ...card(g, maps),
+    ...card(g, maps, now, null, special),
     addressLine: s.addressLine,
     lat: s.lat ?? null,
     lng: s.lng ?? null,
     about: s.about ?? null,
     photos: s.photos.map(c.photoView),
     hours: s.hours,
+    specialDays: special,
     packages: s.packages,
     advanceDays: cfg.advanceDays,
     today: c.today(),

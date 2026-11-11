@@ -281,6 +281,11 @@ function visitBlock({ open, own, member, date, arriveAt, today, nowMinute, ahead
   return null;
 }
 
+/** M20-FR-20: is a clock time ("HH:MM") outside what a special day leaves open? Closed: always; changed hours: outside its windows. */
+const outsideSpecialDay = (day, hhmm) => day.kind === 'closed' || !day.windows.some((w) => minuteOfDay(hhmm) >= minuteOfDay(w.openTime) && minuteOfDay(hhmm) < minuteOfDay(w.closeTime));
+/** The reason a guest or a class member reads when a special day cancels their booking. */
+const specialDayReason = (day) => `${day.kind === 'closed' ? 'The gym is closed' : 'The gym’s hours changed'}: ${day.title}`.slice(0, 300);
+
 /** Why a visit cannot be cancelled, or null: only a booked one; the guest up to `cutoffMinutes` before the start, the gym until the day ends. */
 function visitCancelBlock({ visit, by, now, cutoffMinutes, today }) {
   if (visit.status !== 'booked') return 'GYM_VISIT_STATE';
@@ -883,6 +888,8 @@ module.exports = {
   visitStartAt,
   dhakaMinute,
   visitBlock,
+  outsideSpecialDay,
+  specialDayReason,
   visitCancelBlock,
   visitCheckInBlock,
   visitToken,

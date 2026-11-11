@@ -72,6 +72,7 @@ const classes = require('./classes.service');
 const points = require('./points.service');
 const notices = require('./notices.service');
 const leads = require('./leads.service');
+const conversion = require('./conversion.service');
 const r3 = require('./gym-ops-round3.schemas');
 const staff = require('./staff.service');
 const payroll = require('./payroll.service');
@@ -104,6 +105,12 @@ g.post('/notices/estimate', validate(r2.estimateBody), async (req, res) => res.j
 g.post('/notices', validate(r2.noticeBody), ik('notice'), async (req, res) => res.status(201).json(await notices.send(req.user, P(req), req.body, req)));
 
 // Enquiries (M27-FR-66..69).
+// M27-FR-87 to FR-91: where members come from (enquiries, trial visits, join requests), and its CSV for the owner.
+g.get('/reports/conversion', query(r2.conversionQuery), async (req, res) => res.json(await conversion.get(req.user, P(req), req.validQuery)));
+g.get('/reports/conversion/export', query(r2.conversionQuery), async (req, res) => {
+  const file = await conversion.exportCsv(req.user, P(req), req.validQuery, req);
+  res.set('Content-Type', 'text/csv; charset=utf-8').set('Content-Disposition', `attachment; filename="${file.filename}"`).set('Cache-Control', 'no-store').send(file.body);
+});
 g.get('/leads', query(r2.leadQuery), async (req, res) => res.json(await leads.list(req.user, P(req), req.validQuery)));
 g.patch('/leads/:leadId', params(r2.leadParam), validate(r2.leadPatch), async (req, res) => res.json(await leads.update(req.user, P(req), req.params.leadId, req.body, req)));
 g.post('/leads/:leadId/reveal-phone', params(r2.leadParam), async (req, res) => res.set('Cache-Control', 'no-store').json(await leads.revealPhone(req.user, P(req), req.params.leadId, req)));

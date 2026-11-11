@@ -87,6 +87,7 @@ async function update(principal, gymId, leadId, input, req) {
         const m = input.memberId ? await c.ops.member(gymId, input.memberId, { transaction }) : null;
         if (!m) throw c.fail('GYM_MEMBER_UNKNOWN');
         patch.memberId = m.id;
+        patch.joinedAt = new Date();
       }
       patch.status = input.status;
     }

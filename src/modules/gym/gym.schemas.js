@@ -31,6 +31,17 @@ const slugParam = z.object({ slug: z.string().min(1).max(140) });
 const codeParam = z.object({ code: z.string().trim().min(6).max(36) });
 const idOrCodeParam = z.object({ id: z.string().trim().min(6).max(36).meta({ description: 'The id or the code (TS-26-000123)' }) });
 const photoParams = z.object({ id, photoId: id });
+// M20-FR-16: holidays and special hours.
+const specialDayParams = z.object({ id, specialDayId: id });
+const specialDaysQuery = z.object({ scope: z.enum(['upcoming', 'past']).default('upcoming') });
+const specialWindow = z.object({ openTime: time, closeTime: time, womenOnly: z.boolean().default(false) });
+const specialDayBody = z.object({
+  fromOn: date.meta({ description: 'First day (Dhaka), today or later' }),
+  toOn: date.meta({ description: 'Last day; the same day for one day' }),
+  kind: z.enum(['closed', 'hours']).meta({ description: 'closed: no opening that day; hours: the windows below replace the week’s' }),
+  windows: z.array(specialWindow).max(4).default([]).meta({ description: 'Only for kind hours' }),
+  title: text(2, 80).meta({ description: 'Shown to the public, e.g. Eid-ul-Fitr' }),
+});
 const listQuery = z
   .object({
     areaId: id.optional(),
@@ -141,12 +152,19 @@ const GymCard = z
     quarterPrice: nullable(poisha),
     womenOnlyHours: z.boolean(),
     openNow: z.boolean(),
+    specialToday: nullable(z.object({ kind: z.enum(['closed', 'hours']), title: z.string() })).meta({ description: 'M20-FR-19: today is a holiday (closed) or has special hours' }),
     ratingAvg: nullable(z.number()),
     ratingCount: z.number().int(),
     taking: z.boolean(),
     distanceM: nullable(z.number().int()).meta({ description: 'Metres from the position sent (the gym’s pin, else its area’s centre); null without a position' }),
   })
   .meta({ id: 'GymCard' });
+const SpecialDayRef = z.object({ id, fromOn: date, toOn: date, kind: z.enum(['closed', 'hours']), windows: z.array(specialWindow), title: z.string() }).meta({ id: 'GymSpecialDayRef' });
+const SpecialDay = SpecialDayRef.extend({ gymId: id, status: z.enum(['active', 'removed']), phase: z.enum(['upcoming', 'running', 'past']), createdAt: dateTime, removedAt: nullable(dateTime) }).meta({ id: 'GymSpecialDay' });
+const SpecialDayList = z
+  .object({ today: date, limits: z.object({ maxDays: z.number().int(), aheadDays: z.number().int(), maxActive: z.number().int(), publicDays: z.number().int() }), items: z.array(SpecialDay) })
+  .meta({ id: 'GymSpecialDayList' });
+const SpecialDayPreview = z.object({ ok: z.literal(true), affected: z.object({ classSessions: z.number().int(), visits: z.number().int() }) }).meta({ id: 'GymSpecialDayPreview' });
 const GymList = z.object({ items: z.array(GymCard), total: z.number().int(), nextCursor: nullable(z.string()) }).meta({ id: 'GymList' });
 const GymPage = GymCard.extend({
   addressLine: z.string(),
@@ -155,6 +173,7 @@ const GymPage = GymCard.extend({
   about: nullable(z.string()),
   photos: z.array(z.object({ id, url: z.string() })),
   hours: Hours,
+  specialDays: z.array(SpecialDayRef).meta({ description: 'M20-FR-19: holidays and special hours from today to gym.special_days_public_days ahead' }),
   packages: z.array(Package),
   advanceDays: z.number().int(),
   today: date,
@@ -301,6 +320,12 @@ const StaffSubscription = z
 const StaffAction = z.object({ id, status: z.enum(GYM_STATUSES) });
 
 module.exports = {
+  specialDayParams,
+  specialDaysQuery,
+  specialDayBody,
+  SpecialDay,
+  SpecialDayList,
+  SpecialDayPreview,
   KINDS,
   CHANNELS,
   idParam,

@@ -209,7 +209,24 @@ const Exercises = z
   })
   .meta({ id: 'CatalogExercises' });
 
+// ---------------- the conversion report (M27-FR-87 to FR-91)
+const conversionQuery = z.object({ month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'YYYY-MM').optional().meta({ description: 'A month (Dhaka); default this month' }) });
+const share = nullable(z.number()).meta({ description: 'Percent with one decimal; null when there is nothing to divide by' });
+const count = z.number().int();
+const Conversion = z
+  .object({
+    period: z.object({ month: z.string(), from: date, to: date }),
+    today: date,
+    enquiries: nullable(z.object({ received: count, open: count, contacted: count, joined: count, lost: count, joinedPct: share })).meta({ description: 'null when the plan has no enquiries' }),
+    visits: nullable(z.object({ booked: count, attended: count, missed: count, cancelled: count, waiting: count, joined: count, joinedPct: share })).meta({ description: 'null when the plan has no trial visits' }),
+    joinRequests: z.object({ received: count, accepted: count, closed: count, waiting: count, joinedPct: share }),
+    members: z.object({ total: count, bySource: z.object({ desk: count, platform: count, import: count }), fromVisit: count, fromEnquiry: count }),
+  })
+  .meta({ id: 'GymConversionReport' });
+
 module.exports = {
+  conversionQuery,
+  Conversion,
   classParam,
   sessionParam,
   bookingParam,

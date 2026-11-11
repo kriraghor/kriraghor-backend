@@ -55,12 +55,14 @@ async function resetDb() {
  * Drop the simulator's Redis state (sessions, refunds, controls). Uses its own short-lived connection,
  * so test files that never touch Redis do not keep the shared one open (Jest would not exit).
  */
-async function clearSimulator() {
-  const redis = createRedis('test-sim-clear');
+const clearSimulator = () => clearRedisKeys('sslsim:*', 'test-sim-clear');
+
+async function clearRedisKeys(pattern, name) {
+  const redis = createRedis(name);
   try {
     let cursor = '0';
     do {
-      const [next, keys] = await redis.scan(cursor, 'MATCH', `${config.redis.prefix}:sslsim:*`, 'COUNT', 500);
+      const [next, keys] = await redis.scan(cursor, 'MATCH', `${config.redis.prefix}:${pattern}`, 'COUNT', 500);
       if (keys.length) await redis.del(...keys);
       cursor = next;
     } while (cursor !== '0');
@@ -68,6 +70,13 @@ async function clearSimulator() {
     await redis.quit();
   }
 }
+
+/**
+ * Forget the Redis rate-limit counters of one limiter (common/velocity), e.g. 'gym_lead_' for the public
+ * enquiry form. They outlast resetDb and every test calls from one address, so a suite that posts to a
+ * limited public form starts from zero whatever ran before it, or in the same hour.
+ */
+const clearVelocity = (namePrefix) => clearRedisKeys(`vel:${namePrefix}*`, 'test-velocity-clear');
 
 /**
  * Pay a payment as its payer through the simulator: start an attempt (Idempotency-Key), choose the
@@ -250,4 +259,4 @@ const bearer = (s) => ({ Authorization: `Bearer ${s.accessToken}` });
  */
 const consent = () => ({ accepted: true, version: require('../src/modules/kyc/consent').current().version });
 
-module.exports = { consent, ADMIN_ORIGIN, WEB_ORIGIN, adminPost, cookieValue, cookieHeader, refreshWeb, api, P, models, resetDb, nextPhone, e164, lastCode, lastEmailCode, mail, allowResend, signupUser, verifyMember, totpFor, createSignedInMaster, createSecondMaster, signInStaff, stepUp, bearer, sms, settings, setSettingForTest, events, consumers, notify, realtime, drainEvents, simulator, paymentJobs, payWithSimulator, drainPaymentJobs, clearSimulator };
+module.exports = { clearVelocity, consent, ADMIN_ORIGIN, WEB_ORIGIN, adminPost, cookieValue, cookieHeader, refreshWeb, api, P, models, resetDb, nextPhone, e164, lastCode, lastEmailCode, mail, allowResend, signupUser, verifyMember, totpFor, createSignedInMaster, createSecondMaster, signInStaff, stepUp, bearer, sms, settings, setSettingForTest, events, consumers, notify, realtime, drainEvents, simulator, paymentJobs, payWithSimulator, drainPaymentJobs, clearSimulator };

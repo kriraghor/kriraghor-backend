@@ -80,6 +80,38 @@ async function feesByTrainer(gymId, from, to) {
   return new Map(rows.map((r) => [r.trainerId, Math.max(0, Number(r.total))]));
 }
 
+/**
+ * M27-FR-88 (the conversion report in gym-ops): the free trial visits dated in [from, to] and the join requests
+ * received in it (Dhaka dates) by what became of them, and the members who joined in it by source. Counts and
+ * member ids only (the ids let gym-ops count how many came from an enquiry); no names, no phones.
+ */
+async function conversionFacts(gymId, { from, to }) {
+  const q = (sql) => sequelize.query(sql, { replacements: { gymId, from, to }, type: QueryTypes.SELECT });
+  const [[visits], [joinRequests], members] = await Promise.all([
+    q(`SELECT COUNT(*)::int AS booked,
+              COUNT(*) FILTER (WHERE status = 'attended')::int AS attended,
+              COUNT(*) FILTER (WHERE status = 'no_show')::int AS missed,
+              COUNT(*) FILTER (WHERE status = 'cancelled')::int AS cancelled,
+              COUNT(*) FILTER (WHERE status = 'booked')::int AS waiting,
+              COUNT(*) FILTER (WHERE member_id IS NOT NULL)::int AS joined
+         FROM gym_visits WHERE gym_id = :gymId AND visit_date BETWEEN :from AND :to`),
+    q(`SELECT COUNT(*)::int AS received,
+              COUNT(*) FILTER (WHERE status = 'accepted')::int AS accepted,
+              COUNT(*) FILTER (WHERE status IN ('declined', 'expired', 'cancelled'))::int AS closed,
+              COUNT(*) FILTER (WHERE status = 'pending')::int AS waiting
+         FROM gym_link_requests WHERE gym_id = :gymId AND direction = 'join_request' AND (created_at AT TIME ZONE 'Asia/Dhaka')::date BETWEEN :from AND :to`),
+    q(`SELECT m.id, m.source, EXISTS (SELECT 1 FROM gym_visits v WHERE v.member_id = m.id) AS "fromVisit"
+         FROM gym_members m WHERE m.gym_id = :gymId AND m.joined_on BETWEEN :from AND :to AND m.status <> 'removed'`),
+  ]);
+  const count = (source) => members.filter((m) => m.source === source).length;
+  return {
+    visits,
+    joinRequests,
+    members: { total: members.length, bySource: { desk: count('desk'), platform: count('platform'), import: count('import') }, fromVisit: members.filter((m) => m.fromVisit).length },
+    newMemberIds: members.map((m) => m.id),
+  };
+}
+
 // ---------------------------------------------------------------- round 2
 
 /**
@@ -342,6 +374,7 @@ async function featureOn(gymId, feature) {
 }
 
 module.exports = {
+  conversionFacts,
   feesByTrainer,
   member,
   collected,

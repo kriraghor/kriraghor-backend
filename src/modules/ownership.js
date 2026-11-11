@@ -46,7 +46,7 @@ const OWNERS = {
   'market': ['Shop', 'Product', 'ProductVariant', 'ProductPhoto', 'InventoryMovement', 'SavedItem'],
   'orders': ['Cart', 'CartItem', 'Order', 'SubOrder', 'OrderItem'],
   'hire': ['HireProfile', 'RateCard', 'RateCardItem', 'HireRequest', 'HireJob', 'HireMessage', 'HireShortlist', 'AvailabilityBlock'],
-  'gym': ['Gym', 'GymHours', 'GymPhoto', 'GymPackage', 'GymPass', 'PassRedemption', 'TrainerPlan', 'TrainerSubscription', 'TrainerSubscriptionPeriod'],
+  'gym': ['Gym', 'GymHours', 'GymSpecialDay', 'GymPhoto', 'GymPackage', 'GymPass', 'PassRedemption', 'TrainerPlan', 'TrainerSubscription', 'TrainerSubscriptionPeriod'],
   // M24 gym management (prompts 1 and 2 of 3b: 18 of the 24 tables, §7.2); reads M20 only through gym/index.js.
   'gym-manage': ['GymManageSettings', 'GymVisit', 'GymMember', 'GymLinkRequest', 'GymMembership', 'GymFreeze', 'GymDue', 'GymFeePayment', 'GymAttendance', 'GymAttendanceExit', 'GymMemberNote', 'GymImport', 'GymOwnerSubscription', 'GymPaymentLink', 'GymReminder', 'GymOwnerAddon', 'GymSmsEntry', 'GymActiveMemberCount', 'GymSubscriptionInvoice', 'GymSubscriptionInvoiceLine', 'GymFeeOverride', 'GymReferral', 'GymPlan', 'GymPlanVersion', 'GymPlanAssignment', 'GymPlanLog'],
   'organisations': ['Organisation', 'OrganisationMember'],

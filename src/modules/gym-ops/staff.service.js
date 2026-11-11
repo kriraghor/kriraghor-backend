@@ -13,6 +13,7 @@ const { sequelize, GymStaffShift, GymStaffTime } = require('../../models');
 const directory = require('../users').directory;
 const staffFacade = require('../business-members');
 const gymFacade = require('../gym').gyms;
+const specialDaysOf = require('../gym').specialDays;
 const rules = require('./gym-ops.rules');
 const c = require('./gym-ops.common');
 
@@ -149,10 +150,12 @@ async function board(principal, gymId, { date } = {}) {
   ]);
   const names = await directory.displayNames([...new Set(rows.map((r) => r.byUser).filter(Boolean))]);
   const cfg = c.cfg();
+  // M20-FR-22: no late or missed shift on a day the gym was closed for a holiday.
+  const closed = rules.closedDates(await specialDaysOf.activeFor(gymId, { from: day, to: day }), day, day);
   const items = staff.map((s, i) => {
     const mine = rows.filter((r) => r.businessMemberId === s.id);
     const shiftsOf = shiftRows.filter((r) => r.businessMemberId === s.id);
-    const marks = rules.shiftMarks({ shifts: shiftsOf, times: mine, from: day, to: day, today: addDayAfter(day), graceMinutes: cfg.staffLateGraceMinutes });
+    const marks = rules.shiftMarks({ shifts: shiftsOf, times: mine, from: day, to: day, today: addDayAfter(day), graceMinutes: cfg.staffLateGraceMinutes, closed });
     return {
       staff: { id: s.id, userId: s.userId, name: s.name },
       clockedIn: lasts[i]?.kind === 'in',
@@ -175,10 +178,11 @@ async function monthFacts(gymId, period, { today = c.today() } = {}) {
     GymStaffShift.findAll({ where: { gymId, status: 'active' } }),
   ]);
   const grace = c.cfg().staffLateGraceMinutes;
+  const closed = rules.closedDates(await specialDaysOf.activeFor(gymId, { from, to }), from, to);
   const by = new Map();
   for (const id of new Set([...rows.map((r) => r.businessMemberId), ...shiftRows.map((r) => r.businessMemberId)])) {
     const mine = rows.filter((r) => r.businessMemberId === id);
-    const marks = rules.shiftMarks({ shifts: shiftRows.filter((r) => r.businessMemberId === id), times: mine, from, to, today, graceMinutes: grace });
+    const marks = rules.shiftMarks({ shifts: shiftRows.filter((r) => r.businessMemberId === id), times: mine, from, to, today, graceMinutes: grace, closed });
     by.set(id, { workedMinutes: rules.workedMinutes(rules.clockIntervals(mine)), days: new Set(mine.filter((r) => r.kind === 'in').map((r) => r.localDate)).size, late: marks.late, missed: marks.missed });
   }
   return by;

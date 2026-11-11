@@ -261,3 +261,25 @@ Round 3a gives the gym its staff and machines: weekly shifts and clocking in by 
 - [ ] **Equipment:** counts (working, needs service, out of order, service due); add or edit a machine; open it for its history; log a service, repair or note with a cost into the expenses; retire.
 - [ ] **Business panel → Team:** the labels for clock.in, shifts.manage and assets.manage (and the round 2 permissions); presets include clocking in.
 - [ ] Bangla, phone width, light and dark: no text left in English, no sideways scroll, readable contrast.
+
+# M27 · The conversion report: Acceptance Checklist
+
+Product owner, 11 Nov 2026; M27-FR-87 to FR-91 ([M27 §16](../../kriraghor-docs/modules/M27-gym-operations.md)). Folder 5 of `kriraghor-gym-special-days.postman_collection.json`.
+
+## 0. Setup
+- [ ] `npx jest --runInBand --coverage=false --runTestsByPath tests/unit/gym-special-days-rules.test.js tests/e2e/gym-conversion.test.js` passes.
+- [ ] `node postman/run-m20-special-days.js` → **0 failed** (46 requests, 80 assertions).
+
+## 1. Where members come from
+| # | Do | Expect |
+|---|---|---|
+| 1.1 | **An enquiry from the gym page**, **A second enquiry**, Runner: date the visits today | 202 twice |
+| 1.2 | **This month's report** | Two enquiries, both new; two visits (one cancelled, one to come); no join requests and no share for them; one new member added at the desk; no name or phone anywhere |
+| 1.3 | **A month with nothing**, **A month ahead**, **A malformed month** | January 2020 all zero; this month; 422 |
+| 1.4 | **Staff with reports.view read it**, **Desk staff do not** | 200; 403 `PERMISSION_REQUIRED` |
+| 1.5 | **The CSV is the owner's**, **The owner's CSV** | 403; `conversion-YYYY-MM.csv` with Group, Stage, Count |
+| 1.6 | Plan 🤖 | Below the reports feature: 403 `GYM_TIER_REQUIRED`; without enquiries or visits on the plan, that group is left out |
+
+## 2. Gym app
+- [ ] **Reports**: "Where members come from" with three bar lists and the share under each, the month's new members by source, **Download CSV** for the owner only. It follows the page's month.
+- [ ] Bangla, phone width, light and dark.

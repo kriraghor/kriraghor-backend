@@ -265,6 +265,7 @@ GymVisit.init(
     attendedAt: DataTypes.DATE(3),
     attendedBy: DataTypes.UUID,
     memberId: DataTypes.UUID,
+    convertedAt: DataTypes.DATE(3),
   },
   { sequelize, modelName: 'GymVisit', tableName: 'gym_visits' }
 );
