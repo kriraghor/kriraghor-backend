@@ -59,6 +59,8 @@ describe('saving a special day (M20-FR-16, FR-17)', () => {
     expect(block({ fromOn: '2026-11-11', toOn: '2026-11-11' })).toBeNull();
     // windows left out: a closed day carries none
     expect(gym.specialDayBlock({ fromOn: eid.fromOn, toOn: eid.toOn, kind: 'closed', ...limits })).toBeNull();
+    // the gym's other special days left out: it has none
+    expect(gym.specialDayBlock({ ...eid, today: limits.today, maxDays: 60, aheadDays: 365, maxActive: 3 })).toBeNull();
   });
 
   it('refuses dates out of order, in the past, too long or too far ahead', () => {
