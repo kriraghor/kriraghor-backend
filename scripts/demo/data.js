@@ -481,6 +481,19 @@ const GYM_PANEL = {
     { n: 47, inDays: 2, at: '07:30' },
   ],
   joinRequest: { n: 50, note: 'I live near Mirpur 1 and want the monthly package.' },
+  // M24 §19: one linked member (a Monthly package with under two weeks left) renewed in the app and will
+  // pay at the counter, so the desk has a fee marked "Renewed in the app" and the member a renewal to cancel.
+  selfRenewal: { n: 54 },
+  // M24 §20: the linked demo member's measurements over six weeks (the last one today, matching her profile).
+  bodyEntries: {
+    n: 90,
+    entries: [
+      { daysAgo: 42, weightKg: 61.2, waistCm: 74 },
+      { daysAgo: 28, weightKg: 60.1, waistCm: 73 },
+      { daysAgo: 14, weightKg: 59, waistCm: 72 },
+      { daysAgo: 0, weightKg: 58, waistCm: 71.5, bodyFatPct: 24 },
+    ],
+  },
   // A holiday (M20 §26): the gym is closed for one day soon, so the gym page, the visit slots and the class
   // timetable show what a closed day does. After the free visits above, so none of them is cancelled.
   specialDay: { inDays: 9, kind: 'closed', title: 'Machine servicing day' },

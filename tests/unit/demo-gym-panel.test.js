@@ -134,6 +134,25 @@ describe('the demo gym panel', () => {
     expect(G.visitNote.length).toBeLessThanOrEqual(300);
   });
 
+  it('lets one linked member renew in the app and gives another body entries the rules accept', () => {
+    const rules = require('../../src/modules/gym-manage/gym-manage.rules');
+    const renewer = G.linked.find((m) => m.n === G.selfRenewal.n);
+    expect(renewer.pkg).toBe('month');
+    // On the day of loading the package has no more days left than a member may renew ahead.
+    const today = '2026-11-11';
+    const endsOn = rules.endsOn({ startsOn: rules.addDays(today, renewer.start), days: setting('gym.month_days') });
+    expect(rules.selfRenewBlock({ open: true, memberStatus: 'active', latest: { status: 'active', endsOn }, upcoming: null, today, daysBefore: setting('gym_manage.self_renew_days_before') })).toBeNull();
+    expect(G.linked.some((m) => m.n === G.bodyEntries.n)).toBe(true);
+    const days = G.bodyEntries.entries.map((e) => e.daysAgo);
+    expect(new Set(days).size).toBe(days.length);
+    for (const { daysAgo, ...values } of G.bodyEntries.entries) {
+      const all = { weightKg: null, bodyFatPct: null, chestCm: null, waistCm: null, hipsCm: null, armCm: null, thighCm: null, ...values };
+      expect(rules.bodyEntryBlock({ values: all, measuredOn: rules.addDays(today, -daysAgo), today, backdateDays: setting('gym_manage.body_backdate_days') })).toBeNull();
+    }
+    // The latest weight is the one on her health profile.
+    expect(G.bodyEntries.entries.find((e) => e.daysAgo === 0).weightKg).toBe(G.linked.find((m) => m.n === G.bodyEntries.n).health.weightKg);
+  });
+
   it('closes the gym for one day the special-day rules accept, after the demo visits', () => {
     const gym = require('../../src/modules/gym/gym.rules');
     const s = G.specialDay;

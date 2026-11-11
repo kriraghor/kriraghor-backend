@@ -174,6 +174,9 @@ function settingsView(gym, s) {
     visitPerPerson: s?.visitPerPerson ?? 1,
     visitPerPersonMax: settingsFacade.get('gym_manage.visit_per_person_max'),
     visitNote: s?.visitNote ?? null,
+    // M24-FR-121: members renew by themselves unless the gym switches it off.
+    selfRenewOpen: s?.selfRenewOpen ?? true,
+    selfRenewDaysBefore: c.cfg().selfRenewDaysBefore,
     importConsentUntil: c.iso(s?.importConsentUntil),
     nextMemberCode: s ? rules.memberCode(s.shortCode, s.memberSeq + 1) : null,
   };
@@ -210,7 +213,7 @@ async function patchSettings(principal, gymId, input, req) {
   try {
     await sequelize.transaction(async (transaction) => {
       const s = await c.settingsOf(gymId, { transaction, lock: true });
-      const fields = ['shortCode', 'tin', 'bin', 'receiptFooter', 'entryPolicy', 'absentAlertDays', 'joinRequestsOpen', 'remindersOff', 'smsKinds', 'vatEnabled', 'vatBps', 'visitsOpen', 'visitDailyCap', 'visitPerPerson', 'visitNote'].filter((k) => input[k] !== undefined);
+      const fields = ['shortCode', 'tin', 'bin', 'receiptFooter', 'entryPolicy', 'absentAlertDays', 'joinRequestsOpen', 'remindersOff', 'smsKinds', 'vatEnabled', 'vatBps', 'visitsOpen', 'visitDailyCap', 'visitPerPerson', 'visitNote', 'selfRenewOpen'].filter((k) => input[k] !== undefined);
       const changes = Object.fromEntries(fields.map((k) => [k, input[k]]));
       if (changes.shortCode) {
         const taken = await GymManageSettings.findOne({ where: { ownerId: a.gym.ownerId, shortCode: changes.shortCode, gymId: { [Op.ne]: gymId } }, attributes: ['gymId'], transaction });

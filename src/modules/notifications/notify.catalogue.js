@@ -1699,10 +1699,26 @@ const CATALOGUE = [
     values: async (e, { locale }) => ({
       gym: await gymName(e.payload.gymId),
       endsOn: dayText(e.payload.endsOn, locale),
-      link: (await gmFacts().payLinkUrl(e.payload.linkId)) ?? gymUrl(`/me/memberships/${e.payload.memberId}`),
+      link: (await gmFacts().payLinkUrl(e.payload.linkId)) ?? gymUrl(`/me/memberships/${e.payload.memberId}?renew=1`),
       smsLink: (await gmFacts().payLinkShortUrl(e.payload.linkId)) ?? gymUrl('/me'),
     }),
-    link: (e) => gymUrl(`/me/memberships/${e.payload.memberId}`),
+    link: (e) => gymUrl(`/me/memberships/${e.payload.memberId}?renew=1`),
+  },
+  {
+    // M24-FR-124: a member renewed in the app; the owner and the staff who take fees hear of it.
+    code: 'GYM_RENEWAL_BY_MEMBER',
+    events: ['gym_membership.self_renewed'],
+    category: 'gym_business',
+    channels: ['in_app', 'push'],
+    recipients: gymOwnerAnd('fees.collect'),
+    values: async (e, { locale }) => ({
+      gym: await gymName(e.payload.gymId),
+      memberCode: (await gmFacts().member(e.payload.memberId))?.memberCode ?? '',
+      package: e.payload.title,
+      startsOn: dayText(e.payload.startsOn, locale),
+      amount: e.payload.amount,
+    }),
+    link: (e) => gymUrl(`/manage/${e.payload.gymId}/members/${e.payload.memberId}`),
   },
   {
     code: 'GYM_MEMBERSHIP_ENDS_TODAY',
@@ -1712,8 +1728,8 @@ const CATALOGUE = [
     recipients: gmUsers('ends_today'),
     external: gmExternal('ends_today'),
     sms: true,
-    values: async (e) => ({ gym: await gymName(e.payload.gymId), link: gymUrl(`/me/memberships/${e.payload.memberId}`) }),
-    link: (e) => gymUrl(`/me/memberships/${e.payload.memberId}`),
+    values: async (e) => ({ gym: await gymName(e.payload.gymId), link: gymUrl(`/me/memberships/${e.payload.memberId}?renew=1`) }),
+    link: (e) => gymUrl(`/me/memberships/${e.payload.memberId}?renew=1`),
   },
   {
     code: 'GYM_FEE_OVERDUE',
@@ -1739,7 +1755,7 @@ const CATALOGUE = [
     channels: ['in_app'],
     recipients: gmUsers('expired'),
     values: async (e) => ({ gym: await gymName(e.payload.gymId) }),
-    link: (e) => gymUrl(`/me/memberships/${e.payload.memberId}`),
+    link: (e) => gymUrl(`/me/memberships/${e.payload.memberId}?renew=1`),
   },
   {
     code: 'GYM_FEE_RECEIPT',

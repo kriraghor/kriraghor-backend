@@ -25,7 +25,7 @@ const DAY_MS = 86400000;
 
 const TIERS = Object.freeze(['free', 'basic', 'standard', 'pro']);
 // M27 round 1 adds expenses (with the cash drawer), lockers, pos (counter shop and stock) and pnl (profit and loss).
-const FEATURES = Object.freeze(['attendance', 'reminders', 'online_fees', 'reports', 'trainers', 'plans', 'multi_gym', 'expenses', 'lockers', 'pos', 'pnl', 'classes', 'points', 'notices', 'leads', 'staff_attendance', 'equipment', 'payroll', 'visits']);
+const FEATURES = Object.freeze(['attendance', 'reminders', 'online_fees', 'reports', 'trainers', 'plans', 'multi_gym', 'expenses', 'lockers', 'pos', 'pnl', 'classes', 'points', 'notices', 'leads', 'staff_attendance', 'equipment', 'payroll', 'visits', 'progress']);
 const METHODS = Object.freeze(['cash', 'owner_bkash', 'owner_nagad', 'card_counter', 'other']);
 const LEFT_REASONS = Object.freeze(['price', 'moved', 'injury', 'other_gym', 'schedule', 'unknown', 'other']);
 const SHORT_CODE = /^[A-Z]{2,6}$/;
@@ -871,6 +871,73 @@ function bmiOf({ heightCm, weightKg }) {
   return { value, band };
 }
 
+// ---------------------------------------------------------------- a member renews by themselves (M24 §19)
+
+/**
+ * Why a member cannot renew their own membership, or null (M24-FR-121, FR-122). `latest` is the member's
+ * newest membership among active, frozen and expired; `upcoming` one that has not started. In order: the
+ * gym switched member renewals off (or its panel is read-only); the member left or was removed; a renewal
+ * already waits; there is nothing to renew; the running membership still has more than `daysBefore` days.
+ */
+function selfRenewBlock({ open, restricted = false, memberStatus, latest, upcoming, today, daysBefore }) {
+  if (!open) return { code: 'GYM_SELF_RENEW_OFF', meta: { reason: 'off' } };
+  if (restricted) return { code: 'GYM_SELF_RENEW_OFF', meta: { reason: 'restricted' } };
+  if (['left', 'removed'].includes(memberStatus)) return { code: 'GYM_MEMBER_STATE', meta: { reason: memberStatus } };
+  if (upcoming) return { code: 'GYM_RENEWAL_EXISTS', meta: { membershipId: upcoming.id } };
+  if (!latest) return { code: 'GYM_NOTHING_TO_RENEW' };
+  if (latest.status !== 'expired' && daysBetween(today, latest.endsOn) > daysBefore) return { code: 'GYM_RENEW_TOO_EARLY', meta: { from: addDays(latest.endsOn, -daysBefore) } };
+  return null;
+}
+
+/**
+ * Why a member cannot cancel a renewal, or null (M24-FR-125): only one they made themselves, that has not
+ * started, with nothing paid on it. Anything else goes through the desk.
+ */
+function selfRenewCancelBlock({ membership, paidPoisha = 0 }) {
+  if (!membership) return { code: 'GYM_NOTHING_TO_RENEW' };
+  if (membership.createdVia !== 'member') return { code: 'GYM_MEMBERSHIP_STATE', meta: { reason: 'made_at_desk' } };
+  if (membership.status !== 'upcoming') return { code: 'GYM_MEMBERSHIP_STATE', meta: { reason: membership.status } };
+  if (paidPoisha > 0) return { code: 'GYM_MEMBERSHIP_STATE', meta: { reason: 'paid' } };
+  return null;
+}
+
+// ---------------------------------------------------------------- body progress (M24 §20)
+
+/** The measurements of a body entry with their allowed range (kg, %, cm), one decimal each. */
+const BODY_FIELDS = Object.freeze({ weightKg: [10, 400], bodyFatPct: [2, 70], chestCm: [10, 300], waistCm: [10, 300], hipsCm: [10, 300], armCm: [10, 300], thighCm: [10, 300] });
+const bodyGiven = (values) => Object.keys(BODY_FIELDS).filter((k) => values[k] !== null && values[k] !== undefined);
+
+/**
+ * Why a body entry cannot be saved, or null (M24-FR-128, FR-129): at least one measurement, each inside its
+ * range, measured today or up to `backdateDays` back.
+ */
+function bodyEntryBlock({ values, measuredOn, today, backdateDays }) {
+  const given = bodyGiven(values);
+  if (!given.length) return { code: 'GYM_BODY_EMPTY' };
+  const bad = given.find((k) => values[k] < BODY_FIELDS[k][0] || values[k] > BODY_FIELDS[k][1]);
+  if (bad) return { code: 'GYM_BODY_RANGE', meta: { field: bad, min: BODY_FIELDS[bad][0], max: BODY_FIELDS[bad][1] } };
+  const from = addDays(today, -backdateDays);
+  if (measuredOn > today || measuredOn < from) return { code: 'GYM_DATE_OUT_OF_RANGE', meta: { from, to: today } };
+  return null;
+}
+
+/**
+ * A member's progress (M24-FR-130): the entries oldest first, each with the BMI its weight gives at the
+ * member's height, and per measurement the change from the first entry that has it to the latest (null with
+ * fewer than two).
+ */
+function progressOf(entries, heightCm = null) {
+  const sorted = [...entries].sort((a, b) => a.measuredOn.localeCompare(b.measuredOn));
+  const series = sorted.map((e) => ({ ...e, bmi: bmiOf({ heightCm, weightKg: e.weightKg })?.value ?? null }));
+  const change = {};
+  for (const k of Object.keys(BODY_FIELDS)) {
+    const have = sorted.filter((e) => e[k] !== null && e[k] !== undefined);
+    const [first, last] = [have[0], have[have.length - 1]];
+    change[k] = have.length >= 2 ? { from: first[k], to: last[k], delta: Math.round((last[k] - first[k]) * 10) / 10, fromOn: first.measuredOn, toOn: last.measuredOn } : null;
+  }
+  return { series, change };
+}
+
 /**
  * M27-FR-28: the VAT inside a VAT-inclusive amount at a rate in basis points (15% = 1500), rounded half up
  * to the poisha: vat = round(amount × bps ÷ (10000 + bps)); net = amount − vat. No VAT when bps is null or 0.
@@ -908,6 +975,12 @@ module.exports = {
   looksLikeShortCode,
   visitMinutes,
   bmiOf,
+  selfRenewBlock,
+  selfRenewCancelBlock,
+  BODY_FIELDS,
+  bodyGiven,
+  bodyEntryBlock,
+  progressOf,
   vatPart,
   entranceToken,
   parseEntranceToken,

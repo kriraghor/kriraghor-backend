@@ -144,6 +144,13 @@ g.post('/members/:memberId/rejoin', mp, async (req, res) => res.json(await membe
 g.post('/members/:memberId/remove', mp, validate(s.reasonBody), async (req, res) => res.json(await members.remove(req.user, P(req), M(req), req.body, req)));
 g.get('/members/:memberId/notes', mp, async (req, res) => res.json(await members.notes(req.user, P(req), M(req))));
 g.post('/members/:memberId/notes', mp, validate(s.noteBody), async (req, res) => res.status(201).json(await members.addNote(req.user, P(req), M(req), req.body, req)));
+// M24 §20: a member's body progress (owner and plans.manage; feature progress).
+g.get('/members/:memberId/body', mp, async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(await require('./body.service').forMember(req.user, P(req), M(req)));
+});
+g.post('/members/:memberId/body', mp, validate(s.bodyEntryBody), ik('body_entry_staff'), async (req, res) => res.status(201).json(await require('./body.service').addFor(req.user, P(req), M(req), req.body, req)));
+g.post('/members/:memberId/body/:entryId/void', params(s.bodyEntryParam), async (req, res) => res.json(await require('./body.service').voidFor(req.user, P(req), M(req), req.params.entryId, req)));
 g.get('/members/:memberId/attendance', mp, query(s.monthQuery), async (req, res) => res.json(await members.attendance(req.user, P(req), M(req), req.validQuery)));
 g.put('/members/:memberId/photo', mp, raw, async (req, res) => res.json(await members.setPhoto(req.user, P(req), M(req), { contentType: req.get('content-type'), body: req.body }, req)));
 g.get('/members/:memberId/photo', mp, async (req, res) => sendFile(res, await members.getPhoto(req.user, P(req), M(req))));
@@ -296,6 +303,19 @@ meMemberships.get('/:memberId/checkin-token', mm, async (req, res) => {
 meMemberships.put('/:memberId/health-note', mm, validate(s.healthNoteBody), async (req, res) => res.json(await me.setHealthNote(req.user, req.params.memberId, req.body, req)));
 // M27-FR-30: blood group, height, weight, conditions (the member's own; encrypted conditions).
 meMemberships.put('/:memberId/health', mm, validate(s.healthBody), async (req, res) => res.json(await me.setHealth(req.user, req.params.memberId, req.body, req)));
+// M24 §19: renew my own membership (pay online or at the counter), and take a renewal back.
+meMemberships.get('/:memberId/renewal', mm, async (req, res) => res.json(await require('./renewals.service').options(req.user, req.params.memberId)));
+meMemberships.post('/:memberId/renew', requireGate('join_gym'), mm, validate(s.renewMineBody), ik('self_renew'), async (req, res) =>
+  res.status(201).json(await require('./renewals.service').renew(req.user, req.params.memberId, req.body, req.idempotencyKey, req))
+);
+meMemberships.post('/:memberId/renewal/cancel', mm, async (req, res) => res.json(await require('./renewals.service').cancel(req.user, req.params.memberId, req)));
+// M24 §20: my body progress.
+meMemberships.get('/:memberId/body', mm, async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(await require('./body.service').mine(req.user, req.params.memberId));
+});
+meMemberships.post('/:memberId/body', mm, validate(s.bodyEntryBody), ik('body_entry'), async (req, res) => res.status(201).json(await require('./body.service').addMine(req.user, req.params.memberId, req.body, req)));
+meMemberships.post('/:memberId/body/:entryId/void', params(s.meBodyEntryParam), async (req, res) => res.json(await require('./body.service').voidMine(req.user, req.params.memberId, req.params.entryId, req)));
 meMemberships.post('/:memberId/unlink', mm, async (req, res) => res.json(await links.unlinkByMember(req.user, req.params.memberId, req)));
 
 const meReceipts = Router();

@@ -57,6 +57,8 @@ GymManageSettings.init(
     vatBps: DataTypes.INTEGER,
     // Trial visits (9 Nov 2026): off by default; null cap = the platform default.
     visitsOpen: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    // M24-FR-121: members may renew by themselves (the gym can switch it off).
+    selfRenewOpen: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
     visitDailyCap: DataTypes.SMALLINT,
     visitPerPerson: { type: DataTypes.SMALLINT, allowNull: false, defaultValue: 1 },
     visitNote: DataTypes.STRING(300),
@@ -144,6 +146,8 @@ GymMembership.init(
     discountReason: DataTypes.STRING(200),
     visitLimit: DataTypes.SMALLINT,
     origin: enumOf(['new', 'renewal', 'change', 'rejoin', 'import']),
+    // M24-FR-126: made at the desk, or by the member in the app.
+    createdVia: enumOf(['desk', 'member'], { defaultValue: 'desk' }),
     previousId: DataTypes.UUID,
     startsOn: req(DataTypes.DATEONLY),
     endsOn: req(DataTypes.DATEONLY),
@@ -248,6 +252,42 @@ GymAttendance.init(
 );
 
 /** Trial visits (9 Nov 2026): a free visit a signed-in person books before joining; never deleted. */
+/** A DECIMAL(…, 1) measurement read as a number (Postgres returns DECIMAL as text). */
+const measure = (field) => ({
+  type: DataTypes.DECIMAL(4, 1),
+  allowNull: true,
+  get() {
+    const v = this.getDataValue(field);
+    return v === null || v === undefined ? null : Number(v);
+  },
+});
+
+/**
+ * M24 §20 (FR-128): a member's measurements on a date. One live entry per member and date; a replaced or
+ * removed one is voided, never deleted. Seen by the member, the owner and the plan writers only.
+ */
+class GymBodyEntry extends Model {}
+GymBodyEntry.init(
+  {
+    id,
+    gymId: req(DataTypes.UUID),
+    memberId: req(DataTypes.UUID),
+    measuredOn: req(DataTypes.DATEONLY),
+    weightKg: measure('weightKg'),
+    bodyFatPct: measure('bodyFatPct'),
+    chestCm: measure('chestCm'),
+    waistCm: measure('waistCm'),
+    hipsCm: measure('hipsCm'),
+    armCm: measure('armCm'),
+    thighCm: measure('thighCm'),
+    byUser: req(DataTypes.UUID),
+    byRole: enumOf(['member', 'staff']),
+    voidedAt: DataTypes.DATE(3),
+    voidedBy: DataTypes.UUID,
+  },
+  { sequelize, modelName: 'GymBodyEntry', tableName: 'gym_body_entries', updatedAt: false }
+);
+
 class GymVisit extends Model {}
 GymVisit.init(
   {
@@ -593,6 +633,7 @@ module.exports = {
   GymSmsEntry,
   GymManageSettings,
   GymVisit,
+  GymBodyEntry,
   GymMember,
   GymLinkRequest,
   GymMembership,

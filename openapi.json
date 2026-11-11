@@ -26418,6 +26418,9 @@
                     },
                     "visits": {
                       "type": "boolean"
+                    },
+                    "progress": {
+                      "type": "boolean"
                     }
                   }
                 },
@@ -26524,6 +26527,9 @@
                     "type": "boolean"
                   },
                   "visits": {
+                    "type": "boolean"
+                  },
+                  "progress": {
                     "type": "boolean"
                   }
                 }
@@ -26635,6 +26641,9 @@
                 "type": "boolean"
               },
               "visits": {
+                "type": "boolean"
+              },
+              "progress": {
                 "type": "boolean"
               }
             }
@@ -26982,6 +26991,12 @@
               "null"
             ]
           },
+          "selfRenewOpen": {
+            "type": "boolean"
+          },
+          "selfRenewDaysBefore": {
+            "type": "integer"
+          },
           "importConsentUntil": {
             "type": [
               "string",
@@ -27019,6 +27034,8 @@
           "visitPerPerson",
           "visitPerPersonMax",
           "visitNote",
+          "selfRenewOpen",
+          "selfRenewDaysBefore",
           "importConsentUntil",
           "nextMemberCode"
         ]
@@ -27955,6 +27972,14 @@
               "import"
             ]
           },
+          "createdVia": {
+            "type": "string",
+            "enum": [
+              "desk",
+              "member"
+            ],
+            "description": "M24-FR-126: made at the desk, or by the member in the app"
+          },
           "previousId": {
             "type": [
               "string",
@@ -28071,6 +28096,7 @@
           "discountReason",
           "visitLimit",
           "origin",
+          "createdVia",
           "previousId",
           "startsOn",
           "endsOn",
@@ -28928,6 +28954,492 @@
           "createdAt"
         ]
       },
+      "GymBodyProgress": {
+        "type": "object",
+        "properties": {
+          "memberId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "on": {
+            "type": "boolean",
+            "description": "false: the gym’s plan does not include body progress"
+          },
+          "heightCm": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "measuredOn": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "weightKg": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "bodyFatPct": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "chestCm": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "waistCm": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "hipsCm": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "armCm": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "thighCm": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "byRole": {
+                  "type": "string",
+                  "enum": [
+                    "member",
+                    "staff"
+                  ]
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "bmi": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "measuredOn",
+                "weightKg",
+                "bodyFatPct",
+                "chestCm",
+                "waistCm",
+                "hipsCm",
+                "armCm",
+                "thighCm",
+                "byRole",
+                "createdAt",
+                "bmi"
+              ]
+            },
+            "description": "Oldest first"
+          },
+          "change": {
+            "type": "object",
+            "properties": {
+              "weightKg": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "from": {
+                    "type": "number"
+                  },
+                  "to": {
+                    "type": "number"
+                  },
+                  "delta": {
+                    "type": "number"
+                  },
+                  "fromOn": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "toOn": {
+                    "type": "string",
+                    "format": "date"
+                  }
+                },
+                "required": [
+                  "from",
+                  "to",
+                  "delta",
+                  "fromOn",
+                  "toOn"
+                ]
+              },
+              "bodyFatPct": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "from": {
+                    "type": "number"
+                  },
+                  "to": {
+                    "type": "number"
+                  },
+                  "delta": {
+                    "type": "number"
+                  },
+                  "fromOn": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "toOn": {
+                    "type": "string",
+                    "format": "date"
+                  }
+                },
+                "required": [
+                  "from",
+                  "to",
+                  "delta",
+                  "fromOn",
+                  "toOn"
+                ]
+              },
+              "chestCm": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "from": {
+                    "type": "number"
+                  },
+                  "to": {
+                    "type": "number"
+                  },
+                  "delta": {
+                    "type": "number"
+                  },
+                  "fromOn": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "toOn": {
+                    "type": "string",
+                    "format": "date"
+                  }
+                },
+                "required": [
+                  "from",
+                  "to",
+                  "delta",
+                  "fromOn",
+                  "toOn"
+                ]
+              },
+              "waistCm": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "from": {
+                    "type": "number"
+                  },
+                  "to": {
+                    "type": "number"
+                  },
+                  "delta": {
+                    "type": "number"
+                  },
+                  "fromOn": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "toOn": {
+                    "type": "string",
+                    "format": "date"
+                  }
+                },
+                "required": [
+                  "from",
+                  "to",
+                  "delta",
+                  "fromOn",
+                  "toOn"
+                ]
+              },
+              "hipsCm": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "from": {
+                    "type": "number"
+                  },
+                  "to": {
+                    "type": "number"
+                  },
+                  "delta": {
+                    "type": "number"
+                  },
+                  "fromOn": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "toOn": {
+                    "type": "string",
+                    "format": "date"
+                  }
+                },
+                "required": [
+                  "from",
+                  "to",
+                  "delta",
+                  "fromOn",
+                  "toOn"
+                ]
+              },
+              "armCm": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "from": {
+                    "type": "number"
+                  },
+                  "to": {
+                    "type": "number"
+                  },
+                  "delta": {
+                    "type": "number"
+                  },
+                  "fromOn": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "toOn": {
+                    "type": "string",
+                    "format": "date"
+                  }
+                },
+                "required": [
+                  "from",
+                  "to",
+                  "delta",
+                  "fromOn",
+                  "toOn"
+                ]
+              },
+              "thighCm": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "from": {
+                    "type": "number"
+                  },
+                  "to": {
+                    "type": "number"
+                  },
+                  "delta": {
+                    "type": "number"
+                  },
+                  "fromOn": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "toOn": {
+                    "type": "string",
+                    "format": "date"
+                  }
+                },
+                "required": [
+                  "from",
+                  "to",
+                  "delta",
+                  "fromOn",
+                  "toOn"
+                ]
+              }
+            },
+            "required": [
+              "weightKg",
+              "bodyFatPct",
+              "chestCm",
+              "waistCm",
+              "hipsCm",
+              "armCm",
+              "thighCm"
+            ]
+          },
+          "limits": {
+            "type": "object",
+            "properties": {
+              "backdateDays": {
+                "type": "integer"
+              },
+              "fields": {
+                "type": "object",
+                "properties": {
+                  "weightKg": {
+                    "type": "object",
+                    "properties": {
+                      "min": {
+                        "type": "number"
+                      },
+                      "max": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "min",
+                      "max"
+                    ]
+                  },
+                  "bodyFatPct": {
+                    "type": "object",
+                    "properties": {
+                      "min": {
+                        "type": "number"
+                      },
+                      "max": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "min",
+                      "max"
+                    ]
+                  },
+                  "chestCm": {
+                    "type": "object",
+                    "properties": {
+                      "min": {
+                        "type": "number"
+                      },
+                      "max": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "min",
+                      "max"
+                    ]
+                  },
+                  "waistCm": {
+                    "type": "object",
+                    "properties": {
+                      "min": {
+                        "type": "number"
+                      },
+                      "max": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "min",
+                      "max"
+                    ]
+                  },
+                  "hipsCm": {
+                    "type": "object",
+                    "properties": {
+                      "min": {
+                        "type": "number"
+                      },
+                      "max": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "min",
+                      "max"
+                    ]
+                  },
+                  "armCm": {
+                    "type": "object",
+                    "properties": {
+                      "min": {
+                        "type": "number"
+                      },
+                      "max": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "min",
+                      "max"
+                    ]
+                  },
+                  "thighCm": {
+                    "type": "object",
+                    "properties": {
+                      "min": {
+                        "type": "number"
+                      },
+                      "max": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "min",
+                      "max"
+                    ]
+                  }
+                },
+                "required": [
+                  "weightKg",
+                  "bodyFatPct",
+                  "chestCm",
+                  "waistCm",
+                  "hipsCm",
+                  "armCm",
+                  "thighCm"
+                ]
+              }
+            },
+            "required": [
+              "backdateDays",
+              "fields"
+            ]
+          }
+        },
+        "required": [
+          "memberId",
+          "on",
+          "heightCm",
+          "entries",
+          "change",
+          "limits"
+        ]
+      },
       "GymCheckinCalendar": {
         "type": "object",
         "properties": {
@@ -29068,6 +29580,14 @@
                   "import"
                 ]
               },
+              "createdVia": {
+                "type": "string",
+                "enum": [
+                  "desk",
+                  "member"
+                ],
+                "description": "M24-FR-126: made at the desk, or by the member in the app"
+              },
               "previousId": {
                 "type": [
                   "string",
@@ -29184,6 +29704,7 @@
               "discountReason",
               "visitLimit",
               "origin",
+              "createdVia",
               "previousId",
               "startsOn",
               "endsOn",
@@ -30140,6 +30661,9 @@
               },
               "visits": {
                 "type": "boolean"
+              },
+              "progress": {
+                "type": "boolean"
               }
             }
           },
@@ -30189,7 +30713,8 @@
                       "staff_attendance",
                       "equipment",
                       "payroll",
-                      "visits"
+                      "visits",
+                      "progress"
                     ]
                   }
                 },
@@ -30718,7 +31243,8 @@
                       "staff_attendance",
                       "equipment",
                       "payroll",
-                      "visits"
+                      "visits",
+                      "progress"
                     ]
                   }
                 },
@@ -31440,6 +31966,306 @@
           "weightKg",
           "bmi",
           "medical"
+        ]
+      },
+      "MyGymRenewal": {
+        "type": "object",
+        "properties": {
+          "memberId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "gym": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              },
+              "slug": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "slug"
+            ]
+          },
+          "can": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Why not: GYM_SELF_RENEW_OFF, GYM_MEMBER_STATE, GYM_RENEWAL_EXISTS, GYM_NOTHING_TO_RENEW or GYM_RENEW_TOO_EARLY"
+          },
+          "opensOn": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "description": "When it is too early: the first day a renewal can be made"
+          },
+          "daysBefore": {
+            "type": "integer"
+          },
+          "current": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "packageKind": {
+                "type": "string",
+                "enum": [
+                  "day",
+                  "month",
+                  "quarter",
+                  "half_year",
+                  "year",
+                  "custom"
+                ]
+              },
+              "endsOn": {
+                "type": "string",
+                "format": "date"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "upcoming",
+                  "active",
+                  "frozen",
+                  "expired",
+                  "cancelled",
+                  "changed"
+                ]
+              }
+            },
+            "required": [
+              "title",
+              "packageKind",
+              "endsOn",
+              "status"
+            ]
+          },
+          "packages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "packageId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "day",
+                    "month",
+                    "quarter",
+                    "half_year",
+                    "year",
+                    "custom"
+                  ]
+                },
+                "days": {
+                  "type": "integer"
+                },
+                "pricePoisha": {
+                  "type": "integer"
+                },
+                "startsOn": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "endsOn": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "current": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "packageId",
+                "title",
+                "kind",
+                "days",
+                "pricePoisha",
+                "startsOn",
+                "endsOn",
+                "current"
+              ]
+            }
+          },
+          "renewal": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "membershipId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "title": {
+                "type": "string"
+              },
+              "packageKind": {
+                "type": "string",
+                "enum": [
+                  "day",
+                  "month",
+                  "quarter",
+                  "half_year",
+                  "year",
+                  "custom"
+                ]
+              },
+              "startsOn": {
+                "type": "string",
+                "format": "date"
+              },
+              "endsOn": {
+                "type": "string",
+                "format": "date"
+              },
+              "createdVia": {
+                "type": "string",
+                "enum": [
+                  "desk",
+                  "member"
+                ]
+              },
+              "dueId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uuid"
+              },
+              "amountPoisha": {
+                "type": "integer"
+              },
+              "outstandingPoisha": {
+                "type": "integer"
+              },
+              "cancellable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "membershipId",
+              "title",
+              "packageKind",
+              "startsOn",
+              "endsOn",
+              "createdVia",
+              "dueId",
+              "amountPoisha",
+              "outstandingPoisha",
+              "cancellable"
+            ],
+            "description": "A renewal that already waits to start"
+          },
+          "onlineFees": {
+            "type": "boolean"
+          },
+          "onlineFeesReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "memberId",
+          "gym",
+          "can",
+          "reason",
+          "opensOn",
+          "daysBefore",
+          "current",
+          "packages",
+          "renewal",
+          "onlineFees",
+          "onlineFeesReason"
+        ]
+      },
+      "GymRenewedByMember": {
+        "type": "object",
+        "properties": {
+          "membership": {
+            "$ref": "#/components/schemas/GymMembership"
+          },
+          "due": {
+            "type": "object",
+            "properties": {
+              "dueId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "amountPoisha": {
+                "type": "integer"
+              },
+              "dueOn": {
+                "type": "string",
+                "format": "date"
+              },
+              "status": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "dueId",
+              "amountPoisha",
+              "dueOn",
+              "status"
+            ]
+          },
+          "payment": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "paymentId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "payUrl": {
+                "type": "string"
+              },
+              "amountPoisha": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "paymentId",
+              "payUrl",
+              "amountPoisha"
+            ],
+            "description": "Only when paying online: open payUrl"
+          }
+        },
+        "required": [
+          "membership",
+          "due",
+          "payment"
         ]
       },
       "MyGymReceipts": {
@@ -96874,6 +97700,10 @@
                     "minLength": 1,
                     "maxLength": 300,
                     "description": "What to bring and where to go, shown with the booking"
+                  },
+                  "selfRenewOpen": {
+                    "type": "boolean",
+                    "description": "M24-FR-121: linked members may renew their own membership in the app"
                   }
                 }
               }
@@ -98901,6 +99731,381 @@
           },
           "404": {
             "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/members/{memberId}/body": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "A member’s body progress (owner and plans.manage; a trainer-only caller sees their own members; feature progress; no-store; M24-FR-131)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "memberId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymBodyProgress"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, GYM_TIER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Record a member’s measurements for a date (owner and plans.manage; not while restricted)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "memberId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "8–80 letters, digits, - or _. Retries with the same key and body replay the first response"
+            },
+            "required": true,
+            "description": "8–80 letters, digits, - or _. Retries with the same key and body replay the first response",
+            "name": "idempotency-key",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "measuredOn": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "Today when left out; up to gym_manage.body_backdate_days back"
+                  },
+                  "weightKg": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 10,
+                    "maximum": 400
+                  },
+                  "bodyFatPct": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 2,
+                    "maximum": 70
+                  },
+                  "chestCm": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 10,
+                    "maximum": 300
+                  },
+                  "waistCm": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 10,
+                    "maximum": 300
+                  },
+                  "hipsCm": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 10,
+                    "maximum": 300
+                  },
+                  "armCm": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 10,
+                    "maximum": 300
+                  },
+                  "thighCm": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 10,
+                    "maximum": 300
+                  }
+                },
+                "description": "At least one measurement. A second entry for the same date replaces the first"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymBodyProgress"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error. Codes: IDEMPOTENCY_KEY_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, GYM_TIER_REQUIRED, GYM_ACCOUNT_RESTRICTED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_MEMBER_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, GYM_BODY_EMPTY, GYM_BODY_RANGE, GYM_DATE_OUT_OF_RANGE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/members/{memberId}/body/{entryId}/void": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Remove one of a member’s entries (owner and plans.manage; kept as void)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "memberId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "entryId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymBodyProgress"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, GYM_TIER_REQUIRED, GYM_ACCOUNT_RESTRICTED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_BODY_ENTRY_STATE, GYM_MEMBER_STATE",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -102664,6 +103869,569 @@
           },
           "422": {
             "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/gym-memberships/{memberId}/renewal": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Can I renew this membership myself, with which packages, dates and price; a renewal that already waits (M24-FR-121, FR-122)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "memberId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyGymRenewal"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/gym-memberships/{memberId}/renew": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Renew my membership (gate join_gym): pay online (the payment to open comes back) or at the counter (the fee waits as a due); the gym is told (M24-FR-123, FR-124)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "memberId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "8–80 letters, digits, - or _. Retries with the same key and body replay the first response"
+            },
+            "required": true,
+            "description": "8–80 letters, digits, - or _. Retries with the same key and body replay the first response",
+            "name": "idempotency-key",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "packageId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "One of the packages the renewal read offers; left out: the current package"
+                  },
+                  "pay": {
+                    "type": "string",
+                    "enum": [
+                      "online",
+                      "counter"
+                    ],
+                    "description": "online: the payment to open comes back; counter: the fee waits as an unpaid due"
+                  }
+                },
+                "required": [
+                  "pay"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymRenewedByMember"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error. Codes: IDEMPOTENCY_KEY_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PHONE_REQUIRED, GYM_ONLINE_FEES_UNAVAILABLE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_SELF_RENEW_OFF, GYM_MEMBER_STATE, GYM_RENEWAL_EXISTS, GYM_NOTHING_TO_RENEW, GYM_RENEW_TOO_EARLY, GYM_MEMBERSHIP_OVERLAP",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, GYM_PACKAGE_UNAVAILABLE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/gym-memberships/{memberId}/renewal/cancel": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Take back a renewal I made, while it has not started and nothing is paid on it (M24-FR-125)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "memberId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyGymRenewal"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_NOTHING_TO_RENEW, GYM_MEMBERSHIP_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/gym-memberships/{memberId}/body": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "My body progress at this gym: measurements oldest first with BMI, and the change per measurement (no-store; on: false when the plan lacks it; M24-FR-130)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "memberId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymBodyProgress"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Record my measurements for a date; a second entry for the same date replaces the first (M24-FR-128, FR-129)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "memberId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "8–80 letters, digits, - or _. Retries with the same key and body replay the first response"
+            },
+            "required": true,
+            "description": "8–80 letters, digits, - or _. Retries with the same key and body replay the first response",
+            "name": "idempotency-key",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "measuredOn": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "Today when left out; up to gym_manage.body_backdate_days back"
+                  },
+                  "weightKg": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 10,
+                    "maximum": 400
+                  },
+                  "bodyFatPct": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 2,
+                    "maximum": 70
+                  },
+                  "chestCm": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 10,
+                    "maximum": 300
+                  },
+                  "waistCm": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 10,
+                    "maximum": 300
+                  },
+                  "hipsCm": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 10,
+                    "maximum": 300
+                  },
+                  "armCm": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 10,
+                    "maximum": 300
+                  },
+                  "thighCm": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "minimum": 10,
+                    "maximum": 300
+                  }
+                },
+                "description": "At least one measurement. A second entry for the same date replaces the first"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymBodyProgress"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error. Codes: IDEMPOTENCY_KEY_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: GYM_TIER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, GYM_BODY_EMPTY, GYM_BODY_RANGE, GYM_DATE_OUT_OF_RANGE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/gym-memberships/{memberId}/body/{entryId}/void": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Remove an entry I recorded (kept as void, never deleted)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "memberId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "entryId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymBodyProgress"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: GYM_TIER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_BODY_ENTRY_STATE",
             "content": {
               "application/problem+json": {
                 "schema": {

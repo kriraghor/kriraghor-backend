@@ -73,6 +73,15 @@ const ERRORS = {
   GYM_SMS_ADDON_UNAVAILABLE: [409, 'The SMS add-on is not available on this plan right now'],
   GYM_SMS_ADDON_OFF: [409, 'Switch the SMS add-on on first'],
   GYM_SMS_BALANCE_SHORT: [409, 'That would take the SMS balance below 0'],
+  // M24 §19: a member renews by themselves.
+  GYM_SELF_RENEW_OFF: [409, 'This gym does not take renewals in the app right now. Ask at the front desk'],
+  GYM_RENEWAL_EXISTS: [409, 'A renewal is already waiting for this membership'],
+  GYM_NOTHING_TO_RENEW: [409, 'There is no membership to renew. Ask at the front desk'],
+  GYM_RENEW_TOO_EARLY: [409, 'It is too early to renew this membership'],
+  // M24 §20: body progress.
+  GYM_BODY_EMPTY: [422, 'Enter at least one measurement'],
+  GYM_BODY_RANGE: [422, 'That measurement is outside what can be recorded'],
+  GYM_BODY_ENTRY_STATE: [409, 'This entry cannot be removed'],
 };
 const fail = (code, meta, detail) => new AppError(ERRORS[code][0], code, ERRORS[code][1], { ...(meta ? { meta } : {}), ...(detail ? { detail } : {}) });
 
@@ -113,6 +122,9 @@ const cfg = () => ({
   planMaxItems: settings.get('gym_manage.plan_max_items'),
   dietMaxMeals: settings.get('gym_manage.diet_max_meals'),
   planLogBackDays: settings.get('gym_manage.plan_log_back_days'),
+  // M24 §19 and §20: a member's own renewal, and body progress.
+  selfRenewDaysBefore: settings.get('gym_manage.self_renew_days_before'),
+  bodyBackdateDays: settings.get('gym_manage.body_backdate_days'),
 });
 
 /** The owner's invoices, founding partners and VAT (§6.6, §6.12). */

@@ -476,4 +476,4 @@ async function releasedWithoutRelease({ limit = 1000 } = {}) {
   return bad;
 }
 
-module.exports = { PURPOSE, CHANNELS, linkView, urlOf, shortUrlOf, createLinkIn, create, list, cancel, summary, payLink, myDues, payMyDue, onCaptured, releaseDue, expireLinks, refund, onRefundSucceeded, releasedWithoutRelease };
+module.exports = { PURPOSE, CHANNELS, linkView, urlOf, shortUrlOf, createLinkIn, startPaymentIn, create, list, cancel, summary, payLink, myDues, payMyDue, onCaptured, releaseDue, expireLinks, refund, onRefundSucceeded, releasedWithoutRelease };
