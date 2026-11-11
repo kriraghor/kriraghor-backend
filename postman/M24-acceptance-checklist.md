@@ -239,3 +239,68 @@ Collection `kriraghor-gym-sms.postman_collection.json`, unattended `node postman
 | SA.7 | **The daily job / the allowance job on the 1st** | nothing stale; last month's allowance left expires and the new month is granted, once 🤖. A hold open for a day is settled as failed 🤖; three parallel holds never overdraw 🤖; low and empty notices once per crossing 🤖 (FR-100) |
 | SA.8 | **Adjust: no step-up / below 0 / +25 / the admin desk** | 403; 409 `GYM_SMS_BALANCE_SHORT`; an `adjust` entry, audited `gym_sms.adjusted`; the owner shows the add-on and balance |
 | SA.9 | **Switch off / choose kinds** | ended; 409 `GYM_SMS_ADDON_OFF`. The monthly invoice bills `sms_addon` for a month it was on 🤖 |
+
+# M24 · A member renews by themselves, and body progress: Acceptance Checklist
+
+Product owner, 11 Nov 2026; M24-FR-121 to FR-133 ([M24 §19 and §20](../../kriraghor-docs/modules/M24-gym-management.md)). Collection `kriraghor-gym-renewal.postman_collection.json`, unattended `node postman/run-m24-renewal.js`.
+
+## 0. Setup
+- [ ] `npx jest --runInBand --coverage=false --runTestsByPath tests/unit/gym-renewal-progress-rules.test.js tests/e2e/gym-renewal.test.js tests/e2e/gym-body.test.js` passes.
+- [ ] `node postman/run-m24-renewal.js` → **0 failed** (52 requests, 87 assertions). The runner resets the test database and makes a Standard gym that takes fees online, two linked members (Rafi's Monthly ends in 9 days, Lima's started today), desk staff, a coach, a stranger and a Basic gym with a linked member. M03 counts 421 settings (seed v41); templates v32.
+
+## 1. The read and renewing for the counter (FR-121 to FR-124, FR-126)
+| # | Do | Expect |
+|---|---|---|
+| 1.1 | **Can I renew** | Yes; Monthly (current) and Quarterly, not the desk-only package; the dates continue from the old end; ৳2,500, no admission fee |
+| 1.2 | **No Idempotency-Key**, **An unknown way to pay**, **The desk-only package**, **Someone else** | 400; 422; 422 `GYM_PACKAGE_UNAVAILABLE`; 404 |
+| 1.3 | **Renew, pay at the counter** | 201: upcoming, made by the member, an unpaid due of ৳2,500, no payment |
+| 1.4 | **The same key replays**, **A second renewal** | The same membership; 409 `GYM_RENEWAL_EXISTS` |
+| 1.5 | Runner: deliver the events, **The owner is told**, **Staff who take fees are told** | `GYM_RENEWAL_BY_MEMBER` for both |
+| 1.6 | **The desk sees who made it** | The membership carries `createdVia: member` |
+
+## 2. Taking a renewal back (FR-125)
+| # | Do | Expect |
+|---|---|---|
+| 2.1 | **The read shows the waiting renewal** | To pay ৳2,500, can be cancelled |
+| 2.2 | **Someone else cannot cancel it**, **Cancel my renewal**, **Nothing left to cancel** | 404; renewable again; 409 `GYM_NOTHING_TO_RENEW` |
+| 2.3 | **The cancelled renewal is kept, its fee void** | Cancelled and void, never deleted |
+
+## 3. Renewing online (FR-123)
+| # | Do | Expect |
+|---|---|---|
+| 3.1 | **Renew Quarterly, pay online** | 201 with the payment to open (৳6,500) |
+| 3.2 | **Until it is paid the fee is with my dues** | Outstanding ৳6,500, payable online |
+| 3.3 | Runner: pay it through the simulator, **Paid**, **Cancelling a paid renewal** | Nothing outstanding; 409 `GYM_MEMBERSHIP_STATE` (paid) |
+
+## 4. Too early, and the gym's switch (FR-121, FR-122)
+| # | Do | Expect |
+|---|---|---|
+| 4.1 | **Lima started today**, **Renewing now** | Too early, opens 14 days before the end; 409 `GYM_RENEW_TOO_EARLY` |
+| 4.2 | **Settings**, **Staff cannot change the switch** | On by default, 14 days; 403 |
+| 4.3 | **The owner switches member renewals off**, the read, **Renewing while off**, on again | `GYM_SELF_RENEW_OFF` in the read and 409 |
+
+## 5. Body progress: the member (FR-128 to FR-130)
+| # | Do | Expect |
+|---|---|---|
+| 5.1 | **Nothing yet, with the limits** | On, empty, the ranges, 365 days back, no-store |
+| 5.2 | **No Idempotency-Key**, **An empty entry**, **A weight of 5 kg**, **Dated tomorrow**, **Dated 400 days back** | 400; 422 `GYM_BODY_EMPTY`; 422; 422 `GYM_DATE_OUT_OF_RANGE` twice |
+| 5.3 | **Sixty days ago**, **Today** | Two entries oldest first; down 2.2 kg and 3.5 cm; no change yet for body fat |
+| 5.4 | **Today again** | Still two entries: the day's first one is replaced |
+| 5.5 | **The newest weight is on my health profile**, **Someone else reads nothing** | 61.5 kg; 404 |
+
+## 6. Body progress: the gym, removing, and the plan (FR-131 to FR-133)
+| # | Do | Expect |
+|---|---|---|
+| 6.1 | **The owner reads**, **Desk staff cannot** | 200; 403 `PERMISSION_REQUIRED` |
+| 6.2 | **The coach records a measurement** | Recorded by the gym, replacing that day's entry |
+| 6.3 | **The member cannot remove what the gym recorded**, **removes their own**, **again** | 409 (recorded by the gym); 200; 409 |
+| 6.4 | **Desk staff cannot remove**, **The owner removes the coach's entry** | 403; none left (kept as void) |
+| 6.5 | **On a Basic gym…**, **Recording there**, **The Basic owner** | Switched off for the member; 403 `GYM_TIER_REQUIRED` (progress, standard) twice |
+
+## 7. Gym app and phone app
+- [ ] **My membership** (member): the Renew card from 14 days before the end; the form with the package, dates and price, Pay online or Pay at the front desk; a waiting renewal with what is still to pay and Cancel renewal; "You can renew from …" when it is too early; a reminder link opens the form.
+- [ ] **Body progress** (member): Add a measurement (English or Bangla digits), the change since the first entry, one measurement as a line (points by date), the entries with Remove on the member's own.
+- [ ] **Member profile** (owner, plan writers): the same progress card with the gym's wording; "Renewed in the app" on the membership.
+- [ ] **Settings** (owner): "Members can renew their package in the app".
+- [ ] **Phone app**: the Renew card and the renew screen; the Body progress card and its screen with the chart.
+- [ ] Bangla, phone width, light and dark.
