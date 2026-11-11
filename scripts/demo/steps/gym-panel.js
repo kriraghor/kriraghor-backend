@@ -12,7 +12,9 @@
  *    bookings, rewards and points, a notice, enquiries from the gym page, staff shifts, clocking, pay terms
  *    and last month's payroll, the equipment register, a workout plan and a diet chart;
  *  - free trial visits booked by demo players, and a join request waiting for the owner;
- *  - a holiday a few days ahead (M20 §26), which closes the gym for a day and cancels that day's class.
+ *  - a holiday a few days ahead (M20 §26), which closes the gym for a day and cancels that day's class;
+ *  - a renewal a linked member made in the app, to pay at the counter (M24 §19), and another member's body
+ *    measurements over six weeks (M24 §20).
  * No online payment is taken (counter money is bookkeeping only, M24-FR-34), so it suits both profiles.
  *
  * Re-running adds nothing that exists: each part is looked up first (by name, number or title in the gym's
@@ -344,6 +346,33 @@ async function guests({ gymId }) {
   }
 }
 
+// ---------------------------------------------------------------- a member's own renewal, body progress
+
+/**
+ * As the members themselves (M24 §19, §20): one renews for the counter while the gym lets them; the other
+ * records her measurements. A second run adds nothing: a waiting renewal and existing entries are left.
+ */
+async function renewalAndProgress(ctx, { linked }) {
+  const r = linked.find((x) => x.n === G.selfRenewal.n);
+  if (r) {
+    const base = `/me/gym-memberships/${r.memberId}`;
+    if ((await rt.get(r.actor, `${base}/renewal`)).can) {
+      accept(await rt.post(r.actor, `${base}/renew`, { pay: 'counter' }, { idem: true, ok: [409, 422] }), ['GYM_RENEWAL_EXISTS', 'GYM_RENEW_TOO_EARLY', 'GYM_SELF_RENEW_OFF', 'GYM_MEMBERSHIP_OVERLAP', 'GYM_PACKAGE_UNAVAILABLE'], 'self renewal');
+    }
+  }
+  const b = linked.find((x) => x.n === G.bodyEntries.n);
+  if (b) {
+    const base = `/me/gym-memberships/${b.memberId}/body`;
+    const now = await rt.get(b.actor, base);
+    if (now.on && now.entries.length < G.bodyEntries.entries.length) {
+      const have = new Set(now.entries.map((e) => e.measuredOn));
+      for (const { daysAgo, ...values } of G.bodyEntries.entries) {
+        if (!have.has(day(-daysAgo))) accept(await rt.post(b.actor, base, { measuredOn: day(-daysAgo), ...values }, { idem: true, ok: [403, 422] }), ['GYM_TIER_REQUIRED', 'GYM_DATE_OUT_OF_RANGE'], 'body entry');
+      }
+    }
+  }
+}
+
 // ---------------------------------------------------------------- a holiday
 
 /** One closed day ahead (M20-FR-16), unless the gym already has that one coming. */
@@ -382,6 +411,7 @@ async function run() {
   await part('classes, points, notice, enquiries', () => engage(ctx, team, roster));
   await part('shifts, payroll, equipment', () => work(ctx, team));
   await part('trial visits and the join request', () => guests(ctx));
+  await part('member renewal and body progress', () => renewalAndProgress(ctx, roster));
   await part('holiday', () => holiday(ctx));
   await part('events', () => rt.drain());
   const count = async (table) => Number((await models.sequelize.query(`SELECT COUNT(*) AS n FROM ${table} WHERE gym_id = :id`, { replacements: { id: ctx.gymId }, type: models.sequelize.QueryTypes.SELECT }))[0].n);
