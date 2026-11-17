@@ -121,6 +121,15 @@ g.post('/desk-mode/end', async (req, res) => res.json(await desk.endByOwner(req.
 
 // Desk and check-ins (attendance.mark; check-ins need the attendance feature, M24-FR-07).
 g.get('/desk/search', query(s.deskSearchQuery), async (req, res) => res.json(await checkins.search(req.user, P(req), req.validQuery)));
+// M24 §22 the desk through a lost connection: the desk copy, items taken offline, the owner's list.
+const offline = require('./offline.service');
+g.get('/desk/snapshot', fresh, async (req, res) => res.json(await offline.snapshot(req.user, P(req))));
+g.post('/desk/offline-items', validate(s.offlineItemBody), ik('offline_item'), async (req, res) => {
+  const r = await offline.send(req.user, P(req), req.body, req);
+  res.status(r.status).json(r.body);
+});
+g.get('/desk/offline-items', query(s.offlineItemsQuery), async (req, res) => res.json(await offline.list(req.user, P(req), req.validQuery)));
+g.post('/desk/offline-items/:itemId/resolve', params(s.offlineItemParam), validate(s.offlineResolveBody), async (req, res) => res.json(await offline.resolve(req.user, P(req), req.params.itemId, req.body, req)));
 // M27-FR-40: the desk checks a member out.
 g.post('/checkins/:attendanceId/out', validate(s.attendanceParam, 'params'), async (req, res) => res.json(await require('./visits.service').checkOut(req.user, P(req), req.params.attendanceId, req)));
 // Trial visits (product owner, 9 Nov 2026): today's guests, check in, cancel, the phone, make a member.

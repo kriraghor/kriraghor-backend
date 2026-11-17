@@ -90,6 +90,10 @@ const ERRORS = {
   GYM_DESK_PIN_WEAK: [422, 'Choose a PIN that is harder to guess'],
   GYM_DESK_PIN_WRONG: [403, 'That PIN is not right'],
   GYM_DESK_PIN_LOCKED: [423, 'Too many wrong tries. Wait and try again'],
+  // M24 §22: the desk through a lost connection.
+  GYM_OFFLINE_STAMP_INVALID: [422, 'This offline item does not come from this gym’s desk copy'],
+  GYM_OFFLINE_ITEM_INVALID: [422, 'This offline item does not match the gym’s records'],
+  GYM_OFFLINE_ITEM_STATE: [409, 'This offline item cannot be changed that way'],
 };
 const fail = (code, meta, detail) => new AppError(ERRORS[code][0], code, ERRORS[code][1], { ...(meta ? { meta } : {}), ...(detail ? { detail } : {}) });
 
@@ -139,6 +143,10 @@ const cfg = () => ({
   deskPinLockMinutes: settings.get('gym_manage.desk_pin_lock_minutes'),
   deskPinMaxLockouts: settings.get('gym_manage.desk_pin_max_lockouts'),
   deskDeviceFailLimit: settings.get('gym_manage.desk_device_fail_limit'),
+  // M24 §22: the desk through a lost connection.
+  deskSnapshotRefreshMinutes: settings.get('gym_manage.desk_snapshot_refresh_minutes'),
+  deskOfflineMaxHours: settings.get('gym_manage.desk_offline_max_hours'),
+  deskOfflineSkewSeconds: settings.get('gym_manage.desk_offline_skew_seconds'),
 });
 
 /** The owner's invoices, founding partners and VAT (§6.6, §6.12). */

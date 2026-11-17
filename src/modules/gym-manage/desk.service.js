@@ -193,8 +193,10 @@ async function stateOf(s) {
     deskId: s.id,
     gym: { id: s.gymId, name: gym?.name ?? null },
     idleMinutes: cfg().idle,
+    // M24 §22: wrong PINs the device allows a person while it has no connection (then that person waits for it).
+    pinFailLimit: cfg().failLimit,
     deviceLockedUntil: future(s.deviceLockedUntil, now),
-    unlocked: live ? { userId: live.userId, displayName: who?.displayName ?? null, role: who?.role ?? 'staff', expiresAt: c.iso(live.expiresAt) } : null,
+    unlocked: live ? { userId: live.userId, unlockId: live.id, displayName: who?.displayName ?? null, role: who?.role ?? 'staff', expiresAt: c.iso(live.expiresAt) } : null,
     // Only people who can unlock: those with a PIN set (the rest set one from their own sign-in first).
     people: list.filter((p) => p.pin === 'set').map(({ userId, displayName, role, lockedUntil }) => ({ userId, displayName, role, lockedUntil })),
   };

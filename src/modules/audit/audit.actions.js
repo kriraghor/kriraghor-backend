@@ -386,6 +386,9 @@ const ACTIONS = {
   'gym_desk.unlocked': A('M24', 'info', 'Unlocked the desk with a PIN', 'পিন দিয়ে ডেস্ক খুলেছেন'),
   'gym_desk.closed': A('M24', 'info', 'Ended desk mode on a device (signed out)', 'একটি ডিভাইসে ডেস্ক মোড বন্ধ করেছেন (সাইন আউট)'),
   'gym_desk.ended_by_owner': A('M24', 'notice', 'Ended desk mode on a device from their own sign-in', 'নিজের সাইন-ইন থেকে একটি ডিভাইসের ডেস্ক মোড বন্ধ করেছেন'),
+  // M24 §22: the desk through a lost connection.
+  'gym_offline.received': A('M24', 'info', 'Sent a check-in or cash fee the desk took offline', 'অফলাইনে নেওয়া একটি চেক-ইন বা নগদ ফি পাঠিয়েছেন'),
+  'gym_offline.resolved': A('M24', 'notice', 'Checked an offline item', 'অফলাইনের একটি কাজ যাচাই করেছেন'),
   'gym_membership.changed': A('M24', 'info', 'Changed a membership package ({after.title} from {after.startsOn})', 'সদস্যপদের প্যাকেজ বদল ({after.startsOn} থেকে {after.title})'),
   'gym_membership.frozen': A('M24', 'info', 'Froze a membership ({after.fromOn} to {after.toOn})', 'সদস্যপদ বিরতি ({after.fromOn} থেকে {after.toOn})'),
   'gym_membership.unfrozen': A('M24', 'info', 'Ended a membership freeze', 'সদস্যপদের বিরতি শেষ'),

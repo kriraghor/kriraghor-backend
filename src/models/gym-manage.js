@@ -345,6 +345,45 @@ GymDeskUnlock.init(
   { sequelize, modelName: 'GymDeskUnlock', tableName: 'gym_desk_unlocks', updatedAt: false }
 );
 
+/**
+ * M24 §22: a check-in or cash fee the desk took without a connection, as received later. The duplicate
+ * guard (one row per client id per gym) and the owner's "Offline items to check" list. Never deleted.
+ */
+class GymDeskOfflineItem extends Model {}
+GymDeskOfflineItem.init(
+  {
+    id,
+    gymId: req(DataTypes.UUID),
+    clientId: req(DataTypes.UUID),
+    kind: enumOf(['checkin', 'cash_fee']),
+    memberId: req(DataTypes.UUID),
+    dueId: DataTypes.UUID,
+    amountPoisha: poisha('amountPoisha', { allowNull: true }),
+    slipNo: DataTypes.STRING(20),
+    method: enumOf(['desk', 'member_qr'], { defaultValue: 'desk' }),
+    takenAt: req(DataTypes.DATE(3)),
+    takenOn: req(DataTypes.DATEONLY),
+    takenBy: req(DataTypes.UUID),
+    recordedAs: req(DataTypes.UUID),
+    deskSessionId: DataTypes.UUID,
+    unlockId: DataTypes.UUID,
+    pinOnDevice: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    sentBy: req(DataTypes.UUID),
+    sentAt: req(DataTypes.DATE(3)),
+    outcome: enumOf(['applied', 'flagged', 'parked']),
+    flags: { type: DataTypes.JSONB, allowNull: false, defaultValue: [] },
+    parkReason: { type: DataTypes.ENUM('due_paid', 'due_changed', 'due_void', 'member_removed', 'member_left'), allowNull: true },
+    attendanceId: DataTypes.UUID,
+    feePaymentId: DataTypes.UUID,
+    resolution: { type: DataTypes.ENUM('checked', 'applied_to_due', 'returned'), allowNull: true },
+    resolvedBy: DataTypes.UUID,
+    resolvedAt: DataTypes.DATE(3),
+    resolutionNote: DataTypes.STRING(300),
+    resolutionPaymentId: DataTypes.UUID,
+  },
+  { sequelize, modelName: 'GymDeskOfflineItem', tableName: 'gym_desk_offline_items' }
+);
+
 class GymVisit extends Model {}
 GymVisit.init(
   {
@@ -694,6 +733,7 @@ module.exports = {
   GymDeskPin,
   GymDeskSession,
   GymDeskUnlock,
+  GymDeskOfflineItem,
   GymMember,
   GymLinkRequest,
   GymMembership,
