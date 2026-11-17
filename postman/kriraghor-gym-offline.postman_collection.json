@@ -1,0 +1,1453 @@
+{
+  "info": {
+    "name": "Kriraghor API: M24 · The desk through a lost connection",
+    "description": "M24 §22 (product owner, 11 Nov 2026): while online the front desk keeps a copy of the members (and, with fees.collect, the open dues), stamped and signed by the server. Without a connection it checks members in and takes cash with a temporary slip; each item waits on the device and is sent once when the connection is back.\n\nNothing well formed is refused: applied, flagged (would block, time adjusted, late, drawer closed, PIN checked on the device, person not confirmed) or parked (due already paid or voided, member removed). The owner and fees.adjust staff resolve flagged and parked items.\n\nUnattended: `node postman/run-m24-offline.js`. Rebuild this file with: node postman/build-collection-m24-offline.js",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000/api/v1"
+    },
+    {
+      "key": "ownerToken",
+      "value": ""
+    },
+    {
+      "key": "deskToken",
+      "value": ""
+    },
+    {
+      "key": "doorToken",
+      "value": ""
+    },
+    {
+      "key": "coachToken",
+      "value": ""
+    },
+    {
+      "key": "gymId",
+      "value": ""
+    },
+    {
+      "key": "rafiqMember",
+      "value": ""
+    },
+    {
+      "key": "rafiqDue",
+      "value": ""
+    },
+    {
+      "key": "tanvirMember",
+      "value": ""
+    },
+    {
+      "key": "tanvirDue",
+      "value": ""
+    },
+    {
+      "key": "c1",
+      "value": ""
+    },
+    {
+      "key": "c2",
+      "value": ""
+    },
+    {
+      "key": "c3",
+      "value": ""
+    },
+    {
+      "key": "c4",
+      "value": ""
+    },
+    {
+      "key": "c5",
+      "value": ""
+    },
+    {
+      "key": "c6",
+      "value": ""
+    },
+    {
+      "key": "c7",
+      "value": ""
+    },
+    {
+      "key": "stamp",
+      "value": ""
+    },
+    {
+      "key": "serverTime",
+      "value": ""
+    },
+    {
+      "key": "elapsedMs",
+      "value": ""
+    },
+    {
+      "key": "item1",
+      "value": ""
+    },
+    {
+      "key": "flaggedItem",
+      "value": ""
+    },
+    {
+      "key": "parkedItem",
+      "value": ""
+    },
+    {
+      "key": "deskUser",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. The desk copy (M24-FR-144)",
+      "item": [
+        {
+          "name": "The copy, with the open dues (fees.collect)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'stamp'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('stamp', v); }",
+                  "if (ok && j) { const v = get(j, 'serverTime'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('serverTime', v); }",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"today, refreshed every 10 minutes\", () => { pm.expect(j.refreshMinutes === 10 && j.maxHours === 24 && /^v1\\.gso\\./.test(j.stamp)).to.eql(true); });",
+                  "pm.test(\"Rafiq may come in; Tanvir with a warning (expired, unpaid)\", () => { pm.expect(j.members.find((m) => m.id === pm.variables.get('rafiqMember')).decision === 'allow' && j.members.find((m) => m.id === pm.variables.get('tanvirMember')).reasons.join() === 'expired,unpaid').to.eql(true); });",
+                  "pm.test(\"the dues with what is still owed\", () => { pm.expect(j.dues.find((d) => d.id === pm.variables.get('rafiqDue')).outstandingPoisha === 250000).to.eql(true); });",
+                  "pm.test(\"no full phone number\", () => { pm.expect(!/01\\d{9}/.test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/desk/snapshot",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "desk",
+                "snapshot"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Check-ins only: no dues in the copy",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"dues null\", () => { pm.expect(j.dues === null).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/desk/snapshot",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "desk",
+                "snapshot"
+              ]
+            }
+          }
+        },
+        {
+          "name": "No attendance.mark (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coachToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/desk/snapshot",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "desk",
+                "snapshot"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Sending what was taken offline (M24-FR-146 to FR-149)",
+      "item": [
+        {
+          "name": "A check-in: applied, counted, at the time taken",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const k = 'elapsed_c1';",
+                  "if (!pm.collectionVariables.get(k)) pm.collectionVariables.set(k, String(Math.max(0, Date.now() - Date.parse(pm.collectionVariables.get('serverTime')))));",
+                  "pm.variables.set('elapsedMs', pm.collectionVariables.get(k));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'item.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('item1', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"applied for the clerk\", () => { pm.expect(j.item.outcome === 'applied' && j.item.flags.length === 0 && j.item.kind === 'checkin' && j.item.attendanceId !== null).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{c1}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"{{c1}}\",\n  \"stamp\": \"{{stamp}}\",\n  \"elapsedMs\": {{elapsedMs}},\n  \"kind\": \"checkin\",\n  \"memberId\": \"{{rafiqMember}}\",\n  \"takenBy\": \"{{deskUser}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/desk/offline-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "desk",
+                "offline-items"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sent again: the same answer",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const k = 'elapsed_c1';",
+                  "if (!pm.collectionVariables.get(k)) pm.collectionVariables.set(k, String(Math.max(0, Date.now() - Date.parse(pm.collectionVariables.get('serverTime')))));",
+                  "pm.variables.set('elapsedMs', pm.collectionVariables.get(k));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"the same item\", () => { pm.expect(j.item.id === pm.variables.get('item1')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{c1}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"{{c1}}\",\n  \"stamp\": \"{{stamp}}\",\n  \"elapsedMs\": {{elapsedMs}},\n  \"kind\": \"checkin\",\n  \"memberId\": \"{{rafiqMember}}\",\n  \"takenBy\": \"{{deskUser}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/desk/offline-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "desk",
+                "offline-items"
+              ]
+            }
+          }
+        },
+        {
+          "name": "From another sign-in: the same item (200)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const k = 'elapsed_c1';",
+                  "if (!pm.collectionVariables.get(k)) pm.collectionVariables.set(k, String(Math.max(0, Date.now() - Date.parse(pm.collectionVariables.get('serverTime')))));",
+                  "pm.variables.set('elapsedMs', pm.collectionVariables.get(k));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"the same item\", () => { pm.expect(j.item.id === pm.variables.get('item1')).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{c1}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"{{c1}}\",\n  \"stamp\": \"{{stamp}}\",\n  \"elapsedMs\": {{elapsedMs}},\n  \"kind\": \"checkin\",\n  \"memberId\": \"{{rafiqMember}}\",\n  \"takenBy\": \"{{deskUser}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/desk/offline-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "desk",
+                "offline-items"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cash with a slip: a receipt now, dated the day taken",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const k = 'elapsed_c2';",
+                  "if (!pm.collectionVariables.get(k)) pm.collectionVariables.set(k, String(Math.max(0, Date.now() - Date.parse(pm.collectionVariables.get('serverTime')))));",
+                  "pm.variables.set('elapsedMs', pm.collectionVariables.get(k));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"applied, with a receipt number\", () => { pm.expect(j.item.outcome === 'applied' && j.item.slipNo === 'T-PM7Q2X' && /-R\\d{2}-\\d{6}$/.test(j.item.receipt.receiptNo)).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{c2}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"{{c2}}\",\n  \"stamp\": \"{{stamp}}\",\n  \"elapsedMs\": {{elapsedMs}},\n  \"kind\": \"cash_fee\",\n  \"memberId\": \"{{rafiqMember}}\",\n  \"dueId\": \"{{rafiqDue}}\",\n  \"amountPoisha\": 150000,\n  \"slipNo\": \"T-PM7Q2X\",\n  \"takenBy\": \"{{deskUser}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/desk/offline-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "desk",
+                "offline-items"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The gym now blocks expired members",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entryPolicy\": \"block\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "settings"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tanvir, let in offline: flagged would_block",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const k = 'elapsed_c3';",
+                  "if (!pm.collectionVariables.get(k)) pm.collectionVariables.set(k, String(Math.max(0, Date.now() - Date.parse(pm.collectionVariables.get('serverTime')))));",
+                  "pm.variables.set('elapsedMs', pm.collectionVariables.get(k));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'item.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('flaggedItem', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"recorded, to check\", () => { pm.expect(j.item.outcome === 'flagged' && j.item.flags.join() === 'would_block').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{c3}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"{{c3}}\",\n  \"stamp\": \"{{stamp}}\",\n  \"elapsedMs\": {{elapsedMs}},\n  \"kind\": \"checkin\",\n  \"memberId\": \"{{tanvirMember}}\",\n  \"takenBy\": \"{{deskUser}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/desk/offline-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "desk",
+                "offline-items"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Rafiq pays the rest at the counter",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "off-{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amountPoisha\": 100000,\n  \"method\": \"cash\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/dues/{{rafiqDue}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "dues",
+                "{{rafiqDue}}",
+                "payments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "More cash for the paid due: parked",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const k = 'elapsed_c4';",
+                  "if (!pm.collectionVariables.get(k)) pm.collectionVariables.set(k, String(Math.max(0, Date.now() - Date.parse(pm.collectionVariables.get('serverTime')))));",
+                  "pm.variables.set('elapsedMs', pm.collectionVariables.get(k));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, 'item.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('parkedItem', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"not recorded: the due was paid\", () => { pm.expect(j.item.outcome === 'parked' && j.item.parkReason === 'due_paid' && j.item.receipt === null).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{c4}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"{{c4}}\",\n  \"stamp\": \"{{stamp}}\",\n  \"elapsedMs\": {{elapsedMs}},\n  \"kind\": \"cash_fee\",\n  \"memberId\": \"{{rafiqMember}}\",\n  \"dueId\": \"{{rafiqDue}}\",\n  \"amountPoisha\": 50000,\n  \"slipNo\": \"T-9KD3LA\",\n  \"takenBy\": \"{{deskUser}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/desk/offline-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "desk",
+                "offline-items"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A stamp the server did not make (expect 422)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const k = 'elapsed_c5';",
+                  "if (!pm.collectionVariables.get(k)) pm.collectionVariables.set(k, String(Math.max(0, Date.now() - Date.parse(pm.collectionVariables.get('serverTime')))));",
+                  "pm.variables.set('elapsedMs', pm.collectionVariables.get(k));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 GYM_OFFLINE_STAMP_INVALID', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('GYM_OFFLINE_STAMP_INVALID');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{c5}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"{{c5}}\",\n  \"stamp\": \"v1.gso.{{gymId}}.1763370000000.00000000000000000000000000000000\",\n  \"elapsedMs\": {{elapsedMs}},\n  \"kind\": \"checkin\",\n  \"memberId\": \"{{rafiqMember}}\",\n  \"takenBy\": \"{{deskUser}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/desk/offline-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "desk",
+                "offline-items"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cash without a slip (expect 422)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const k = 'elapsed_c6';",
+                  "if (!pm.collectionVariables.get(k)) pm.collectionVariables.set(k, String(Math.max(0, Date.now() - Date.parse(pm.collectionVariables.get('serverTime')))));",
+                  "pm.variables.set('elapsedMs', pm.collectionVariables.get(k));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 VALIDATION_FAILED', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('VALIDATION_FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{c6}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"{{c6}}\",\n  \"stamp\": \"{{stamp}}\",\n  \"elapsedMs\": {{elapsedMs}},\n  \"kind\": \"cash_fee\",\n  \"memberId\": \"{{rafiqMember}}\",\n  \"dueId\": \"{{rafiqDue}}\",\n  \"amountPoisha\": 10000,\n  \"takenBy\": \"{{deskUser}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/desk/offline-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "desk",
+                "offline-items"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cash from someone without fees.collect (expect 403)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const k = 'elapsed_c7';",
+                  "if (!pm.collectionVariables.get(k)) pm.collectionVariables.set(k, String(Math.max(0, Date.now() - Date.parse(pm.collectionVariables.get('serverTime')))));",
+                  "pm.variables.set('elapsedMs', pm.collectionVariables.get(k));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doorToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{c7}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"{{c7}}\",\n  \"stamp\": \"{{stamp}}\",\n  \"elapsedMs\": {{elapsedMs}},\n  \"kind\": \"cash_fee\",\n  \"memberId\": \"{{tanvirMember}}\",\n  \"dueId\": \"{{tanvirDue}}\",\n  \"amountPoisha\": 10000,\n  \"slipNo\": \"T-DOOR42\",\n  \"takenBy\": \"{{deskUser}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/desk/offline-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "desk",
+                "offline-items"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. The owner’s list (M24-FR-150)",
+      "item": [
+        {
+          "name": "Not for fees.collect alone (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/desk/offline-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "desk",
+                "offline-items"
+              ]
+            }
+          }
+        },
+        {
+          "name": "To check: the flagged and the parked item",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"two, oldest first\", () => { pm.expect(j.toCheck === 2 && j.items.map((x) => x.id).join() === [pm.variables.get('flaggedItem'), pm.variables.get('parkedItem')].join()).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/desk/offline-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "desk",
+                "offline-items"
+              ]
+            }
+          }
+        },
+        {
+          "name": "An applied item needs nothing (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 GYM_OFFLINE_ITEM_STATE', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('GYM_OFFLINE_ITEM_STATE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"checked\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/desk/offline-items/{{item1}}/resolve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "desk",
+                "offline-items",
+                "{{item1}}",
+                "resolve"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Parked cash is not just \"checked\" (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 GYM_OFFLINE_ITEM_STATE', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('GYM_OFFLINE_ITEM_STATE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"checked\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/desk/offline-items/{{parkedItem}}/resolve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "desk",
+                "offline-items",
+                "{{parkedItem}}",
+                "resolve"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Given back needs a note (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"returned\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/desk/offline-items/{{parkedItem}}/resolve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "desk",
+                "offline-items",
+                "{{parkedItem}}",
+                "resolve"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The cash went back",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"returned, with the note\", () => { pm.expect(j.item.resolution === 'returned' && j.item.resolutionNote === 'Handed back to Rafiq').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"returned\",\n  \"note\": \"Handed back to Rafiq\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/desk/offline-items/{{parkedItem}}/resolve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "desk",
+                "offline-items",
+                "{{parkedItem}}",
+                "resolve"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Tanvir’s check-in: checked",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"checked\", () => { pm.expect(j.item.resolution === 'checked').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"checked\",\n  \"note\": \"He renewed at the counter\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/desk/offline-items/{{flaggedItem}}/resolve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "desk",
+                "offline-items",
+                "{{flaggedItem}}",
+                "resolve"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Nothing left to check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"empty\", () => { pm.expect(j.toCheck === 0 && j.items.length === 0).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/desk/offline-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "desk",
+                "offline-items"
+              ]
+            }
+          }
+        },
+        {
+          "name": "All: every item",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"four kept\", () => { pm.expect(j.items.length === 4).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/desk/offline-items?state=all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "desk",
+                "offline-items"
+              ],
+              "query": [
+                {
+                  "key": "state",
+                  "value": "all"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

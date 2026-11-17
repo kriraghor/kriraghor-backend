@@ -93,4 +93,10 @@ async function close(principal, gymId, { countedPoisha, note = null }, req) {
   return view(gymId, day);
 }
 
-module.exports = { get, open, close, cashOf };
+/** Is the gym's cash drawer for a Dhaka day closed? (gym-manage's offline desk flags late cash, M24-FR-149.) */
+async function closedOn(gymId, day, { transaction } = {}) {
+  const s = await GymCashSession.findOne({ where: { gymId, businessDate: day }, attributes: ['status'], transaction });
+  return s?.status === 'closed';
+}
+
+module.exports = { get, open, close, cashOf, closedOn };

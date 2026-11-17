@@ -116,3 +116,89 @@ describe('an unlock and its idle time (M24-FR-136)', () => {
     expect(rules.FEATURES).toContain('desk_mode');
   });
 });
+
+// M24 §22 the desk through a lost connection: the desk copy's stamp, when an item was taken, what parks it,
+// who it is recorded for, its outcome, and how the owner may resolve it (M24-FR-144 to FR-150).
+describe('the desk copy and offline items (M24 §22)', () => {
+  const sign = (t) => require('crypto').createHash('sha256').update(`k:${t}`).digest('hex');
+  const GYM = '0190a0a0-0000-7000-8000-00000000000a';
+
+  it('signs the copy with the gym and the server time, and reads only its own stamps', () => {
+    const stamp = rules.snapshotStamp({ gymId: GYM, ms: 1763370000000 }, sign);
+    expect(rules.parseSnapshotStamp(stamp, { sign })).toEqual({ gymId: GYM, ms: 1763370000000 });
+    // Default comparison, a changed time, a changed signature, the wrong shape.
+    expect(rules.parseSnapshotStamp(stamp.replace('1763370000000', '1763370000001'), { sign, equal: (a, b) => a === b })).toBeNull();
+    expect(rules.parseSnapshotStamp(`${stamp.slice(0, -1)}${stamp.endsWith('0') ? '1' : '0'}`, { sign })).toBeNull();
+    for (const bad of [null, undefined, '', 'v1.gso', stamp.replace('v1.', 'v2.'), stamp.replace('.gso.', '.gm.'), stamp.replace(GYM, 'not-a-uuid'), `v1.gso.${GYM}.12a.${'0'.repeat(32)}`, `v1.gso.${GYM}.1.short`, `${stamp}.x`]) {
+      expect(rules.parseSnapshotStamp(bad, { sign })).toBeNull();
+    }
+  });
+
+  it('puts a member in the copy with today’s flags and decision', () => {
+    const member = { id: 'm1', memberCode: 'IY-0001', displayName: 'Rafiq', phoneLast4: '0222' };
+    const current = { title: 'Monthly', endsOn: '2026-11-20', status: 'active', visitLimit: null };
+    expect(rules.snapshotMember({ member, current, hadMembership: true, overdue: false, policy: 'block', today: '2026-11-17', inToday: true })).toEqual({
+      id: 'm1',
+      memberCode: 'IY-0001',
+      displayName: 'Rafiq',
+      phoneLast4: '0222',
+      package: { title: 'Monthly', endsOn: '2026-11-20', status: 'active' },
+      flags: ['expiring'],
+      reasons: [],
+      decision: 'allow',
+      inToday: true,
+    });
+    const none = rules.snapshotMember({ member: { ...member, phoneLast4: undefined }, current: null, hadMembership: false, overdue: true, policy: 'block', today: '2026-11-17' });
+    expect(none).toMatchObject({ phoneLast4: null, package: null, reasons: ['none', 'unpaid'], decision: 'block', inToday: false });
+  });
+
+  it('dates an item by the copy’s server time plus the time on the device; ahead is set to now, old is late', () => {
+    const at = (stampMs, elapsedMs, nowMs = 10_000_000) => rules.offlineTakenAt({ stampMs, elapsedMs, nowMs, maxHours: 1, skewSeconds: 60 });
+    expect(at(9_000_000, 500_000)).toEqual({ at: new Date(9_500_000), flags: [] });
+    // Within the skew but after now: now, no flag.
+    expect(at(9_000_000, 1_030_000)).toEqual({ at: new Date(10_000_000), flags: [] });
+    expect(at(9_000_000, 1_060_001)).toEqual({ at: new Date(10_000_000), flags: ['time_adjusted'] });
+    expect(at(5_000_000, 1_399_999)).toEqual({ at: new Date(6_399_999), flags: ['late'] });
+    expect(at(5_000_000, 1_400_000)).toEqual({ at: new Date(6_400_000), flags: [] });
+  });
+
+  it('parks what cannot be applied', () => {
+    const due = (o = {}) => ({ amountPoisha: 350000, paidPoisha: 100000, waivedPoisha: 0, status: 'partial', ...o });
+    expect(rules.offlinePark({ kind: 'checkin', memberStatus: 'active' })).toBeNull();
+    expect(rules.offlinePark({ kind: 'checkin', memberStatus: 'left' })).toBe('member_left');
+    expect(rules.offlinePark({ kind: 'checkin', memberStatus: 'removed' })).toBe('member_removed');
+    expect(rules.offlinePark({ kind: 'cash_fee', memberStatus: 'removed', due: due(), amount: 1 })).toBe('member_removed');
+    expect(rules.offlinePark({ kind: 'cash_fee', memberStatus: 'left', due: due(), amount: 250000 })).toBeNull();
+    expect(rules.offlinePark({ kind: 'cash_fee', memberStatus: 'active', due: due(), amount: 250001 })).toBe('due_changed');
+    expect(rules.offlinePark({ kind: 'cash_fee', memberStatus: 'active', due: due({ paidPoisha: 350000, status: 'paid' }), amount: 100 })).toBe('due_paid');
+    expect(rules.offlinePark({ kind: 'cash_fee', memberStatus: 'active', due: due({ paidPoisha: 0, waivedPoisha: 350000, status: 'waived' }), amount: 100 })).toBe('due_paid');
+    expect(rules.offlinePark({ kind: 'cash_fee', memberStatus: 'active', due: due({ status: 'void' }), amount: 100 })).toBe('due_void');
+    // The amount defaults to nothing.
+    expect(rules.offlinePark({ kind: 'cash_fee', memberStatus: 'active', due: due() })).toBeNull();
+  });
+
+  it('records the person the device names when they work there; confirms them by sender or unlock', () => {
+    const t = (o) => rules.offlineTaker({ takenBy: 'a', senderId: 'a', eligible: true, unlockMatches: false, pinOnDevice: false, ...o });
+    expect(t({})).toEqual({ recordedAs: 'a', flags: [] });
+    expect(t({ senderId: 'b', unlockMatches: true })).toEqual({ recordedAs: 'a', flags: [] });
+    expect(t({ senderId: 'b' })).toEqual({ recordedAs: 'a', flags: ['unverified_taker'] });
+    expect(t({ senderId: 'b', eligible: false, unlockMatches: true })).toEqual({ recordedAs: 'b', flags: ['unverified_taker'] });
+    expect(t({ senderId: 'b', pinOnDevice: true })).toEqual({ recordedAs: 'a', flags: ['pin_on_device'] });
+  });
+
+  it('gives the outcome and the resolutions an item allows', () => {
+    expect(rules.offlineOutcome({ park: 'due_paid', flags: ['late'] })).toBe('parked');
+    expect(rules.offlineOutcome({ park: null, flags: ['late'] })).toBe('flagged');
+    expect(rules.offlineOutcome({ park: null, flags: [] })).toBe('applied');
+    const block = (item, action) => rules.offlineResolveBlock({ item: { resolution: null, ...item }, action });
+    expect(block({ outcome: 'applied', kind: 'checkin' }, 'checked')).toBe('GYM_OFFLINE_ITEM_STATE');
+    expect(block({ outcome: 'flagged', kind: 'checkin', resolution: 'checked' }, 'checked')).toBe('GYM_OFFLINE_ITEM_STATE');
+    expect(block({ outcome: 'flagged', kind: 'cash_fee' }, 'checked')).toBeNull();
+    expect(block({ outcome: 'flagged', kind: 'cash_fee' }, 'apply')).toBe('GYM_OFFLINE_ITEM_STATE');
+    expect(block({ outcome: 'parked', kind: 'checkin' }, 'checked')).toBeNull();
+    expect(block({ outcome: 'parked', kind: 'checkin' }, 'returned')).toBe('GYM_OFFLINE_ITEM_STATE');
+    expect(block({ outcome: 'parked', kind: 'cash_fee' }, 'checked')).toBe('GYM_OFFLINE_ITEM_STATE');
+    expect(block({ outcome: 'parked', kind: 'cash_fee' }, 'apply')).toBeNull();
+    expect(block({ outcome: 'parked', kind: 'cash_fee' }, 'returned')).toBeNull();
+  });
+});

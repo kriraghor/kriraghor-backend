@@ -1332,8 +1332,9 @@ const DeskState = z
       deskId: id,
       gym: z.object({ id, name: nullable(z.string()) }),
       idleMinutes: z.number().int().meta({ description: 'gym_manage.desk_idle_minutes: without real input the desk locks after this' }),
+      pinFailLimit: z.number().int().meta({ description: 'gym_manage.desk_pin_fail_limit: also the wrong PINs a device allows a person while it has no connection (M24 §22)' }),
       deviceLockedUntil: nullable(dateTime).meta({ description: 'Too many wrong PINs on this device: no tries until then' }),
-      unlocked: nullable(z.object({ userId: id, displayName: nullable(z.string()), role: z.enum(['owner', 'staff']), expiresAt: dateTime })),
+      unlocked: nullable(z.object({ userId: id, unlockId: id.meta({ description: 'This unlock; offline items taken under it send it back (M24 §22)' }), displayName: nullable(z.string()), role: z.enum(['owner', 'staff']), expiresAt: dateTime })),
       people: z.array(DeskPerson).meta({ description: 'Who can unlock: the owner and active staff with a PIN set' }),
     }),
   ])
@@ -1355,6 +1356,93 @@ const DeskOverview = z
   .meta({ id: 'GymDeskOverview' });
 const DeskPinReset = z.object({ gymId: id, userId: id, pin: z.literal('cleared') }).meta({ id: 'GymDeskPinReset' });
 const DeskEnded = z.object({ gymId: id, ended: z.number().int() }).meta({ id: 'GymDeskEnded' });
+
+// M24 §22: the desk through a lost connection.
+const OFFLINE_FLAGS = ['would_block', 'time_adjusted', 'late', 'drawer_closed', 'pin_on_device', 'unverified_taker'];
+const DeskSnapshot = z
+  .object({
+    gymId: id,
+    date: date.meta({ description: 'The Dhaka day the copy is good for' }),
+    serverTime: dateTime,
+    stamp: z.string().meta({ description: 'Signed gym and server time; each offline item sends it back with the time that passed on the device' }),
+    refreshMinutes: z.number().int().meta({ description: 'gym_manage.desk_snapshot_refresh_minutes' }),
+    maxHours: z.number().int().meta({ description: 'gym_manage.desk_offline_max_hours: items sent later are flagged late' }),
+    policy: z.enum(['allow', 'warn', 'block']),
+    members: z.array(
+      z.object({
+        id,
+        memberCode: z.string(),
+        displayName: z.string(),
+        phoneLast4: nullable(z.string()),
+        package: nullable(z.object({ title: z.string(), endsOn: date, status: z.enum(['active', 'frozen']) })),
+        flags: z.array(z.string()),
+        reasons: z.array(z.string()),
+        decision: z.enum(['allow', 'warn', 'block']),
+        inToday: z.boolean().meta({ description: 'Already has a counted check-in today' }),
+      })
+    ),
+    dues: nullable(z.array(z.object({ id, memberId: id, title: nullable(z.string()), dueOn: date, outstandingPoisha: poisha }))).meta({ description: 'Open dues, only with fees.collect' }),
+  })
+  .meta({ id: 'GymDeskSnapshot' });
+const offlineItemBody = z
+  .object({
+    clientId: id.meta({ description: 'Made by the device; equals the Idempotency-Key' }),
+    kind: z.enum(['checkin', 'cash_fee']),
+    memberId: id,
+    method: z.enum(['desk', 'member_qr']).optional(),
+    dueId: id.optional(),
+    amountPoisha: poisha.min(100).optional(),
+    slipNo: z.string().regex(/^T-[A-Z0-9]{4,12}$/, 'T- and 4 to 12 letters or digits').optional(),
+    stamp: z.string().min(10).max(200),
+    elapsedMs: z.number().int().min(0).max(30 * 86400000).meta({ description: 'Time that passed on the device between the copy arriving and the item being taken' }),
+    takenBy: id.meta({ description: 'Who the device says took it' }),
+    unlockId: nullable(id).optional().meta({ description: 'The desk unlock that was live when it was taken (desk mode)' }),
+    pinOnDevice: z.boolean().optional().meta({ description: 'The PIN was checked on the device, without a connection' }),
+  })
+  .superRefine((v, ctx) => {
+    const cash = v.kind === 'cash_fee';
+    for (const f of ['dueId', 'amountPoisha', 'slipNo']) {
+      if (cash && v[f] === undefined) ctx.addIssue({ code: 'custom', path: [f], message: 'Required for a cash fee' });
+      if (!cash && v[f] !== undefined) ctx.addIssue({ code: 'custom', path: [f], message: 'Only for a cash fee' });
+    }
+    if (cash && v.method !== undefined) ctx.addIssue({ code: 'custom', path: ['method'], message: 'Only for a check-in' });
+  });
+const offlineItemsQuery = z.object({ state: z.enum(['review', 'all']).optional(), cursor: z.string().regex(/^\d{1,6}$/).optional() });
+const offlineItemParam = z.object({ gymId: id, itemId: id });
+const offlineResolveBody = z.object({ action: z.enum(['checked', 'apply', 'returned']), dueId: id.optional(), note: text(2, 300).optional() });
+const OfflineWho = nullable(z.object({ userId: id, displayName: nullable(z.string()) }));
+const OfflineReceipt = nullable(z.object({ feePaymentId: id, receiptNo: z.string(), url: z.string() }));
+const OfflineItem = z
+  .object({
+    id,
+    clientId: id,
+    kind: z.enum(['checkin', 'cash_fee']),
+    member: MemberSummary.partial().extend({ id }),
+    dueId: nullable(id),
+    amountPoisha: nullable(poisha),
+    slipNo: nullable(z.string()),
+    method: z.enum(['desk', 'member_qr']),
+    takenAt: dateTime,
+    takenOn: date,
+    takenBy: OfflineWho,
+    recordedAs: OfflineWho,
+    sentBy: OfflineWho,
+    sentAt: dateTime,
+    pinOnDevice: z.boolean(),
+    outcome: z.enum(['applied', 'flagged', 'parked']),
+    flags: z.array(z.enum(OFFLINE_FLAGS)),
+    parkReason: nullable(z.enum(['due_paid', 'due_changed', 'due_void', 'member_removed', 'member_left'])),
+    attendanceId: nullable(id),
+    receipt: OfflineReceipt,
+    resolution: nullable(z.enum(['checked', 'applied_to_due', 'returned'])),
+    resolvedBy: OfflineWho,
+    resolvedAt: nullable(dateTime),
+    resolutionNote: nullable(z.string()),
+    resolutionReceipt: OfflineReceipt,
+  })
+  .meta({ id: 'GymOfflineItem' });
+const OfflineItemResult = z.object({ item: OfflineItem }).meta({ id: 'GymOfflineItemResult' });
+const OfflineItems = z.object({ toCheck: z.number().int().meta({ description: 'Flagged and parked items nobody has resolved' }), items: z.array(OfflineItem), nextCursor: nullable(z.string()) }).meta({ id: 'GymOfflineItems' });
 
 module.exports = {
   visitParam,
@@ -1544,6 +1632,14 @@ module.exports = {
   deskPinBody,
   deskTryBody,
   deskPersonParam,
+  DeskSnapshot,
+  offlineItemBody,
+  offlineItemsQuery,
+  offlineItemParam,
+  offlineResolveBody,
+  OfflineItem,
+  OfflineItemResult,
+  OfflineItems,
   MyDeskPins,
   MyDeskPin,
   DeskState,

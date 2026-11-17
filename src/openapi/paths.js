@@ -1169,6 +1169,17 @@ function register(registry) {
     request: { ...gmG, ...body(gmS.settingsPatch) },
     responses: { 200: json(gmS.Settings), ...errors({ ...GMW, 409: ['GYM_SETUP_REQUIRED', 'GYM_SHORT_CODE_TAKEN'] }) },
   });
+  // M24 §22 the desk through a lost connection.
+  gp('get', '/desk/snapshot', 'The desk copy for working without a connection (attendance.mark, plan feature attendance; no-store): members with today’s entry decision and, with fees.collect, the open dues; stamped and signed, good for that Dhaka day (M24-FR-144)', { request: gmG, responses: { 200: json(gmS.DeskSnapshot), ...errors({ ...GM, 403: [...GM[403], 'GYM_TIER_REQUIRED'], 409: ['GYM_SETUP_REQUIRED'] }) } });
+  gp('post', '/desk/offline-items', 'Send one item the desk took offline (attendance.mark for a check-in, fees.collect for a cash fee; Idempotency-Key = clientId). Never refused when well formed: applied, flagged or parked. 201 new; 200 already received (M24-FR-146 to FR-149)', {
+    request: { ...gmG, headers: idem, ...body(gmS.offlineItemBody) },
+    responses: { 201: json(gmS.OfflineItemResult, 'Received'), 200: json(gmS.OfflineItemResult, 'Already received'), ...errors({ ...GM, 422: ['VALIDATION_FAILED', 'GYM_OFFLINE_STAMP_INVALID', 'GYM_OFFLINE_ITEM_INVALID'] }) },
+  });
+  gp('get', '/desk/offline-items', 'Offline items: `review` (default) the flagged and parked ones waiting, oldest first; `all` newest first (the owner and fees.adjust; M24-FR-150)', { request: { ...gmG, query: gmS.offlineItemsQuery }, responses: { 200: json(gmS.OfflineItems), ...errors(GM) } });
+  gp('post', '/desk/offline-items/{itemId}/resolve', 'Resolve an offline item: checked; apply parked cash to another open due of the member (receipt now, dated the day taken); returned, with a note (fees.adjust; M24-FR-150)', {
+    request: { params: gmS.offlineItemParam, ...body(gmS.offlineResolveBody) },
+    responses: { 200: json(gmS.OfflineItemResult), ...errors({ ...GM, 409: ['GYM_OFFLINE_ITEM_STATE', 'GYM_DUE_STATE'], 422: ['VALIDATION_FAILED', 'GYM_PAYMENT_EXCEEDS_DUE'] }) },
+  });
   gp('get', '/desk/search', 'Desk search (attendance.mark): members by name, phone, member code or member QR token (cards without amounts unless fees.collect); an M20 pass by its token or backup code (desk.admit)', { request: { ...gmG, query: gmS.deskSearchQuery }, responses: { 200: json(gmS.DeskSearch), ...errors(GM) } });
   gp('post', '/checkins', 'Check a member in by id or member QR token (attendance.mark, plan feature attendance; works while restricted). 201 counted; 200 a repeat the same day (counted false). Policy block: 409 GYM_ENTRY_BLOCKED; the owner overrides with { override, reason } (M24-FR-47 to FR-50)', {
     request: { ...gmG, ...body(gmS.checkinBody) },

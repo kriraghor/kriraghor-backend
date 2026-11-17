@@ -26689,6 +26689,10 @@
                 "type": "integer",
                 "description": "gym_manage.desk_idle_minutes: without real input the desk locks after this"
               },
+              "pinFailLimit": {
+                "type": "integer",
+                "description": "gym_manage.desk_pin_fail_limit: also the wrong PINs a device allows a person while it has no connection (M24 §22)"
+              },
               "deviceLockedUntil": {
                 "type": [
                   "string",
@@ -26706,6 +26710,11 @@
                   "userId": {
                     "type": "string",
                     "format": "uuid"
+                  },
+                  "unlockId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "This unlock; offline items taken under it send it back (M24 §22)"
                   },
                   "displayName": {
                     "type": [
@@ -26727,6 +26736,7 @@
                 },
                 "required": [
                   "userId",
+                  "unlockId",
                   "displayName",
                   "role",
                   "expiresAt"
@@ -26778,6 +26788,7 @@
               "deskId",
               "gym",
               "idleMinutes",
+              "pinFailLimit",
               "deviceLockedUntil",
               "unlocked",
               "people"
@@ -27459,6 +27470,575 @@
           "selfRenewDaysBefore",
           "importConsentUntil",
           "nextMemberCode"
+        ]
+      },
+      "GymDeskSnapshot": {
+        "type": "object",
+        "properties": {
+          "gymId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "The Dhaka day the copy is good for"
+          },
+          "serverTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "stamp": {
+            "type": "string",
+            "description": "Signed gym and server time; each offline item sends it back with the time that passed on the device"
+          },
+          "refreshMinutes": {
+            "type": "integer",
+            "description": "gym_manage.desk_snapshot_refresh_minutes"
+          },
+          "maxHours": {
+            "type": "integer",
+            "description": "gym_manage.desk_offline_max_hours: items sent later are flagged late"
+          },
+          "policy": {
+            "type": "string",
+            "enum": [
+              "allow",
+              "warn",
+              "block"
+            ]
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "memberCode": {
+                  "type": "string"
+                },
+                "displayName": {
+                  "type": "string"
+                },
+                "phoneLast4": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "package": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "properties": {
+                    "title": {
+                      "type": "string"
+                    },
+                    "endsOn": {
+                      "type": "string",
+                      "format": "date"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "active",
+                        "frozen"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "endsOn",
+                    "status"
+                  ]
+                },
+                "flags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "reasons": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "decision": {
+                  "type": "string",
+                  "enum": [
+                    "allow",
+                    "warn",
+                    "block"
+                  ]
+                },
+                "inToday": {
+                  "type": "boolean",
+                  "description": "Already has a counted check-in today"
+                }
+              },
+              "required": [
+                "id",
+                "memberCode",
+                "displayName",
+                "phoneLast4",
+                "package",
+                "flags",
+                "reasons",
+                "decision",
+                "inToday"
+              ]
+            }
+          },
+          "dues": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "memberId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "title": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "dueOn": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "outstandingPoisha": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "memberId",
+                "title",
+                "dueOn",
+                "outstandingPoisha"
+              ]
+            },
+            "description": "Open dues, only with fees.collect"
+          }
+        },
+        "required": [
+          "gymId",
+          "date",
+          "serverTime",
+          "stamp",
+          "refreshMinutes",
+          "maxHours",
+          "policy",
+          "members",
+          "dues"
+        ]
+      },
+      "GymOfflineItemResult": {
+        "type": "object",
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/GymOfflineItem"
+          }
+        },
+        "required": [
+          "item"
+        ]
+      },
+      "GymOfflineItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clientId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "checkin",
+              "cash_fee"
+            ]
+          },
+          "member": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "memberCode": {
+                "type": "string"
+              },
+              "displayName": {
+                "type": "string"
+              },
+              "phoneLast4": {
+                "type": "string"
+              },
+              "gender": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "male",
+                  "female",
+                  "other",
+                  null
+                ]
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "new",
+                  "active",
+                  "frozen",
+                  "expired",
+                  "left",
+                  "removed"
+                ]
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "desk",
+                  "platform",
+                  "import",
+                  "pass"
+                ]
+              },
+              "linked": {
+                "type": "boolean"
+              },
+              "joinedOn": {
+                "type": "string",
+                "format": "date"
+              },
+              "photoPath": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "API path under /api/v1 (fetch with the bearer token); the photo is private"
+              }
+            },
+            "required": [
+              "id"
+            ]
+          },
+          "dueId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "amountPoisha": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "slipNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "desk",
+              "member_qr"
+            ]
+          },
+          "takenAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "takenOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "takenBy": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "userId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "displayName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "userId",
+              "displayName"
+            ]
+          },
+          "recordedAs": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "userId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "displayName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "userId",
+              "displayName"
+            ]
+          },
+          "sentBy": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "userId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "displayName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "userId",
+              "displayName"
+            ]
+          },
+          "sentAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "pinOnDevice": {
+            "type": "boolean"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "applied",
+              "flagged",
+              "parked"
+            ]
+          },
+          "flags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "would_block",
+                "time_adjusted",
+                "late",
+                "drawer_closed",
+                "pin_on_device",
+                "unverified_taker"
+              ]
+            }
+          },
+          "parkReason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "due_paid",
+              "due_changed",
+              "due_void",
+              "member_removed",
+              "member_left",
+              null
+            ]
+          },
+          "attendanceId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "receipt": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "feePaymentId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "receiptNo": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "feePaymentId",
+              "receiptNo",
+              "url"
+            ]
+          },
+          "resolution": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "checked",
+              "applied_to_due",
+              "returned",
+              null
+            ]
+          },
+          "resolvedBy": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "userId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "displayName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "userId",
+              "displayName"
+            ]
+          },
+          "resolvedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "resolutionNote": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "resolutionReceipt": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "feePaymentId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "receiptNo": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "feePaymentId",
+              "receiptNo",
+              "url"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "clientId",
+          "kind",
+          "member",
+          "dueId",
+          "amountPoisha",
+          "slipNo",
+          "method",
+          "takenAt",
+          "takenOn",
+          "takenBy",
+          "recordedAs",
+          "sentBy",
+          "sentAt",
+          "pinOnDevice",
+          "outcome",
+          "flags",
+          "parkReason",
+          "attendanceId",
+          "receipt",
+          "resolution",
+          "resolvedBy",
+          "resolvedAt",
+          "resolutionNote",
+          "resolutionReceipt"
+        ]
+      },
+      "GymOfflineItems": {
+        "type": "object",
+        "properties": {
+          "toCheck": {
+            "type": "integer",
+            "description": "Flagged and parked items nobody has resolved"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GymOfflineItem"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "toCheck",
+          "items",
+          "nextCursor"
         ]
       },
       "GymDeskSearch": {
@@ -99119,6 +99699,491 @@
           },
           "422": {
             "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/desk/snapshot": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "The desk copy for working without a connection (attendance.mark, plan feature attendance; no-store): members with today’s entry decision and, with fees.collect, the open dues; stamped and signed, good for that Dhaka day (M24-FR-144)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymDeskSnapshot"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, GYM_TIER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_SETUP_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/desk/offline-items": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Send one item the desk took offline (attendance.mark for a check-in, fees.collect for a cash fee; Idempotency-Key = clientId). Never refused when well formed: applied, flagged or parked. 201 new; 200 already received (M24-FR-146 to FR-149)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "8–80 letters, digits, - or _. Retries with the same key and body replay the first response"
+            },
+            "required": true,
+            "description": "8–80 letters, digits, - or _. Retries with the same key and body replay the first response",
+            "name": "idempotency-key",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "clientId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "Made by the device; equals the Idempotency-Key"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "checkin",
+                      "cash_fee"
+                    ]
+                  },
+                  "memberId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "method": {
+                    "type": "string",
+                    "enum": [
+                      "desk",
+                      "member_qr"
+                    ]
+                  },
+                  "dueId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "amountPoisha": {
+                    "type": "integer",
+                    "minimum": 100
+                  },
+                  "slipNo": {
+                    "type": "string",
+                    "pattern": "^T-[A-Z0-9]{4,12}$"
+                  },
+                  "stamp": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 200
+                  },
+                  "elapsedMs": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2592000000,
+                    "description": "Time that passed on the device between the copy arriving and the item being taken"
+                  },
+                  "takenBy": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "Who the device says took it"
+                  },
+                  "unlockId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "uuid",
+                    "description": "The desk unlock that was live when it was taken (desk mode)"
+                  },
+                  "pinOnDevice": {
+                    "type": "boolean",
+                    "description": "The PIN was checked on the device, without a connection"
+                  }
+                },
+                "required": [
+                  "clientId",
+                  "kind",
+                  "memberId",
+                  "stamp",
+                  "elapsedMs",
+                  "takenBy"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Already received",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymOfflineItemResult"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Received",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymOfflineItemResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, GYM_OFFLINE_STAMP_INVALID, GYM_OFFLINE_ITEM_INVALID",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Offline items: `review` (default) the flagged and parked ones waiting, oldest first; `all` newest first (the owner and fees.adjust; M24-FR-150)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "review",
+                "all"
+              ]
+            },
+            "required": false,
+            "name": "state",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,6}$"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymOfflineItems"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/desk/offline-items/{itemId}/resolve": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Resolve an offline item: checked; apply parked cash to another open due of the member (receipt now, dated the day taken); returned, with a note (fees.adjust; M24-FR-150)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "itemId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "checked",
+                      "apply",
+                      "returned"
+                    ]
+                  },
+                  "dueId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "note": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymOfflineItemResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_OFFLINE_ITEM_STATE, GYM_DUE_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, GYM_PAYMENT_EXCEEDS_DUE",
             "content": {
               "application/problem+json": {
                 "schema": {

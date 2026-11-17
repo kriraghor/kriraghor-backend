@@ -955,6 +955,90 @@ const deskUnlockLive = (u, now) => Boolean(u) && !u.endedAt && new Date(u.expire
 /** When an unlock touched at `now` runs out: `idleMinutes` later (M24-FR-136). */
 const deskIdleUntil = (now, idleMinutes) => new Date(now.getTime() + idleMinutes * 60000);
 
+// ---------------------------------------------------------------- the desk through a lost connection (M24 §22)
+
+/** The desk copy's stamp (M24-FR-144): the gym and the server time the copy was made, signed. */
+const snapshotStamp = ({ gymId, ms }, sign) => `v1.gso.${gymId}.${ms}.${sign(`gym-desk-snapshot:${gymId}:${ms}`).slice(0, 32)}`;
+
+/** The gym and server time of a desk copy's stamp, or null when it is not one the server made. */
+function parseSnapshotStamp(stamp, { sign, equal = (a, b) => a === b }) {
+  const parts = String(stamp ?? '').split('.');
+  if (parts.length !== 5 || parts[0] !== 'v1' || parts[1] !== 'gso' || !UUID.test(parts[2]) || !/^\d{1,15}$/.test(parts[3]) || !SIG.test(parts[4])) return null;
+  const [, , gymId, ms, sig] = parts;
+  return equal(sig, sign(`gym-desk-snapshot:${gymId}:${ms}`).slice(0, 32)) ? { gymId, ms: Number(ms) } : null;
+}
+
+/** One member in the desk copy (M24-FR-144): who, the running package, today's flags and entry decision. */
+function snapshotMember({ member, current, hadMembership, overdue, visits = 0, policy, today, inToday }) {
+  const d = entryDecision({ current, hadMembership, overdue, visits, policy });
+  return {
+    id: member.id,
+    memberCode: member.memberCode,
+    displayName: member.displayName,
+    phoneLast4: member.phoneLast4 ?? null,
+    package: current ? { title: current.title, endsOn: current.endsOn, status: current.status } : null,
+    flags: deskFlags({ current, hadMembership, overdue, visits, today }),
+    reasons: d.reasons,
+    decision: d.decision,
+    inToday: Boolean(inToday),
+  };
+}
+
+/**
+ * When an offline item was taken (M24-FR-147): the stamp's server time plus the time that passed on the
+ * device. A time past the server's clock by more than the skew becomes the time it arrived (flag
+ * time_adjusted); one older than maxHours is kept, since it can never be earlier than the signed stamp, and
+ * flagged late.
+ */
+function offlineTakenAt({ stampMs, elapsedMs, nowMs, maxHours, skewSeconds }) {
+  const raw = stampMs + elapsedMs;
+  if (raw > nowMs + skewSeconds * 1000) return { at: new Date(nowMs), flags: ['time_adjusted'] };
+  if (raw < nowMs - maxHours * 3600000) return { at: new Date(raw), flags: ['late'] };
+  return { at: new Date(Math.min(raw, nowMs)), flags: [] };
+}
+
+/**
+ * Why an offline item cannot be applied (it is parked for the owner, M24-FR-149), or null: the member was
+ * removed (or, for a check-in, has left), the due was voided, already settled, or now owes less than the
+ * cash taken.
+ */
+function offlinePark({ kind, memberStatus, due = null, amount = 0 }) {
+  if (memberStatus === 'removed') return 'member_removed';
+  if (kind === 'checkin') return memberStatus === 'left' ? 'member_left' : null;
+  const state = dueState({ amount: due.amountPoisha, paid: due.paidPoisha, waived: due.waivedPoisha, voided: due.status === 'void' });
+  if (state.status === 'void') return 'due_void';
+  if (state.outstanding === 0) return 'due_paid';
+  return amount > state.outstanding ? 'due_changed' : null;
+}
+
+/**
+ * Who an offline item is recorded for (M24-FR-148): the person the device names when they work at the gym
+ * with the permission the item needs, otherwise the sender. The device's word stands when it names the
+ * sender, or a desk unlock of that person at this gym; otherwise it is flagged unverified_taker. A PIN that
+ * was only checked on the device is always flagged pin_on_device.
+ */
+function offlineTaker({ takenBy, senderId, eligible, unlockMatches, pinOnDevice }) {
+  const flags = [];
+  if (pinOnDevice) flags.push('pin_on_device');
+  else if (takenBy !== senderId && !(eligible && unlockMatches)) flags.push('unverified_taker');
+  return { recordedAs: eligible ? takenBy : senderId, flags };
+}
+
+/** parked, flagged (applied with flags) or applied (M24-FR-149). */
+const offlineOutcome = ({ park, flags }) => (park ? 'parked' : flags.length ? 'flagged' : 'applied');
+
+/**
+ * Why an offline item cannot be resolved that way (M24-FR-150), or null: only flagged and parked items wait,
+ * once. Parked cash is applied to another due of the member or recorded as returned; everything else is
+ * marked checked.
+ */
+function offlineResolveBlock({ item, action }) {
+  if (item.outcome === 'applied' || item.resolution) return 'GYM_OFFLINE_ITEM_STATE';
+  const parkedCash = item.outcome === 'parked' && item.kind === 'cash_fee';
+  if (action === 'checked') return parkedCash ? 'GYM_OFFLINE_ITEM_STATE' : null;
+  return parkedCash ? null : 'GYM_OFFLINE_ITEM_STATE';
+}
+
 // ---------------------------------------------------------------- body progress (M24 §20)
 
 /** The measurements of a body entry with their allowed range (kg, %, cm), one decimal each. */
@@ -1034,6 +1118,14 @@ module.exports = {
   deskRoute,
   deskUnlockLive,
   deskIdleUntil,
+  snapshotStamp,
+  parseSnapshotStamp,
+  snapshotMember,
+  offlineTakenAt,
+  offlinePark,
+  offlineTaker,
+  offlineOutcome,
+  offlineResolveBlock,
   selfRenewBlock,
   selfRenewCancelBlock,
   BODY_FIELDS,
