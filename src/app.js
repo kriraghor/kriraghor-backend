@@ -116,6 +116,7 @@ function createApp() {
   api.use('/me/gym-dues', gymManageRoutes.meDues);
   api.use('/me/gym-join-requests', gymManageRoutes.meJoins);
   api.use('/me/gym-visits', gymManageRoutes.meVisits);
+  api.use('/me/gym-desk-pins', gymManageRoutes.meDeskPins);
   api.use('/me/gym-plans', gymManageRoutes.mePlans);
   api.use('/me/gym-checkins', gymManageRoutes.meCheckins);
   api.use('/me', teamRoutes.meRouter);

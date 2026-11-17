@@ -943,6 +943,8 @@ function deskRoute({ method, path, gymId }) {
   const gym = `/manage/gyms/${gymId}`;
   if (p === gym || p.startsWith(`${gym}/`)) return 'gym';
   if (method === 'GET' && p === '/manage/gyms') return 'gym';
+  // The panel's header and workplace list, read as the unlocked person.
+  if (method === 'GET' && (p === '/me' || p === '/me/workplaces')) return 'gym';
   if (p === `/me/gyms/${gymId}/redemptions` || p === `/me/gyms/${gymId}/passes`) return 'gym';
   return 'outside';
 }

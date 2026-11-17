@@ -71,6 +71,9 @@ describe('where a device in desk mode may go (M24-FR-139)', () => {
     expect(route('GET', '/manage/gyms')).toBe('gym');
     expect(route('POST', `/me/gyms/${G}/redemptions`)).toBe('gym');
     expect(route('GET', `/me/gyms/${G}/passes`)).toBe('gym');
+    // The panel's header and workplace list, as the unlocked person.
+    expect(route('GET', '/me')).toBe('gym');
+    expect(route('GET', '/me/workplaces/')).toBe('gym');
   });
 
   it('refuses everything else: another gym, billing, the listing, the account, other sign-out verbs', () => {
@@ -86,6 +89,8 @@ describe('where a device in desk mode may go (M24-FR-139)', () => {
     expect(route('GET', '/auth/logout')).toBe('outside');
     expect(route('POST', '/auth/step-up')).toBe('outside');
     expect(route('GET', '/me/notifications')).toBe('outside');
+    expect(route('PATCH', '/me')).toBe('outside');
+    expect(route('POST', '/me/workplaces/x/leave')).toBe('outside');
   });
 });
 

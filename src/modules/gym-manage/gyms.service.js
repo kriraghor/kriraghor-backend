@@ -46,7 +46,8 @@ async function listMine(principal) {
     const g = await gymFacade.get(w.businessId);
     if (g && g.ownerId === w.ownerId && !owned.some((o) => o.id === g.id)) staffGyms.push({ g, w });
   }
-  const all = [...owned.map((g) => ({ g, w: null })), ...staffGyms];
+  // A desk in desk mode lists its own gym only (M24 §21).
+  const all = [...owned.map((g) => ({ g, w: null })), ...staffGyms].filter((x) => !principal.desk || x.g.id === principal.desk.gymId);
   const ids = all.map((x) => x.g.id);
   const [settings, counts] = await Promise.all([GymManageSettings.findAll({ where: { gymId: ids } }), todayCounts(ids, today)]);
   const plans = new Map();

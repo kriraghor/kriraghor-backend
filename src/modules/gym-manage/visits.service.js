@@ -80,7 +80,10 @@ function feedAfterCommit(transaction, { gymId, kind, member = null, guest = null
       const to = new Set([gym.ownerId, ...(await staffFacade.staffRecipients('gym', gymId, 'attendance.mark'))]);
       const data = { gymId, kind, attendanceId, at, member: member ? view.memberSummary(member) : null, guest, decision, reasons, counted, visitMinutes, inGymNow: await inGymNow(gymId) };
       // A guest goes on its own event, so desks built before trial visits (which expect a member) never see one.
-      for (const userId of to) realtime.toUser(userId, kind === 'guest' ? 'gym.desk_guest' : 'gym.desk_feed', data);
+      const event = kind === 'guest' ? 'gym.desk_guest' : 'gym.desk_feed';
+      for (const userId of to) realtime.toUser(userId, event, data);
+      // Devices in desk mode at this gym (M24 §21) are in the gym's desk room, not in a person's room.
+      realtime.toRoom(`gym_desk:${gymId}`, event, data);
     } catch {
       /* best effort: the desk re-reads the day's list */
     }

@@ -279,6 +279,8 @@ async function trainersOf(gymId) {
 
 /** Assert a further permission inside a route (e.g. a discount needs fees.adjust, M24-FR-26). */
 function needs(a, permission) {
+  // An owner-only step at a desk in desk mode (M24 §21): the owner's own sign-in, not the desk.
+  if (permission === 'owner.only' && a.ctx?.desk) throw fail('GYM_DESK_SCOPE', { permission });
   if (!a.can(permission)) throw new AppError(403, 'PERMISSION_REQUIRED', 'The owner has not given you this permission', { meta: { permission, businessType: 'gym', businessId: a.gym.id } });
 }
 
