@@ -92,6 +92,17 @@ manageRouter.post('/billing/invoices/:invoiceId/pay', run, params(s.invoiceParam
 manageRouter.get('/reports', run, query(s.reportQuery), async (req, res) => res.json(await reports.allGyms(req.user, req.validQuery)));
 
 manageRouter.get('/gyms', work, async (req, res) => res.json(await gyms.listMine(req.user)));
+
+// M24 §21 desk mode (ADR-010): this device's desk. The auth guard lets these through on a desk device as the
+// sign-in that opened it (req.desk); unlock, lock, touch and close need an open desk on this device.
+const desk = require('./desk.service');
+const fresh = (_req, res, next) => (res.set('Cache-Control', 'no-store'), next());
+const onDesk = (req, _res, next) => next(req.desk ? undefined : require('./gym-manage.common').fail('GYM_DESK_STATE', { reason: 'not_open' }));
+manageRouter.get('/desk-mode', work, fresh, async (req, res) => res.json(await desk.state(req.user, req.auth)));
+manageRouter.post('/desk-mode/unlock', work, fresh, onDesk, validate(s.deskTryBody), async (req, res) => res.json(await desk.unlock(req, req.body)));
+manageRouter.post('/desk-mode/lock', work, fresh, onDesk, async (req, res) => res.json(await desk.lock(req)));
+manageRouter.post('/desk-mode/touch', work, fresh, onDesk, async (req, res) => res.json(await desk.touch(req)));
+manageRouter.post('/desk-mode/close', work, fresh, onDesk, validate(s.deskTryBody), async (req, res) => res.json(await desk.close(req, req.body)));
 const g = Router({ mergeParams: true });
 manageRouter.use('/gyms/:gymId', work, params(s.gymParam), g);
 const P = (req) => req.params.gymId;
@@ -100,6 +111,13 @@ g.get('/overview', async (req, res) => res.json(await gyms.overview(req.user, P(
 g.get('/packages', async (req, res) => res.json(await gyms.packages(req.user, P(req))));
 g.get('/settings', async (req, res) => res.json(await gyms.getSettings(req.user, P(req))));
 g.patch('/settings', validate(s.settingsPatch), async (req, res) => res.json(await gyms.patchSettings(req.user, P(req), req.body, req)));
+
+// Desk mode (M24 §21): switch it on for this device; the owner's view of PINs and desks, clearing a PIN and
+// ending desk mode elsewhere (owner only, so never from a desk device).
+g.post('/desk-mode/open', fresh, async (req, res) => res.status(201).json(await desk.open(req.user, req.auth, P(req), req)));
+g.get('/desk', fresh, async (req, res) => res.json(await desk.overview(req.user, P(req))));
+g.post('/desk-pins/:userId/reset', validate(s.deskPersonParam, 'params'), async (req, res) => res.json(await desk.resetPin(req.user, P(req), req.params.userId, req)));
+g.post('/desk-mode/end', async (req, res) => res.json(await desk.endByOwner(req.user, P(req), req)));
 
 // Desk and check-ins (attendance.mark; check-ins need the attendance feature, M24-FR-07).
 g.get('/desk/search', query(s.deskSearchQuery), async (req, res) => res.json(await checkins.search(req.user, P(req), req.validQuery)));
@@ -261,6 +279,12 @@ meJoins.use(authenticate);
 meJoins.post('/', requireGate('join_gym'), validate(s.joinRequestBody), async (req, res) => res.status(201).json(await joins.create(req.user, req.body, req)));
 
 // Trial visits: book a free visit (gate join_gym), my visits with the QR, cancel.
+// M24 §21: my own desk PIN at each gym I work at (FR-134). Never on a desk device (the guard refuses /me here).
+const meDeskPins = Router();
+meDeskPins.use(authenticate, requireGate('work_gym'));
+meDeskPins.get('/', fresh, async (req, res) => res.json(await desk.myPins(req.user)));
+meDeskPins.put('/', fresh, validate(s.deskPinBody), async (req, res) => res.json(await desk.setPin(req.user, req.body, req)));
+
 const meVisits = Router();
 meVisits.use(authenticate);
 meVisits.get('/', async (req, res) => {
@@ -349,4 +373,4 @@ adminRouter.post('/fee-overrides/:overrideId/end', requireMaster, params(s.overr
   res.json(await fees.endOverride(req.user, req.params.overrideId, req.body, req))
 );
 
-module.exports = { manageRouter, pricingRouter, receiptRouter, payRouter, meDues, meRequests, meJoins, meVisits, publicVisits, mePlans, meCheckins, meMemberships, meReceipts, adminRouter };
+module.exports = { manageRouter, pricingRouter, receiptRouter, payRouter, meDues, meRequests, meJoins, meVisits, meDeskPins, publicVisits, mePlans, meCheckins, meMemberships, meReceipts, adminRouter };

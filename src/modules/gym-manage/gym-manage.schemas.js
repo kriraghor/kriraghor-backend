@@ -1308,6 +1308,54 @@ const EntranceCheckin = z
   .meta({ id: 'MyGymEntranceCheckin' });
 const EntranceScan = z.union([EntranceCheckin, EntranceCheckout]).meta({ id: 'MyGymEntranceScan' });
 
+
+// ---------------------------------------------------------------- desk mode with a PIN (M24 §21, ADR-010)
+const deskPin = z.string().regex(/^\d{4}$/, 'Four digits').meta({ description: 'Four digits; never stored or returned, only a keyed hash' });
+const deskPinBody = z.object({ gymId: id, pin: deskPin });
+const deskTryBody = z.object({ userId: id.meta({ description: 'The person picked on the lock screen' }), pin: deskPin });
+const deskPersonParam = z.object({ gymId: id, userId: id });
+const DeskPerson = z.object({
+  userId: id,
+  displayName: nullable(z.string()),
+  role: z.enum(['owner', 'staff']),
+  lockedUntil: nullable(dateTime).meta({ description: 'Too many wrong PINs: this person waits until then' }),
+});
+const MyDeskPins = z
+  .object({ items: z.array(z.object({ gymId: id, set: z.boolean(), setAt: nullable(dateTime), lockedUntil: nullable(dateTime) })) })
+  .meta({ id: 'GymMyDeskPins' });
+const MyDeskPin = z.object({ gymId: id, set: z.literal(true), setAt: dateTime, lockedUntil: z.null() }).meta({ id: 'GymMyDeskPin' });
+const DeskState = z
+  .union([
+    z.object({ open: z.literal(false) }),
+    z.object({
+      open: z.literal(true),
+      deskId: id,
+      gym: z.object({ id, name: nullable(z.string()) }),
+      idleMinutes: z.number().int().meta({ description: 'gym_manage.desk_idle_minutes: without real input the desk locks after this' }),
+      deviceLockedUntil: nullable(dateTime).meta({ description: 'Too many wrong PINs on this device: no tries until then' }),
+      unlocked: nullable(z.object({ userId: id, displayName: nullable(z.string()), role: z.enum(['owner', 'staff']), expiresAt: dateTime })),
+      people: z.array(DeskPerson).meta({ description: 'Who can unlock: the owner and active staff with a PIN set' }),
+    }),
+  ])
+  .meta({ id: 'GymDeskState' });
+const DeskTouch = z.object({ expiresAt: dateTime }).meta({ id: 'GymDeskTouch' });
+const DeskClosed = z.object({ open: z.literal(false), signedOut: z.literal(true) }).meta({ id: 'GymDeskClosed' });
+const DeskOverview = z
+  .object({
+    people: z.array(DeskPerson.extend({ pin: z.enum(['set', 'cleared', 'none']) })),
+    desks: z.array(
+      z.object({
+        deskId: id,
+        openedBy: z.object({ userId: id, displayName: nullable(z.string()) }),
+        openedAt: dateTime,
+        unlockedBy: nullable(z.object({ userId: id, displayName: nullable(z.string()) })),
+      })
+    ),
+  })
+  .meta({ id: 'GymDeskOverview' });
+const DeskPinReset = z.object({ gymId: id, userId: id, pin: z.literal('cleared') }).meta({ id: 'GymDeskPinReset' });
+const DeskEnded = z.object({ gymId: id, ended: z.number().int() }).meta({ id: 'GymDeskEnded' });
+
 module.exports = {
   visitParam,
   meVisitParam,
@@ -1493,4 +1541,15 @@ module.exports = {
   AdminOwnerDetail,
   AdminInvoices,
   Subscription,
+  deskPinBody,
+  deskTryBody,
+  deskPersonParam,
+  MyDeskPins,
+  MyDeskPin,
+  DeskState,
+  DeskTouch,
+  DeskClosed,
+  DeskOverview,
+  DeskPinReset,
+  DeskEnded,
 };

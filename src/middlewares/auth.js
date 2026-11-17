@@ -15,12 +15,17 @@ function authenticateWith(strategyName) {
         return next(E.unauthorized(expired ? 'TOKEN_EXPIRED' : 'AUTH_REQUIRED', expired ? 'Your session needs a refresh' : 'Sign in to continue'));
       }
       req.user = principal;
-      return next();
+      if (strategyName !== 'jwt') return next();
+      // M24 §21 (ADR-010): a device in gym desk mode works as the unlocked person, inside its gym only.
+      return require('../modules/gym-manage').desk
+        .guard(req)
+        .then(() => next())
+        .catch(next);
     })(req, res, next);
   };
 }
 
-/** Require a valid customer access token (aud "api"). Sets req.user (principal). */
+/** Require a valid customer access token (aud "api"). Sets req.user (principal); desk mode may swap it. */
 const authenticate = authenticateWith('jwt');
 
 /** Require a valid staff access token (aud "admin", ADR-004). Used by /admin/* and /auth/step-up. */

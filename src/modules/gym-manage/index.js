@@ -12,6 +12,7 @@
  *   reads      M19 the gym owner's to-dos; M20's business adapter: a gym's staff to-dos
  *   joins      M20's gym page: whether the gym takes join requests (prompt 3)
  *   consumers  registered by registry.registerAll
+ *   desk       the auth middleware's desk-mode guard and the realtime server's desk room (M24 §21)
  *   ops        M27 gym-ops: access to one gym, today's date, receipt numbers and VAT, a member, the money
  *              collected for profit and loss (round 1); notice segments and reach, reward writes
  *              (extend, waive), member by account, check-in dates (round 2)
@@ -41,6 +42,8 @@ module.exports = {
   // M20-FR-17: how many booked trial visits a holiday or special hours would cancel (the owner's preview in gym).
   visits: lazy('./guests.service', ['specialDayHits']),
   consumers: lazy('./gym-manage.consumers', ['registerGymManageConsumers']),
+  // M24 §21 desk mode (ADR-010): the request guard after a customer token, and Socket.IO's desk room.
+  desk: lazy('./desk.service', ['guard', 'deskGymOf']),
   ops: Object.freeze({
     access: (...args) => require('./gym-manage.common').gymAccess(...args),
     needs: (...args) => require('./gym-manage.common').needs(...args),

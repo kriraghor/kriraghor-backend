@@ -179,7 +179,8 @@ async function list(principal, gymId, query = {}) {
   const { status, due, overdue, expiring, frozen, notSeen, packageId, linked, trainerId, q, cursor, limit = 25 } = query;
   const where = [];
   const rep = { gymId, today, limit: limit + 1 };
-  if (status === 'removed' && !a.owner) c.needs(a, 'owner.only');
+  // Removed members are the owner's own list; not at a desk in desk mode, even after the owner's PIN (M24 §21).
+  if (status === 'removed' && (!a.owner || a.ctx.desk)) c.needs(a, 'owner.only');
   if (status) {
     where.push('status = :status');
     rep.status = status;

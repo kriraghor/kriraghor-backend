@@ -17,6 +17,8 @@ const allowedOrigin = compile([...config.corsOrigins, ...config.adminOrigins]);
 const rooms = {
   user: (id) => `user:${id}`,
   staff: 'staff',
+  // M24 §21: devices in desk mode at a gym (the live check-in feed).
+  gymDesk: (gymId) => `gym_desk:${gymId}`,
 };
 
 /**
@@ -55,6 +57,8 @@ function createRealtimeServer(httpServer, { adapter } = {}) {
       socket.data.audience = audience;
       socket.data.sessionId = auth.sessionId;
       socket.data.exp = jwt.decode(token).exp * 1000;
+      // M24 §21 (ADR-010): a device in gym desk mode gets its gym's desk feed only, never the person's own room.
+      socket.data.deskGymId = audience === AUDIENCES.API ? await require('../modules/gym-manage').desk.deskGymOf(auth.familyId) : null;
       return next();
     } catch (err) {
       const e = new Error(err.code ?? 'AUTH_REQUIRED');
@@ -65,7 +69,8 @@ function createRealtimeServer(httpServer, { adapter } = {}) {
 
   io.on('connection', (socket) => {
     socketConnections.inc();
-    if (socket.data.userId) socket.join(rooms.user(socket.data.userId));
+    if (socket.data.deskGymId) socket.join(rooms.gymDesk(socket.data.deskGymId));
+    else if (socket.data.userId) socket.join(rooms.user(socket.data.userId));
     if (socket.data.audience === AUDIENCES.ADMIN) socket.join(rooms.staff);
     socket.emit('ready', { userId: socket.data.userId, rooms: [...socket.rooms].filter((r) => r !== socket.id) });
 

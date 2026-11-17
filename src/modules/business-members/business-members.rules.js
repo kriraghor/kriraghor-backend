@@ -194,11 +194,18 @@ function actFor(principal, businessType, businessId, permission, { ownerId, notF
   const allowed = allowList(businessType);
   if (permission !== null && permission !== OWNER_ONLY && !Object.prototype.hasOwnProperty.call(allowed, permission)) throw new Error(`Unknown ${businessType} permission ${permission}`);
   if (!principal) throw E.unauthorized();
+  // M24 §21 (ADR-010): a gym desk in desk mode works for its own gym only, and never opens owner-only
+  // pages, not even after the owner's PIN (those need the owner's own sign-in).
+  const desk = Boolean(principal.desk);
+  if (desk && (businessType !== 'gym' || businessId !== principal.desk.gymId)) throw E.notFound(notFound);
+  if (desk && permission === OWNER_ONLY) {
+    throw new AppError(403, 'GYM_DESK_SCOPE', 'Owner-only pages need the owner’s own sign-in, not desk mode', { meta: { permission, businessType, businessId } });
+  }
   if (ownerId && principal.id === ownerId) {
     if (!ownerLive(principal, businessType)) {
       throw E.forbidden(ownerRefusal(principal, businessType), 'You cannot do this yet', undefined, { role: OWNER_ROLE[businessType] });
     }
-    return { as: 'owner', staff: false, ownerId, businessType, businessId, permissions: allowedFor(businessType), actor: principal };
+    return { as: 'owner', staff: false, desk, ownerId, businessType, businessId, permissions: allowedFor(businessType), actor: principal };
   }
   const w = workplaceAt(principal, businessType, businessId);
   if (!w || (ownerId && w.ownerId !== ownerId)) {
@@ -210,11 +217,14 @@ function actFor(principal, businessType, businessId, permission, { ownerId, notF
     throw new AppError(403, 'PERMISSION_REQUIRED', 'The owner has not given you this permission', { meta: { permission, businessType, businessId } });
   }
   const actor = { ...principal, onBehalfOf: w.ownerId, actingRole: 'business_staff' };
-  return { as: 'staff', staff: true, ownerId: w.ownerId, businessType, businessId, permissions: [...w.permissions], actor };
+  return { as: 'staff', staff: true, desk, ownerId: w.ownerId, businessType, businessId, permissions: [...w.permissions], actor };
 }
 
-/** Can this acting context do a permission? (owners can do everything on a staff-capable desk). */
-const can = (ctx, permission) => ctx.as === 'owner' || ctx.permissions.includes(permission);
+/**
+ * Can this acting context do a permission? (owners can do everything on a staff-capable desk, except an
+ * owner-only step at a gym desk in desk mode, M24 §21).
+ */
+const can = (ctx, permission) => (permission === OWNER_ONLY && ctx.desk ? false : ctx.as === 'owner' || ctx.permissions.includes(permission));
 
 /** Businesses of a type where the principal holds a permission (for lists across workplaces). */
 const businessesWith = (principal, type, permission) =>

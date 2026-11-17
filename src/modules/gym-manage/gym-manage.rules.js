@@ -25,7 +25,7 @@ const DAY_MS = 86400000;
 
 const TIERS = Object.freeze(['free', 'basic', 'standard', 'pro']);
 // M27 round 1 adds expenses (with the cash drawer), lockers, pos (counter shop and stock) and pnl (profit and loss).
-const FEATURES = Object.freeze(['attendance', 'reminders', 'online_fees', 'reports', 'trainers', 'plans', 'multi_gym', 'expenses', 'lockers', 'pos', 'pnl', 'classes', 'points', 'notices', 'leads', 'staff_attendance', 'equipment', 'payroll', 'visits', 'progress']);
+const FEATURES = Object.freeze(['attendance', 'reminders', 'online_fees', 'reports', 'trainers', 'plans', 'multi_gym', 'expenses', 'lockers', 'pos', 'pnl', 'classes', 'points', 'notices', 'leads', 'staff_attendance', 'equipment', 'payroll', 'visits', 'progress', 'desk_mode']);
 const METHODS = Object.freeze(['cash', 'owner_bkash', 'owner_nagad', 'card_counter', 'other']);
 const LEFT_REASONS = Object.freeze(['price', 'moved', 'injury', 'other_gym', 'schedule', 'unknown', 'other']);
 const SHORT_CODE = /^[A-Z]{2,6}$/;
@@ -901,6 +901,60 @@ function selfRenewCancelBlock({ membership, paidPoisha = 0 }) {
   return null;
 }
 
+// ---------------------------------------------------------------- desk mode with a PIN (M24 §21, ADR-010)
+
+const DESK_PIN = /^\d{4}$/;
+
+/**
+ * Why a desk PIN is refused, or null (M24-FR-134): four digits; not one digit four times; not a run up or
+ * down (1234, 9876, 0123); not the last four digits of the person's own phone.
+ */
+function deskPinBlock({ pin, phoneLast4 = null }) {
+  const text = String(pin ?? '');
+  if (!DESK_PIN.test(text)) return 'format';
+  const d = [...text].map(Number);
+  if (d.every((x) => x === d[0])) return 'repeat';
+  const step = d[1] - d[0];
+  if (Math.abs(step) === 1 && d.every((x, i) => i === 0 || x - d[i - 1] === step)) return 'run';
+  if (phoneLast4 && text === String(phoneLast4)) return 'phone';
+  return null;
+}
+
+/**
+ * What one more wrong PIN does (M24-FR-137). `failed` counts this try. Below the limit: nothing but the
+ * tries left. At the limit: the person is locked for a while and their lockouts in a row go up; at
+ * `maxLockouts` the PIN is cleared and must be set again from their own sign-in.
+ */
+function deskPinWrong({ failed, lockouts, failLimit, maxLockouts }) {
+  if (failed < failLimit) return { lock: false, clear: false, left: failLimit - failed };
+  return { lock: true, clear: lockouts + 1 >= maxLockouts, left: 0 };
+}
+
+/**
+ * Where a request from a device in desk mode goes (M24-FR-139). `control`: the desk-mode endpoints and
+ * sign-out, always allowed (as the sign-in that opened the desk). `gym`: the desk gym's panel, the list
+ * of gyms and the gym's pass desk, which need a live unlock and run as the unlocked person. Anything else
+ * is `outside` and refused: a device in desk mode does nothing but its gym's work.
+ */
+function deskRoute({ method, path, gymId }) {
+  const p = String(path).split('?')[0].replace(/\/+$/, '');
+  if (p === '/manage/desk-mode' || p.startsWith('/manage/desk-mode/')) return 'control';
+  if (method === 'POST' && p === '/auth/logout') return 'control';
+  const gym = `/manage/gyms/${gymId}`;
+  if (p === gym || p.startsWith(`${gym}/`)) return 'gym';
+  if (method === 'GET' && p === '/manage/gyms') return 'gym';
+  // The panel's header and workplace list, read as the unlocked person.
+  if (method === 'GET' && (p === '/me' || p === '/me/workplaces')) return 'gym';
+  if (p === `/me/gyms/${gymId}/redemptions` || p === `/me/gyms/${gymId}/passes`) return 'gym';
+  return 'outside';
+}
+
+/** Is an unlock still live at `now` (not ended, not past its idle time)? */
+const deskUnlockLive = (u, now) => Boolean(u) && !u.endedAt && new Date(u.expiresAt).getTime() > now.getTime();
+
+/** When an unlock touched at `now` runs out: `idleMinutes` later (M24-FR-136). */
+const deskIdleUntil = (now, idleMinutes) => new Date(now.getTime() + idleMinutes * 60000);
+
 // ---------------------------------------------------------------- body progress (M24 §20)
 
 /** The measurements of a body entry with their allowed range (kg, %, cm), one decimal each. */
@@ -975,6 +1029,11 @@ module.exports = {
   looksLikeShortCode,
   visitMinutes,
   bmiOf,
+  deskPinBlock,
+  deskPinWrong,
+  deskRoute,
+  deskUnlockLive,
+  deskIdleUntil,
   selfRenewBlock,
   selfRenewCancelBlock,
   BODY_FIELDS,

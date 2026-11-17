@@ -25,9 +25,13 @@ function actorTypeOf(actor) {
   return 'user';
 }
 
+/** M24 §21: an actor working at a gym desk in desk mode carries `desk`; the row says so (never a PIN). */
+const withDesk = (actor, meta) =>
+  actor?.desk ? { ...(meta ?? {}), desk: { deskId: actor.desk.sessionId, unlockId: actor.desk.unlockId, openedBy: actor.desk.openedBy } } : meta;
+
 /**
  * @param {object} entry
- * @param {string} entry.action        registered in audit.actions.js, e.g. 'setting.changed'
+ * @param {string} entry.action       registered in audit.actions.js, e.g. 'setting.changed'
  * @param {object} [entry.actor]       principal, { id }, or { id: null, role: 'system' }
  * @param {string} [entry.entityType]
  * @param {string} [entry.entityId]
@@ -65,7 +69,8 @@ async function record(entry, { transaction } = {}) {
       stepUp: Boolean(entry.stepUp ?? meta?.stepUp ?? req?.stepUp),
       // Round B3: a business's staff member acts for its owner; the row names the staff member as
       // the actor (actorRole business_staff) and the owner in meta.onBehalfOf.
-      meta: redact(actor?.onBehalfOf ? { ...(meta ?? {}), onBehalfOf: actor.onBehalfOf } : meta ?? null),
+      // M24 §21 (ADR-010): done at a desk in desk mode by the unlocked person; who opened that desk is kept.
+    meta: redact(withDesk(actor, actor?.onBehalfOf ? { ...(meta ?? {}), onBehalfOf: actor.onBehalfOf } : meta ?? null)),
       ip: req?.ip ?? null,
       userAgent: req?.get?.('user-agent')?.slice(0, 512) ?? null,
       requestId: req?.id ?? null,

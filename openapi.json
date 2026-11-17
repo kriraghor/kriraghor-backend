@@ -26421,6 +26421,9 @@
                     },
                     "progress": {
                       "type": "boolean"
+                    },
+                    "desk_mode": {
+                      "type": "boolean"
                     }
                   }
                 },
@@ -26531,6 +26534,9 @@
                   },
                   "progress": {
                     "type": "boolean"
+                  },
+                  "desk_mode": {
+                    "type": "boolean"
                   }
                 }
               },
@@ -26558,6 +26564,418 @@
         "required": [
           "items",
           "owner"
+        ]
+      },
+      "GymMyDeskPins": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "gymId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "set": {
+                  "type": "boolean"
+                },
+                "setAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                },
+                "lockedUntil": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "gymId",
+                "set",
+                "setAt",
+                "lockedUntil"
+              ]
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "GymMyDeskPin": {
+        "type": "object",
+        "properties": {
+          "gymId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "set": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "setAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lockedUntil": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "gymId",
+          "set",
+          "setAt",
+          "lockedUntil"
+        ]
+      },
+      "GymDeskState": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "open": {
+                "type": "boolean",
+                "enum": [
+                  false
+                ]
+              }
+            },
+            "required": [
+              "open"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "open": {
+                "type": "boolean",
+                "enum": [
+                  true
+                ]
+              },
+              "deskId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "gym": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "name"
+                ]
+              },
+              "idleMinutes": {
+                "type": "integer",
+                "description": "gym_manage.desk_idle_minutes: without real input the desk locks after this"
+              },
+              "deviceLockedUntil": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time",
+                "description": "Too many wrong PINs on this device: no tries until then"
+              },
+              "unlocked": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "userId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "displayName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "owner",
+                      "staff"
+                    ]
+                  },
+                  "expiresAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                },
+                "required": [
+                  "userId",
+                  "displayName",
+                  "role",
+                  "expiresAt"
+                ]
+              },
+              "people": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "userId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "displayName": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "role": {
+                      "type": "string",
+                      "enum": [
+                        "owner",
+                        "staff"
+                      ]
+                    },
+                    "lockedUntil": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time",
+                      "description": "Too many wrong PINs: this person waits until then"
+                    }
+                  },
+                  "required": [
+                    "userId",
+                    "displayName",
+                    "role",
+                    "lockedUntil"
+                  ]
+                },
+                "description": "Who can unlock: the owner and active staff with a PIN set"
+              }
+            },
+            "required": [
+              "open",
+              "deskId",
+              "gym",
+              "idleMinutes",
+              "deviceLockedUntil",
+              "unlocked",
+              "people"
+            ]
+          }
+        ]
+      },
+      "GymDeskTouch": {
+        "type": "object",
+        "properties": {
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "expiresAt"
+        ]
+      },
+      "GymDeskClosed": {
+        "type": "object",
+        "properties": {
+          "open": {
+            "type": "boolean",
+            "enum": [
+              false
+            ]
+          },
+          "signedOut": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "open",
+          "signedOut"
+        ]
+      },
+      "GymDeskOverview": {
+        "type": "object",
+        "properties": {
+          "people": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "userId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "displayName": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "owner",
+                    "staff"
+                  ]
+                },
+                "lockedUntil": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time",
+                  "description": "Too many wrong PINs: this person waits until then"
+                },
+                "pin": {
+                  "type": "string",
+                  "enum": [
+                    "set",
+                    "cleared",
+                    "none"
+                  ]
+                }
+              },
+              "required": [
+                "userId",
+                "displayName",
+                "role",
+                "lockedUntil",
+                "pin"
+              ]
+            }
+          },
+          "desks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "deskId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "openedBy": {
+                  "type": "object",
+                  "properties": {
+                    "userId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "displayName": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "userId",
+                    "displayName"
+                  ]
+                },
+                "openedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "unlockedBy": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "properties": {
+                    "userId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "displayName": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "userId",
+                    "displayName"
+                  ]
+                }
+              },
+              "required": [
+                "deskId",
+                "openedBy",
+                "openedAt",
+                "unlockedBy"
+              ]
+            }
+          }
+        },
+        "required": [
+          "people",
+          "desks"
+        ]
+      },
+      "GymDeskPinReset": {
+        "type": "object",
+        "properties": {
+          "gymId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pin": {
+            "type": "string",
+            "enum": [
+              "cleared"
+            ]
+          }
+        },
+        "required": [
+          "gymId",
+          "userId",
+          "pin"
+        ]
+      },
+      "GymDeskEnded": {
+        "type": "object",
+        "properties": {
+          "gymId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ended": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "gymId",
+          "ended"
         ]
       },
       "GymOverview": {
@@ -26644,6 +27062,9 @@
                 "type": "boolean"
               },
               "progress": {
+                "type": "boolean"
+              },
+              "desk_mode": {
                 "type": "boolean"
               }
             }
@@ -30664,6 +31085,9 @@
               },
               "progress": {
                 "type": "boolean"
+              },
+              "desk_mode": {
+                "type": "boolean"
               }
             }
           },
@@ -30714,7 +31138,8 @@
                       "equipment",
                       "payroll",
                       "visits",
-                      "progress"
+                      "progress",
+                      "desk_mode"
                     ]
                   }
                 },
@@ -31244,7 +31669,8 @@
                       "equipment",
                       "payroll",
                       "visits",
-                      "progress"
+                      "progress",
+                      "desk_mode"
                     ]
                   }
                 },
@@ -97317,6 +97743,936 @@
           },
           "401": {
             "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/gym-desk-pins": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "My desk PINs: at which gyms I have one set (never the PIN; no-store; M24-FR-134)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymMyDeskPins"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Set or change my own 4-digit desk PIN for a gym I work at; refused: one digit four times, a run (1234, 9876), my phone’s last four digits (M24-FR-134)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "gymId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "pin": {
+                    "type": "string",
+                    "pattern": "^\\d{4}$",
+                    "description": "Four digits; never stored or returned, only a keyed hash"
+                  }
+                },
+                "required": [
+                  "gymId",
+                  "pin"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymMyDeskPin"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED, GYM_DESK_PIN_WEAK",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/desk-mode": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "This device’s desk: off, or the gym, who is unlocked until when, and the names for the lock screen (no-store; M24-FR-136)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymDeskState"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/desk-mode/unlock": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Unlock the desk as a person with their PIN; wrong tries are counted per person and per device before the PIN is checked (M24-FR-137, FR-138)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "userId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "The person picked on the lock screen"
+                  },
+                  "pin": {
+                    "type": "string",
+                    "pattern": "^\\d{4}$",
+                    "description": "Four digits; never stored or returned, only a keyed hash"
+                  }
+                },
+                "required": [
+                  "userId",
+                  "pin"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymDeskState"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, GYM_DESK_PIN_WRONG",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_DESK_STATE, GYM_DESK_PIN_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Error. Codes: GYM_DESK_PIN_LOCKED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/desk-mode/lock": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Lock the desk now",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymDeskState"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_DESK_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Error. Codes: GYM_DESK_LOCKED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/desk-mode/touch": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Real input at the desk: unlocked for another gym_manage.desk_idle_minutes (M24-FR-136)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymDeskTouch"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_DESK_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Error. Codes: GYM_DESK_LOCKED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/desk-mode/close": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "End desk mode with any valid PIN of the gym; the device is signed out (M24-FR-141)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "userId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "The person picked on the lock screen"
+                  },
+                  "pin": {
+                    "type": "string",
+                    "pattern": "^\\d{4}$",
+                    "description": "Four digits; never stored or returned, only a keyed hash"
+                  }
+                },
+                "required": [
+                  "userId",
+                  "pin"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymDeskClosed"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, GYM_DESK_PIN_WRONG",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_DESK_STATE, GYM_DESK_PIN_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Error. Codes: GYM_DESK_PIN_LOCKED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/desk-mode/open": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Switch desk mode on for the device I am signed in on; my own PIN must be set (plan feature desk_mode; M24-FR-136)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymDeskState"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, GYM_ACCOUNT_RESTRICTED, GYM_TIER_REQUIRED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Error. Codes: GYM_DESK_PIN_REQUIRED, GYM_DESK_STATE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/desk": {
+      "get": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Who has a desk PIN here and the devices in desk mode now (owner, not from a desk device; M24-FR-135)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymDeskOverview"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, GYM_DESK_SCOPE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/desk-pins/{userId}/reset": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "Clear a staff member’s desk PIN; their desk unlocks end (owner; M24-FR-135)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "userId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymDeskPinReset"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, GYM_DESK_SCOPE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manage/gyms/{gymId}/desk-mode/end": {
+      "post": {
+        "tags": [
+          "gym-manage"
+        ],
+        "summary": "End desk mode on every device at this gym from my own sign-in; each is signed out (owner; M24-FR-141)",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "gymId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GymDeskEnded"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Error. Codes: AUTH_REQUIRED, TOKEN_EXPIRED, TOKEN_AUDIENCE_INVALID, SESSION_REVOKED, AUTHZ_STALE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Error. Codes: PERMISSION_REQUIRED, PHONE_REQUIRED, ROLE_SUSPENDED, ACCOUNT_SUSPENDED, GYM_DESK_SCOPE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Error. Codes: NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error. Codes: VALIDATION_FAILED",
             "content": {
               "application/problem+json": {
                 "schema": {
