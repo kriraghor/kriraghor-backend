@@ -388,6 +388,39 @@ async function remove(principal, id, { confirmName, reason }, req) {
   return { id, status: 'removed' };
 }
 
+/**
+ * POST /admin/gym/gyms/:id/remove (master, step-up escrow.manage; tester feedback, 19 Nov 2026): any
+ * gym, suspended included. Unpaid subscriptions are void; paid online subscriptions still running are
+ * cancelled with a refund of everything Kriraghor still holds (a subscription's money is released to
+ * the gym at its first check-in, so what was already paid out is listed for support, never refunded
+ * from Kriraghor's own money). Then the gym is removed, never deleted.
+ */
+async function staffRemove(principal, id, { reason }, req) {
+  const refunded = [];
+  const settled = [];
+  await sequelize.transaction(async (transaction) => {
+    const g = await c.lockGym(id, transaction);
+    if (!g) throw E.notFound('Gym');
+    if (g.status === 'removed') throw fail('GYM_STATE');
+    const passes = await GymPass.findAll({ where: { gymId: g.id, status: ['pending_payment', 'active'] }, transaction, lock: transaction.LOCK.UPDATE });
+    for (const pass of passes) {
+      const held = c.heldOf(pass);
+      const out = await require('./passes.service').closeForPlatform(pass, { reason: 'gym_removed', actor: principal, transaction });
+      if (out.refunded > 0) refunded.push({ code: pass.code, refunded: out.refunded });
+      if (pass.releasedPoisha > 0) settled.push({ code: pass.code, paidToGym: pass.releasedPoisha, heldBefore: held });
+    }
+    if (g.currentSubmissionId) await moderation.withdrawSubject('gym', g.id, { transaction });
+    const before = { status: g.status };
+    await g.update({ status: 'removed', statusChangedAt: new Date(), currentSubmissionId: null, editStatus: null }, { transaction });
+    await audit.record(
+      { action: 'gym.removed_by_staff', actor: principal, entityType: 'gym', entityId: g.id, before, after: { status: 'removed' }, reason, meta: { refunded: refunded.length, settled: settled.length }, req },
+      { transaction }
+    );
+    await c.publish(transaction, 'gym.removed', 'gym', g.id, { gymId: g.id, ownerId: g.ownerId });
+  });
+  return { id, status: 'removed', refunded, paidToGym: settled };
+}
+
 // ---------------------------------------------------------------- M05 (adapter in gym.moderation)
 
 const DECIDED_EVENT = { changes_requested: 'gym.changes_requested', rejected: 'gym.rejected' };
@@ -566,6 +599,7 @@ async function packagesForGym(gymId, { status = 'active', transaction } = {}) {
 }
 
 module.exports = {
+  staffRemove,
   owned,
   liveWindowsOn,
   get,
