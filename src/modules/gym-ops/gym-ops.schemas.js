@@ -144,6 +144,7 @@ const Product = z
     expiresOn: nullable(date),
     expired: z.boolean(),
     importer: nullable(z.string()),
+    photoUrl: nullable(z.string()).meta({ description: 'The product photo (public bucket), or null' }),
     status: z.enum(['active', 'retired']),
   })
   .meta({ id: 'GymProduct' });

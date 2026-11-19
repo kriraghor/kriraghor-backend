@@ -105,6 +105,10 @@ GymProduct.init(
     batchNo: DataTypes.STRING(40),
     expiresOn: DataTypes.DATEONLY,
     importer: DataTypes.STRING(120),
+    // Tester feedback (19 Nov 2026): one photo in the public bucket (migration 20261129000001).
+    photoKey: DataTypes.STRING(200),
+    photoMime: DataTypes.STRING(20),
+    photoBytes: DataTypes.INTEGER,
     lowAlertedAt: DataTypes.DATE(3),
     expiryAlertedOn: DataTypes.DATEONLY,
     status: enumOf(['active', 'retired'], { defaultValue: 'active' }),
