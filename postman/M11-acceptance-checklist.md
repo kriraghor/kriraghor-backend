@@ -97,5 +97,25 @@ Step 2 brings month and season contracts (Q71), conduct reports, the M10 officia
 | 6.7 | Block over a booked job 🤖 | 409 `BLOCK_OVER_JOB` with the job codes |
 | 6.8 | **Beyond the horizon** | 422 (`hire.availability_horizon_days` 60) |
 | 6.9 | **My calendar**, **Clear the calendar** | The block in the range, weekly repeats expanded; then empty |
-| 6.10 | **A profile photo (PNG)**, **A PDF is not a photo** | Me shows `avatarUrl` (public bucket); the PDF 415 `FILE_TYPE_NOT_ALLOWED`; over `kyc.max_file_bytes` 413 🤖 |
+| 6.10 | **A profile photo (PNG)**, **A PDF is not a photo** | Me shows `avatarUrl` (public bucket); the PDF 415 `FILE_TYPE_NOT_ALLOWED`; over `users.avatar_max_bytes` 413 🤖 |
 | 6.11 | **The directory card shows the photo**, **Remove the photo** | Card with `avatarUrl`, `availableToday`, jobs done and reply stats; removed → `avatarUrl` null |
+
+## 7. Photo and intro video (M11-FR-16 to FR-18, tester feedback 19 Nov 2026)
+| # | Do | Expect |
+|---|---|---|
+| 7.1 | Folder 2: **Sending without a photo**, **The profile photo**, **Send for review** | 409 `PHOTO_REQUIRED`; with the photo, `pending_review` |
+| 7.2 | **A fb.watch link cannot be shown** | 422, `errors[0]` `field: introVideoUrl`, `code: facebook_video` |
+| 7.3 | **A YouTube intro video**, **Not public before review** | `editStatus: draft`, `introVideo.playUrl` on youtube-nocookie; the public page has no video yet |
+| 7.4 | **The photo was removed: sending the edit**, **The photo again**, **Send the edit for review** | 409 `PHOTO_REQUIRED`; then the edit is in review |
+| 7.5 | **The edit on the desk**, **Reviewers see the photo and the link**, approve | The staff view has `owner.avatarUrl` and `introVideoUrl` |
+| 7.6 | **The page plays the video**, **The card has the play badge** | `introVideo.provider: youtube`, `kind: iframe`; `hasIntroVideo: true` |
+| 7.7 | Every kind of link 🤖 (`tests/unit/m11-intro-video.test.js`, 100% branches) | YouTube, Vimeo (with hash), Facebook (videos, reels, watch), Drive, OneDrive embed, Dropbox (raw=1), .mp4/.webm/.m4v, .m3u8; http, local hosts and long links refused |
+| 7.8 | Switched off 🤖 (`tests/e2e/hire-media.test.js`) | `hire.intro_video_providers` without youtube: the page hides it and a save is refused with `provider_off`; an empty link removes it |
+
+### By hand (kriraghor.com, gym.kriraghor.com, admin)
+- [ ] **/pro/profiles/[id]**: "Your photo" at the top sets the account photo; Send for review is off with "Add your photo…" until there is one.
+- [ ] **Intro video link**: paste each kind (YouTube, Vimeo, Facebook video, Drive, OneDrive embed, Dropbox .mp4, an .mp4 and an .m3u8); after Save, "How your video plays" plays it. A wrong link shows why under the field.
+- [ ] **/hiring/[slug]**: nothing loads from the video's host until Play; YouTube plays without cookies; an .m3u8 plays in Chrome (hls.js) and Safari; "Open on …" opens the original.
+- [ ] **Hire cards** and **gym.kriraghor.com/trainers**: the Video tag; a trainer without a photo shows initials.
+- [ ] **Admin moderation panel**: the photo (or "No photo") and the video link with the reminder to watch it.
+- [ ] Bangla, phone width, light and dark.

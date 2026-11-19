@@ -19,6 +19,7 @@ const taxonomy = require('../catalog').hireReads;
 const profiles = require('./profiles.service');
 const availability = require('./availability.service');
 const rules = require('./hire.rules');
+const video = require('./video.rules');
 const c = require('./hire.common');
 
 const { fail } = c;
@@ -68,6 +69,8 @@ async function cards(rows, { unit = null, viewer = null } = {}) {
       acceptanceRate: p.acceptanceRate ?? null,
       medianReplyMinutes: p.medianReplyMinutes ?? null,
       availableToday: p.status === 'live' && Boolean(freeToday.get(p.userId)),
+      // M11-FR-16: a play badge on the card; the page carries the video itself.
+      hasIntroVideo: Boolean(video.introVideoView(s.introVideoUrl, c.config().introVideoProviders)),
       shortlisted: savedIds.has(p.id),
     });
   }
@@ -120,6 +123,7 @@ async function page(slug, viewer = null) {
   return {
     ...card,
     bio: p.liveSnapshot.bio,
+    introVideo: video.introVideoView(p.liveSnapshot.introVideoUrl, c.config().introVideoProviders),
     sportKeys: p.liveSnapshot.sportKeys,
     worksWithU16: p.liveSnapshot.worksWithU16,
     taking: p.status === 'live',

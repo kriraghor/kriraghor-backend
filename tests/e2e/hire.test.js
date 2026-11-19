@@ -66,6 +66,9 @@ describe('M11 hire', () => {
     const tooCheap = { ...x.UMPIRE_CARD, items: [{ unit: 'match', format: 'T20', rate: 1000 }] };
     expect((await api().put(`${P}/pro/profiles/${draft.body.id}/rate-card`).set(h.bearer(p0)).send(tooCheap).expect(422)).body.errors[0].field).toBe('items[0]');
     await api().put(`${P}/pro/profiles/${draft.body.id}/rate-card`).set(h.bearer(p0)).send(x.UMPIRE_CARD).expect(200);
+    // M11-FR-17: no photo, no review.
+    expect((await pro(p0, `profiles/${draft.body.id}/submit`).expect(409)).body.code).toBe('PHOTO_REQUIRED');
+    await api().post(`${P}/me/avatar`).set(h.bearer(p0)).set('Content-Type', 'image/png').send(f.PNG).expect(200);
     await pro(p0, `profiles/${draft.body.id}/submit`).expect(200);
     await h.drainEvents();
     const sub = await models.Submission.findOne({ where: { kind: 'hire_profile', subjectId: draft.body.id } });

@@ -67,6 +67,8 @@ const profileBody = z.object({
   years: z.number().int().min(0).max(60).default(0),
   baseAreaId: id,
   bio: text(10, 2000).optional(),
+  // M11-FR-16: a link to the intro video (checked by hire/video.rules); empty or null removes it.
+  introVideoUrl: z.string().max(500).nullable().optional().meta({ description: 'YouTube, Vimeo, Facebook, Google Drive, OneDrive (embed link), Dropbox, or an https .mp4/.webm/.m4v/.m3u8 link; never uploaded' }),
   worksWithU16: z.boolean().default(false),
 });
 const profilePatch = profileBody.omit({ roleKey: true }).partial();
@@ -157,11 +159,21 @@ const Card = z
     availableToday: z.boolean().meta({ description: 'Some time left today (Dhaka) that is neither blocked nor booked (FR-05)' }),
     avatarUrl: nullable(z.string()),
     shortlisted: z.boolean(),
+    hasIntroVideo: z.boolean().meta({ description: 'The reviewed profile has an intro video (M11-FR-16)' }),
   })
   .meta({ id: 'HireCard' });
+const IntroVideo = z
+  .object({
+    url: z.string().meta({ description: 'The link as given' }),
+    provider: z.enum(['youtube', 'vimeo', 'facebook', 'google_drive', 'onedrive', 'dropbox', 'video_file', 'hls']),
+    kind: z.enum(['iframe', 'file', 'hls']).meta({ description: 'iframe: embed playUrl; file: <video src=playUrl>; hls: an HLS playlist' }),
+    playUrl: z.string(),
+  })
+  .meta({ id: 'HireIntroVideo', description: 'M11-FR-16: an intro video given as a link, never uploaded to Kriraghor' });
 const ProfileList = z.object({ items: z.array(Card), total: z.number().int().optional(), counts: z.record(z.string(), z.number().int()).optional(), nextCursor: nullable(z.string()).optional() }).meta({ id: 'HireProfileList' });
 const ProfilePage = Card.extend({
   bio: nullable(z.string()),
+  introVideo: nullable(IntroVideo),
   sportKeys: z.array(z.string()),
   worksWithU16: z.boolean(),
   taking: z.boolean(),
@@ -204,6 +216,8 @@ const OwnerProfile = z
     years: nullable(z.number().int()),
     baseAreaId: nullable(id),
     bio: nullable(z.string()),
+    introVideoUrl: nullable(z.string()),
+    introVideo: nullable(IntroVideo).meta({ description: 'How the link in the working copy plays' }),
     worksWithU16: nullable(z.boolean()),
     live: nullable(z.object({ version: z.number().int() }).loose()),
     reviewReason: nullable(z.object({ code: z.string(), text: nullable(z.string()) })),
@@ -301,7 +315,7 @@ const StaffRequestList = z
   .object({ items: z.array(z.object({ id, code: z.string(), status: z.enum(REQUEST_STATUSES), total: poisha, jobs: z.number().int(), createdAt: nullable(dateTime) })), nextCursor: nullable(z.string()) })
   .meta({ id: 'HireStaffRequestList' });
 const StaffProfile = OwnerProfile.extend({
-  owner: z.object({ id, displayName: nullable(z.string()) }),
+  owner: z.object({ id, displayName: nullable(z.string()), avatarUrl: nullable(z.string()) }),
   credential: nullable(z.object({ level: z.enum(LEVELS), issuer: nullable(z.string()), expiresOn: nullable(z.string()) })),
   baseArea: nullable(z.object({ id, nameEn: z.string(), nameBn: z.string() })),
   updatedAt: nullable(dateTime),

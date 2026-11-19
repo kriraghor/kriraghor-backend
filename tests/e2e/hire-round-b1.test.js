@@ -56,6 +56,8 @@ async function confirmed(profile, proUser, { days = 4, manager } = {}) {
 describe('Round B1', () => {
   it('M01 avatar: upload, type and size checks, Me and the public hire and player views, remove', async () => {
     const { pro: kamrul, profile } = await x.liveProfile({ docsReviewer, reviewer });
+    // The profile went live with a photo (M11-FR-17); start this test without one.
+    await api().delete(`${P}/me/avatar`).set(h.bearer(kamrul)).expect(200);
     expect((await get(kamrul, '/me').expect(200)).body.avatarUrl).toBeNull();
     const upload = (buf, type) => api().post(`${P}/me/avatar`).set(h.bearer(kamrul)).set('Content-Type', type).send(buf);
     expect((await upload(f.PNG, 'image/jpeg').expect(415)).body.code).toBe('FILE_TYPE_MISMATCH');
@@ -64,7 +66,8 @@ describe('Round B1', () => {
     expect((await upload(Buffer.concat([f.PNG, Buffer.alloc(262144)]), 'image/png').expect(413)).body.code).toBe('FILE_TOO_LARGE');
     const done = (await upload(f.PNG, 'image/png').expect(200)).body;
     expect(done.avatarUrl).toMatch(new RegExp(`/avatars/${kamrul.user.id}/[0-9a-f]{16}\\.png$`));
-    expect(await models.AuditLog.count({ where: { action: 'user.avatar_updated', entityId: kamrul.user.id } })).toBe(1);
+    // The photo the profile went live with, then this one.
+    expect(await models.AuditLog.count({ where: { action: 'user.avatar_updated', entityId: kamrul.user.id } })).toBe(2);
 
     const card = (await api().get(`${P}/hire/profiles?category=officials`).expect(200)).body.items[0];
     expect(card).toMatchObject({ id: profile.id, avatarUrl: done.avatarUrl, availableToday: true, acceptanceRate: null, medianReplyMinutes: null });
@@ -76,7 +79,8 @@ describe('Round B1', () => {
 
     expect((await api().delete(`${P}/me/avatar`).set(h.bearer(kamrul)).expect(200)).body.avatarUrl).toBeNull();
     await api().delete(`${P}/me/avatar`).set(h.bearer(kamrul)).expect(200);
-    expect(await models.AuditLog.count({ where: { action: 'user.avatar_removed', entityId: kamrul.user.id } })).toBe(1);
+    // Removed at the start of this test and here; the second removal now has nothing to remove.
+    expect(await models.AuditLog.count({ where: { action: 'user.avatar_removed', entityId: kamrul.user.id } })).toBe(2);
   });
 
   it('availability: blocks and weekly repeats, the busy strip without reasons, requests over blocked time, the accept re-check, jobs and the horizon (FR-05, FR-14)', async () => {
@@ -184,7 +188,8 @@ describe('Round B1', () => {
     const nobody = await h.signupUser({ name: 'New Person' });
     expect((await get(nobody, '/pro/insights').expect(200)).body).toMatchObject({ earned: { total: 0 }, acceptanceRate: null, whoHiresYou: [] });
 
-    // Completeness: the profile is missing its photo, a longer bio, the calendar and a payout account.
+    // Completeness: the profile is missing its photo (removed after going live), a longer bio, the calendar and a payout account.
+    await api().delete(`${P}/me/avatar`).set(h.bearer(kamrul)).expect(200);
     const mineView = (await get(kamrul, `/pro/profiles/${profile.id}`).expect(200)).body;
     expect(mineView.stats).toMatchObject({ jobsDone: 1, acceptanceRate: 66.67 });
     const steps = Object.fromEntries(mineView.completeness.steps.map((s) => [s.key, s.done]));

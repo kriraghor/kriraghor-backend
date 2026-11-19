@@ -57,6 +57,8 @@ async function liveProfile({ docsReviewer, reviewer, roleKey = 'cricket_umpire',
     .send({ roleKey, headline: 'BCB umpire for club and league cricket', experienceLevel: level, years: 6, baseAreaId: await f.areaId(baseArea), sportKeys: ['cricket'], bio: 'Six seasons in the Dhaka leagues, white and red ball.' })
     .expect(201);
   await api().put(`${P}/pro/profiles/${created.body.id}/rate-card`).set(h.bearer(pro)).send(card).expect(200);
+  // M11-FR-17: a profile is sent for review only with a photo (the M01 avatar).
+  await api().post(`${P}/me/avatar`).set(h.bearer(pro)).set("Content-Type", "image/png").send(f.PNG).expect(200);
   await api().post(`${P}/pro/profiles/${created.body.id}/submit`).set(h.bearer(pro)).expect(200);
   await h.drainEvents();
   await f.review(reviewer, 'hire_profile', created.body.id);

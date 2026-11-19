@@ -14,6 +14,8 @@ const D = require('../data');
 const { models } = rt;
 const PHOTOS = path.join(__dirname, '..', 'photos');
 const photo = (file) => fs.readFileSync(path.join(PHOTOS, file));
+/** A demo pro's profile photo by their first sport (M11-FR-17). */
+const PRO_PHOTO = { cricket: 'cricket-batsman.jpg', football: 'gear-football.jpg', gym: 'gym-floor.jpg', badminton: 'badminton-net.jpg' };
 const day = 86400000;
 
 // ---------------------------------------------------------------- catalogue lookups
@@ -166,7 +168,13 @@ async function liveProfile(a, reviewer, p) {
     await rt.mark('hire_profile', id, label);
   }
   const row = await models.HireProfile.findByPk(id);
-  if (['draft', 'changes_requested'].includes(row.status)) await rt.post(a, `/pro/profiles/${id}/submit`);
+  if (['draft', 'changes_requested'].includes(row.status)) {
+    // M11-FR-17: a profile is sent only with a photo. The demo has no portraits, so a pro gets a photo of
+    // their first sport from the demo set (only when they have none).
+    const user = await models.User.findByPk(a.userId, { attributes: ['avatarKey'] });
+    if (!user.avatarKey) await rt.post(a, '/me/avatar', undefined, { raw: photo(PRO_PHOTO[p.sports?.[0]] ?? 'banner-stage.jpg'), contentType: 'image/jpeg' });
+    await rt.post(a, `/pro/profiles/${id}/submit`);
+  }
   if (row.status !== 'live') await people.review(reviewer, 'hire_profile', id);
   return id;
 }
