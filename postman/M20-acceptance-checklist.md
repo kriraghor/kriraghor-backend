@@ -137,3 +137,11 @@ Product owner, 11 Nov 2026; M20-FR-16 to FR-22 ([M20 §26](../../kriraghor-docs/
 - [ ] **Public gym page and card**: "Closed today: {name}" on a holiday; the coming special days under the opening hours. The same in the phone app.
 - [ ] A closed date is missing from **Book a free visit**; the class of that day shows as cancelled with the reason.
 - [ ] Bangla, phone width, light and dark.
+
+## 6. Removing a gym (tester feedback, 19 Nov 2026)
+| # | Do | Expect |
+|---|---|---|
+| 6.1 | **Suspend it again**, **The owner cannot remove a suspended gym** | 409 `GYM_STATE`: a suspended gym is removed by Kriraghor only |
+| 6.2 | **Staff who are not masters cannot**, **Master without step-up** | 403; 403 `STEP_UP_REQUIRED` |
+| 6.3 | **Master: remove (step-up)**, **The public page is gone** | `removed` with the lists `refunded` and `paidToGym`; 404; the ledger balanced |
+| 6.4 | Money 🤖 (`tests/e2e/gym-fixes-b1.test.js`) | An unused paid subscription is refunded in full; one already checked in (paid to the gym at first use) is listed for support, not refunded from Kriraghor's money; removing again 409 |

@@ -283,3 +283,11 @@ Product owner, 11 Nov 2026; M27-FR-87 to FR-91 ([M27 §16](../../kriraghor-docs/
 ## 2. Gym app
 - [ ] **Reports**: "Where members come from" with three bar lists and the share under each, the month's new members by source, **Download CSV** for the owner only. It follows the page's month.
 - [ ] Bangla, phone width, light and dark.
+
+## Product photo (tester feedback, 19 Nov 2026)
+| # | Do | Expect |
+|---|---|---|
+| P.1 | **A product photo (PNG)** | 200, `photoUrl` in the public bucket (`gym-products/…png`) |
+| P.2 | **A GIF sent as a PNG**, **A cashier cannot change the photo** | 415 `FILE_TYPE_MISMATCH`; 403 `PERMISSION_REQUIRED` (stock.manage) |
+| P.3 | **The cashier finds it by barcode** | The product carries its `photoUrl` |
+| P.4 | Replace and remove 🤖 (`tests/e2e/gym-fixes-b1.test.js`) | A new photo replaces the url; remove sets it to null; an empty body 422 `FILE_EMPTY`; each change audited |

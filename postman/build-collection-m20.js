@@ -7,7 +7,7 @@
  *
  * Variables: adminAccessToken (master A), listingsToken (staff, approve_listings), modToken (staff,
  * manage_users), ownerToken (an active gym owner), trainerToken / trainerProfileId (a live fitness
- * trainer), m1Token (a member), areaBanani, today / tomorrow / in2 (Dhaka dates), stepUpA (escrow.manage),
+ * trainer), m1Token (a member), areaBanani, today / tomorrow / in2 (Dhaka dates), stepUpA and stepUpB (escrow.manage),
  * controlUrl (the runner: /settle, /pay, /tick, /check).
  * Unattended: `node postman/run-m20.js` (kriraghor_test database; fixtures in postman/fixtures).
  */
@@ -66,7 +66,7 @@ const collection = {
     ].join('\n\n'),
     schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json',
   },
-  variable: ['baseUrl', 'controlUrl', 'gymId', 'slug', 'submissionId', 'monthPkg', 'quarterPkg', 'passId', 'passCode', 'passToken', 'backupCode', 'payment1', 'pass2', 'payment2', 'pass3', 'pass3code', 'payment3', 'pass4', 'payment4', 'pass4code', 'planId', 'subId', 'subPayment'].map((key) => ({
+  variable: ['baseUrl', 'controlUrl', 'gymId', 'slug', 'submissionId', 'monthPkg', 'quarterPkg', 'passId', 'passCode', 'passToken', 'backupCode', 'payment1', 'pass2', 'payment2', 'pass3', 'pass3code', 'payment3', 'pass4', 'payment4', 'pass4code', 'planId', 'subId', 'subPayment', 'gymName'].map((key) => ({
     key,
     value: key === 'baseUrl' ? 'http://localhost:4000/api/v1' : '',
   })),
@@ -158,6 +158,23 @@ const collection = {
         idem(m1('Buying now (expect 409)', 'POST', '/gym/passes', { body: { packageId: '{{monthPkg}}', validFrom: '{{tomorrow}}' }, expect: { status: 409, code: 'GYM_NOT_AVAILABLE' } })),
         req('The public page is gone (expect 404)', 'GET', '/gym/gyms/{{slug}}', { as: false, expect: { status: 404 } }),
         req('Master: restore', 'POST', '/admin/gym/gyms/{{gymId}}/restore', { body: { reason: 'Photos checked on site' }, expect: { status: 200 }, checks: [['live', "j.status === 'live'"]] }),
+        control('ledger still balanced', 'check', { checks: [['balanced', 'j.invariantsOk === true']] }),
+      ],
+    },
+    {
+      name: '6. Removing a gym (tester feedback, 19 Nov 2026)',
+      item: [
+        owner('The gym, for its name', 'GET', '/me/gyms/{{gymId}}', { expect: { status: 200 }, save: { gymName: 'name' } }),
+        mod('Suspend it again', 'POST', '/admin/gym/gyms/{{gymId}}/suspend', { body: { reason: 'Owner asked to close' }, expect: { status: 200 } }),
+        owner('The owner cannot remove a suspended gym (expect 409)', 'POST', '/me/gyms/{{gymId}}/remove', { body: { confirmName: '{{gymName}}' }, expect: { status: 409, code: 'GYM_STATE' } }),
+        listings('Staff who are not masters cannot (expect 403)', 'POST', '/admin/gym/gyms/{{gymId}}/remove', { body: { reason: 'Closed for good' }, expect: { status: 403 } }),
+        req('Master without step-up (expect 403)', 'POST', '/admin/gym/gyms/{{gymId}}/remove', { body: { reason: 'Closed for good' }, expect: { status: 403, code: 'STEP_UP_REQUIRED' } }),
+        (() => {
+          const r = req('Master: remove (step-up)', 'POST', '/admin/gym/gyms/{{gymId}}/remove', { body: { reason: 'Closed for good' }, expect: { status: 200 }, checks: [['removed, the lists returned', "j.status === 'removed' && Array.isArray(j.refunded) && Array.isArray(j.paidToGym)"]] });
+          r.request.header.push({ key: 'X-Step-Up', value: '{{stepUpB}}' });
+          return r;
+        })(),
+        req('The public page is gone (expect 404)', 'GET', '/gym/gyms/{{slug}}', { as: false, expect: { status: 404 } }),
         control('ledger still balanced', 'check', { checks: [['balanced', 'j.invariantsOk === true']] }),
       ],
     },
