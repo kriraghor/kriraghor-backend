@@ -392,6 +392,7 @@ async function myPlan(principal, assignmentId) {
   const { rows, current, byMember } = await mine(principal, { id: assignmentId });
   const x = rows[0];
   if (!x) throw E.notFound('Plan');
+  await c.refuseSuspendedId(x.gymId);
   const ctx = await context(rows);
   const version = ctx.versions.get(x.planVersionId);
   // The versions given to me: from the one current when the plan was assigned to the one I have now.

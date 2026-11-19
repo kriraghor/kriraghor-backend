@@ -51,6 +51,9 @@ Gym.init(
       defaultValue: 'draft',
     },
     editStatus: DataTypes.ENUM('draft', 'pending_review', 'changes_requested', 'rejected'),
+    // Suspension (19 Nov 2026, migration 20261130000001): why, and the status it goes back to.
+    suspendCause: DataTypes.ENUM('staff', 'owner_account'),
+    suspendedFrom: DataTypes.ENUM('draft', 'pending_review', 'changes_requested', 'live', 'paused'),
     liveVersion: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
     liveSnapshot: DataTypes.JSONB,
     currentSubmissionId: DataTypes.UUID,

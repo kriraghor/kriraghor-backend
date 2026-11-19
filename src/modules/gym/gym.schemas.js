@@ -184,6 +184,7 @@ const OwnerGym = z
     id,
     slug: z.string(),
     status: z.enum(GYM_STATUSES),
+    suspendCause: nullable(z.enum(['staff', 'owner_account'])).meta({ description: 'Why the gym is suspended: by Kriraghor (staff) or with its owner’s account (restored with the account)' }),
     editStatus: nullable(z.string()),
     liveVersion: z.number().int(),
     name: z.string(),
@@ -317,7 +318,7 @@ const StaffSubscription = z
     periods: z.array(z.object({ seq: z.number().int(), periodStart: date, periodEnd: date, status: z.enum(PERIOD_STATUSES), price: poisha, released: poisha, refunded: poisha, releaseAt: nullable(dateTime), escrow: nullable(z.object({}).loose()) })),
   })
   .meta({ id: 'GymStaffSubscription' });
-const StaffAction = z.object({ id, status: z.enum(GYM_STATUSES) });
+const StaffAction = z.object({ id, status: z.enum(GYM_STATUSES), suspendCause: z.enum(['staff', 'owner_account']).nullable() });
 const StaffRemoved = z
   .object({
     id,

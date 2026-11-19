@@ -40,6 +40,8 @@ const ERRORS = {
   GYM_CHECKIN_TOKEN_INVALID: [422, 'This check-in code is not valid here'],
   GYM_NOT_A_MEMBER: [403, 'You are not a linked member of this gym'],
   GYM_TIER_REQUIRED: [403, 'Your gym plan does not include this'],
+  // 19 Nov 2026: a suspended gym is a total freeze (the owner may still look, never change).
+  GYM_SUSPENDED: [423, 'Kriraghor has suspended this gym. Nothing can be done here until it is restored. Contact Kriraghor support'],
   GYM_VISIT_CLOSED: [409, 'This visit is already checked out'],
   GYM_ACCOUNT_RESTRICTED: [403, 'The gym panel is read-only until the overdue invoice is paid'],
   GYM_SHORT_CODE_TAKEN: [409, 'Another of your gyms uses this short code'],
@@ -237,6 +239,22 @@ async function ensureSubscription(ownerId, { transaction, now = new Date() } = {
 
 const subscriptionOf = (ownerId, opts) => ensureSubscription(ownerId, opts);
 
+/** A member's or visitor's action at a gym that Kriraghor suspended answers 423 GYM_SUSPENDED (19 Nov 2026). */
+function refuseSuspended(gym) {
+  if (gym && gym.status === 'suspended') throw fail('GYM_SUSPENDED');
+}
+const refuseSuspendedId = async (gymId, opts = {}) => refuseSuspended(await gymFacade.get(gymId, opts));
+
+/** Route guard for /manage/gyms/:gymId/*: nothing but reading (by the owner) at a suspended gym. */
+async function frozenWrites(req, res, next) {
+  try {
+    if (req.method !== 'GET' && req.method !== 'HEAD') refuseSuspended(await gymFacade.get(req.params.gymId));
+    next();
+  } catch (err) {
+    next(err);
+  }
+}
+
 /** M24-FR-07: a feature above the owner's tier answers 403 GYM_TIER_REQUIRED { feature, minTier }. */
 function requireFeature(sub, feature) {
   const map = tierCfg().featureMinTiers;
@@ -259,6 +277,8 @@ async function gymAccess(principal, gymId, permission, { restricted = false, fea
   const gym = await gymFacade.get(gymId);
   if (!gym) throw E.notFound('Gym');
   const ctx = access.actFor(principal, 'gym', gymId, anyOf ? null : permission, { ownerId: gym.ownerId, notFound: 'Gym' });
+  // A suspended gym: staff are shut out; the owner may read (the routes refuse every change).
+  if (gym.status === 'suspended' && ctx.as !== 'owner') throw fail('GYM_SUSPENDED');
   if (anyOf && !anyOf.some((p) => access.can(ctx, p))) {
     throw new AppError(403, 'PERMISSION_REQUIRED', 'The owner has not given you this permission', { meta: { permission: anyOf[0], businessType: 'gym', businessId: gymId } });
   }
@@ -390,6 +410,9 @@ function parseCursor(cursor) {
 }
 
 module.exports = {
+  refuseSuspended,
+  refuseSuspendedId,
+  frozenWrites,
   ERRORS,
   fail,
   cfg,

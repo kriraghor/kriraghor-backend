@@ -45,7 +45,8 @@ async function eligibleGyms(feature) {
   const plans = new Map();
   for (const s of rows) {
     const gym = await gymFacade.get(s.gymId);
-    if (!gym) continue;
+    // A suspended gym sends nothing: no reminders, summaries or reports (19 Nov 2026).
+    if (!gym || gym.status === 'suspended') continue;
     if (!plans.has(gym.ownerId)) plans.set(gym.ownerId, await c.subscriptionOf(gym.ownerId));
     const sub = plans.get(gym.ownerId);
     if (sub.status === 'restricted' || !rules.hasFeature(sub.chosenTier, feature, c.tierCfg().featureMinTiers)) continue;

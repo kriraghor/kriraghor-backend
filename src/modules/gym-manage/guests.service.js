@@ -156,6 +156,7 @@ async function slots(slug) {
 async function book(principal, { gymId, date, arriveAt }, req) {
   const gym = await gymFacade.get(gymId);
   if (!gym) throw E.notFound('Gym');
+  c.refuseSuspended(gym);
   const conf = cfg();
   const now = new Date();
   // gym_manage.visits_per_user_day: bookings made in the last 24 hours, at any gym (refused attempts do not count).
@@ -369,7 +370,7 @@ async function daily(now = new Date()) {
   for (const r of rows) byGym.set(r.gymId, [...(byGym.get(r.gymId) ?? []), r]);
   for (const [gymId, list] of byGym) {
     const gym = await gymFacade.get(gymId);
-    if (!gym) continue;
+    if (!gym || gym.status === 'suspended') continue;
     await sequelize.transaction(async (transaction) => {
       if (!(await c.claimReminder(transaction, { ownerId: gym.ownerId, gymId, kind: 'guests_today', subjectType: 'gym', subjectId: gymId, offsetKey: today }))) return;
       await c.publish(transaction, 'gym_visits.listed', 'gym', gymId, { gymId, ownerId: gym.ownerId, date: today, count: list.length, firstAt: list[0].arriveAt });
@@ -410,4 +411,16 @@ async function onSpecialDay(p, { transaction }) {
   }
 }
 
-module.exports = { ERRORS, slots, book, mine, cancelMine, list, checkIn, cancelByGym, revealPhone, convert, deskLookup, todayCount, daily, openFor, specialDayHits, onSpecialDay };
+/** gym.suspended (19 Nov 2026): every booked visit from today on is cancelled for the gym, and the guest is told. */
+async function onGymSuspended(p, { transaction }) {
+  const now = new Date();
+  const rows = await GymVisit.findAll({ where: { gymId: p.gymId, status: 'booked', visitDate: { [Op.gte]: c.today(now) } }, transaction, lock: transaction.LOCK.UPDATE });
+  for (const v of rows) {
+    await v.update({ status: 'cancelled', cancelBy: 'gym', cancelReason: 'The gym is closed for now', cancelledAt: now }, { transaction });
+    await c.publish(transaction, 'gym_visit.cancelled', 'gym_visit', v.id, { visitId: v.id, gymId: v.gymId, ownerId: p.ownerId ?? null, userId: v.userId, by: 'gym', date: v.visitDate, arriveAt: v.arriveAt }, null);
+    await c.record({ action: 'gym_visit.cancelled', actor: null, entityType: 'gym_visit', entityId: v.id, reason: 'gym_suspended', after: { by: 'gym' }, meta: { gymId: v.gymId } }, transaction);
+  }
+  return rows.length;
+}
+
+module.exports = { ERRORS, slots, book, mine, cancelMine, list, checkIn, cancelByGym, revealPhone, convert, deskLookup, todayCount, daily, openFor, specialDayHits, onSpecialDay, onGymSuspended };

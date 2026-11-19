@@ -138,10 +138,29 @@ Product owner, 11 Nov 2026; M20-FR-16 to FR-22 ([M20 §26](../../kriraghor-docs/
 - [ ] A closed date is missing from **Book a free visit**; the class of that day shows as cancelled with the reason.
 - [ ] Bangla, phone width, light and dark.
 
-## 6. Removing a gym (tester feedback, 19 Nov 2026)
+## 6. Suspension is a total freeze (M20-FR-10a to FR-10c, 19 Nov 2026)
 | # | Do | Expect |
 |---|---|---|
-| 6.1 | **Suspend it again**, **The owner cannot remove a suspended gym** | 409 `GYM_STATE`: a suspended gym is removed by Kriraghor only |
-| 6.2 | **Staff who are not masters cannot**, **Master without step-up** | 403; 403 `STEP_UP_REQUIRED` |
-| 6.3 | **Master: remove (step-up)**, **The public page is gone** | `removed` with the lists `refunded` and `paidToGym`; 404; the ledger balanced |
-| 6.4 | Money 🤖 (`tests/e2e/gym-fixes-b1.test.js`) | An unused paid subscription is refunded in full; one already checked in (paid to the gym at first use) is listed for support, not refunded from Kriraghor's money; removing again 409 |
+| 6.1 | **Suspend this gym only** | `suspended`, `suspendCause` `staff` |
+| 6.2 | **The owner can still look**, **Any change is refused**, **The public page is gone** | 200 read; 423 `GYM_SUSPENDED`; 404 |
+| 6.3 | **Master: restore** | back to `live`, `suspendCause` null |
+| 6.4 | **Suspend the owner's account**, settle, **Every gym of the owner is suspended with the account** | the owner signed out; the gym `suspended` with `suspendCause` `owner_account` |
+| 6.5 | **The gym alone cannot be restored**, **The owner is signed out** | 409 `GYM_OWNER_SUSPENDED`; 401 |
+| 6.6 | **Restore the owner's account**, settle, **The gym is back where it was**, sign in again | `live`; the owner signs in and sees the gym |
+| 6.7 | Freeze 🤖 (`tests/e2e/gym-suspension.test.js`) | A private gym can be suspended and comes back as a draft; desk staff get 423 on reads; members are refused visits; booked visits are cancelled; a gym staff suspended alone stays suspended when the account is restored |
+
+### By hand (portal and gym app)
+- [ ] **Admin → Gym → Gyms → Suspend**: the dialog offers "Only this gym" and "The owner's account" (with a reason code). Both need a reason of at least 5 characters.
+- [ ] A gym suspended with the account shows "With the owner's account"; its row action is **Restore the owner's account**.
+- [ ] **Sign in** as the suspended owner on gym.kriraghor.com, kriraghor.com and vendor.kriraghor.com: "Your account is suspended" with support's phone, WhatsApp, email (when set) and the contact page.
+- [ ] **Gym panel** of a suspended gym: the owner sees the notice and the records; any save shows "Kriraghor has suspended this gym"; desk staff see only the notice.
+- [ ] **Member home and membership** of a suspended gym: "closed for now"; Pay, Renew, Check in and Book are refused.
+- [ ] Bangla, phone width, light and dark.
+
+## 7. Removing a gym (tester feedback, 19 Nov 2026)
+| # | Do | Expect |
+|---|---|---|
+| 7.1 | **Suspend it again**, **The owner cannot remove a suspended gym** | 409 `GYM_STATE`: a suspended gym is removed by Kriraghor only |
+| 7.2 | **Staff who are not masters cannot**, **Master without step-up** | 403; 403 `STEP_UP_REQUIRED` |
+| 7.3 | **Master: remove (step-up)**, **The public page is gone** | `removed` with the lists `refunded` and `paidToGym`; 404; the ledger balanced |
+| 7.4 | Money 🤖 (`tests/e2e/gym-fixes-b1.test.js`) | An unused paid subscription is refunded in full; one already checked in (paid to the gym at first use) is listed for support, not refunded from Kriraghor's money; removing again 409 |

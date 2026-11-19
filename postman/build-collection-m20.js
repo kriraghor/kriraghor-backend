@@ -66,7 +66,7 @@ const collection = {
     ].join('\n\n'),
     schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json',
   },
-  variable: ['baseUrl', 'controlUrl', 'gymId', 'slug', 'submissionId', 'monthPkg', 'quarterPkg', 'passId', 'passCode', 'passToken', 'backupCode', 'payment1', 'pass2', 'payment2', 'pass3', 'pass3code', 'payment3', 'pass4', 'payment4', 'pass4code', 'planId', 'subId', 'subPayment', 'gymName'].map((key) => ({
+  variable: ['baseUrl', 'controlUrl', 'gymId', 'slug', 'submissionId', 'monthPkg', 'quarterPkg', 'passId', 'passCode', 'passToken', 'backupCode', 'payment1', 'pass2', 'payment2', 'pass3', 'pass3code', 'payment3', 'pass4', 'payment4', 'pass4code', 'planId', 'subId', 'subPayment', 'gymName', 'ownerId'].map((key) => ({
     key,
     value: key === 'baseUrl' ? 'http://localhost:4000/api/v1' : '',
   })),
@@ -162,7 +162,28 @@ const collection = {
       ],
     },
     {
-      name: '6. Removing a gym (tester feedback, 19 Nov 2026)',
+      name: '6. Suspension is a total freeze (M20-FR-10a, FR-10b; tester feedback, 19 Nov 2026)',
+      item: [
+        listings('The owner of the gym', 'GET', '/admin/gym/gyms/{{gymId}}', { expect: { status: 200 }, save: { ownerId: 'ownerId' } }),
+        mod('Suspend this gym only', 'POST', '/admin/gym/gyms/{{gymId}}/suspend', { body: { reason: 'Fees taken in cash off the books' }, expect: { status: 200 }, checks: [['suspended by Kriraghor', "j.status === 'suspended' && j.suspendCause === 'staff'"]] }),
+        owner('The owner can still look', 'GET', '/me/gyms/{{gymId}}', { expect: { status: 200 }, checks: [['suspended', "j.status === 'suspended'"]] }),
+        owner('Any change is refused (expect 423)', 'PATCH', '/manage/gyms/{{gymId}}/settings', { body: { shortCode: 'IY' }, expect: { status: 423, code: 'GYM_SUSPENDED' } }),
+        req('The public page is gone (expect 404)', 'GET', '/gym/gyms/{{slug}}', { as: false, expect: { status: 404 } }),
+        req('Master: restore', 'POST', '/admin/gym/gyms/{{gymId}}/restore', { body: { reason: 'Books checked' }, expect: { status: 200 }, checks: [['live again', "j.status === 'live' && j.suspendCause === null"]] }),
+        mod("Suspend the owner's account", 'POST', '/admin/users/{{ownerId}}/suspend', { body: { reasonCode: 'policy_breach', note: 'Fees taken in cash off the books again' }, expect: { status: 200 }, checks: [['signed out', "j.status === 'suspended' && j.sessionsRevoked >= 0"]] }),
+        control('deliver user.suspended', 'settle'),
+        listings('Every gym of the owner is suspended with the account', 'GET', '/admin/gym/gyms/{{gymId}}', { expect: { status: 200 }, checks: [['owner_account', "j.status === 'suspended' && j.suspendCause === 'owner_account'"]] }),
+        req('The gym alone cannot be restored (expect 409)', 'POST', '/admin/gym/gyms/{{gymId}}/restore', { body: { reason: 'Too early' }, expect: { status: 409, code: 'GYM_OWNER_SUSPENDED' } }),
+        owner('The owner is signed out (expect 401)', 'GET', '/me/gyms', { expect: { status: 401 } }),
+        mod("Restore the owner's account", 'POST', '/admin/users/{{ownerId}}/restore', { body: { note: 'Agreed to take fees through Kriraghor' }, expect: { status: 200 } }),
+        control('deliver user.restored', 'settle'),
+        listings('The gym is back where it was', 'GET', '/admin/gym/gyms/{{gymId}}', { expect: { status: 200 }, checks: [['live', "j.status === 'live' && j.suspendCause === null"]] }),
+        control('the owner signs in again', 'signin', { checks: [['token', "(pm.environment.set('ownerToken', j.accessToken), typeof j.accessToken === 'string')"]] }),
+        owner('Signed in', 'GET', '/me/gyms', { expect: { status: 200 }, checks: [['one gym', 'j.items.length === 1']] }),
+      ],
+    },
+    {
+      name: '7. Removing a gym (tester feedback, 19 Nov 2026)',
       item: [
         owner('The gym, for its name', 'GET', '/me/gyms/{{gymId}}', { expect: { status: 200 }, save: { gymName: 'name' } }),
         mod('Suspend it again', 'POST', '/admin/gym/gyms/{{gymId}}/suspend', { body: { reason: 'Owner asked to close' }, expect: { status: 200 } }),

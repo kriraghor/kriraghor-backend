@@ -242,6 +242,7 @@ async function payLink(principal, token, { linkAccount = false }, idempotencyKey
     if (!PAYABLE(link, now)) throw fail('GYM_PAY_LINK_EXPIRED');
     const gym = await gymFacade.get(link.gymId, { transaction });
     if (!gym) throw E.notFound('Payment link');
+    c.refuseSuspended(gym);
     await c.requireOnlineFees(gym);
     const member = await GymMember.findByPk(link.memberId, { transaction });
     const due = await dues.lockDue(gym.id, link.dueId, transaction);
@@ -310,6 +311,7 @@ async function payMyDue(principal, dueId, idempotencyKey) {
   if (!member) throw E.notFound('Due');
   const gym = await gymFacade.get(member.gymId);
   if (!gym) throw E.notFound('Due');
+  c.refuseSuspended(gym);
   await c.requireOnlineFees(gym);
   try {
     return await sequelize.transaction(async (transaction) => {
