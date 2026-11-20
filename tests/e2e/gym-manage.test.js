@@ -604,8 +604,16 @@ describe('the staff route matrix (FR-03 to FR-06, FR-106)', () => {
     const deskOverview = (await as(desk).get('/overview').expect(200)).body;
     conforms(s.Overview, deskOverview);
     expect(deskOverview.tiles.collectedTodayPoisha).toBeUndefined();
+    // M24-FR-153: the trend and last week's figures follow the same rule (no money without reports.view).
+    expect(deskOverview.trend).toHaveLength(14);
+    expect(deskOverview.trend.every((d) => d.collectedPoisha === undefined)).toBe(true);
+    expect(deskOverview.compare).toEqual({ date: gm.inDays(-7), checkIns: 0 });
     expect((await as(editor).get('/overview').expect(200)).body.tiles.collectedTodayPoisha).toBe(150000);
-    expect((await gm.manage(owner, gym.id).get('/overview').expect(200)).body.tiles).toMatchObject({ collectedTodayPoisha: 150000, members: 2, activeMembers: 1, newThisMonth: 2 });
+    const ownerOverview = (await gm.manage(owner, gym.id).get('/overview').expect(200)).body;
+    expect(ownerOverview.tiles).toMatchObject({ collectedTodayPoisha: 150000, members: 2, activeMembers: 1, newThisMonth: 2 });
+    expect(ownerOverview.trend.at(-1)).toMatchObject({ date: gm.today(), collectedPoisha: 150000 });
+    expect(ownerOverview.trend[0]).toMatchObject({ date: gm.inDays(-13), checkIns: 0, collectedPoisha: 0 });
+    expect(ownerOverview.compare).toEqual({ date: gm.inDays(-7), checkIns: 0, collectedPoisha: 0 });
     // FR-06: owner-only routes refuse every staff member with owner.only.
     for (const [method, path, body] of [
       ['get', '/settings'],

@@ -206,7 +206,17 @@ const PnlTotals = z.object({
   expenses: z.object({ total: poisha, byCategory: z.array(z.object({ categoryId: id, name: z.string(), amount: poisha })) }),
   net: poisha,
 });
-const Pnl = z.object({ from: date, to: date, current: PnlTotals, previous: PnlTotals.extend({ from: date, to: date }) }).meta({ id: 'GymProfitAndLoss' });
+const Pnl = z
+  .object({
+    from: date,
+    to: date,
+    current: PnlTotals,
+    previous: PnlTotals.extend({ from: date, to: date }),
+    trend: z
+      .array(z.object({ month: z.string().regex(/^\d{4}-\d{2}$/), from: date, to: date, income: poisha, costs: poisha.meta({ description: 'Goods cost plus expenses' }), net: poisha }))
+      .meta({ description: 'M27-FR-27a: gym_ops.pnl_trend_months calendar months ending with the month of `to`, oldest first (the current month up to today)' }),
+  })
+  .meta({ id: 'GymProfitAndLoss' });
 
 module.exports = {
   gymParam,

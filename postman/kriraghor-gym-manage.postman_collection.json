@@ -1916,7 +1916,8 @@
                   "pm.test('status 200', () => {",
                   "  pm.response.to.have.status(200);",
                   "});",
-                  "pm.test(\"tiles with money for the owner\", () => { pm.expect(j.tiles.members === 2 && typeof j.tiles.collectedTodayPoisha === 'number').to.eql(true); });"
+                  "pm.test(\"tiles with money for the owner\", () => { pm.expect(j.tiles.members === 2 && typeof j.tiles.collectedTodayPoisha === 'number').to.eql(true); });",
+                  "pm.test(\"14 days of trend with money, last week to compare (M24-FR-153)\", () => { pm.expect(j.trend.length === 14 && j.trend[13].date === j.date && typeof j.trend[13].collectedPoisha === 'number' && typeof j.compare.checkIns === 'number' && typeof j.compare.collectedPoisha === 'number').to.eql(true); });"
                 ]
               }
             }
@@ -2444,7 +2445,8 @@
                   "pm.test('status 200', () => {",
                   "  pm.response.to.have.status(200);",
                   "});",
-                  "pm.test(\"no money tiles\", () => { pm.expect(j.tiles.collectedTodayPoisha === undefined && j.tiles.checkInsToday === 1).to.eql(true); });"
+                  "pm.test(\"no money tiles\", () => { pm.expect(j.tiles.collectedTodayPoisha === undefined && j.tiles.checkInsToday === 1).to.eql(true); });",
+                  "pm.test(\"no money in the trend either (FR-70, FR-153)\", () => { pm.expect(j.trend.length === 14 && j.trend.every((d) => d.collectedPoisha === undefined) && j.compare.collectedPoisha === undefined).to.eql(true); });"
                 ]
               }
             }

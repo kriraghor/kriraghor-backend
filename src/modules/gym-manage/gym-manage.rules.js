@@ -767,6 +767,40 @@ function reportPeriod({ month = null, from = null, to = null, today }) {
   return { from: f, to: to ?? today, month: null };
 }
 
+/**
+ * The period a report compares with (dashboards, M24-FR-154): the same length just before. A month is
+ * compared with the month before over the same number of days so far (1 to 20 November with 1 to 20
+ * October, never with the whole of October), clamped to that month's end. A range ending after today
+ * counts only up to today.
+ */
+function previousPeriod({ from, to, month }, today) {
+  const end = to > today ? (today < from ? from : today) : to;
+  const days = daysBetween(from, end);
+  if (month) {
+    const start = addMonths(from, -1);
+    const last = lastOfMonth(start);
+    const stop = addDays(start, days);
+    return { from: start, to: stop > last ? last : stop, month: monthOf(start) };
+  }
+  const prevTo = addDays(from, -1);
+  return { from: addDays(prevTo, -days), to: prevTo, month: null };
+}
+
+/**
+ * One row per day from `from` to `to` (both included), filled from `rows` keyed by `date`, so a day
+ * without visits or payments still has its zero (the dashboard trend, M24-FR-153). `fields` are the
+ * numeric columns to carry; a missing one is 0.
+ */
+function fillDays(from, to, rows, fields) {
+  const byDate = new Map(rows.map((r) => [r.date, r]));
+  const out = [];
+  for (let d = from, i = 0; d <= to && i < 400; d = addDays(d, 1), i += 1) {
+    const r = byDate.get(d);
+    out.push({ date: d, ...Object.fromEntries(fields.map((f) => [f, Number(r?.[f] ?? 0)])) });
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------- prompt 3: the entrance QR (M24-FR-51)
 
 /** The entrance tablet QR payload: v1.ge.<gymId>.<window>.<sig> (HMAC domain gym-entrance:); no personal data. */
@@ -1176,6 +1210,8 @@ module.exports = {
   firstName,
   churn,
   reportPeriod,
+  previousPeriod,
+  fillDays,
   TIERS,
   FEATURES,
   METHODS,

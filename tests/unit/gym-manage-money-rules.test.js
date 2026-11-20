@@ -226,6 +226,28 @@ describe('reports (§5.9, M24-FR-71)', () => {
     expect(r.reportPeriod({ today: '2026-11-03' })).toEqual({ from: '2026-11-01', to: '2026-11-03', month: null });
     expect(r.reportPeriod({ from: '2026-10-01', to: '2026-10-15', today: '2026-11-03' })).toEqual({ from: '2026-10-01', to: '2026-10-15', month: null });
   });
+
+  it('compares a period with the one before (M24-FR-154)', () => {
+    // This month so far: the month before over the same days.
+    expect(r.previousPeriod({ from: '2026-11-01', to: '2026-11-30', month: '2026-11' }, '2026-11-20')).toEqual({ from: '2026-10-01', to: '2026-10-20', month: '2026-10' });
+    // A past month: the whole month before, clamped to its end.
+    expect(r.previousPeriod({ from: '2026-03-01', to: '2026-03-31', month: '2026-03' }, '2026-11-20')).toEqual({ from: '2026-02-01', to: '2026-02-28', month: '2026-02' });
+    // A month that has not started: its first day against the month before's first day.
+    expect(r.previousPeriod({ from: '2026-12-01', to: '2026-12-31', month: '2026-12' }, '2026-11-20')).toEqual({ from: '2026-11-01', to: '2026-11-01', month: '2026-11' });
+    // A range: the same number of days just before.
+    expect(r.previousPeriod({ from: '2026-11-14', to: '2026-11-20', month: null }, '2026-11-20')).toEqual({ from: '2026-11-07', to: '2026-11-13', month: null });
+    expect(r.previousPeriod({ from: '2026-11-14', to: '2026-11-25', month: null }, '2026-11-20')).toEqual({ from: '2026-11-07', to: '2026-11-13', month: null });
+  });
+
+  it('fills every day of a trend, zeros for the gaps (M24-FR-153)', () => {
+    expect(r.fillDays('2026-11-18', '2026-11-20', [{ date: '2026-11-19', checkIns: 4, collectedPoisha: '150000' }], ['checkIns', 'collectedPoisha'])).toEqual([
+      { date: '2026-11-18', checkIns: 0, collectedPoisha: 0 },
+      { date: '2026-11-19', checkIns: 4, collectedPoisha: 150000 },
+      { date: '2026-11-20', checkIns: 0, collectedPoisha: 0 },
+    ]);
+    expect(r.fillDays('2026-11-21', '2026-11-20', [], ['checkIns'])).toEqual([]);
+    expect(r.fillDays('2026-11-20', '2026-11-20', [{ date: '2026-11-20' }], ['checkIns'])).toEqual([{ date: '2026-11-20', checkIns: 0 }]);
+  });
 });
 
 // M27 round 1: renewal reminders at 7, 3 and 1 days; BMI; VAT inside a receipt.

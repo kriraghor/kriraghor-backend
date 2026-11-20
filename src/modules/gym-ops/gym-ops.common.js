@@ -83,6 +83,7 @@ const cfg = () => ({
   priceMax: settings.get('gym_ops.product_price_max_poisha'),
   saleMaxLines: settings.get('gym_ops.sale_max_lines'),
   expiryAlertDays: settings.get('gym_ops.stock_expiry_alert_days'),
+  pnlTrendMonths: settings.get('gym_ops.pnl_trend_months'),
   lockerFeeMax: settings.get('gym_ops.locker_fee_max_poisha'),
   rentalMaxDays: settings.get('gym_ops.locker_rental_max_days'),
   lockerRemindDays: settings.get('gym_ops.locker_remind_days'),

@@ -508,6 +508,13 @@ const Overview = z
       .array(z.object({ memberId: id, memberCode: z.string(), displayName: z.string(), phoneLast4: z.string(), endsOn: date, daysLeft: z.number().int(), linked: z.boolean() }))
       .meta({ description: 'Memberships ending within gym_manage.expiring_list_days, not yet renewed (members.view; empty otherwise); at most 50' }),
     mix: z.object({ active: z.number().int(), frozen: z.number().int(), expired: z.number().int(), new: z.number().int(), left: z.number().int() }).meta({ description: 'Members by status (removed left out)' }),
+    // M24-FR-153 (dashboards, 20 Nov 2026).
+    trend: z
+      .array(z.object({ date, checkIns: z.number().int(), collectedPoisha: poisha.optional().meta({ description: 'Owner and reports.view only' }) }))
+      .meta({ description: 'One row per day for the last gym_manage.dashboard_trend_days days ending today, oldest first; days without visits or payments are 0' }),
+    compare: z
+      .object({ date, checkIns: z.number().int(), collectedPoisha: poisha.optional().meta({ description: 'Owner and reports.view only' }) })
+      .meta({ description: 'The same weekday last week, for the today tiles' }),
   })
   .meta({ id: 'GymOverview' });
 const Packages = z
@@ -786,6 +793,7 @@ const ReportFigures = {
     overduePoisha: poisha,
     byPackage: z.array(z.object({ title: z.string(), packageKind: z.enum(KINDS), collectedPoisha: poisha })),
     monthOverMonth: z.array(z.object({ month, collectedPoisha: poisha })),
+    daily: z.array(z.object({ date, collectedPoisha: poisha })).meta({ description: 'M24-FR-155: collected per day from the start of the period to its end or today, zeros filled' }),
     overdueList: z.array(z.object({ memberId: id, memberCode: z.string(), displayName: z.string(), dueId: id, dueOn: date, outstandingPoisha: poisha })).optional(),
   }),
   attendance: z.object({
@@ -793,17 +801,29 @@ const ReportFigures = {
     daily: z.array(z.object({ date, visits: z.number().int() })),
     busiestHours: z.array(z.object({ hour: z.number().int(), visits: z.number().int() })),
     averagePerActive: nullable(z.number()),
+    averageVisitMinutes: nullable(z.number().int()).meta({ description: 'M24-FR-155: the average length of the visits that were checked out (null without any)' }),
+    byMethod: z.record(z.string(), z.number().int()).meta({ description: 'M24-FR-155: counted check-ins by method (desk, member_qr, entrance_qr, pass)' }),
     notSeen: z.number().int(),
     notSeenDays: z.number().int(),
   }),
 };
-const GymReport = z.object({ gymId: id, period: ReportPeriod, ...ReportFigures }).meta({ id: 'GymReport' });
+// M24-FR-154: the period of the same length just before (a month: the month before over the same days so far).
+const PreviousFigures = z
+  .object({
+    period: ReportPeriod,
+    members: z.object({ activeAtEnd: z.number().int(), new: z.number().int(), renewals: z.number().int(), left: z.number().int(), churn: nullable(z.number()) }),
+    money: z.object({ collectedPoisha: poisha, onlinePoisha: poisha, counterPoisha: poisha }),
+    attendance: z.object({ visits: z.number().int(), averagePerActive: nullable(z.number()), averageVisitMinutes: nullable(z.number().int()) }),
+  })
+  .meta({ id: 'GymReportPrevious', description: 'The figures of the period before, for the change on each tile' });
+const GymReport = z.object({ gymId: id, period: ReportPeriod, previous: PreviousFigures, ...ReportFigures }).meta({ id: 'GymReport' });
 const AbsentList = z
   .object({ gymId: id, days: z.number().int(), items: z.array(z.object({ id, memberCode: z.string(), displayName: z.string(), phoneLast4: z.string(), endsOn: date, lastCheckInOn: nullable(date), daysSince: nullable(z.number().int()) })) })
   .meta({ id: 'GymAbsentList' });
 const AllGymsReport = z
   .object({
     period: ReportPeriod,
+    previous: PreviousFigures,
     gyms: z.array(z.object({ id, name: z.string(), slug: z.string() })),
     totals: z.object(ReportFigures),
     multiGym: z.boolean(),

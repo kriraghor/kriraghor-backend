@@ -1639,7 +1639,8 @@
                   "pm.test('status 200', () => {",
                   "  pm.response.to.have.status(200);",
                   "});",
-                  "pm.test(\"online money apart\", () => { pm.expect(j.money.onlinePoisha === 300000 && j.money.byMethod.online === 300000 && j.money.monthOverMonth.length === 6 && typeof j.members.activeNow === \"number\").to.eql(true); });"
+                  "pm.test(\"online money apart\", () => { pm.expect(j.money.onlinePoisha === 300000 && j.money.byMethod.online === 300000 && j.money.monthOverMonth.length === 6 && typeof j.members.activeNow === \"number\").to.eql(true); });",
+                  "pm.test(\"the period before, money per day and visit methods (M24-FR-154, FR-155)\", () => { pm.expect(j.previous.period.month !== null && j.previous.period.to < j.period.from && j.money.daily.reduce((n, d) => n + d.collectedPoisha, 0) === j.money.collectedPoisha && typeof j.attendance.byMethod === \"object\").to.eql(true); });"
                 ]
               }
             }
@@ -1831,7 +1832,8 @@
                   "pm.test('status 200', () => {",
                   "  pm.response.to.have.status(200);",
                   "});",
-                  "pm.test(\"totals, no side by side on Standard\", () => { pm.expect(j.multiGym === false && j.perGym === null && j.totals.money.onlinePoisha === 300000).to.eql(true); });"
+                  "pm.test(\"totals, no side by side on Standard\", () => { pm.expect(j.multiGym === false && j.perGym === null && j.totals.money.onlinePoisha === 300000).to.eql(true); });",
+                  "pm.test(\"with the period before\", () => { pm.expect(typeof j.previous.money.collectedPoisha === \"number\").to.eql(true); });"
                 ]
               }
             }

@@ -63,7 +63,7 @@ Round 1 gives a gym its own books at the counter: expenses by category, the day'
 ## 6. Profit and loss, VAT (M27-FR-27, FR-28)
 | # | Do | Expect |
 |---|---|---|
-| 6.1 | **This month** | fees ৳1,000, sales ৳13,500, lockers ৳300, goods ৳9,900, expenses ৳1,500 → net ৳3,400; the previous month beside it (the whole calendar month before) |
+| 6.1 | **This month** | fees ৳1,000, sales ৳13,500, lockers ৳300, goods ৳9,900, expenses ৳1,500 → net ৳3,400; the previous month beside it (the whole calendar month before); `trend` of six months, the last one this month with the same income, costs and net (FR-27a) |
 | 6.2 | **VAT above the cap** / **VAT 15% on** | 422; on, 1,500 bps, cap 1,500 |
 | 6.3 | **A card sale shows the VAT inside** | ৳4,500 incl. ৳586.96 VAT (58,696 poisha), net ৳3,913.04 |
 | 6.4 | **VAT off again** | off; past receipts keep the rate they used 🤖 |

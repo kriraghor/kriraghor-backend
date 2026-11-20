@@ -27223,6 +27223,51 @@
               "left"
             ],
             "description": "Members by status (removed left out)"
+          },
+          "trend": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "checkIns": {
+                  "type": "integer"
+                },
+                "collectedPoisha": {
+                  "type": "integer",
+                  "description": "Owner and reports.view only"
+                }
+              },
+              "required": [
+                "date",
+                "checkIns"
+              ]
+            },
+            "description": "One row per day for the last gym_manage.dashboard_trend_days days ending today, oldest first; days without visits or payments are 0"
+          },
+          "compare": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "type": "string",
+                "format": "date"
+              },
+              "checkIns": {
+                "type": "integer"
+              },
+              "collectedPoisha": {
+                "type": "integer",
+                "description": "Owner and reports.view only"
+              }
+            },
+            "required": [
+              "date",
+              "checkIns"
+            ],
+            "description": "The same weekday last week, for the today tiles"
           }
         },
         "required": [
@@ -27235,7 +27280,9 @@
           "subscriptionStatus",
           "tiles",
           "expiring",
-          "mix"
+          "mix",
+          "trend",
+          "compare"
         ]
       },
       "GymManagePackages": {
@@ -33782,6 +33829,9 @@
               "month"
             ]
           },
+          "previous": {
+            "$ref": "#/components/schemas/GymReportPrevious"
+          },
           "members": {
             "type": "object",
             "properties": {
@@ -33909,6 +33959,26 @@
                   ]
                 }
               },
+              "daily": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "date": {
+                      "type": "string",
+                      "format": "date"
+                    },
+                    "collectedPoisha": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "date",
+                    "collectedPoisha"
+                  ]
+                },
+                "description": "M24-FR-155: collected per day from the start of the period to its end or today, zeros filled"
+              },
               "overdueList": {
                 "type": "array",
                 "items": {
@@ -33955,7 +34025,8 @@
               "outstandingPoisha",
               "overduePoisha",
               "byPackage",
-              "monthOverMonth"
+              "monthOverMonth",
+              "daily"
             ]
           },
           "attendance": {
@@ -34007,6 +34078,20 @@
                   "null"
                 ]
               },
+              "averageVisitMinutes": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "M24-FR-155: the average length of the visits that were checked out (null without any)"
+              },
+              "byMethod": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "description": "M24-FR-155: counted check-ins by method (desk, member_qr, entrance_qr, pass)"
+              },
               "notSeen": {
                 "type": "integer"
               },
@@ -34019,6 +34104,8 @@
               "daily",
               "busiestHours",
               "averagePerActive",
+              "averageVisitMinutes",
+              "byMethod",
               "notSeen",
               "notSeenDays"
             ]
@@ -34027,10 +34114,122 @@
         "required": [
           "gymId",
           "period",
+          "previous",
           "members",
           "money",
           "attendance"
         ]
+      },
+      "GymReportPrevious": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string",
+                "format": "date"
+              },
+              "to": {
+                "type": "string",
+                "format": "date"
+              },
+              "month": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
+              }
+            },
+            "required": [
+              "from",
+              "to",
+              "month"
+            ]
+          },
+          "members": {
+            "type": "object",
+            "properties": {
+              "activeAtEnd": {
+                "type": "integer"
+              },
+              "new": {
+                "type": "integer"
+              },
+              "renewals": {
+                "type": "integer"
+              },
+              "left": {
+                "type": "integer"
+              },
+              "churn": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "activeAtEnd",
+              "new",
+              "renewals",
+              "left",
+              "churn"
+            ]
+          },
+          "money": {
+            "type": "object",
+            "properties": {
+              "collectedPoisha": {
+                "type": "integer"
+              },
+              "onlinePoisha": {
+                "type": "integer"
+              },
+              "counterPoisha": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "collectedPoisha",
+              "onlinePoisha",
+              "counterPoisha"
+            ]
+          },
+          "attendance": {
+            "type": "object",
+            "properties": {
+              "visits": {
+                "type": "integer"
+              },
+              "averagePerActive": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "averageVisitMinutes": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "visits",
+              "averagePerActive",
+              "averageVisitMinutes"
+            ]
+          }
+        },
+        "required": [
+          "period",
+          "members",
+          "money",
+          "attendance"
+        ],
+        "description": "The figures of the period before, for the change on each tile"
       },
       "GymAbsentList": {
         "type": "object",
@@ -34277,6 +34476,9 @@
               "month"
             ]
           },
+          "previous": {
+            "$ref": "#/components/schemas/GymReportPrevious"
+          },
           "gyms": {
             "type": "array",
             "items": {
@@ -34430,6 +34632,26 @@
                       ]
                     }
                   },
+                  "daily": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "date": {
+                          "type": "string",
+                          "format": "date"
+                        },
+                        "collectedPoisha": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "date",
+                        "collectedPoisha"
+                      ]
+                    },
+                    "description": "M24-FR-155: collected per day from the start of the period to its end or today, zeros filled"
+                  },
                   "overdueList": {
                     "type": "array",
                     "items": {
@@ -34476,7 +34698,8 @@
                   "outstandingPoisha",
                   "overduePoisha",
                   "byPackage",
-                  "monthOverMonth"
+                  "monthOverMonth",
+                  "daily"
                 ]
               },
               "attendance": {
@@ -34528,6 +34751,20 @@
                       "null"
                     ]
                   },
+                  "averageVisitMinutes": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "description": "M24-FR-155: the average length of the visits that were checked out (null without any)"
+                  },
+                  "byMethod": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "integer"
+                    },
+                    "description": "M24-FR-155: counted check-ins by method (desk, member_qr, entrance_qr, pass)"
+                  },
                   "notSeen": {
                     "type": "integer"
                   },
@@ -34540,6 +34777,8 @@
                   "daily",
                   "busiestHours",
                   "averagePerActive",
+                  "averageVisitMinutes",
+                  "byMethod",
                   "notSeen",
                   "notSeenDays"
                 ]
@@ -34709,6 +34948,26 @@
                         ]
                       }
                     },
+                    "daily": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "date": {
+                            "type": "string",
+                            "format": "date"
+                          },
+                          "collectedPoisha": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "date",
+                          "collectedPoisha"
+                        ]
+                      },
+                      "description": "M24-FR-155: collected per day from the start of the period to its end or today, zeros filled"
+                    },
                     "overdueList": {
                       "type": "array",
                       "items": {
@@ -34755,7 +35014,8 @@
                     "outstandingPoisha",
                     "overduePoisha",
                     "byPackage",
-                    "monthOverMonth"
+                    "monthOverMonth",
+                    "daily"
                   ]
                 },
                 "attendance": {
@@ -34807,6 +35067,20 @@
                         "null"
                       ]
                     },
+                    "averageVisitMinutes": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "description": "M24-FR-155: the average length of the visits that were checked out (null without any)"
+                    },
+                    "byMethod": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "integer"
+                      },
+                      "description": "M24-FR-155: counted check-ins by method (desk, member_qr, entrance_qr, pass)"
+                    },
                     "notSeen": {
                       "type": "integer"
                     },
@@ -34819,6 +35093,8 @@
                     "daily",
                     "busiestHours",
                     "averagePerActive",
+                    "averageVisitMinutes",
+                    "byMethod",
                     "notSeen",
                     "notSeenDays"
                   ]
@@ -34852,6 +35128,7 @@
         },
         "required": [
           "period",
+          "previous",
           "gyms",
           "totals",
           "multiGym",
@@ -38513,13 +38790,53 @@
               "from",
               "to"
             ]
+          },
+          "trend": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "month": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}$"
+                },
+                "from": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "to": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "income": {
+                  "type": "integer"
+                },
+                "costs": {
+                  "type": "integer",
+                  "description": "Goods cost plus expenses"
+                },
+                "net": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "month",
+                "from",
+                "to",
+                "income",
+                "costs",
+                "net"
+              ]
+            },
+            "description": "M27-FR-27a: gym_ops.pnl_trend_months calendar months ending with the month of `to`, oldest first (the current month up to today)"
           }
         },
         "required": [
           "from",
           "to",
           "current",
-          "previous"
+          "previous",
+          "trend"
         ]
       },
       "GymProducts": {

@@ -129,6 +129,20 @@ describe('M27 gym-ops rules', () => {
     expect(r.previousPeriod('2026-10-01', '2026-11-30')).toEqual({ from: '2026-08-01', to: '2026-09-30' });
   });
 
+  it('the months of the P&L trend, the current one up to today (M27-FR-27a)', () => {
+    expect(r.trendMonths('2026-11-20', '2026-11-20', 3)).toEqual([
+      { month: '2026-09', from: '2026-09-01', to: '2026-09-30' },
+      { month: '2026-10', from: '2026-10-01', to: '2026-10-31' },
+      { month: '2026-11', from: '2026-11-01', to: '2026-11-20' },
+    ]);
+    expect(r.trendMonths('2026-01-31', '2026-11-20', 2)).toEqual([
+      { month: '2025-12', from: '2025-12-01', to: '2025-12-31' },
+      { month: '2026-01', from: '2026-01-01', to: '2026-01-31' },
+    ]);
+    // A month after today is left out.
+    expect(r.trendMonths('2026-12-05', '2026-11-20', 2)).toEqual([{ month: '2026-11', from: '2026-11-01', to: '2026-11-20' }]);
+  });
+
   it('VAT inside a VAT-inclusive amount, rounded half up (M27-FR-28)', () => {
     expect(r.vatPart(115000, 1500)).toEqual({ bps: 1500, vat: 15000, net: 100000 });
     expect(r.vatPart(100000, 1500)).toEqual({ bps: 1500, vat: 13043, net: 86957 });
