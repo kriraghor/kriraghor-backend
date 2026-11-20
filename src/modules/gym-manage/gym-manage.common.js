@@ -123,6 +123,7 @@ const cfg = () => ({
   renewalRemindDays: settings.get('gym_manage.renewal_remind_days'),
   vatMaxBps: settings.get('gym_manage.vat_max_bps'),
   expiringListDays: settings.get('gym_manage.expiring_list_days'),
+  dashboardTrendDays: settings.get('gym_manage.dashboard_trend_days'),
   overdueRemindDays: settings.get('gym_manage.overdue_remind_days'),
   morningSummaryTime: settings.get('gym_manage.morning_summary_time'),
   reminderLogDays: settings.get('gym_manage.reminder_log_days'),

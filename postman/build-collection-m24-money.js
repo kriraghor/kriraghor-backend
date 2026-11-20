@@ -120,11 +120,11 @@ const collection = {
         control('run the reminder jobs twice on a fake clock', 'reminders', { checks: [['once only: the second runs send nothing', 'j.second.renewal_due === 0 && j.second.overdue === 0 && j.secondMorning.sent === 0']] }),
         owner('Reports need Standard (expect 403)', 'GET', `${G}/reports?month={{month}}`, { expect: { status: 403, code: 'GYM_TIER_REQUIRED' }, checks: [['standard', "j.feature === 'reports' && j.minTier === 'standard'"]] }),
         owner('Choose Standard', 'PUT', '/manage/billing/tier', { body: { tier: 'standard' }, expect: { status: 200 } }),
-        owner('The month report', 'GET', `${G}/reports?month={{month}}`, { expect: { status: 200 }, checks: [['online money apart', 'j.money.onlinePoisha === 300000 && j.money.byMethod.online === 300000 && j.money.monthOverMonth.length === 6 && typeof j.members.activeNow === "number"']] }),
+        owner('The month report', 'GET', `${G}/reports?month={{month}}`, { expect: { status: 200 }, checks: [['online money apart', 'j.money.onlinePoisha === 300000 && j.money.byMethod.online === 300000 && j.money.monthOverMonth.length === 6 && typeof j.members.activeNow === "number"'], ['the period before, money per day and visit methods (M24-FR-154, FR-155)', 'j.previous.period.month !== null && j.previous.period.to < j.period.from && j.money.daily.reduce((n, d) => n + d.collectedPoisha, 0) === j.money.collectedPoisha && typeof j.attendance.byMethod === "object"']] }),
         owner('Members not seen', 'GET', `${G}/reports/absent`, { expect: { status: 200 } }),
         owner('Export the payments (CSV with a BOM)', 'GET', `${G}/reports/export?dataset=payments&month={{month}}`, { expect: { status: 200 }, checks: [['csv, provider charge column', "pm.response.headers.get('Content-Type').includes('text/csv') && pm.response.text().includes('Provider charge') && pm.response.text().includes('\"1500.00\"')"]] }),
         cashier('Staff cannot export (expect 403)', 'GET', `${G}/reports/export?dataset=members&month={{month}}`, { expect: { status: 403, code: 'PERMISSION_REQUIRED' } }),
-        owner('All my gyms', 'GET', '/manage/reports?month={{month}}', { expect: { status: 200 }, checks: [['totals, no side by side on Standard', 'j.multiGym === false && j.perGym === null && j.totals.money.onlinePoisha === 300000']] }),
+        owner('All my gyms', 'GET', '/manage/reports?month={{month}}', { expect: { status: 200 }, checks: [['totals, no side by side on Standard', 'j.multiGym === false && j.perGym === null && j.totals.money.onlinePoisha === 300000'], ['with the period before', 'typeof j.previous.money.collectedPoisha === "number"']] }),
       ],
     },
     {

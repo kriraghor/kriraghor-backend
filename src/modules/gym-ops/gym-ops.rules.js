@@ -153,6 +153,21 @@ function previousPeriod(from, to) {
   return { from: addDays(from, -len), to: addDays(from, -1) };
 }
 
+/**
+ * The months of the P&L trend (dashboards, M27-FR-27a): `n` calendar months ending with the month of
+ * `end`, oldest first; each runs to its last day, or to `today` in the current month.
+ */
+function trendMonths(end, today, n) {
+  const out = [];
+  let first = `${end.slice(0, 7)}-01`;
+  for (let i = 0; i < n; i += 1) {
+    const last = lastOfMonth(first);
+    out.unshift({ month: first.slice(0, 7), from: first, to: last > today ? today : last });
+    first = `${addDays(first, -1).slice(0, 7)}-01`;
+  }
+  return out.filter((m) => m.from <= today);
+}
+
 // ---------------------------------------------------------------- round 2: classes, points, notices
 
 const DHAKA_OFFSET_MS = 6 * 3600000; // Asia/Dhaka is UTC+6 all year (no daylight saving)
@@ -417,6 +432,7 @@ function serviceAlertDue({ status, nextServiceOn: next, serviceAlertedOn }, { to
 }
 
 module.exports = {
+  trendMonths,
   shiftBlock,
   nextClockKind,
   clockIntervals,

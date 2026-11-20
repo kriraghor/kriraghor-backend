@@ -152,7 +152,10 @@ const collection = {
       item: [
         owner('This month', 'GET', `${G}/pnl`, {
           expect: { status: 200 },
-          checks: [['fees ৳1,000 + sales ৳13,500 + lockers ৳300 − goods ৳9,900 − expenses ৳1,500', 'j.current.income.fees === 100000 && j.current.income.posSales === 1350000 && j.current.income.lockerFees === 30000 && j.current.goodsCost === 990000 && j.current.expenses.total === 150000 && j.current.net === 340000']],
+          checks: [
+            ['fees ৳1,000 + sales ৳13,500 + lockers ৳300 − goods ৳9,900 − expenses ৳1,500', 'j.current.income.fees === 100000 && j.current.income.posSales === 1350000 && j.current.income.lockerFees === 30000 && j.current.goodsCost === 990000 && j.current.expenses.total === 150000 && j.current.net === 340000'],
+            ['six months of trend ending with this month (M27-FR-27a)', 'j.trend.length === 6 && j.trend[5].from === j.from && j.trend[5].income === j.current.income.total && j.trend[5].costs === j.current.goodsCost + j.current.expenses.total && j.trend[5].net === j.current.net'],
+          ],
         }),
         owner('VAT above the cap (expect 422)', 'PATCH', `${G}/settings`, { body: { vatEnabled: true, vatBps: 1600 }, expect: { status: 422 } }),
         owner('VAT 15% on', 'PATCH', `${G}/settings`, { body: { vatEnabled: true, vatBps: 1500 }, expect: { status: 200 }, checks: [['on', 'j.vatEnabled === true && j.vatBps === 1500 && j.vatMaxBps === 1500']] }),

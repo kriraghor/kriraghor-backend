@@ -135,7 +135,37 @@ async function overview(principal, gymId) {
        FROM gym_members WHERE gym_id = :gymId AND status <> 'removed'`,
     { replacements: { gymId }, type: QueryTypes.SELECT }
   );
-  return c.shown(a, { gymId, date: today, setupDone: Boolean(s), ...(await planOf(a.gym.ownerId)), tiles, expiring, mix });
+  return c.shown(a, { gymId, date: today, setupDone: Boolean(s), ...(await planOf(a.gym.ownerId)), tiles, expiring, mix, ...(await trendOf(gymId, today, money)) });
+}
+
+/**
+ * The dashboard trend (M24-FR-153): check-ins (and, for money viewers only, FR-70, the fees collected)
+ * per day for the last gym_manage.dashboard_trend_days days ending today, with gaps filled with zero,
+ * and the same weekday last week for today's two tiles.
+ */
+async function trendOf(gymId, today, money) {
+  const from = rules.addDays(today, -(c.cfg().dashboardTrendDays - 1));
+  const lastWeek = rules.addDays(today, -7);
+  const since = lastWeek < from ? lastWeek : from;
+  const visits = await sequelize.query(
+    'SELECT local_date::text AS date, COUNT(*)::int AS "checkIns" FROM gym_attendance WHERE gym_id = :gymId AND counted AND local_date BETWEEN :since AND :today GROUP BY 1',
+    { replacements: { gymId, since, today }, type: QueryTypes.SELECT }
+  );
+  const paid = money
+    ? await sequelize.query(
+        "SELECT paid_on::text AS date, COALESCE(SUM(amount_poisha), 0)::bigint AS \"collectedPoisha\" FROM gym_fee_payments WHERE gym_id = :gymId AND paid_on BETWEEN :since AND :today AND method NOT IN ('opening') GROUP BY 1",
+        { replacements: { gymId, since, today }, type: QueryTypes.SELECT }
+      )
+    : [];
+  const byDate = new Map(visits.map((v) => [v.date, { date: v.date, checkIns: v.checkIns }]));
+  for (const p of paid) byDate.set(p.date, { ...(byDate.get(p.date) ?? { date: p.date }), collectedPoisha: p.collectedPoisha });
+  const fields = money ? ['checkIns', 'collectedPoisha'] : ['checkIns'];
+  const days = rules.fillDays(since, today, [...byDate.values()], fields);
+  const same = days.find((d) => d.date === lastWeek);
+  return {
+    trend: days.filter((d) => d.date >= from),
+    compare: { date: lastWeek, checkIns: same.checkIns, ...(money ? { collectedPoisha: same.collectedPoisha } : {}) },
+  };
 }
 
 /**

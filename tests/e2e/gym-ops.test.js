@@ -196,6 +196,10 @@ describe('M27 profit and loss, VAT, health, the dashboard', () => {
     const pnl = (await g.get('/pnl').expect(200)).body;
     expect(pnl.current).toMatchObject({ income: { fees: 100000, posSales: 100000, lockerFees: 0, total: 200000 }, goodsCost: 40000, gross: 160000, expenses: { total: 150000 }, net: 10000 });
     expect(pnl.previous.net).toBe(0);
+    // M27-FR-27a: the months of the trend end with this month so far, the same figures as the period.
+    expect(pnl.trend).toHaveLength(6);
+    expect(pnl.trend.at(-1)).toEqual({ month: pnl.from.slice(0, 7), from: pnl.from, to: pnl.to, income: 200000, costs: 190000, net: 10000 });
+    expect(pnl.trend[0]).toMatchObject({ income: 0, costs: 0, net: 0 });
     const viewer = await gm.hire(owner, gym.id, await h.signupUser({ name: 'Viewer Nila' }), ['reports.view']);
     await gm.manage(viewer, gym.id).get('/pnl').expect(200);
     const desk = await gm.hire(owner, gym.id, await h.signupUser({ name: 'Desk Kamal' }), ['members.view']);

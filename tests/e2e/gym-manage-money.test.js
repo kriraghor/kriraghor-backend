@@ -357,6 +357,12 @@ describe('reports and exports (M24-FR-70 to FR-74)', () => {
     expect(rep.money).toMatchObject({ byMethod: { owner_bkash: 200000 }, onlinePoisha: 0 });
     expect(rep.attendance.visits).toBe(1);
     expect(rep.money.monthOverMonth).toHaveLength(6);
+    // Dashboards (M24-FR-154, FR-155): money per day up to today, visit methods, the period before.
+    expect(rep.money.daily.at(-1).date).toBe(gm.today());
+    expect(rep.money.daily.reduce((n, d) => n + d.collectedPoisha, 0)).toBe(rep.money.collectedPoisha);
+    expect(rep.attendance).toMatchObject({ byMethod: { desk: 1 }, averageVisitMinutes: null });
+    expect(rep.previous.period).toEqual(rules.previousPeriod(rep.period, gm.today()));
+    expect(rep.previous).toMatchObject({ money: { collectedPoisha: 0 }, attendance: { visits: 0 }, members: { new: 0 } });
     await desk.get('/reports?from=2026-01-01&to=2027-06-01').expect(422);
 
     const absent = (await desk.get('/reports/absent').expect(200)).body;
@@ -383,6 +389,7 @@ describe('reports and exports (M24-FR-70 to FR-74)', () => {
     await gm.manage(plain, gym.id).get('/reports/absent').expect(200);
 
     const all = (await api().get(`${P}/manage/reports?month=${month}`).set(h.bearer(owner)).expect(200)).body;
+    expect(all.previous.money.collectedPoisha).toBe(0);
     conforms(s.AllGymsReport, all);
     expect(all).toMatchObject({ multiGym: false, perGym: null, passSales: { available: false } });
   });
