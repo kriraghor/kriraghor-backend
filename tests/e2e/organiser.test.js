@@ -291,7 +291,7 @@ describe('M22 flat contracts and invoices', () => {
 
   it('the tick reminds before ends_on, then ends the contract and submits stop (FR-01)', async () => {
     const { owner, org, contract } = await organiser();
-    await models.OrganiserContract.update({ endsOn: '2026-10-31' }, { where: { id: contract.id } });
+    await models.OrganiserContract.update({ startsOn: '2026-10-01', endsOn: '2026-10-31' }, { where: { id: contract.id } });
     const day = (d) => new Date(`${d}T06:00:00Z`);
     expect(await saasJobs.tick(day('2026-10-10'))).toMatchObject({ expiryNotices: 0, contractsEnded: 0 });
     expect(await saasJobs.tick(day('2026-10-18'))).toMatchObject({ expiryNotices: 1, contractsEnded: 0 });
