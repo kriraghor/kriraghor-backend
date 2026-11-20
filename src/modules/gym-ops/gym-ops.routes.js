@@ -34,7 +34,7 @@ const P = (req) => req.params.gymId;
 const manageRouter = Router();
 manageRouter.use(authenticate);
 const g = Router({ mergeParams: true });
-manageRouter.use('/gyms/:gymId', requireGate('work_gym'), params(s.gymParam), g);
+manageRouter.use('/gyms/:gymId', requireGate('work_gym'), params(s.gymParam), (req, res, next) => require('../gym-manage').ops.frozenWrites(req, res, next), g);
 
 // Expenses (M27-FR-01..05).
 g.get('/expense-categories', async (req, res) => res.json(await expenses.categories(req.user, P(req))));

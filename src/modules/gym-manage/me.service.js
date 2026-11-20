@@ -34,7 +34,8 @@ async function mine(principal, memberId) {
   return { m, linked: current.some((x) => x.id === memberId) };
 }
 
-const gymRef = (g) => (g ? { id: g.id, name: g.name, slug: g.slug } : null);
+// A suspended gym says so, so the member area can show it is closed (19 Nov 2026).
+const gymRef = (g) => (g ? { id: g.id, name: g.name, slug: g.slug, suspended: g.status === 'suspended' } : null);
 
 /** GET /me/gym-memberships: every gym I belong to (current and past), with the running membership and outstanding. */
 async function list(principal) {

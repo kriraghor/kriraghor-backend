@@ -134,6 +134,7 @@ async function pickPackage(gym, latest, today, packageId) {
  */
 async function renew(principal, memberId, { packageId = null, pay }, idempotencyKey, req) {
   const { gym } = await mineWithGym(principal, memberId);
+  c.refuseSuspended(gym);
   // Asked to pay online at a gym that cannot take fees online: refused before anything is made.
   if (pay === 'online') await c.requireOnlineFees(gym);
   const now = new Date();

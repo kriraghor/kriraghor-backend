@@ -18,6 +18,7 @@ const rules = require('./gym.rules');
 const ERRORS = {
   NOT_OWNER: [403, 'This gym belongs to another owner'],
   GYM_STATE: [409, 'The gym cannot do that in its current state'],
+  GYM_OWNER_SUSPENDED: [409, 'This gym was suspended with its owner’s account. Restore the account to restore the gym'],
   GYM_IN_REVIEW: [409, 'Staff are reviewing this gym. Wait for the decision'],
   GYM_HAS_ACTIVE_PASSES: [409, 'Members still have paid packages at this gym'],
   GYM_NAME_MISMATCH: [422, 'Type the gym’s name exactly to confirm'],

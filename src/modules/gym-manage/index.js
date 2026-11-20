@@ -46,6 +46,9 @@ module.exports = {
   desk: lazy('./desk.service', ['guard', 'deskGymOf']),
   ops: Object.freeze({
     access: (...args) => require('./gym-manage.common').gymAccess(...args),
+    // 19 Nov 2026: a suspended gym is frozen (route guard, and member actions).
+    frozenWrites: (...args) => require('./gym-manage.common').frozenWrites(...args),
+    refuseSuspendedId: (...args) => require('./gym-manage.common').refuseSuspendedId(...args),
     needs: (...args) => require('./gym-manage.common').needs(...args),
     shown: (...args) => require('./gym-manage.common').shown(...args),
     today: (...args) => require('./gym-manage.common').today(...args),

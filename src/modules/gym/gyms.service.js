@@ -94,6 +94,8 @@ function ownerView(w) {
     id: g.id,
     slug: g.slug,
     status: g.status,
+    // Why it is suspended (19 Nov 2026): staff, or with the owner's account; null otherwise.
+    suspendCause: g.suspendCause ?? null,
     editStatus: g.editStatus ?? null,
     liveVersion: g.liveVersion,
     name: g.name,
@@ -381,7 +383,7 @@ async function remove(principal, id, { confirmName, reason }, req) {
     if (passes) throw fail('GYM_HAS_ACTIVE_PASSES', { passes });
     if (g.currentSubmissionId) await moderation.withdrawSubject('gym', g.id, { transaction });
     const before = { status: g.status };
-    await g.update({ status: 'removed', statusChangedAt: new Date(), currentSubmissionId: null, editStatus: null }, { transaction });
+    await g.update({ status: 'removed', suspendCause: null, suspendedFrom: null, statusChangedAt: new Date(), currentSubmissionId: null, editStatus: null }, { transaction });
     await audit.record({ action: 'gym.removed', actor: principal, entityType: 'gym', entityId: g.id, before, after: { status: 'removed' }, reason: reason ?? null, req }, { transaction });
     await c.publish(transaction, 'gym.removed', 'gym', g.id, { gymId: g.id, ownerId: g.ownerId });
   });
@@ -411,7 +413,7 @@ async function staffRemove(principal, id, { reason }, req) {
     }
     if (g.currentSubmissionId) await moderation.withdrawSubject('gym', g.id, { transaction });
     const before = { status: g.status };
-    await g.update({ status: 'removed', statusChangedAt: new Date(), currentSubmissionId: null, editStatus: null }, { transaction });
+    await g.update({ status: 'removed', suspendCause: null, suspendedFrom: null, statusChangedAt: new Date(), currentSubmissionId: null, editStatus: null }, { transaction });
     await audit.record(
       { action: 'gym.removed_by_staff', actor: principal, entityType: 'gym', entityId: g.id, before, after: { status: 'removed' }, reason, meta: { refunded: refunded.length, settled: settled.length }, req },
       { transaction }
@@ -519,17 +521,67 @@ async function staffGet(id) {
 }
 
 /** Staff: suspend (manage_users) or restore (masters) a gym, with a reason. */
+/** The statuses a gym can be suspended from (a private gym is a draft); it goes back to the same one. */
+const SUSPENDABLE = ['draft', 'pending_review', 'changes_requested', 'live', 'paused'];
+
+/**
+ * Suspend one gym inside a transaction (tester feedback, 19 Nov 2026: a total freeze). An open review is
+ * withdrawn and the gym goes back to changes_requested, or draft if it was never live. Returns false when
+ * the gym is not in a suspendable status.
+ */
+async function suspendIn(g, cause, { actor = null, reason = null, req = null, transaction }) {
+  if (!SUSPENDABLE.includes(g.status)) return false;
+  let from = g.status;
+  if (g.currentSubmissionId) {
+    await moderation.withdrawSubject('gym', g.id, { transaction });
+    if (from === 'pending_review') from = g.liveVersion > 0 ? 'changes_requested' : 'draft';
+  }
+  await g.update({ status: 'suspended', suspendCause: cause, suspendedFrom: from, currentSubmissionId: null, statusChangedAt: new Date() }, { transaction });
+  await audit.record({ action: 'gym.suspended', actor, entityType: 'gym', entityId: g.id, before: { status: from }, after: { status: 'suspended', cause }, reason, req }, { transaction });
+  await c.publish(transaction, 'gym.suspended', 'gym', g.id, { gymId: g.id, ownerId: g.ownerId, reason: reason ?? cause }, actor);
+  return true;
+}
+
+/** Restore a suspended gym to the status it had (inside a transaction). */
+async function restoreIn(g, { actor = null, reason = null, req = null, transaction }) {
+  const to = g.suspendedFrom ?? 'live';
+  await g.update({ status: to, suspendCause: null, suspendedFrom: null, statusChangedAt: new Date() }, { transaction });
+  await audit.record({ action: 'gym.restored', actor, entityType: 'gym', entityId: g.id, before: { status: 'suspended' }, after: { status: to }, reason, req }, { transaction });
+  await c.publish(transaction, 'gym.restored', 'gym', g.id, { gymId: g.id, ownerId: g.ownerId, reason }, actor);
+}
+
+/**
+ * POST /admin/gym/gyms/:id/suspend and /restore. Suspend works on any gym that is not removed, rejected,
+ * withdrawn or already suspended, private gyms included. Restore puts back a gym Kriraghor suspended; a gym
+ * suspended with its owner's account comes back only when the account is restored (GYM_OWNER_SUSPENDED).
+ */
 async function staffAction(actor, id, action, { reason }, req) {
   return sequelize.transaction(async (transaction) => {
     const g = await c.lockGym(id, transaction);
     if (!g) throw E.notFound('Gym');
-    const to = action === 'suspend' ? (['live', 'paused'].includes(g.status) ? 'suspended' : null) : g.status === 'suspended' ? 'live' : null;
-    if (!to) throw fail('GYM_STATE');
-    await g.update({ status: to, statusChangedAt: new Date() }, { transaction });
-    await audit.record({ action: `gym.${action === 'suspend' ? 'suspended' : 'restored'}`, actor, entityType: 'gym', entityId: g.id, after: { status: to }, reason, req }, { transaction });
-    await c.publish(transaction, action === 'suspend' ? 'gym.suspended' : 'gym.restored', 'gym', g.id, { gymId: g.id, ownerId: g.ownerId, reason }, actor);
-    return { id: g.id, status: g.status };
+    if (action === 'suspend') {
+      if (!(await suspendIn(g, 'staff', { actor, reason, req, transaction }))) throw fail('GYM_STATE');
+    } else {
+      if (g.status !== 'suspended') throw fail('GYM_STATE');
+      if (g.suspendCause === 'owner_account') throw fail('GYM_OWNER_SUSPENDED');
+      await restoreIn(g, { actor, reason, req, transaction });
+    }
+    return { id: g.id, status: g.status, suspendCause: g.suspendCause ?? null };
   });
+}
+
+/** user.suspended / user.banned: every gym of the owner is suspended with the account. */
+async function suspendAllOf(userId, { transaction }) {
+  const rows = await Gym.findAll({ where: { ownerId: userId, status: SUSPENDABLE }, transaction, lock: transaction.LOCK.UPDATE });
+  for (const g of rows) await suspendIn(g, 'owner_account', { reason: 'owner_account', transaction });
+  return rows.length;
+}
+
+/** user.restored: the gyms suspended with the account come back; gyms Kriraghor suspended stay suspended. */
+async function restoreAllOf(userId, { transaction }) {
+  const rows = await Gym.findAll({ where: { ownerId: userId, status: 'suspended', suspendCause: 'owner_account' }, transaction, lock: transaction.LOCK.UPDATE });
+  for (const g of rows) await restoreIn(g, { reason: 'owner_account_restored', transaction });
+  return rows.length;
 }
 
 /** Display facts for notifications (M08). */
@@ -599,6 +651,8 @@ async function packagesForGym(gymId, { status = 'active', transaction } = {}) {
 }
 
 module.exports = {
+  suspendAllOf,
+  restoreAllOf,
   staffRemove,
   owned,
   liveWindowsOn,

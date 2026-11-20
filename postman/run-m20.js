@@ -75,6 +75,14 @@ async function main() {
       await h.drainEvents();
       return { tick };
     },
+    // Suspending an account signs it out everywhere (M01); after the restore the owner signs in again with a code.
+    signin: async () => {
+      const { api, P } = h;
+      await h.allowResend(owner.phone);
+      await api().post(`${P}/auth/otp/send`).send({ target: owner.phone, purpose: 'login' }).expect(202);
+      const v = await api().post(`${P}/auth/otp/verify`).send({ target: owner.phone, purpose: 'login', code: h.lastCode(owner.phone) }).expect(200);
+      return { accessToken: v.body.accessToken };
+    },
     check: async () => {
       const inv = await invariants.check({ publish: false });
       return { invariantsOk: inv.ok, ownerPayable: await ledger.balance(`payable:user:${owner.user.id}`), feeRevenue: await ledger.balance('fee_revenue:gym') };

@@ -416,6 +416,7 @@ async function myTimetable(principal, { memberId, from }) {
 /** POST /me/gym-classes/:sessionId/book { memberId } (Idempotency-Key): book my place, or the waitlist. */
 async function myBook(principal, sessionId, { memberId }, req) {
   const m = await myMember(principal, memberId);
+  await c.ops.refuseSuspendedId(m.gymId);
   return sequelize.transaction(async (transaction) => {
     const r = await bookIn(transaction, { gymId: m.gymId, sessionId, memberId: m.id, by: principal.id, source: 'member', actor: principal });
     await c.record({ action: 'gym_booking.made', actor: principal, entityType: 'gym_class_booking', entityId: r.booking.id, after: { sessionId, status: r.booking.status, source: 'member' }, meta: { gymId: m.gymId }, req }, transaction);

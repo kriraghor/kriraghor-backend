@@ -200,6 +200,7 @@ async function accept(principal, requestId, req) {
     const r = await myPending(principal, requestId, transaction);
     const m = await GymMember.findByPk(r.memberId, { transaction, lock: transaction.LOCK.UPDATE });
     if (!m || m.status === 'removed') throw fail('GYM_LINK_REQUEST_STATE', { status: 'cancelled' });
+    await c.refuseSuspendedId(m.gymId, { transaction });
     if (m.userId && m.userId !== principal.id) throw fail('GYM_ALREADY_LINKED', { reason: 'member_linked' });
     if (await GymMember.findOne({ where: { gymId: m.gymId, userId: principal.id, status: { [Op.ne]: 'removed' }, id: { [Op.ne]: m.id } }, attributes: ['id'], transaction })) throw fail('GYM_ALREADY_LINKED', { reason: 'account_linked' });
     await decide(r, 'accepted', principal.id, transaction);

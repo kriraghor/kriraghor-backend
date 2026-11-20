@@ -193,6 +193,7 @@ async function memberCheckIn(principal, { token }, req) {
   const parsed = c.parseEntranceToken(token, now);
   const gym = parsed ? await gymFacade.get(parsed.gymId) : null;
   if (!gym) throw fail('GYM_CHECKIN_TOKEN_INVALID');
+  c.refuseSuspended(gym);
   const linked = await GymMember.findOne({ where: { gymId: gym.id, userId: principal.id, status: { [Op.ne]: 'removed' } }, attributes: ['id'] });
   if (!linked) throw fail('GYM_NOT_A_MEMBER');
   c.requireFeature(await c.subscriptionOf(gym.ownerId), 'attendance');

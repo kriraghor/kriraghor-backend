@@ -104,7 +104,7 @@ manageRouter.post('/desk-mode/lock', work, fresh, onDesk, async (req, res) => re
 manageRouter.post('/desk-mode/touch', work, fresh, onDesk, async (req, res) => res.json(await desk.touch(req)));
 manageRouter.post('/desk-mode/close', work, fresh, onDesk, validate(s.deskTryBody), async (req, res) => res.json(await desk.close(req, req.body)));
 const g = Router({ mergeParams: true });
-manageRouter.use('/gyms/:gymId', work, params(s.gymParam), g);
+manageRouter.use('/gyms/:gymId', work, params(s.gymParam), (req, res, next) => require('./gym-manage.common').frozenWrites(req, res, next), g);
 const P = (req) => req.params.gymId;
 
 g.get('/overview', async (req, res) => res.json(await gyms.overview(req.user, P(req))));

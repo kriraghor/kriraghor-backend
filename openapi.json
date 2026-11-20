@@ -25220,6 +25220,18 @@
               "removed"
             ]
           },
+          "suspendCause": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "staff",
+              "owner_account",
+              null
+            ],
+            "description": "Why the gym is suspended: by Kriraghor (staff) or with its owner’s account (restored with the account)"
+          },
           "editStatus": {
             "type": [
               "string",
@@ -25401,6 +25413,7 @@
           "id",
           "slug",
           "status",
+          "suspendCause",
           "editStatus",
           "liveVersion",
           "name",
@@ -32432,6 +32445,10 @@
                     },
                     "slug": {
                       "type": "string"
+                    },
+                    "suspended": {
+                      "type": "boolean",
+                      "description": "Kriraghor has suspended the gym: nothing can be done there (19 Nov 2026)"
                     }
                   },
                   "required": [
@@ -32569,6 +32586,10 @@
                     },
                     "slug": {
                       "type": "string"
+                    },
+                    "suspended": {
+                      "type": "boolean",
+                      "description": "Kriraghor has suspended the gym: nothing can be done there (19 Nov 2026)"
                     }
                   },
                   "required": [
@@ -32742,6 +32763,10 @@
                   },
                   "slug": {
                     "type": "string"
+                  },
+                  "suspended": {
+                    "type": "boolean",
+                    "description": "Kriraghor has suspended the gym: nothing can be done there (19 Nov 2026)"
                   }
                 },
                 "required": [
@@ -32898,6 +32923,10 @@
                     },
                     "slug": {
                       "type": "string"
+                    },
+                    "suspended": {
+                      "type": "boolean",
+                      "description": "Kriraghor has suspended the gym: nothing can be done there (19 Nov 2026)"
                     }
                   },
                   "required": [
@@ -33398,6 +33427,10 @@
                     },
                     "slug": {
                       "type": "string"
+                    },
+                    "suspended": {
+                      "type": "boolean",
+                      "description": "Kriraghor has suspended the gym: nothing can be done there (19 Nov 2026)"
                     }
                   },
                   "required": [
@@ -37423,6 +37456,10 @@
                   },
                   "slug": {
                     "type": "string"
+                  },
+                  "suspended": {
+                    "type": "boolean",
+                    "description": "Kriraghor has suspended the gym: nothing can be done there (19 Nov 2026)"
                   }
                 },
                 "required": [
@@ -37570,6 +37607,10 @@
                     },
                     "slug": {
                       "type": "string"
+                    },
+                    "suspended": {
+                      "type": "boolean",
+                      "description": "Kriraghor has suspended the gym: nothing can be done there (19 Nov 2026)"
                     }
                   },
                   "required": [
@@ -37724,6 +37765,10 @@
               },
               "slug": {
                 "type": "string"
+              },
+              "suspended": {
+                "type": "boolean",
+                "description": "Kriraghor has suspended the gym: nothing can be done there (19 Nov 2026)"
               }
             },
             "required": [
@@ -37946,6 +37991,10 @@
               },
               "slug": {
                 "type": "string"
+              },
+              "suspended": {
+                "type": "boolean",
+                "description": "Kriraghor has suspended the gym: nothing can be done there (19 Nov 2026)"
               }
             },
             "required": [
@@ -38074,6 +38123,10 @@
               },
               "slug": {
                 "type": "string"
+              },
+              "suspended": {
+                "type": "boolean",
+                "description": "Kriraghor has suspended the gym: nothing can be done there (19 Nov 2026)"
               }
             },
             "required": [
@@ -97909,7 +97962,7 @@
         "tags": [
           "gym"
         ],
-        "summary": "Suspend a gym (manage_users)",
+        "summary": "Suspend a gym (manage_users): any gym that is not removed, rejected or withdrawn, private gyms included; a total freeze (staff shut out, the owner may only read, members refused with 423 GYM_SUSPENDED, booked visits cancelled)",
         "security": [
           {
             "adminBearer": []
@@ -97970,11 +98023,23 @@
                         "suspended",
                         "removed"
                       ]
+                    },
+                    "suspendCause": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "staff",
+                        "owner_account",
+                        null
+                      ]
                     }
                   },
                   "required": [
                     "id",
-                    "status"
+                    "status",
+                    "suspendCause"
                   ]
                 }
               }
@@ -98133,7 +98198,7 @@
         "tags": [
           "gym"
         ],
-        "summary": "Restore a suspended gym (masters)",
+        "summary": "Restore a suspended gym to the status it had (masters); a gym suspended with its owner’s account comes back only when the account is restored",
         "security": [
           {
             "adminBearer": []
@@ -98194,11 +98259,23 @@
                         "suspended",
                         "removed"
                       ]
+                    },
+                    "suspendCause": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "staff",
+                        "owner_account",
+                        null
+                      ]
                     }
                   },
                   "required": [
                     "id",
-                    "status"
+                    "status",
+                    "suspendCause"
                   ]
                 }
               }
@@ -98225,7 +98302,7 @@
             }
           },
           "409": {
-            "description": "Error. Codes: GYM_STATE",
+            "description": "Error. Codes: GYM_STATE, GYM_OWNER_SUSPENDED",
             "content": {
               "application/problem+json": {
                 "schema": {

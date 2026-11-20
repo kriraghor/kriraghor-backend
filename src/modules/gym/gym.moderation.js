@@ -42,9 +42,11 @@ function registerGymConsumers() {
   for (const name of ['user_role.suspended', 'user_role.withdrawn']) {
     onEvent(name, `gym.owner-${name.split('.')[1]}`, (e, { transaction }) => (e.payload.role === 'gym_owner' ? require('./gyms.service').pauseAllOf(e.payload.userId, 'owner_role', { transaction }) : null));
   }
+  // An owner's account suspended or banned suspends every gym (a total freeze); restored brings them back (19 Nov 2026).
   for (const name of ['user.suspended', 'user.banned']) {
-    onEvent(name, `gym.sanction-${name.split('.')[1]}`, (e, { transaction }) => require('./gyms.service').pauseAllOf(e.payload.userId, 'owner_sanction', { transaction }));
+    onEvent(name, `gym.sanction-${name.split('.')[1]}`, (e, { transaction }) => require('./gyms.service').suspendAllOf(e.payload.userId, { transaction }));
   }
+  onEvent('user.restored', 'gym.sanction-restored', (e, { transaction }) => require('./gyms.service').restoreAllOf(e.payload.userId, { transaction }));
 }
 
 module.exports = { registerGymConsumers };

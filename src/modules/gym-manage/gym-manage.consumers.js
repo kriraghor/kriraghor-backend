@@ -17,6 +17,7 @@ const { onEvent } = require('../events').consumers;
 
 function registerGymManageConsumers() {
   // M20-FR-20: a holiday or special hours cancels the booked trial visits it leaves without an open hour.
+  onEvent('gym.suspended', 'gym-manage.suspended-visits', (e, { transaction }) => require('./guests.service').onGymSuspended(e.payload, { transaction }));
   onEvent('gym_special_day.created', 'gym-manage.special-day-visits', (e, { transaction }) => require('./guests.service').onSpecialDay(e.payload, { transaction }));
   onEvent('gym_pass.redeemed', 'gym-manage.pass-checkin', (e, { transaction }) => require('./checkins.service').onPassRedeemed(e.payload, { transaction }));
   onEvent('user.phone_verified', 'gym-manage.attach-invites', (e, { transaction }) => require('./links.service').attachOnPhoneVerified(e.payload.userId, { transaction }));

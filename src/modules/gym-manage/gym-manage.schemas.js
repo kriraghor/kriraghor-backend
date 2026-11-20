@@ -1013,7 +1013,7 @@ const Import = z
   .meta({ id: 'GymImport' });
 const ImportList = z.object({ items: z.array(Import) });
 const ConsentResult = z.object({ gymId: id, importConsentUntil: nullable(dateTime) });
-const GymRef = nullable(z.object({ id, name: z.string(), slug: z.string() }));
+const GymRef = nullable(z.object({ id, name: z.string(), slug: z.string(), suspended: z.boolean().optional().meta({ description: 'Kriraghor has suspended the gym: nothing can be done there (19 Nov 2026)' }) }));
 const MyRequests = z
   .object({
     items: z.array(
