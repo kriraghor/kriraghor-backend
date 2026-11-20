@@ -128,7 +128,7 @@ const collection = {
         owner('Unfreeze today: the days come back', 'POST', `${G}/memberships/{{membershipId}}/unfreeze`, { expect: { status: 200 }, checks: [['active again', "j.membership.status === 'active' && j.membership.frozenDays === 0"]] }),
         owner('Cancel the upcoming renewal (its due voids)', 'POST', `${G}/memberships/{{renewalId}}/cancel`, { body: { reason: 'Changed their mind' }, expect: { status: 200 }, checks: [['cancelled, void', "j.membership.status === 'cancelled' && j.due.status === 'void'"]] }),
         owner('Today’s cash closing', 'GET', `${G}/cash-closing`, { expect: { status: 200 }, checks: [['all staff, counter money', "j.scope === 'all' && j.totals.receivedPoisha === 400000 && j.totals.reversedPoisha === 100000"]] }),
-        owner('The dashboard', 'GET', `${G}/overview`, { expect: { status: 200 }, checks: [['tiles with money for the owner', "j.tiles.members === 2 && typeof j.tiles.collectedTodayPoisha === 'number'"]] }),
+        owner('The dashboard', 'GET', `${G}/overview`, { expect: { status: 200 }, checks: [['tiles with money for the owner', "j.tiles.members === 2 && typeof j.tiles.collectedTodayPoisha === 'number'"], ['14 days of trend with money, last week to compare (M24-FR-153)', "j.trend.length === 14 && j.trend[13].date === j.date && typeof j.trend[13].collectedPoisha === 'number' && typeof j.compare.checkIns === 'number' && typeof j.compare.collectedPoisha === 'number'"]] }),
       ],
     },
     {
@@ -144,7 +144,7 @@ const collection = {
         desk('Desk: again the same day', 'POST', `${G}/checkins`, { body: { memberId: '{{memberId}}' }, expect: { status: 200 }, checks: [['not counted, first time shown', "j.counted === false && typeof j.firstCheckInToday === 'string'"]] }),
         idem(desk('Desk: recording a payment (expect 403)', 'POST', `${G}/dues/{{due2Id}}/payments`, { body: { amountPoisha: 100000, method: 'cash' }, expect: { status: 403, code: 'PERMISSION_REQUIRED' }, checks: [['names fees.collect', "j.permission === 'fees.collect'"]] })),
         desk('Desk: the gym settings (expect 403 owner.only)', 'GET', `${G}/settings`, { expect: { status: 403, code: 'PERMISSION_REQUIRED' }, checks: [['owner.only', "j.permission === 'owner.only'"]] }),
-        desk('Desk: the dashboard without money', 'GET', `${G}/overview`, { expect: { status: 200 }, checks: [['no money tiles', 'j.tiles.collectedTodayPoisha === undefined && j.tiles.checkInsToday === 1']] }),
+        desk('Desk: the dashboard without money', 'GET', `${G}/overview`, { expect: { status: 200 }, checks: [['no money tiles', 'j.tiles.collectedTodayPoisha === undefined && j.tiles.checkInsToday === 1'], ['no money in the trend either (FR-70, FR-153)', 'j.trend.length === 14 && j.trend.every((d) => d.collectedPoisha === undefined) && j.compare.collectedPoisha === undefined']] }),
         owner('The day’s check-ins', 'GET', `${G}/checkins`, { expect: { status: 200 }, checks: [['one counted, two rows', 'j.counted === 1 && j.items.length === 2']] }),
       ],
     },

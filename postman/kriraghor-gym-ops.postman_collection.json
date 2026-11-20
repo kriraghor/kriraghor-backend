@@ -2163,7 +2163,8 @@
                   "pm.test('status 200', () => {",
                   "  pm.response.to.have.status(200);",
                   "});",
-                  "pm.test(\"fees ৳1,000 + sales ৳13,500 + lockers ৳300 − goods ৳9,900 − expenses ৳1,500\", () => { pm.expect(j.current.income.fees === 100000 && j.current.income.posSales === 1350000 && j.current.income.lockerFees === 30000 && j.current.goodsCost === 990000 && j.current.expenses.total === 150000 && j.current.net === 340000).to.eql(true); });"
+                  "pm.test(\"fees ৳1,000 + sales ৳13,500 + lockers ৳300 − goods ৳9,900 − expenses ৳1,500\", () => { pm.expect(j.current.income.fees === 100000 && j.current.income.posSales === 1350000 && j.current.income.lockerFees === 30000 && j.current.goodsCost === 990000 && j.current.expenses.total === 150000 && j.current.net === 340000).to.eql(true); });",
+                  "pm.test(\"six months of trend ending with this month (M27-FR-27a)\", () => { pm.expect(j.trend.length === 6 && j.trend[5].from === j.from && j.trend[5].income === j.current.income.total && j.trend[5].costs === j.current.goodsCost + j.current.expenses.total && j.trend[5].net === j.current.net).to.eql(true); });"
                 ]
               }
             }

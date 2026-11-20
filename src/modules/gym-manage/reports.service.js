@@ -54,6 +54,14 @@ async function figures(gymIds, { from, to }, today, absentDays) {
     { ...r, since: rules.addMonths(to, -5) }
   );
   const daily = await select('SELECT local_date AS date, COUNT(*)::int AS visits FROM gym_attendance WHERE gym_id IN (:gymIds) AND counted AND local_date BETWEEN :from AND :to GROUP BY 1 ORDER BY 1', r);
+  // Dashboards (M24-FR-155): collected per day, the average visit length and how members checked in.
+  const paidDaily = await select("SELECT paid_on::text AS date, COALESCE(SUM(amount_poisha), 0)::bigint AS \"collectedPoisha\" FROM gym_fee_payments WHERE gym_id IN (:gymIds) AND paid_on BETWEEN :from AND :to AND method <> 'opening' GROUP BY 1", r);
+  const [stay] = await select(
+    `SELECT ROUND(AVG(x.visit_minutes))::int AS minutes FROM gym_attendance a JOIN gym_attendance_exits x ON x.attendance_id = a.id
+      WHERE a.gym_id IN (:gymIds) AND a.counted AND a.local_date BETWEEN :from AND :to AND x.visit_minutes IS NOT NULL`,
+    r
+  );
+  const checkinMethods = await select('SELECT method, COUNT(*)::int AS n FROM gym_attendance WHERE gym_id IN (:gymIds) AND counted AND local_date BETWEEN :from AND :to GROUP BY 1', r);
   const hours = await select(
     "SELECT EXTRACT(HOUR FROM checked_in_at AT TIME ZONE 'Asia/Dhaka')::int AS hour, COUNT(*)::int AS visits FROM gym_attendance WHERE gym_id IN (:gymIds) AND counted AND local_date BETWEEN :from AND :to GROUP BY 1 ORDER BY 2 DESC, 1 ASC",
     r
@@ -91,15 +99,34 @@ async function figures(gymIds, { from, to }, today, absentDays) {
       overduePoisha: Number(open.overdue),
       byPackage: byPackage.map((p) => ({ title: p.title, packageKind: p.kind, collectedPoisha: Number(p.amount) })),
       monthOverMonth: series,
+      daily: rules.fillDays(from, to < today ? to : today, paidDaily, ['collectedPoisha']),
     },
     attendance: {
       visits,
       daily: daily.map((d) => ({ date: d.date, visits: d.visits })),
+      averageVisitMinutes: stay?.minutes ?? null,
+      byMethod: Object.fromEntries(checkinMethods.map((m) => [m.method, m.n])),
       busiestHours: hours.slice(0, 24).map((h) => ({ hour: h.hour, visits: h.visits })),
       averagePerActive: members.activeAtEnd > 0 ? Math.round((visits * 100) / members.activeAtEnd) / 100 : null,
       notSeen: seen.n,
       notSeenDays: absentDays,
     },
+  };
+}
+
+/**
+ * The figures of the period before, for the change on each tile (M24-FR-154): only the ones that
+ * belong to a period (counts and money in it); point-in-time figures (active now, outstanding, not
+ * seen) have no previous value.
+ */
+async function previousOf(gymIds, period, today, absentDays) {
+  const prev = rules.previousPeriod(period, today);
+  const f = await figures(gymIds, prev, today, absentDays);
+  return {
+    period: prev,
+    members: { activeAtEnd: f.members.activeAtEnd, new: f.members.new, renewals: f.members.renewals, left: f.members.left.total, churn: f.members.churn },
+    money: { collectedPoisha: f.money.collectedPoisha, onlinePoisha: f.money.onlinePoisha, counterPoisha: f.money.counterPoisha },
+    attendance: { visits: f.attendance.visits, averagePerActive: f.attendance.averagePerActive, averageVisitMinutes: f.attendance.averageVisitMinutes },
   };
 }
 
@@ -113,6 +140,7 @@ async function gymReport(principal, gymId, query = {}) {
   const s = await c.settingsOf(gymId);
   const absent = s?.absentAlertDays ?? c.cfg().absentAlertDays;
   const f = await figures([gymId], period, today, absent);
+  const previous = await previousOf([gymId], period, today, absent);
   const overdue = await select(
     `SELECT m.id AS "memberId", m.member_code AS "memberCode", m.display_name AS "displayName", d.id AS "dueId", d.due_on AS "dueOn",
             GREATEST(d.amount_poisha - d.paid_poisha - d.waived_poisha, 0)::bigint AS outstanding
@@ -120,7 +148,7 @@ async function gymReport(principal, gymId, query = {}) {
       WHERE d.gym_id = :gymId AND d.status IN ('unpaid', 'partial') AND d.due_on < :today ORDER BY d.due_on ASC LIMIT 50`,
     { gymId, today }
   );
-  return c.shown(a, { gymId, period, ...f, money: { ...f.money, overdueList: overdue.map((o) => ({ memberId: o.memberId, memberCode: o.memberCode, displayName: o.displayName, dueId: o.dueId, dueOn: o.dueOn, outstandingPoisha: Number(o.outstanding) })) } });
+  return c.shown(a, { gymId, period, previous, ...f, money: { ...f.money, overdueList: overdue.map((o) => ({ memberId: o.memberId, memberCode: o.memberCode, displayName: o.displayName, dueId: o.dueId, dueOn: o.dueOn, outstandingPoisha: Number(o.outstanding) })) } });
 }
 
 /** GET /manage/gyms/:gymId/reports/absent (members.view): members not seen for the gym's absent days (FR-53). */
@@ -211,10 +239,11 @@ async function allGyms(principal, query = {}) {
   const period = periodOf(query, today);
   const absentDays = c.cfg().absentAlertDays;
   const totals = await figures(gyms.map((g) => g.id), period, today, absentDays);
+  const previous = await previousOf(gyms.map((g) => g.id), period, today, absentDays);
   const multi = rules.hasFeature(sub.chosenTier, 'multi_gym', c.tierCfg().featureMinTiers);
   const perGym = multi ? await Promise.all(gyms.map(async (g) => ({ gym: { id: g.id, name: g.name, slug: g.slug }, ...(await figures([g.id], period, today, absentDays)) }))) : null;
   const roleActive = (await directory.roleStatus(principal.id, 'gym_owner')) === 'active';
-  return { period, gyms: gyms.map((g) => ({ id: g.id, name: g.name, slug: g.slug })), totals, multiGym: multi, perGym, passSales: { available: roleActive, dashboard: '/me/dashboard?role=gym_owner' } };
+  return { period, previous, gyms: gyms.map((g) => ({ id: g.id, name: g.name, slug: g.slug })), totals, multiGym: multi, perGym, passSales: { available: roleActive, dashboard: '/me/dashboard?role=gym_owner' } };
 }
 
 module.exports = { figures, gymReport, absent, EXPORTS, exportCsv, allGyms };

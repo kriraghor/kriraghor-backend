@@ -43,7 +43,7 @@ Prompt 1 lets a pilot gym run a full day without a paper register: a phone sign-
 | 3.4 | **The receipt / the public link / a tampered link** | no TIN line without a TIN (G10); the same JSON behind the signed token, `noindex`; 404 for a forged signature |
 | 3.5 | **Renew / freeze / overlapping freeze / unfreeze / cancel the renewal** | continuous upcoming renewal (FR-27); frozen with the end moved (FR-28); 409 for an overlap; the days come back on unfreeze; the cancelled renewal's due voids (FR-30) |
 | 3.6 | Change package with credit 🤖 | the §6.1 example: credit round(paid × remaining ÷ total), the old membership `changed` |
-| 3.7 | **Today's cash closing / the dashboard** | counter money by staff and method (FR-38); money tiles for the owner (FR-70) |
+| 3.7 | **Today's cash closing / the dashboard** | counter money by staff and method (FR-38); money tiles for the owner (FR-70); `trend` of 14 days ending today and `compare` (the same weekday last week), with money only for the owner and `reports.view` (FR-153, 20 Nov 2026) |
 | 3.8 | Parallel payments on one due 🤖 | never over the due; receipt numbers continuous |
 
 ## 4. Staff at the desk
@@ -130,7 +130,7 @@ Prompt 2 adds Kriraghor's first gym revenue and the money members ask for: onlin
 | P2.4.2 | **Runner: the reminder jobs twice** | the second runs send nothing (FR-56) |
 | P2.4.3 | A fake-clock week 🤖 | renewal due, overdue and expired once each; "ends today" switched off sends nothing (FR-55); the unlinked member with an email gets one email (external delivery), the member nobody can reach is logged `no_contact` |
 | P2.4.4 | Morning summary and monthly report 🤖 | once a day after `gym_manage.morning_summary_time` to the owner and `fees.collect` staff (FR-60); the month before on the 1st for Standard (FR-72) |
-| P2.4.5 | **Reports on Basic / choose Standard / the month report** | 403 `GYM_TIER_REQUIRED` `reports` `standard`; online money shown apart (৳3,000), six months of history (FR-71) |
+| P2.4.5 | **Reports on Basic / choose Standard / the month report** | 403 `GYM_TIER_REQUIRED` `reports` `standard`; online money shown apart (৳3,000), six months of history (FR-71); `previous` for the month before over the same days, `money.daily` adding up to the period's total, `attendance.byMethod` (FR-154, FR-155) |
 | P2.4.6 | **Not seen / export the payments / staff export / all my gyms** | 200; CSV with a BOM and the provider charge column, audited `gym_manage.exported`; staff 403 `owner.only`; totals, no side-by-side on Standard (FR-73, FR-74) |
 
 ## P2.5 The owner invoice and dunning

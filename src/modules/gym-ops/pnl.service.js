@@ -34,7 +34,15 @@ async function get(principal, gymId, { from, to } = {}) {
   if (rules.daysBetween(start, end) > 366) throw E.validation([{ field: 'from', message: 'At most one year' }]);
   const before = rules.previousPeriod(start, end);
   const [current, previous] = await Promise.all([totals(gymId, start, end), totals(gymId, before.from, before.to)]);
-  return { from: start, to: end, current, previous: { ...previous, ...before } };
+  // Dashboards (M27-FR-27a): income, costs and net per month for the trend chart.
+  const months = rules.trendMonths(end, today, c.cfg().pnlTrendMonths);
+  const trend = await Promise.all(
+    months.map(async (m) => {
+      const t = await totals(gymId, m.from, m.to);
+      return { month: m.month, from: m.from, to: m.to, income: t.income.total, costs: t.goodsCost + t.expenses.total, net: t.net };
+    })
+  );
+  return { from: start, to: end, current, previous: { ...previous, ...before }, trend };
 }
 
 module.exports = { get, totals };
