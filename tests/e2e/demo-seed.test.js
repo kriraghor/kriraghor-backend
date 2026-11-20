@@ -92,7 +92,13 @@ describe('demo data', () => {
     expect(await models.LedgerTransaction.count()).toBe(0);
     expect(await inGym(models.GymMember, { userId: { [Op.ne]: null } })).toBe(G.linked.length);
     expect(await inGym(models.GymFeePayment)).toBe([...G.members, ...G.linked].filter((m) => m.pkg && m.pay !== 'none').length);
-    expect(await inGym(models.GymDue, { status: ['unpaid', 'partial'] })).toBe(G.members.filter((m) => m.pkg && m.pay !== 'full').length);
+    // Open dues: the desk's part-paid and unpaid members, and the renewal one linked member made in the
+    // app to pay at the counter (M24-FR-123, G.selfRenewal); the unit test keeps that renewal in its window.
+    const selfRenewed = await models.GymMembership.findAll({ where: { gymId, createdVia: 'member', origin: 'renewal' }, attributes: ['id'] });
+    expect(selfRenewed).toHaveLength(1);
+    const openDues = (where) => inGym(models.GymDue, { status: ['unpaid', 'partial'], ...where });
+    expect(await openDues({ membershipId: { [Op.notIn]: selfRenewed.map((x) => x.id) } })).toBe(G.members.filter((m) => m.pkg && m.pay !== 'full').length);
+    expect(await openDues({ membershipId: selfRenewed[0].id, status: 'unpaid' })).toBe(1);
     expect(await inGym(models.GymAttendance)).toBe(G.checkIns.length);
     expect(await inGym(models.GymExpense, { status: 'recorded' })).toBeGreaterThanOrEqual(G.expenses.length);
     expect(await inGym(models.GymProduct)).toBe(G.products.length);
@@ -107,7 +113,7 @@ describe('demo data', () => {
     expect(gymTeam.map((m) => [...m.permissions].sort().join()).sort()).toEqual([G.frontDesk, G.trainer].map((x) => [...x.permissions].sort().join()).sort());
     expect((await models.GymOwnerSubscription.findOne({ where: { ownerId: (await models.Gym.findByPk(gymId)).ownerId } })).chosenTier).toBe(G.tier);
     // A second run adds nothing.
-    const gymCounts = async () => [await inGym(models.GymMember), await inGym(models.GymFeePayment), await inGym(models.GymAttendance), await inGym(models.GymExpense), await inGym(models.GymVisit), await models.BusinessMember.count()];
+    const gymCounts = async () => [await inGym(models.GymMember), await inGym(models.GymMembership), await inGym(models.GymDue), await inGym(models.GymFeePayment), await inGym(models.GymAttendance), await inGym(models.GymExpense), await inGym(models.GymVisit), await models.BusinessMember.count()];
     const gymBefore = await gymCounts();
     await run('demo-seed.js', ['--gym-only']);
     expect(await gymCounts()).toEqual(gymBefore);
