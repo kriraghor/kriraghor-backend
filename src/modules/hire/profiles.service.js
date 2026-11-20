@@ -27,6 +27,7 @@ const payoutAccounts = require('../payouts').payoutAccounts;
 const { slugify } = require('../../common/identifiers');
 const availability = require('./availability.service');
 const rules = require('./hire.rules');
+const video = require('./video.rules');
 const c = require('./hire.common');
 
 const { fail } = c;
@@ -34,7 +35,7 @@ const PUBLISHED = ['live', 'paused', 'suspended'];
 const isPublished = (s) => PUBLISHED.includes(s);
 const inReview = (p) => p.status === 'pending_review' || p.editStatus === 'pending_review';
 const ROLE_OPEN = ['applied', 'documents_pending', 'in_review', 'active'];
-const FIELDS = ['headline', 'specialisation', 'sportKeys', 'experienceLevel', 'years', 'baseAreaId', 'bio', 'worksWithU16'];
+const FIELDS = ['headline', 'specialisation', 'sportKeys', 'experienceLevel', 'years', 'baseAreaId', 'bio', 'introVideoUrl', 'worksWithU16'];
 
 /** The public version of a profile (live_snapshot), built at approval. */
 const snapshotOf = (p, version) => ({
@@ -46,9 +47,20 @@ const snapshotOf = (p, version) => ({
   years: p.years,
   baseAreaId: p.baseAreaId,
   bio: p.bio ?? null,
+  introVideoUrl: p.introVideoUrl ?? null,
   worksWithU16: p.worksWithU16,
 });
 const diffOf = (live, next) => Object.fromEntries(Object.entries(next).filter(([k, v]) => k !== 'version' && JSON.stringify(live?.[k] ?? null) !== JSON.stringify(v ?? null)).map(([k, v]) => [k, { from: live?.[k] ?? null, to: v }]));
+
+/** M11-FR-16: an intro video link is checked when saved; an empty one clears it. */
+function videoField(body) {
+  if (body.introVideoUrl === undefined) return body;
+  const raw = typeof body.introVideoUrl === 'string' ? body.introVideoUrl.trim() : null;
+  if (!raw) return { ...body, introVideoUrl: null };
+  const r = video.parseIntroVideo(raw, c.config().introVideoProviders);
+  if (!r.ok) throw E.validation([{ field: 'introVideoUrl', message: r.message, code: r.reason }]);
+  return { ...body, introVideoUrl: raw };
+}
 
 const publish = (transaction, name, p, extra = {}) => events.publish(transaction, { name, aggregateType: 'hire_profile', aggregateId: p.id, payload: { profileId: p.id, userId: p.userId, roleId: p.roleId, ...extra } });
 
@@ -133,6 +145,7 @@ async function ownerView(p) {
     liveVersion: p.liveVersion,
     role: role ? { key: role.key, nameEn: role.nameEn, nameBn: role.nameBn, categoryKey: role.categoryKey, allowedUnits: role.allowedUnits, formatPriced: role.formatPriced, formats: role.formats, requiresCredential: role.requiresCredential, policeCheckForU16: role.policeCheckForU16, credentialTiers: role.credentialTiers } : null,
     ...Object.fromEntries(FIELDS.map((k) => [k, p[k] ?? null])),
+    introVideo: video.introVideoView(p.introVideoUrl, c.config().introVideoProviders),
     live: p.liveSnapshot ?? null,
     reviewReason: p.reviewReasonCode ? { code: p.reviewReasonCode, text: p.reviewReasonText ?? null } : null,
     rateCard: cardView(card),
@@ -159,7 +172,8 @@ async function activeArea(areaId, transaction) {
 }
 
 /** POST /pro/profiles: a draft for one hire role. */
-async function create(principal, body, req) {
+async function create(principal, input, req) {
+  const body = videoField(input);
   const role = await taxonomy.role(body.roleKey);
   if (!role) throw E.validation([{ field: 'roleKey', message: 'Choose a hire role' }]);
   const status = principal.roles?.[role.forRole];
@@ -182,7 +196,8 @@ async function create(principal, body, req) {
 }
 
 /** PATCH /pro/profiles/:id: edit the working copy (an edit of a live profile waits for review). */
-async function update(principal, id, patch, req) {
+async function update(principal, id, input, req) {
+  const patch = videoField(input);
   return sequelize
     .transaction(async (transaction) => {
       const p = await own(principal, id, { transaction, lock: true });
@@ -237,6 +252,8 @@ async function submit(principal, id, req) {
       const published = isPublished(p.status);
       if (inReview(p)) throw fail('PROFILE_IN_REVIEW');
       if (!(await currentCard(p.id, { transaction }))) throw fail('RATE_CARD_REQUIRED');
+      // M11-FR-17: the person's photo (M01 avatar) is required to send a new profile or an edit.
+      if (!(await directory.publicNames([p.userId])).get(p.userId)?.avatarUrl) throw fail('PHOTO_REQUIRED');
       let diff;
       if (published) {
         if (!['draft', 'changes_requested', 'rejected'].includes(p.editStatus)) throw fail('NOTHING_TO_REVIEW');
@@ -375,7 +392,7 @@ async function staffView(p, names) {
   const area = p.baseAreaId ? await Area.findByPk(p.baseAreaId, { attributes: ['id', 'nameEn', 'nameBn'] }) : null;
   return {
     ...view,
-    owner: { id: p.userId, displayName: names.get(p.userId)?.displayName ?? null },
+    owner: { id: p.userId, displayName: names.get(p.userId)?.displayName ?? null, avatarUrl: names.get(p.userId)?.avatarUrl ?? null },
     credential: credential ? { level: credential.level, issuer: credential.issuer ?? null, expiresOn: credential.expiresOn ?? null } : null,
     baseArea: area ? { id: area.id, nameEn: area.nameEn, nameBn: area.nameBn } : null,
     updatedAt: c.iso(p.updatedAt),

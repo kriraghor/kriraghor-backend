@@ -23,6 +23,8 @@ const ERRORS = {
   PROFILE_IN_REVIEW: [409, 'The profile is in review'],
   NOTHING_TO_REVIEW: [409, 'There is nothing new to review'],
   RATE_CARD_REQUIRED: [409, 'Set your rates before sending the profile for review'],
+  // M11-FR-17 (19 Nov 2026): a profile is sent for review only with the person's photo (the account photo).
+  PHOTO_REQUIRED: [409, 'Add your photo before sending the profile for review'],
   NOT_YOUR_PROFILE: [403, 'This profile belongs to someone else'],
   OWN_PROFILE: [422, 'You cannot hire yourself'],
   PROFILE_NOT_AVAILABLE: [409, 'This person is not taking requests right now'],
@@ -85,6 +87,7 @@ const config = () => ({
   shortlistMax: settings.get('hire.shortlist_max'),
   acceptanceWindowDays: settings.get('hire.acceptance_window_days'),
   bioMinChars: settings.get('hire.profile_bio_min_chars'),
+  introVideoProviders: settings.get('hire.intro_video_providers'),
   horizonDays: settings.get('hire.availability_horizon_days'),
 });
 

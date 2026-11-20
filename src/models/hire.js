@@ -86,6 +86,8 @@ HireProfile.init(
     years: { type: DataTypes.SMALLINT, allowNull: false, defaultValue: 0 },
     baseAreaId: req(DataTypes.UUID),
     bio: DataTypes.TEXT,
+    // M11-FR-16: the intro video link (never uploaded); checked by hire/video.rules.
+    introVideoUrl: { type: DataTypes.STRING(500), allowNull: true },
     worksWithU16: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
     status: {
       type: DataTypes.ENUM('draft', 'pending_review', 'changes_requested', 'live', 'paused', 'rejected', 'withdrawn', 'suspended', 'removed'),

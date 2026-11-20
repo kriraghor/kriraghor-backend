@@ -20946,6 +20946,10 @@
           },
           "shortlisted": {
             "type": "boolean"
+          },
+          "hasIntroVideo": {
+            "type": "boolean",
+            "description": "The reviewed profile has an intro video (M11-FR-16)"
           }
         },
         "required": [
@@ -20968,7 +20972,8 @@
           "medianReplyMinutes",
           "availableToday",
           "avatarUrl",
-          "shortlisted"
+          "shortlisted",
+          "hasIntroVideo"
         ]
       },
       "HireProfilePage": {
@@ -21160,11 +21165,18 @@
           "shortlisted": {
             "type": "boolean"
           },
+          "hasIntroVideo": {
+            "type": "boolean",
+            "description": "The reviewed profile has an intro video (M11-FR-16)"
+          },
           "bio": {
             "type": [
               "string",
               "null"
             ]
+          },
+          "introVideo": {
+            "$ref": "#/components/schemas/HireIntroVideo"
           },
           "sportKeys": {
             "type": "array",
@@ -21261,7 +21273,9 @@
           "availableToday",
           "avatarUrl",
           "shortlisted",
+          "hasIntroVideo",
           "bio",
+          "introVideo",
           "sportKeys",
           "worksWithU16",
           "taking",
@@ -21269,6 +21283,50 @@
           "rateCard",
           "busy"
         ]
+      },
+      "HireIntroVideo": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "The link as given"
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "youtube",
+              "vimeo",
+              "facebook",
+              "google_drive",
+              "onedrive",
+              "dropbox",
+              "video_file",
+              "hls"
+            ]
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "iframe",
+              "file",
+              "hls"
+            ],
+            "description": "iframe: embed playUrl; file: <video src=playUrl>; hls: an HLS playlist"
+          },
+          "playUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "provider",
+          "kind",
+          "playUrl"
+        ],
+        "description": "M11-FR-16: an intro video given as a link, never uploaded to Kriraghor"
       },
       "HireRateCard": {
         "type": [
@@ -22356,6 +22414,56 @@
               "null"
             ]
           },
+          "introVideoUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "introVideo": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "url": {
+                "type": "string",
+                "description": "The link as given"
+              },
+              "provider": {
+                "type": "string",
+                "enum": [
+                  "youtube",
+                  "vimeo",
+                  "facebook",
+                  "google_drive",
+                  "onedrive",
+                  "dropbox",
+                  "video_file",
+                  "hls"
+                ]
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "iframe",
+                  "file",
+                  "hls"
+                ],
+                "description": "iframe: embed playUrl; file: <video src=playUrl>; hls: an HLS playlist"
+              },
+              "playUrl": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "url",
+              "provider",
+              "kind",
+              "playUrl"
+            ],
+            "description": "How the link in the working copy plays"
+          },
           "worksWithU16": {
             "type": [
               "boolean",
@@ -22477,6 +22585,8 @@
           "years",
           "baseAreaId",
           "bio",
+          "introVideoUrl",
+          "introVideo",
           "worksWithU16",
           "live",
           "reviewReason",
@@ -23187,6 +23297,56 @@
               "null"
             ]
           },
+          "introVideoUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "introVideo": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "url": {
+                "type": "string",
+                "description": "The link as given"
+              },
+              "provider": {
+                "type": "string",
+                "enum": [
+                  "youtube",
+                  "vimeo",
+                  "facebook",
+                  "google_drive",
+                  "onedrive",
+                  "dropbox",
+                  "video_file",
+                  "hls"
+                ]
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "iframe",
+                  "file",
+                  "hls"
+                ],
+                "description": "iframe: embed playUrl; file: <video src=playUrl>; hls: an HLS playlist"
+              },
+              "playUrl": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "url",
+              "provider",
+              "kind",
+              "playUrl"
+            ],
+            "description": "How the link in the working copy plays"
+          },
           "worksWithU16": {
             "type": [
               "boolean",
@@ -23305,11 +23465,18 @@
                   "string",
                   "null"
                 ]
+              },
+              "avatarUrl": {
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "required": [
               "id",
-              "displayName"
+              "displayName",
+              "avatarUrl"
             ]
           },
           "credential": {
@@ -23391,6 +23558,8 @@
           "years",
           "baseAreaId",
           "bio",
+          "introVideoUrl",
+          "introVideo",
           "worksWithU16",
           "live",
           "reviewReason",
@@ -24506,6 +24675,10 @@
           "shortlisted": {
             "type": "boolean"
           },
+          "hasIntroVideo": {
+            "type": "boolean",
+            "description": "The reviewed profile has an intro video (M11-FR-16)"
+          },
           "planFrom": {
             "type": [
               "integer",
@@ -24538,6 +24711,7 @@
           "availableToday",
           "avatarUrl",
           "shortlisted",
+          "hasIntroVideo",
           "planFrom",
           "plans"
         ],
@@ -92169,6 +92343,14 @@
                     "minLength": 10,
                     "maxLength": 2000
                   },
+                  "introVideoUrl": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 500,
+                    "description": "YouTube, Vimeo, Facebook, Google Drive, OneDrive (embed link), Dropbox, or an https .mp4/.webm/.m4v/.m3u8 link; never uploaded"
+                  },
                   "worksWithU16": {
                     "type": "boolean",
                     "default": false
@@ -92391,6 +92573,14 @@
                     "type": "string",
                     "minLength": 10,
                     "maxLength": 2000
+                  },
+                  "introVideoUrl": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 500,
+                    "description": "YouTube, Vimeo, Facebook, Google Drive, OneDrive (embed link), Dropbox, or an https .mp4/.webm/.m4v/.m3u8 link; never uploaded"
                   },
                   "worksWithU16": {
                     "type": "boolean",
@@ -92640,7 +92830,7 @@
         "tags": [
           "hire"
         ],
-        "summary": "Send for review (M05 kind hire_profile)",
+        "summary": "Send for review (M05 kind hire_profile); needs a rate card and a profile photo (M11-FR-17)",
         "security": [
           {
             "bearer": []
@@ -92699,7 +92889,7 @@
             }
           },
           "409": {
-            "description": "Error. Codes: PROFILE_IN_REVIEW, PROFILE_STATE, RATE_CARD_REQUIRED, NOTHING_TO_REVIEW",
+            "description": "Error. Codes: PROFILE_IN_REVIEW, PROFILE_STATE, RATE_CARD_REQUIRED, PHOTO_REQUIRED, NOTHING_TO_REVIEW",
             "content": {
               "application/problem+json": {
                 "schema": {
