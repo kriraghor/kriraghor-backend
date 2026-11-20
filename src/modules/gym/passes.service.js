@@ -144,6 +144,23 @@ async function onPaymentClosed(paymentId, { transaction }) {
   return 'void';
 }
 
+/**
+ * Close a pass for the platform inside the caller's transaction (a master removes its gym, 19 Nov
+ * 2026): an unpaid one is void; an active one is refunded everything Kriraghor still holds and closed
+ * as refunded. Returns { refunded } in poisha.
+ */
+async function closeForPlatform(p, { reason, actor = null, transaction }) {
+  if (p.status === 'pending_payment') {
+    await voidUnpaid(p, reason, { transaction });
+    return { refunded: 0 };
+  }
+  if (p.status !== 'active') return { refunded: 0 };
+  const refunded = await c.refund(p, c.heldOf(p), { reasonCode: 'platform_cancelled', key: `gym_pass:${p.id}:${reason}`, actor, transaction });
+  await p.update({ status: 'refunded', closedAt: new Date(), closeReason: 'platform' }, { transaction });
+  await c.publishPass(transaction, 'gym_pass.cancelled', p, { refund: refunded, by: 'staff' }, actor);
+  return { refunded };
+}
+
 async function holderPass(principal, idOrCode, { transaction, lock = false } = {}) {
   const where = /^[0-9a-f-]{36}$/i.test(idOrCode) ? { id: idOrCode } : { code: idOrCode };
   const p = await GymPass.findOne({ where, transaction, ...(lock ? { lock: transaction.LOCK.UPDATE } : {}) });
@@ -211,4 +228,4 @@ async function sweep(now = new Date()) {
   return out;
 }
 
-module.exports = { buy, onCaptured, onPaymentClosed, listMine, getMine, cancel, sweep, result, gymRef, holderPass };
+module.exports = { buy, onCaptured, onPaymentClosed, closeForPlatform, listMine, getMine, cancel, sweep, result, gymRef, holderPass };

@@ -115,7 +115,7 @@ async function main() {
     }
   })();
 
-  const args = ['collection', 'run', `"${collection}"`, ...Object.entries(vars).flatMap(([k, v]) => ['--env-var', `"${k}=${v}"`])];
+  const args = ['collection', 'run', `"${collection}"`, '--working-dir', `"${path.join(__dirname, 'fixtures')}"`, ...Object.entries(vars).flatMap(([k, v]) => ['--env-var', `"${k}=${v}"`])];
   const status = await new Promise((resolve) => spawn('postman', args, { stdio: 'inherit', shell: true }).on('close', resolve));
 
   stop = true;

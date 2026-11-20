@@ -107,6 +107,7 @@ async function main() {
     in9: g.inDays(9),
     in31: g.inDays(31),
     stepUpA: await h.stepUp(a, 'escrow.manage'),
+    stepUpB: await h.stepUp(a, 'escrow.manage'),
     controlUrl: `http://127.0.0.1:${controlPort}`,
   };
   const server = require('../src/app').createApp().listen(port, '127.0.0.1');

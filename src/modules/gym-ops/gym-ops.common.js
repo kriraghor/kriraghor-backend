@@ -20,6 +20,11 @@ const ERRORS = {
   GYM_DRAWER_NOT_OPEN: [409, 'Open today’s cash drawer first'],
   GYM_DRAWER_CLOSED: [409, 'Today’s cash drawer is already closed'],
   GYM_PRODUCT_BARCODE_TAKEN: [409, 'Another product of this gym has this barcode'],
+  // Product photo (19 Nov 2026): the shared photo checks.
+  FILE_EMPTY: [422, 'The file is empty'],
+  FILE_TOO_LARGE: [413, 'The photo is too large'],
+  FILE_TYPE_NOT_ALLOWED: [415, 'Upload a JPEG, PNG or WebP photo'],
+  FILE_TYPE_MISMATCH: [415, 'The file is not the type it says it is'],
   GYM_PRODUCT_UNAVAILABLE: [422, 'This product cannot be sold'],
   GYM_PRODUCT_EXPIRED: [422, 'This product is past its expiry date and cannot be sold'],
   GYM_STOCK_SHORT: [409, 'There is not enough stock for this sale'],

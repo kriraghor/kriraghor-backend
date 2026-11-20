@@ -40,6 +40,13 @@ const control = (name, step) => {
   return r;
 };
 const G = '/manage/gyms/{{gymId}}';
+// A raw file body from postman/fixtures (the runner passes --working-dir).
+const upload = (who, name, p, file, mime, opts) => {
+  const r = who(name, 'POST', p, opts);
+  r.request.header.push({ key: 'Content-Type', value: mime });
+  r.request.body = { mode: 'file', file: { src: file } };
+  return r;
+};
 
 const collection = {
   info: {
@@ -93,7 +100,10 @@ const collection = {
         keeper('A product: whey 1 kg, reorder at 2', 'POST', `${G}/products`, { body: { name: 'Whey 1kg', barcode: '8901234567890', category: 'supplement', pricePoisha: 450000, costPoisha: 330000, reorderLevel: 2, importer: 'BSTI 123' }, expect: { status: 201 }, save: { productId: 'id' } }),
         keeper('The same barcode again (expect 409)', 'POST', `${G}/products`, { body: { name: 'Copy', barcode: '8901234567890', category: 'supplement', pricePoisha: 1000 }, expect: { status: 409, code: 'GYM_PRODUCT_BARCODE_TAKEN' } }),
         idem(keeper('Stock in: 4 with batch and expiry', 'POST', `${G}/products/{{productId}}/stock`, { body: { kind: 'in', qty: 4, batchNo: 'B-7', expiresOn: '2027-06-30' }, expect: { status: 201 }, checks: [['4 in stock', 'j.stockQty === 4']] })),
-        cashier('The cashier finds it by barcode, without the cost', 'GET', `${G}/products?barcode=8901234567890`, { expect: { status: 200 }, checks: [['no cost for pos.sell', "j.items.length === 1 && j.items[0].costPoisha === undefined && j.items[0].batchNo === 'B-7'"]] }),
+        upload(keeper, 'A product photo (PNG, 19 Nov 2026)', `${G}/products/{{productId}}/photo`, 'nid-back.png', 'image/png', { expect: { status: 200 }, checks: [['a public photo url', "/gym-products\\/.+\\.png$/.test(j.photoUrl)"]] }),
+        upload(keeper, 'A GIF sent as a PNG (expect 415)', `${G}/products/{{productId}}/photo`, 'not-allowed.gif', 'image/png', { expect: { status: 415, code: 'FILE_TYPE_MISMATCH' } }),
+        upload(cashier, 'A cashier cannot change the photo (expect 403)', `${G}/products/{{productId}}/photo`, 'nid-back.png', 'image/png', { expect: { status: 403, code: 'PERMISSION_REQUIRED' } }),
+        cashier('The cashier finds it by barcode, without the cost', 'GET', `${G}/products?barcode=8901234567890`, { expect: { status: 200 }, checks: [['no cost for pos.sell, with the photo', "j.items.length === 1 && j.items[0].costPoisha === undefined && j.items[0].batchNo === 'B-7' && typeof j.items[0].photoUrl === 'string'"]] }),
         idem(cashier('Too many (expect 409)', 'POST', `${G}/sales`, { body: { lines: [{ productId: '{{productId}}', qty: 9 }], method: 'cash' }, expect: { status: 409, code: 'GYM_STOCK_SHORT' } })),
         idem(cashier('Sell 2 for cash, to the member', 'POST', `${G}/sales`, {
           body: { lines: [{ productId: '{{productId}}', qty: 2 }], method: 'cash', memberId: '{{memberId}}' },

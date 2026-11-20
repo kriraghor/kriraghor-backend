@@ -1122,6 +1122,8 @@ function register(registry) {
   p({ method: 'get', path: '/admin/gym/gyms', tags: ['gym'], summary: 'Gyms (manage_users, approve_listings, refund_small or view_payouts)', security: adminBearer, request: { query: gyS.adminGymsQuery }, responses: { 200: json(gyS.OwnerGymList), ...errors(ADMIN_AUTH) } });
   p({ method: 'get', path: '/admin/gym/gyms/{id}', tags: ['gym'], summary: 'One gym with its working copy (the Moderation desk panel)', security: adminBearer, request: gyId, responses: { 200: json(gyS.OwnerGym), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'] }) } });
   p({ method: 'post', path: '/admin/gym/gyms/{id}/suspend', tags: ['gym'], summary: 'Suspend a gym (manage_users)', security: adminBearer, request: { ...gyId, ...body(gyS.reasonBody) }, responses: { 200: json(gyS.StaffAction), ...errors({ ...ADMIN_AUTH, 409: ['GYM_STATE'] }) } });
+  p({ method: 'post', path: '/admin/gym/gyms/{id}/remove', tags: ['gym'], summary: 'Remove any gym, suspended included (master, step-up escrow.manage): unpaid subscriptions void, running ones refunded what Kriraghor holds; what was already paid to the gym is listed for support', security: adminBearer,
+    request: { ...gyId, headers: stepUpHeader, ...body(gyS.reasonBody) }, responses: { 200: json(gyS.StaffRemoved), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'], 409: ['GYM_STATE'], ...VALIDATION }) } });
   p({ method: 'post', path: '/admin/gym/gyms/{id}/restore', tags: ['gym'], summary: 'Restore a suspended gym (masters)', security: adminBearer, request: { ...gyId, ...body(gyS.reasonBody) }, responses: { 200: json(gyS.StaffAction), ...errors({ ...ADMIN_AUTH, 409: ['GYM_STATE'] }) } });
   p({ method: 'get', path: '/admin/gym/passes/{code}', tags: ['gym'], summary: 'A pass with its escrow hold', security: adminBearer, request: { params: gyS.codeParam }, responses: { 200: json(gyS.StaffPass), ...errors({ ...ADMIN_AUTH, 404: ['NOT_FOUND'] }) } });
   p({ method: 'post', path: '/admin/gym/passes/{code}/cancel', tags: ['gym'], summary: 'Cancel an active pass for the platform with a refund of what is held (master, step-up escrow.manage)', security: adminBearer,
@@ -1419,6 +1421,11 @@ function register(registry) {
   gp('get', '/products', 'Counter products: search, barcode, low stock (pos.sell or stock.manage; feature pos) (M27-FR-10)', { request: { ...goG, query: goS.productQuery }, responses: { 200: json(goS.Products), ...goErr() } });
   gp('post', '/products', 'Add a product (stock.manage); stock comes in through a stock move (M27-FR-10, FR-11)', { request: { ...goG, ...body(goS.productBody) }, responses: { 201: json(goS.Product, 'Created'), ...goErr({ 409: ['GYM_PRODUCT_BARCODE_TAKEN'], 422: ['VALIDATION_FAILED', 'GYM_AMOUNT_OUT_OF_RANGE'] }) } });
   gp('patch', '/products/{productId}', 'Change or retire a product (stock.manage) (M27-FR-11)', { request: { params: goS.productParam, ...body(goS.productPatch) }, responses: { 200: json(goS.Product), ...goErr({ 409: ['GYM_PRODUCT_BARCODE_TAKEN'] }) } });
+  gp('post', '/products/{productId}/photo', 'Set the product photo: the raw JPEG, PNG or WebP body, at most ground.photo_max_bytes; it replaces the old one (stock.manage)', {
+    request: { params: goS.productParam, body: { content: { 'image/jpeg': { schema: z.string().meta({ format: 'binary' }) }, 'image/png': { schema: z.string().meta({ format: 'binary' }) }, 'image/webp': { schema: z.string().meta({ format: 'binary' }) } } } },
+    responses: { 200: json(goS.Product), ...goErr({ 413: ['FILE_TOO_LARGE'], 415: ['FILE_TYPE_NOT_ALLOWED', 'FILE_TYPE_MISMATCH'], 422: ['FILE_EMPTY'] }) },
+  });
+  gp('post', '/products/{productId}/photo/remove', 'Remove the product photo (stock.manage)', { request: { params: goS.productParam }, responses: { 200: json(goS.Product), ...goErr() } });
   gp('post', '/products/{productId}/stock', 'Stock in (a new batch with its expiry and cost), an adjustment or a write-off (stock.manage); the low-stock alert fires once per crossing (M27-FR-12..14)', {
     request: { params: goS.productParam, headers: idem, ...body(goS.stockBody) },
     responses: { 201: json(goS.Product, 'Recorded'), ...goErr({ 409: ['GYM_STOCK_SHORT'] }) },

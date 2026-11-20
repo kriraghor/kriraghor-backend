@@ -318,6 +318,14 @@ const StaffSubscription = z
   })
   .meta({ id: 'GymStaffSubscription' });
 const StaffAction = z.object({ id, status: z.enum(GYM_STATUSES) });
+const StaffRemoved = z
+  .object({
+    id,
+    status: z.literal('removed'),
+    refunded: z.array(z.object({ code: z.string(), refunded: poisha })),
+    paidToGym: z.array(z.object({ code: z.string(), paidToGym: poisha, heldBefore: poisha })).meta({ description: 'Subscriptions whose money was already released to the gym: support settles these with the owner' }),
+  })
+  .meta({ id: 'GymStaffRemoved' });
 
 module.exports = {
   specialDayParams,
@@ -351,6 +359,7 @@ module.exports = {
   problemBody,
   reasonBody,
   removeGym,
+  StaffRemoved,
   adminGymsQuery,
   GymList,
   GymPage,

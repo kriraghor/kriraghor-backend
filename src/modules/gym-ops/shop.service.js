@@ -8,7 +8,12 @@
  * never deleted. Bookkeeping only.
  */
 const { Op, QueryTypes } = require('sequelize');
+const crypto = require('crypto');
 const { E } = require('../../common/errors');
+const storage = require('../../common/storage');
+const { sniffMime, PHOTO_TYPES, fileBlock } = require('../../common/filetype');
+const { uuid7 } = require('../../common/uuid7');
+const settings = require('../settings').settings;
 const { sequelize, GymProduct, GymStockMove, GymSale, GymSaleLine, GymCashSession } = require('../../models');
 const directory = require('../users').directory;
 const gymFacade = require('../gym').gyms;
@@ -32,6 +37,7 @@ function productView(p, { today, costs }) {
     expiresOn: p.expiresOn ?? null,
     expired: Boolean(p.expiresOn && p.expiresOn < today),
     importer: p.importer ?? null,
+    photoUrl: p.photoKey ? storage.publicUrl(p.photoKey) : null,
     status: p.status,
   };
 }
@@ -45,6 +51,48 @@ async function products(principal, gymId, { q, barcode, status = 'active', low }
   const today = c.today();
   const costs = a.owner || a.can('stock.manage');
   return { items: rows.map((p) => productView(p, { today, costs })) };
+}
+
+/**
+ * POST …/products/:productId/photo (stock.manage): the raw JPEG, PNG or WebP body, at most
+ * ground.photo_max_bytes (the shared photo limit); it replaces the product's photo. The old object
+ * stays in the bucket for the audit trail (tester feedback, 19 Nov 2026).
+ */
+async function setPhoto(principal, gymId, productId, { contentType, body }, req) {
+  const a = await c.access(principal, gymId, 'stock.manage', { feature: FEATURE, restricted: true });
+  const buf = Buffer.isBuffer(body) ? body : Buffer.alloc(0);
+  const declared = String(contentType ?? '').split(';')[0].trim().toLowerCase();
+  const block = fileBlock({ declared, sniffed: sniffMime(buf), size: buf.length, max: settings.get('ground.photo_max_bytes') });
+  if (block) throw c.fail(block);
+  const p = await sequelize.transaction(async (transaction) => {
+    const row = await GymProduct.findOne({ where: { id: productId, gymId }, transaction, lock: transaction.LOCK.UPDATE });
+    if (!row) throw E.notFound('Product');
+    const key = `gym-products/${gymId}/${row.id}/${uuid7()}.${PHOTO_TYPES[declared]}`;
+    await storage.putPublic(key, buf, declared);
+    const before = { photo: Boolean(row.photoKey) };
+    await row.update({ photoKey: key, photoMime: declared, photoBytes: buf.length, updatedBy: principal.id }, { transaction });
+    await c.record(
+      { action: 'gym_product.photo_set', actor: a.actor, entityType: 'gym_product', entityId: row.id, before, after: { photo: true }, meta: { gymId, sizeBytes: buf.length, sha256: crypto.createHash('sha256').update(buf).digest('hex') }, req },
+      transaction
+    );
+    return row;
+  });
+  return productView(p, { today: c.today(), costs: true });
+}
+
+/** POST …/products/:productId/photo/remove (stock.manage): no photo (the object stays). */
+async function removePhoto(principal, gymId, productId, req) {
+  const a = await c.access(principal, gymId, 'stock.manage', { feature: FEATURE, restricted: true });
+  const p = await sequelize.transaction(async (transaction) => {
+    const row = await GymProduct.findOne({ where: { id: productId, gymId }, transaction, lock: transaction.LOCK.UPDATE });
+    if (!row) throw E.notFound('Product');
+    if (row.photoKey) {
+      await row.update({ photoKey: null, photoMime: null, photoBytes: null, updatedBy: principal.id }, { transaction });
+      await c.record({ action: 'gym_product.photo_removed', actor: a.actor, entityType: 'gym_product', entityId: row.id, before: { photo: true }, after: { photo: false }, meta: { gymId }, req }, transaction);
+    }
+    return row;
+  });
+  return productView(p, { today: c.today(), costs: true });
 }
 
 async function barcodeFree(gymId, barcode, { exceptId = null, transaction } = {}) {
@@ -305,4 +353,6 @@ async function expiryAlerts(now = new Date()) {
   return n;
 }
 
-module.exports = { products, createProduct, updateProduct, stock, sell, reverse, receipt, sales, saleIn, saleOf, cashOfDay, totals, expiryAlerts };
+module.exports = {
+  setPhoto,
+  removePhoto, products, createProduct, updateProduct, stock, sell, reverse, receipt, sales, saleIn, saleOf, cashOfDay, totals, expiryAlerts };

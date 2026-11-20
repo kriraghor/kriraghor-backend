@@ -13,10 +13,12 @@
  *                                       clock in and out by the entrance QR
  *   publicRouter  /gym                  the gym page timetable and the enquiry form (no sign-in)
  */
-const { Router } = require('express');
+const express = require('express');
+const { Router } = express;
 const { validate } = require('../../common/validate');
 const { requireIdempotencyKey } = require('../../common/idempotency');
 const { authenticate, requireGate } = require('../../middlewares/auth');
+const limits = require('../../middlewares/rateLimit');
 const s = require('./gym-ops.schemas');
 const expenses = require('./expenses.service');
 const cash = require('./cash.service');
@@ -51,6 +53,11 @@ g.get('/pnl', query(s.periodQuery), async (req, res) => res.json(await pnl.get(r
 g.get('/products', query(s.productQuery), async (req, res) => res.json(await shop.products(req.user, P(req), req.validQuery)));
 g.post('/products', validate(s.productBody), async (req, res) => res.status(201).json(await shop.createProduct(req.user, P(req), req.body, req)));
 g.patch('/products/:productId', params(s.productParam), validate(s.productPatch), async (req, res) => res.json(await shop.updateProduct(req.user, P(req), req.params.productId, req.body, req)));
+// The hard ceiling is the top of ground.photo_max_bytes (20 MB); the setting is checked per photo.
+g.post('/products/:productId/photo', params(s.productParam), limits.groundPhoto, express.raw({ type: () => true, limit: '20mb' }), async (req, res) =>
+  res.json(await shop.setPhoto(req.user, P(req), req.params.productId, { contentType: req.get('content-type'), body: req.body }, req))
+);
+g.post('/products/:productId/photo/remove', params(s.productParam), async (req, res) => res.json(await shop.removePhoto(req.user, P(req), req.params.productId, req)));
 g.post('/products/:productId/stock', params(s.productParam), validate(s.stockBody), ik('stock'), async (req, res) => res.status(201).json(await shop.stock(req.user, P(req), req.params.productId, req.body, req)));
 g.get('/sales', query(s.saleQuery), async (req, res) => res.json(await shop.sales(req.user, P(req), req.validQuery)));
 g.post('/sales', validate(s.saleBody), ik('sale'), async (req, res) => res.status(201).json(await shop.sell(req.user, P(req), req.body, req)));

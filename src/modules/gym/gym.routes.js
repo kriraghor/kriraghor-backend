@@ -126,6 +126,8 @@ const canSee = requireAnyPermission(PERMISSIONS.MANAGE_USERS, PERMISSIONS.APPROV
 adminRouter.get('/gyms', canSee, validate(s.adminGymsQuery, 'query'), async (req, res) => res.json(await gyms.staffList(req.validQuery)));
 adminRouter.get('/gyms/:id', canSee, id, async (req, res) => res.json(await gyms.staffGet(req.params.id)));
 adminRouter.post('/gyms/:id/suspend', requireAnyPermission(PERMISSIONS.MANAGE_USERS), id, validate(s.reasonBody), async (req, res) => res.json(await gyms.staffAction(req.user, req.params.id, 'suspend', req.body, req)));
+// Tester feedback (19 Nov 2026): a master removes any gym, suspended included; held money is refunded.
+adminRouter.post('/gyms/:id/remove', requireMaster, requireStepUp('escrow.manage'), id, validate(s.reasonBody), async (req, res) => res.json(await gyms.staffRemove(req.user, req.params.id, req.body, req)));
 adminRouter.post('/gyms/:id/restore', requireMaster, id, validate(s.reasonBody), async (req, res) => res.json(await gyms.staffAction(req.user, req.params.id, 'restore', req.body, req)));
 adminRouter.get('/passes/:code', canSee, validate(s.codeParam, 'params'), async (req, res) => res.json(await admin.getPass(req.params.code)));
 adminRouter.post('/passes/:code/cancel', requireMaster, requireStepUp('escrow.manage'), validate(s.codeParam, 'params'), validate(s.reasonBody), async (req, res) => res.json(await admin.cancelPass(req.user, req.params.code, req.body, req)));
