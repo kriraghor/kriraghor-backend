@@ -7,7 +7,7 @@
  * membership, or take money off what the member owes. gym-ops never writes gym-manage tables.
  */
 const { Op, QueryTypes } = require("sequelize");
-const { sequelize, GymMember, GymMembership, GymDue } = require("../../models");
+const { sequelize, GymMember, GymMembership, GymDue, GymFeePayment } = require("../../models");
 const rules = require("./gym-manage.rules");
 const c = require("./gym-manage.common");
 
@@ -336,6 +336,13 @@ async function memberPhone(gymId, memberId, { transaction } = {}) {
   return c.dec(m.phoneEnc);
 }
 
+/** M24 §25 (gym-whatsapp): a counter or online fee payment of this gym, for sending its receipt; null otherwise. */
+async function feePayment(gymId, feePaymentId) {
+  const p = await GymFeePayment.findOne({ where: { id: feePaymentId, gymId }, attributes: ['id', 'memberId', 'amountPoisha', 'method', 'receiptNo'] });
+  if (!p || !p.receiptNo || p.method === "opening" || Number(p.amountPoisha) <= 0) return null;
+  return { id: p.id, memberId: p.memberId, amountPoisha: Number(p.amountPoisha), receiptNo: p.receiptNo };
+}
+
 async function memberOfUser(memberId, userId) {
   const m = await GymMember.findOne({ where: { id: memberId, userId } });
   if (!m || m.status === "removed") return null;
@@ -396,6 +403,7 @@ module.exports = {
   reachOf,
   memberOfUser,
   memberPhone,
+  feePayment,
   hasRunningMembership,
   checkInDates,
 };

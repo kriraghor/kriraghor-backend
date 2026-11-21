@@ -186,6 +186,22 @@ const SmsAddonView = z
     bundles: z.array(z.object({ units: z.number().int(), expiresOn: z.string() })),
   })
   .meta({ id: 'GymSmsAddon' });
+/** M24 §25: the owner's WhatsApp units (billing page card; gym-whatsapp status). */
+const WhatsappUnitsView = z
+  .object({
+    available: z.boolean().meta({ description: 'gym_whatsapp.api_enabled is on and the plan has the whatsapp feature' }),
+    enabled: z.boolean().meta({ description: 'gym_whatsapp.api_enabled' }),
+    status: z.enum(['active', 'paused', 'ended']).nullable(),
+    balance: z.number().int(),
+    included: z.number().int(),
+    bundle: z.object({ size: z.number().int(), pricePoisha: z.number().int(), validDays: z.number().int() }),
+    units: z.object({ utility: z.number().int(), marketing: z.number().int() }).meta({ description: 'Units one message holds by category' }),
+    lowBalance: z.number().int(),
+    bundles: z.array(z.object({ units: z.number().int(), expiresOn: z.string() })),
+  })
+  .meta({ id: 'GymWhatsappUnits' });
+const WhatsappEntry = z.object({ id, kind: z.enum(['grant', 'purchase', 'reserve', 'settle', 'expire', 'adjust']), units: z.number().int(), expiresOn: z.string().nullable(), gymId: id.nullable(), invoiceId: id.nullable(), createdAt: z.string() });
+const WhatsappEntries = z.object({ balance: z.number().int(), items: z.array(WhatsappEntry) }).meta({ id: 'GymWhatsappEntries' });
 const SmsEntry = z.object({ id, kind: z.enum(['grant', 'purchase', 'reserve', 'settle', 'expire', 'adjust']), units: z.number().int(), expiresOn: z.string().nullable(), gymId: id.nullable(), invoiceId: id.nullable(), note: z.string().nullable(), createdAt: z.string() });
 const SmsEntries = z.object({ balance: z.number().int(), items: z.array(SmsEntry) }).meta({ id: 'GymSmsEntries' });
 const SmsBundleBought = z.object({ invoice: z.object({}).passthrough(), units: z.number().int(), payment: z.object({ id, payUrl: z.string() }) }).meta({ id: 'GymSmsBundleBought' });
@@ -831,13 +847,13 @@ const AllGymsReport = z
     passSales: z.object({ available: z.boolean(), dashboard: z.string().meta({ description: 'M19’s gym dashboard (pass sales), for an active gym_owner role' }) }),
   })
   .meta({ id: 'GymAllReports' });
-const InvoiceLine = z.object({ id, kind: z.enum(['tier', 'proration', 'founding_free', 'founding_discount', 'referral', 'sms_addon', 'sms_bundle', 'vat', 'adjustment']), descriptionEn: z.string(), descriptionBn: z.string(), quantity: z.number().int(), unitPoisha: poisha, amountPoisha: poisha.meta({ description: 'Negative for discounts' }) });
+const InvoiceLine = z.object({ id, kind: z.enum(['tier', 'proration', 'founding_free', 'founding_discount', 'referral', 'sms_addon', 'sms_bundle', 'whatsapp_bundle', 'vat', 'adjustment']), descriptionEn: z.string(), descriptionBn: z.string(), quantity: z.number().int(), unitPoisha: poisha, amountPoisha: poisha.meta({ description: 'Negative for discounts' }) });
 const Invoice = z
   .object({
     id,
     number: z.string().meta({ description: 'GI-26-000123' }),
     ownerId: id,
-    kind: z.enum(['monthly', 'sms_bundle']),
+    kind: z.enum(['monthly', 'sms_bundle', 'whatsapp_bundle']),
     periodStart: nullable(date),
     periodEnd: nullable(date),
     period: nullable(month),
@@ -1550,6 +1566,8 @@ module.exports = {
   consentBody,
   tierBody,
   smsAddonBody,
+  WhatsappUnitsView,
+  WhatsappEntries,
   smsBundlesBody,
   smsEntriesQuery,
   smsAdjustBody,

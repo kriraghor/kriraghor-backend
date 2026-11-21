@@ -37,7 +37,7 @@ describe('B3 permission allow-lists and defaults', () => {
   });
   it('gym: admit, admissions, check-ins, the member list and clocking in on; the rest optional (M24-FR-04, M27-FR-73)', () => {
     expect(rules.defaultsFor('gym')).toEqual(['attendance.mark', 'clock.in', 'desk.admissions', 'desk.admit', 'members.view']);
-    expect(rules.allowedFor('gym')).toEqual(['assets.manage', 'attendance.mark', 'cash.drawer', 'classes.manage', 'clock.in', 'desk.admissions', 'desk.admit', 'expenses.manage', 'fees.adjust', 'fees.collect', 'leads.manage', 'lockers.manage', 'members.edit', 'members.trainer', 'members.view', 'notices.send', 'passes.view', 'plans.manage', 'pos.sell', 'reports.view', 'rewards.redeem', 'shifts.manage', 'stock.manage']);
+    expect(rules.allowedFor('gym')).toEqual(['assets.manage', 'attendance.mark', 'cash.drawer', 'classes.manage', 'clock.in', 'desk.admissions', 'desk.admit', 'expenses.manage', 'fees.adjust', 'fees.collect', 'leads.manage', 'lockers.manage', 'members.edit', 'members.trainer', 'members.view', 'notices.send', 'passes.view', 'plans.manage', 'pos.sell', 'reports.view', 'rewards.redeem', 'shifts.manage', 'stock.manage', 'whatsapp.send']);
   });
   it('gym: editing members and collecting fees need the member list; adjusting fees needs collecting (M24-FR-04)', () => {
     expect(rules.normalizePermissions('gym', ['fees.adjust', 'members.view'])).toEqual({ error: 'PERMISSIONS_INVALID', unknown: [], missing: [{ permission: 'fees.adjust', needs: 'fees.collect' }] });

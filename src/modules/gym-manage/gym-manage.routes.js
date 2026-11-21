@@ -87,6 +87,11 @@ manageRouter.get('/billing/invoices', run, async (req, res) => res.json(await in
 manageRouter.put('/billing/sms-addon', run, validate(s.smsAddonBody), async (req, res) => res.json(await require('./sms.service').setAddon(req.user, req.body, req)));
 manageRouter.post('/billing/sms-bundles', run, validate(s.smsBundlesBody), ik('sms_bundle'), async (req, res) => res.status(201).json(await require('./sms.service').buyBundles(req.user, req.body, req.idempotencyKey)));
 manageRouter.get('/billing/sms-entries', run, query(s.smsEntriesQuery), async (req, res) => res.json(await require('./sms.service').entries(req.user, req.validQuery)));
+// M24 §25: WhatsApp units (the card, switch on or off, bundles, the entries); off while gym_whatsapp.api_enabled is false.
+manageRouter.get('/billing/whatsapp', run, async (req, res) => res.json(await require('./whatsapp-units.service').view(req.user.id)));
+manageRouter.put('/billing/whatsapp-addon', run, validate(s.smsAddonBody), async (req, res) => res.json(await require('./whatsapp-units.service').setAddon(req.user, req.body, req)));
+manageRouter.post('/billing/whatsapp-bundles', run, validate(s.smsBundlesBody), ik('whatsapp_bundle'), async (req, res) => res.status(201).json(await require('./whatsapp-units.service').buyBundles(req.user, req.body, req.idempotencyKey)));
+manageRouter.get('/billing/whatsapp-entries', run, query(s.smsEntriesQuery), async (req, res) => res.json(await require('./whatsapp-units.service').entries(req.user, req.validQuery)));
 manageRouter.get('/billing/invoices/:invoiceId', run, params(s.invoiceParam), async (req, res) => res.json(await invoices.mineOne(req.user, req.params.invoiceId)));
 manageRouter.post('/billing/invoices/:invoiceId/pay', run, params(s.invoiceParam), ik('invoice_pay'), async (req, res) => res.status(201).json(await invoices.pay(req.user, req.params.invoiceId, req.idempotencyKey)));
 manageRouter.get('/reports', run, query(s.reportQuery), async (req, res) => res.json(await reports.allGyms(req.user, req.validQuery)));

@@ -71,6 +71,8 @@ function createApp() {
       maxAge: 600,
     })
   );
+  // M24 §25: Meta's WhatsApp webhook needs the raw body for its signature, so it comes before the JSON parser.
+  app.use(`${config.apiPrefix}/webhooks/whatsapp`, gymWhatsappRoutes.webhookRouter);
   app.use(express.json({ limit: '100kb' }));
   app.use(cookieParser());
   app.use(passport.initialize());

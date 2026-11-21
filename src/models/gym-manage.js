@@ -531,7 +531,7 @@ GymOwnerAddon.init(
     id,
     subscriptionId: req(DataTypes.UUID),
     ownerId: req(DataTypes.UUID),
-    addon: enumOf(['sms']),
+    addon: enumOf(['sms', 'whatsapp']),
     status: enumOf(['active', 'paused', 'ended']),
     pricePoisha: poisha('pricePoisha'),
     startedAt: req(DataTypes.DATE(3)),
@@ -560,6 +560,24 @@ GymSmsEntry.init(
   { sequelize, modelName: 'GymSmsEntry', tableName: 'gym_sms_entries', updatedAt: false }
 );
 
+/** M24 §25 (migration 20261202000003): the owner's WhatsApp units, append-only; balance = Σ units. */
+class GymWhatsappEntry extends Model {}
+GymWhatsappEntry.init(
+  {
+    id,
+    ownerId: req(DataTypes.UUID),
+    kind: enumOf(['grant', 'purchase', 'reserve', 'settle', 'expire', 'adjust']),
+    units: req(DataTypes.INTEGER),
+    expiresOn: DataTypes.DATEONLY,
+    billingRef: DataTypes.UUID,
+    invoiceId: DataTypes.UUID,
+    gymId: DataTypes.UUID,
+    note: DataTypes.STRING(200),
+    createdBy: DataTypes.UUID,
+  },
+  { sequelize, modelName: 'GymWhatsappEntry', tableName: 'gym_whatsapp_entries', updatedAt: false }
+);
+
 class GymActiveMemberCount extends Model {}
 GymActiveMemberCount.init(
   {
@@ -579,7 +597,7 @@ GymSubscriptionInvoice.init(
     number: req(DataTypes.STRING(24)),
     ownerId: req(DataTypes.UUID),
     subscriptionId: req(DataTypes.UUID),
-    kind: enumOf(['monthly', 'sms_bundle']),
+    kind: enumOf(['monthly', 'sms_bundle', 'whatsapp_bundle']),
     periodStart: DataTypes.DATEONLY,
     periodEnd: DataTypes.DATEONLY,
     billedTier: { type: DataTypes.ENUM(...TIERS), allowNull: true },
@@ -605,7 +623,7 @@ GymSubscriptionInvoiceLine.init(
   {
     id,
     invoiceId: req(DataTypes.UUID),
-    kind: enumOf(['tier', 'proration', 'founding_free', 'founding_discount', 'referral', 'sms_addon', 'sms_bundle', 'vat', 'adjustment']),
+    kind: enumOf(['tier', 'proration', 'founding_free', 'founding_discount', 'referral', 'sms_addon', 'sms_bundle', 'whatsapp_bundle', 'vat', 'adjustment']),
     descriptionEn: req(DataTypes.STRING(200)),
     descriptionBn: req(DataTypes.STRING(200)),
     quantity: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
@@ -727,6 +745,7 @@ GymPlanLog.init(
 module.exports = {
   GymOwnerAddon,
   GymSmsEntry,
+  GymWhatsappEntry,
   GymManageSettings,
   GymVisit,
   GymBodyEntry,

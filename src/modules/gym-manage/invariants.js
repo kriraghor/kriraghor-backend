@@ -47,6 +47,11 @@ const CHECKS = {
     const rows = await require('./sms.service').negativeBalances();
     return { ok: rows.length === 0, detail: rows.length ? `SMS balance below 0: ${rows.map((r) => r.ownerId).join(', ')}` : null };
   },
+  // M24 §25: no owner's WhatsApp balance below 0.
+  gym_whatsapp_balance_not_negative: async () => {
+    const rows = await require('./whatsapp-units.service').negativeBalances();
+    return { ok: rows.length === 0, detail: rows.length ? `WhatsApp balance below 0: ${rows.map((r) => r.ownerId).join(', ')}` : null };
+  },
 };
 
 function registerInvariants() {

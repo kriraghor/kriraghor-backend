@@ -65,8 +65,15 @@ async function holdSms(transaction, { plan, gym, reminderId }) {
   return { billingRef };
 }
 
-/** Can this notice go by SMS (prompt 3b)? Only asked for the kinds that may: { ok, reason, balance }. */
-const smsPlan = (transaction, { kind, gym, explicit = false }) => require('./sms.service').planIn(transaction, { ownerId: gym.ownerId, gymId: gym.id, kind, explicit });
+/**
+ * Can this notice go by SMS (prompt 3b)? Only asked for the kinds that may: { ok, reason, balance }. A member
+ * the gym reaches on WhatsApp for this kind gets no SMS for it (M24 §25, M24-FR-165): reason 'whatsapp'.
+ */
+async function smsPlan(transaction, { kind, gym, explicit = false, memberId = null }) {
+  const plan = await require('./sms.service').planIn(transaction, { ownerId: gym.ownerId, gymId: gym.id, kind, explicit });
+  if (plan.ok && memberId && (await require('../gym-whatsapp').sms.willSend(transaction, { gymId: gym.id, memberId, kind }))) return { ok: false, reason: 'whatsapp', balance: plan.balance };
+  return plan;
+}
 
 /**
  * Log an immediate member notice (receipt, payment link) once, inside the caller's transaction:
@@ -75,7 +82,7 @@ const smsPlan = (transaction, { kind, gym, explicit = false }) => require('./sms
  * for this one message (a payment link). → { notify, sms: { billingRef } | null }.
  */
 async function logImmediate(transaction, { kind, member, gym, subjectType, subjectId, offsetKey = 'now', sms = false, explicit = false }) {
-  const plan = sms ? await smsPlan(transaction, { kind, gym, explicit }) : null;
+  const plan = sms ? await smsPlan(transaction, { kind, gym, explicit, memberId: member.id }) : null;
   const reason = await skipReason(member, kind, { transaction, sms: Boolean(plan?.ok) });
   const reminderId = await c.claimReminderId(transaction, {
     ownerId: gym.ownerId,

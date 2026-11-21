@@ -64,6 +64,8 @@ const PERMISSIONS = Object.freeze({
     'clock.in': true,
     'shifts.manage': false,
     'assets.manage': false,
+    // M24 §25: send WhatsApp messages to members from the panel (off by default).
+    'whatsapp.send': false,
   }),
   shop: Object.freeze({
     'orders.view': true,
@@ -87,7 +89,7 @@ const NEVER = Object.freeze({
 /** A permission → the permission it needs alongside it. */
 const REQUIRES = Object.freeze({
   venue: { 'bookings.check_in': 'bookings.view', 'bookings.no_show': 'bookings.view', 'bookings.extend': 'bookings.view', 'bookings.collect_balance': 'bookings.view', 'bookings.walk_in': 'bookings.view', 'bookings.move': 'bookings.view', 'bookings.cancel': 'bookings.view' },
-  gym: { 'members.edit': 'members.view', 'fees.collect': 'members.view', 'fees.adjust': 'fees.collect' },
+  gym: { 'members.edit': 'members.view', 'fees.collect': 'members.view', 'fees.adjust': 'fees.collect', 'whatsapp.send': 'members.view' },
   shop: { 'orders.accept': 'orders.view', 'orders.ship': 'orders.view', 'orders.deliver': 'orders.view', 'orders.reject': 'orders.view', 'stock.adjust': 'stock.view' },
 });
 

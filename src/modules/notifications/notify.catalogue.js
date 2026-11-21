@@ -1907,6 +1907,34 @@ const CATALOGUE = [
     values: async () => ({ link: gymUrl('/manage/billing') }),
     link: () => gymUrl('/manage/billing'),
   },
+  // ---------------- M24 §25 WhatsApp: the owner's units and a connected number lost.
+  {
+    code: 'GYM_WHATSAPP_BALANCE_LOW',
+    events: ['gym_whatsapp.low_reached'],
+    category: 'gym_business',
+    channels: ['in_app', 'email'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async (e) => ({ balance: e.payload.balance, link: gymUrl('/manage/billing') }),
+    link: () => gymUrl('/manage/billing'),
+  },
+  {
+    code: 'GYM_WHATSAPP_DEPLETED',
+    events: ['gym_whatsapp.depleted'],
+    category: 'gym_business',
+    channels: ['in_app', 'email'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async () => ({ link: gymUrl('/manage/billing') }),
+    link: () => gymUrl('/manage/billing'),
+  },
+  {
+    code: 'GYM_WHATSAPP_DISCONNECTED',
+    events: ['gym_whatsapp.disconnected'],
+    category: 'gym_business',
+    channels: ['in_app', 'email'],
+    recipients: (e) => [e.payload.ownerId],
+    values: async () => ({ link: gymUrl('/manage') }),
+    link: () => gymUrl('/manage'),
+  },
   // ---------------- M24 trial visits (9 Nov 2026): free visits before joining. The gym (owner and staff
   // with attendance.mark) hears of each booking and gets the morning list; the guest gets the confirmation
   // and a morning reminder. A cancellation goes to the other side. Free, so never SMS.

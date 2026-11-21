@@ -6,12 +6,15 @@
  * public contact, so they are stored as E.164 text and shown on the gym page.
  *   GET /manage/whatsapp                  the owner's number and every branch (owner)
  *   PUT /manage/whatsapp/number           the owner's number (owner)
- *   GET/PATCH /manage/gyms/:gymId/whatsapp  one branch (owner)
+ *   GET/PATCH /manage/gyms/:gymId/whatsapp  one branch (read: owner or whatsapp.send; change: owner)
  *   facade contact.forGym                 the number M20's gym page shows
+ * Step 2 (M24-FR-161, FR-165): the owner's view also lists the connected numbers, the units and the sign-up
+ * values; a branch chooses which connected number it sends from and which automatic messages go on WhatsApp.
  */
 const { sequelize, GymWhatsappOwner, GymWhatsappGym } = require('../../models');
 const gymFacade = require('../gym').gyms;
 const rules = require('./gym-whatsapp.rules');
+const TPL = require('./templates');
 const c = require('./gym-whatsapp.common');
 
 /** The owner row and the branch rows of these gyms → { owner, byGym: Map }. */
@@ -31,6 +34,8 @@ function gymView(gym, row, ownerNumber) {
     showOnPage,
     source: rules.numberSource({ gymNumber, ownerNumber }),
     shown: rules.chatNumber({ gymNumber, ownerNumber, showOnPage }),
+    senderId: row?.senderId ?? null,
+    autoKinds: row?.autoKinds ?? [],
   };
 }
 
@@ -39,7 +44,15 @@ async function ownerView(principal) {
   const gyms = await gymFacade.ofOwner(principal.id);
   const { owner, byGym } = await rowsOf(principal.id, gyms.map((g) => g.id));
   const ownerNumber = owner?.number ?? null;
-  return { apiEnabled: c.cfg().apiEnabled, number: ownerNumber, gyms: gyms.map((g) => gymView(g, byGym.get(g.id), ownerNumber)) };
+  const senders = require('./senders.service');
+  return {
+    apiEnabled: c.cfg().apiEnabled,
+    number: ownerNumber,
+    gyms: gyms.map((g) => gymView(g, byGym.get(g.id), ownerNumber)),
+    senders: await senders.listFor(principal.id),
+    units: await c.units().view(principal.id),
+    signUp: senders.signUpConfig(),
+  };
 }
 
 /** PUT /manage/whatsapp/number { number } (owner): one number for every branch without its own (null removes it). */
@@ -56,30 +69,37 @@ async function setOwnerNumber(principal, { number }, req) {
   return ownerView(principal);
 }
 
-/** GET /manage/gyms/:gymId/whatsapp (owner): one branch, with the owner's number it falls back to. */
+/** GET /manage/gyms/:gymId/whatsapp (owner or whatsapp.send): one branch, with the owner's number it falls back to. */
 async function gymWhatsapp(principal, gymId) {
-  const a = await c.gymManage().access(principal, gymId, 'owner.only');
+  const a = await c.gymManage().access(principal, gymId, 'whatsapp.send');
   return viewOf(a.gym);
 }
 
 async function viewOf(gym, { transaction } = {}) {
   const { owner, byGym } = await rowsOf(gym.ownerId, [gym.id], { transaction });
   const ownerNumber = owner?.number ?? null;
-  return { ...gymView(gym, byGym.get(gym.id), ownerNumber), ownerNumber, apiEnabled: c.cfg().apiEnabled };
+  const ctx = await require('./messages.service').contextOf(gym, { transaction });
+  const sender = ctx.sender ? require('./senders.service').senderView(ctx.sender, [...ctx.templates.values()]) : null;
+  return { ...gymView(gym, byGym.get(gym.id), ownerNumber), ownerNumber, apiEnabled: c.cfg().apiEnabled, sender, autoKindsAvailable: TPL.AUTO_KINDS };
 }
 
-/** PATCH /manage/gyms/:gymId/whatsapp { number?, showOnPage? } (owner): the branch's own number and the button. */
+/** PATCH /manage/gyms/:gymId/whatsapp { number?, showOnPage?, senderId?, autoKinds? } (owner): the branch's own number, the button, the number it sends from and the automatic kinds. */
 async function patchGym(principal, gymId, body, req) {
   const a = await c.gymManage().access(principal, gymId, 'owner.only');
   c.gymManage().needs(a, 'owner.only');
   const patch = {};
   if (body.number !== undefined) patch.number = body.number === null ? null : c.phoneOf(body.number);
   if (body.showOnPage !== undefined) patch.showOnPage = body.showOnPage;
+  if (body.autoKinds !== undefined) patch.autoKinds = TPL.AUTO_KINDS.filter((k) => body.autoKinds.includes(k));
+  if (body.senderId !== undefined) {
+    if (body.senderId !== null && !(await require('./senders.service').liveOf(a.gym.ownerId, body.senderId))) throw c.fail('GYM_WHATSAPP_SENDER_STATE', { senderId: body.senderId });
+    patch.senderId = body.senderId;
+  }
   await sequelize.transaction(async (transaction) => {
     const row = await GymWhatsappGym.findByPk(gymId, { transaction, lock: transaction.LOCK.UPDATE });
-    const before = { number: row?.number ?? null, showOnPage: row?.showOnPage ?? true };
+    const before = { number: row?.number ?? null, showOnPage: row?.showOnPage ?? true, senderId: row?.senderId ?? null, autoKinds: row?.autoKinds ?? [] };
     const after = { ...before, ...patch };
-    if (before.number === after.number && before.showOnPage === after.showOnPage) return;
+    if (JSON.stringify(before) === JSON.stringify(after)) return;
     if (row) await row.update({ ...patch, updatedBy: principal.id }, { transaction });
     else await GymWhatsappGym.create({ gymId, ownerId: a.gym.ownerId, ...after, updatedBy: principal.id }, { transaction });
     await c.record({ action: 'gym_whatsapp.gym_number_set', actor: principal, entityType: 'gym', entityId: gymId, before, after, req }, transaction);

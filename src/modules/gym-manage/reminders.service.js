@@ -70,7 +70,7 @@ async function payableLinkId(dueIds, now, transaction) {
  */
 async function sendOnce({ kind, gym, member, subjectType, subjectId, offsetKey, event }) {
   return sequelize.transaction(async (transaction) => {
-    const plan = await notices.smsPlan(transaction, { kind, gym });
+    const plan = await notices.smsPlan(transaction, { kind, gym, memberId: member.id });
     const reach = Boolean(member.userId || member.emailEnc || plan.ok);
     const reminderId = await c.claimReminderId(transaction, {
       ownerId: gym.ownerId,
