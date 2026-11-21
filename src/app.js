@@ -39,6 +39,7 @@ const hireRoutes = require('./modules/hire/hire.routes');
 const gymRoutes = require('./modules/gym/gym.routes');
 const gymManageRoutes = require('./modules/gym-manage/gym-manage.routes');
 const gymOpsRoutes = require('./modules/gym-ops/gym-ops.routes');
+const gymWhatsappRoutes = require('./modules/gym-whatsapp/gym-whatsapp.routes');
 const saasRoutes = require('./modules/organiser-saas/saas.routes');
 const eventRoutes = require('./modules/esports-events/events.routes');
 const teamRoutes = require('./modules/teams/teams.routes');
@@ -70,6 +71,8 @@ function createApp() {
       maxAge: 600,
     })
   );
+  // M24 §25: Meta's WhatsApp webhook needs the raw body for its signature, so it comes before the JSON parser.
+  app.use(`${config.apiPrefix}/webhooks/whatsapp`, gymWhatsappRoutes.webhookRouter);
   app.use(express.json({ limit: '100kb' }));
   app.use(cookieParser());
   app.use(passport.initialize());
@@ -117,6 +120,8 @@ function createApp() {
   api.use('/me/gym-join-requests', gymManageRoutes.meJoins);
   api.use('/me/gym-visits', gymManageRoutes.meVisits);
   api.use('/me/gym-desk-pins', gymManageRoutes.meDeskPins);
+  // M24 §25: my WhatsApp number and consents at a gym.
+  api.use('/me/gym-whatsapp', gymWhatsappRoutes.meRouter);
   api.use('/me/gym-plans', gymManageRoutes.mePlans);
   api.use('/me/gym-checkins', gymManageRoutes.meCheckins);
   api.use('/me', teamRoutes.meRouter);
@@ -165,6 +170,7 @@ function createApp() {
   api.use('/manage', gymManageRoutes.manageRouter);
   // M27 gym operations: expenses, the cash drawer, profit and loss, the counter shop, lockers.
   api.use('/manage', gymOpsRoutes.manageRouter);
+  api.use('/manage', gymWhatsappRoutes.manageRouter);
   api.use('/me', gymOpsRoutes.meRouter);
   api.use('/gym', gymOpsRoutes.publicRouter);
   api.use('/gym-manage', gymManageRoutes.pricingRouter);

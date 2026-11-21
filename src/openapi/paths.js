@@ -28,6 +28,7 @@ const gmS = require('../modules/gym-manage/gym-manage.schemas');
 const goS = require('../modules/gym-ops/gym-ops.schemas');
 const go2 = require('../modules/gym-ops/gym-ops-round2.schemas');
 const go3 = require('../modules/gym-ops/gym-ops-round3.schemas');
+const gwS = require('../modules/gym-whatsapp/gym-whatsapp.schemas');
 const orgS = require('../modules/organisations/organisations.schemas');
 const saS = require('../modules/organiser-saas/saas.schemas');
 const evS = require('../modules/esports-events/events.schemas');
@@ -1401,6 +1402,39 @@ function register(registry) {
     request: body(gmS.meCheckinBody),
     responses: { 201: json(gmS.EntranceCheckin, 'Counted'), 200: json(gmS.EntranceScan, 'Already checked in today, or checked out by a second scan after gym_manage.min_visit_minutes (M27-FR-41)'), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'GYM_NOT_A_MEMBER', 'GYM_TIER_REQUIRED'], 409: ['GYM_ENTRY_BLOCKED', 'GYM_MEMBER_STATE'], 422: ['VALIDATION_FAILED', 'GYM_CHECKIN_TOKEN_INVALID'] }) } });
 
+
+  // ------------------------------------------------------------------ M24 §25 WhatsApp (step 1: chat numbers and members' consents)
+  const gwG = { params: gwS.gymParam };
+  const gwM = { params: gwS.memberParam };
+  const GW = { ...GM, 423: ['GYM_SUSPENDED'] };
+  p({ method: 'get', path: '/manage/whatsapp', tags: gmTag, summary: 'The owner’s WhatsApp number for every branch and each branch’s own number and gym page button (owner, gate run_gym) (M24-FR-157)', security: bearer, responses: { 200: json(gwS.OwnerWhatsapp), ...errors(GM) } });
+  p({ method: 'put', path: '/manage/whatsapp/number', tags: gmTag, summary: 'Set or remove the owner’s WhatsApp number, used by every branch without its own (owner; a Bangladesh mobile) (M24-FR-157)', security: bearer, request: body(gwS.ownerNumberBody), responses: { 200: json(gwS.OwnerWhatsapp), ...errors(GM) } });
+  gp('get', '/whatsapp', 'One branch’s WhatsApp number, the owner’s number it falls back to, and whether the gym page shows the button (owner) (M24-FR-157, FR-158)', { request: gwG, responses: { 200: json(gwS.GymWhatsapp), ...errors(GW) } });
+  gp('patch', '/whatsapp', 'Set the branch’s own WhatsApp number (null: use the owner’s) or switch the gym page button (owner) (M24-FR-157, FR-158)', { request: { ...gwG, ...body(gwS.gymPatch) }, responses: { 200: json(gwS.GymWhatsapp), ...errors(GW) } });
+  gp('get', '/members/{memberId}/whatsapp', 'A member’s WhatsApp consents: receipts and reminders, news and offers, the last 4 digits of the number (members.view) (M24-FR-159)', { request: gwM, responses: { 200: json(gwS.MemberConsent), ...errors(GW) } });
+  gp('put', '/members/{memberId}/whatsapp', 'Record the member’s WhatsApp number (null: their phone) and consents as agreed at the desk (members.edit); each change is kept (M24-FR-159, FR-160)', { request: { ...gwM, ...body(gwS.consentBody) }, responses: { 200: json(gwS.MemberConsent), ...errors(GW) } });
+  p({ method: 'get', path: '/me/gym-whatsapp/{memberId}', tags: gmTag, summary: 'My WhatsApp number at a gym and what I agreed to receive (a linked member) (M24-FR-159)', security: bearer, request: { params: gwS.myMemberParam }, responses: { 200: json(gwS.MyConsent), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'] }) } });
+  p({ method: 'put', path: '/me/gym-whatsapp/{memberId}', tags: gmTag, summary: 'Give my WhatsApp number (null: my phone in the gym’s record) and choose receipts and reminders, news and offers (a linked member) (M24-FR-159, FR-160)', security: bearer, request: { params: gwS.myMemberParam, ...body(gwS.consentBody) }, responses: { 200: json(gwS.MyConsent), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], 423: ['GYM_SUSPENDED'], ...VALIDATION }) } });
+
+  // M24 §25 step 2 (built off: gym_whatsapp.api_enabled): numbers, units, sends, history, Meta's webhook.
+  const GWS = { ...GW, 403: [...GM[403], 'GYM_TIER_REQUIRED', 'GYM_ACCOUNT_RESTRICTED'], 409: ['GYM_WHATSAPP_API_OFF', 'GYM_WHATSAPP_NO_SENDER', 'GYM_WHATSAPP_BLOCKED'] };
+  const gwIdem = z.object({ 'idempotency-key': z.string().meta({ description: 'Required: repeats return the first result' }) });
+  p({ method: 'post', path: '/manage/whatsapp/senders', tags: gmTag, summary: 'Connect the gym’s WhatsApp Business number with what Meta’s embedded sign-up returned (owner; gym_whatsapp.api_enabled and the whatsapp plan feature): the token is kept encrypted, Kriraghor’s app subscribes, Kriraghor’s credit line is shared and Kriraghor’s templates are created (M24-FR-161 to FR-163)', security: bearer,
+    request: { headers: gwIdem, ...body(gwS.connectBody) }, responses: { 201: json(gwS.Senders), ...errors({ ...GM, 400: ['IDEMPOTENCY_KEY_REQUIRED'], 409: ['GYM_WHATSAPP_API_OFF', 'GYM_WHATSAPP_UNAVAILABLE', 'GYM_WHATSAPP_NUMBER_TAKEN'], 502: ['GYM_WHATSAPP_META_FAILED'] }) } });
+  p({ method: 'post', path: '/manage/whatsapp/senders/{senderId}/disconnect', tags: gmTag, summary: 'Stop sending from a connected WhatsApp number; its branches send nothing until another is chosen (owner) (M24-FR-161)', security: bearer, request: { params: gwS.senderParam }, responses: { 200: json(gwS.Senders), ...errors({ ...GM, 409: ['GYM_WHATSAPP_SENDER_STATE'] }) } });
+  p({ method: 'get', path: '/manage/billing/whatsapp', tags: gmTag, summary: 'The owner’s WhatsApp units: balance, bundles, units per message (owner) (M24-FR-166)', security: bearer, responses: { 200: json(gmS.WhatsappUnitsView), ...errors(GM) } });
+  p({ method: 'put', path: '/manage/billing/whatsapp-addon', tags: gmTag, summary: 'Switch WhatsApp messages on (grants the month’s allowance; plan feature whatsapp, gym_whatsapp.api_enabled) or off (owner) (M24-FR-166)', security: bearer, request: body(gmS.smsAddonBody), responses: { 200: json(gmS.WhatsappUnitsView), ...errors({ ...GM, 409: ['GYM_WHATSAPP_UNAVAILABLE'] }) } });
+  p({ method: 'post', path: '/manage/billing/whatsapp-bundles', tags: gmTag, summary: 'Buy WhatsApp unit bundles: a one-line invoice paid at once; the units arrive at capture (owner, WhatsApp on) (M24-FR-167)', security: bearer,
+    request: { headers: gwIdem, ...body(gmS.smsBundlesBody) }, responses: { 201: json(gmS.SmsBundleBought), ...errors({ ...GM, 400: ['IDEMPOTENCY_KEY_REQUIRED'], 409: ['GYM_WHATSAPP_UNAVAILABLE', 'GYM_WHATSAPP_OFF'] }) } });
+  p({ method: 'get', path: '/manage/billing/whatsapp-entries', tags: gmTag, summary: 'The owner’s WhatsApp unit entries, newest first (owner)', security: bearer, request: { query: gmS.smsEntriesQuery }, responses: { 200: json(gmS.WhatsappEntries), ...errors(GM) } });
+  gp('post', '/whatsapp/estimate', 'Who a notice or greeting reaches on WhatsApp and the units it holds (owner or whatsapp.send; plan feature whatsapp) (M24-FR-166)', { request: { ...gwG, ...body(gwS.estimateBody) }, responses: { 200: json(gwS.Estimate), ...errors(GWS) } });
+  gp('post', '/whatsapp/sends', 'Send a notice or greeting to a segment, or an update to one member, on WhatsApp: only members who agreed, units held, marketing after quiet hours, at most gym_whatsapp.bulk_daily_cap bulk sends a day (owner or whatsapp.send) (M24-FR-166 to FR-168)', {
+    request: { ...gwG, headers: gwIdem, ...body(gwS.sendBody) }, responses: { 201: json(gwS.Send), ...errors({ ...GWS, 400: ['IDEMPOTENCY_KEY_REQUIRED'], 429: ['GYM_WHATSAPP_CAP'] }) } });
+  gp('get', '/whatsapp/sends', 'The branch’s WhatsApp sends with sent, delivered, read and failed counts (owner or whatsapp.send) (M24-FR-170)', { request: { ...gwG, query: gwS.sendsQuery }, responses: { 200: json(gwS.Sends), ...errors(GW) } });
+  gp('get', '/whatsapp/messages', 'One member’s WhatsApp messages from the gym with their text and status (owner or whatsapp.send) (M24-FR-170)', { request: { ...gwG, query: gwS.messagesQuery }, responses: { 200: json(gwS.Messages), ...errors(GW) } });
+  gp('post', '/fee-payments/{feePaymentId}/whatsapp', 'Send or resend a payment’s receipt on WhatsApp (owner or whatsapp.send; the member agreed to receipts) (M24-FR-165)', { request: { params: gwS.feePaymentParam }, responses: { 201: json(gwS.ReceiptQueued), ...errors({ ...GWS, 409: [...GWS[409], 'GYM_WHATSAPP_RECEIPT'] }) } });
+  p({ method: 'get', path: '/webhooks/whatsapp', tags: gmTag, summary: 'Meta’s webhook check: answers hub.challenge when hub.verify_token matches (M24-FR-169)', request: { query: z.object({ 'hub.mode': z.string().optional(), 'hub.verify_token': z.string().optional(), 'hub.challenge': z.string().optional() }) }, responses: { 200: { description: 'The challenge (text/plain)' }, 403: { description: 'Wrong token' } } });
+  p({ method: 'post', path: '/webhooks/whatsapp', tags: gmTag, summary: 'Meta’s WhatsApp events (X-Hub-Signature-256 over the raw body): message statuses settle units, STOP replies opt members out, template, quality and account changes (M24-FR-169, FR-170)', responses: { 200: json(z.object({ ok: z.literal(true), handled: z.number().int() })), ...errors({ 400: ['WEBHOOK_INVALID'], 401: ['WEBHOOK_SIGNATURE_INVALID'] }) } });
 
   // ------------------------------------------------------------------ M27 gym operations, round 1 (expenses, drawer, P&L, shop, lockers)
   const goG = { params: goS.gymParam };

@@ -117,6 +117,8 @@ async function detail(slug) {
     today: c.today(),
     // M24-FR-16: whether "Join this gym" shows (gym-manage decides: live, managed, switched on).
     joinRequestsOpen: await require('../gym-manage').joins.openFor(g.id),
+    // M24-FR-158: the branch's WhatsApp number (its own, else the owner's), or null when it has none or hid it.
+    whatsapp: await require('../gym-whatsapp').contact.forGym(g.id, g.ownerId),
   };
 }
 

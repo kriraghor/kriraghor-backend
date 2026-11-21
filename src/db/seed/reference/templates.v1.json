@@ -1,6 +1,6 @@
 {
-  "seedVersion": 32,
-  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code. v9: the M17 DISPUTE_*, REPORT_* and REVIEW_* codes. v10: the M18 RISK_*, PAYOUTS_*, DOCUMENTS_* and TRUST_LOW codes. v11: the M12 SHOP_*, PRODUCT_*, STOCK_*, SUPPLEMENT_EXPIRING and SAVED_* codes. v12: the M13 ORDER_* and SHOP_*ORDER* codes. v13: the M11 HIRE_* and JOB_* codes. v14 (M20): gyms (live, changes, rejected), passes (ready, cancelled) and trainer subscriptions (started, new subscriber, renewal due, lapsed, cancelled, paid). v15 (M14 lite, M22): organisations (verified, changes) and the organiser SaaS (contract active, suspended, ending; invoices issued, overdue, paid; prize fund received, returned). v18 adds the M14 tournament notices (approval, registrations, reserve offers, fixtures, reschedules, cancellation, too few teams, lots). v19 adds the M01 password-changed security alert. v20: user-facing words Grounds → Venues, Tournaments → Events, big events → Showcases (19 Oct 2026). v21 adds REVIEW_REPLIED (the author hears that the venue, pro, shop or gym replied; Round B1). v22 adds the Round B3 staff notices: TEAM_ADDED and TEAM_REMOVED (the staff member hears when an owner adds or removes them), and TEAM_BOOKING_NEW, TEAM_BOOKING_CANCELLED and TEAM_CHECKIN_SOON for venue staff (no fee, released or retained amounts). v23: the M24 gym management consent templates (prompt 1): GYM_LINK_INVITE (in-app and email, to the invited account) and GYM_LINK_ACCEPTED (in-app, to the owner), linking to gym.kriraghor.com. v24: the M24 gym management prompt 2 templates (online money, reminders and billing): member notices (membership started, frozen, renewal due, ends today, fee overdue, expired, receipt, receipt corrected, payment link) in-app and by email, owner notices (online fee paid, morning summary, monthly report, plan limit near, invoice issued, due soon, paid, restored, special rate, member list ready), and the two money notices with SMS (invoice overdue, panel restricted, G19). Amounts use the money type (no literal ৳), dates are text in the recipient's language, links point to gym.kriraghor.com. v25: the M24 gym management prompt 3 templates (public site, member area, plans): GYM_JOIN_REQUEST_NEW (in-app, to the owner and staff with members.view), GYM_JOIN_ACCEPTED (in-app and email) and GYM_JOIN_DECLINED (in-app) to the person who asked, GYM_PLAN_ASSIGNED and GYM_PLAN_UPDATED (in-app, to the linked member), linking to gym.kriraghor.com. v27: M27 gym operations round 1: GYM_STOCK_LOW, GYM_PRODUCT_EXPIRING, GYM_CASH_DIFFERENCE, GYM_LOCKER_ENDING. v28: M27 gym operations round 2: GYM_CLASS_CANCELLED, GYM_CLASS_REMINDER, GYM_CLASS_PROMOTED, GYM_NOTICE, GYM_LEAD_NEW. v29: M27 gym operations round 3: GYM_ASSET_SERVICE_DUE (owner and assets.manage staff) and GYM_PAYSLIP_READY (the staff member), in-app and push. v30: M24 trial visits (9 Nov 2026): GYM_VISIT_BOOKED and GYM_GUESTS_TODAY (owner and attendance.mark staff, in-app and push), GYM_VISIT_CANCELLED_BY_GUEST (the gym, in-app), GYM_VISIT_CONFIRMED (the guest, in-app, push and email), GYM_VISIT_REMINDER (the guest, in-app and push) and GYM_VISIT_CANCELLED (the guest, when the gym cancels; in-app, push and email). v31: M24 prompt 3b, the SMS add-on: SMS templates (at most 3 segments, the gym name cut at 30 and the short pay link) for GYM_RENEWAL_DUE, GYM_MEMBERSHIP_ENDS_TODAY, GYM_FEE_OVERDUE, GYM_FEE_RECEIPT and GYM_PAY_LINK, sent only with the gym owner's billingRef; GYM_SMS_BALANCE_LOW and GYM_SMS_DEPLETED to the owner, in-app and by email.",
+  "seedVersion": 33,
+  "source": "M08 §6.2 and §6.6: EN and BN templates for every default channel of the catalogue codes built so far (Phase 1, M06). in_app: subject = title. email: subject + plain text (HTML is wrapped at send time). SMS: max 3 segments. v2 adds the M07 payout templates. v3 adds the M02 KYC templates. v4 adds the M05 moderation templates (MOD_*). v5 adds the M21 esports templates (ESPORTS_*). v6: the M09 GROUND_* codes and the M02 BUSINESS_DOC_* codes. v7: the M10 BOOKING_* codes. v8: the M19 ANALYTICS_DRIFT code. v9: the M17 DISPUTE_*, REPORT_* and REVIEW_* codes. v10: the M18 RISK_*, PAYOUTS_*, DOCUMENTS_* and TRUST_LOW codes. v11: the M12 SHOP_*, PRODUCT_*, STOCK_*, SUPPLEMENT_EXPIRING and SAVED_* codes. v12: the M13 ORDER_* and SHOP_*ORDER* codes. v13: the M11 HIRE_* and JOB_* codes. v14 (M20): gyms (live, changes, rejected), passes (ready, cancelled) and trainer subscriptions (started, new subscriber, renewal due, lapsed, cancelled, paid). v15 (M14 lite, M22): organisations (verified, changes) and the organiser SaaS (contract active, suspended, ending; invoices issued, overdue, paid; prize fund received, returned). v18 adds the M14 tournament notices (approval, registrations, reserve offers, fixtures, reschedules, cancellation, too few teams, lots). v19 adds the M01 password-changed security alert. v20: user-facing words Grounds → Venues, Tournaments → Events, big events → Showcases (19 Oct 2026). v21 adds REVIEW_REPLIED (the author hears that the venue, pro, shop or gym replied; Round B1). v22 adds the Round B3 staff notices: TEAM_ADDED and TEAM_REMOVED (the staff member hears when an owner adds or removes them), and TEAM_BOOKING_NEW, TEAM_BOOKING_CANCELLED and TEAM_CHECKIN_SOON for venue staff (no fee, released or retained amounts). v23: the M24 gym management consent templates (prompt 1): GYM_LINK_INVITE (in-app and email, to the invited account) and GYM_LINK_ACCEPTED (in-app, to the owner), linking to gym.kriraghor.com. v24: the M24 gym management prompt 2 templates (online money, reminders and billing): member notices (membership started, frozen, renewal due, ends today, fee overdue, expired, receipt, receipt corrected, payment link) in-app and by email, owner notices (online fee paid, morning summary, monthly report, plan limit near, invoice issued, due soon, paid, restored, special rate, member list ready), and the two money notices with SMS (invoice overdue, panel restricted, G19). Amounts use the money type (no literal ৳), dates are text in the recipient's language, links point to gym.kriraghor.com. v25: the M24 gym management prompt 3 templates (public site, member area, plans): GYM_JOIN_REQUEST_NEW (in-app, to the owner and staff with members.view), GYM_JOIN_ACCEPTED (in-app and email) and GYM_JOIN_DECLINED (in-app) to the person who asked, GYM_PLAN_ASSIGNED and GYM_PLAN_UPDATED (in-app, to the linked member), linking to gym.kriraghor.com. v27: M27 gym operations round 1: GYM_STOCK_LOW, GYM_PRODUCT_EXPIRING, GYM_CASH_DIFFERENCE, GYM_LOCKER_ENDING. v28: M27 gym operations round 2: GYM_CLASS_CANCELLED, GYM_CLASS_REMINDER, GYM_CLASS_PROMOTED, GYM_NOTICE, GYM_LEAD_NEW. v29: M27 gym operations round 3: GYM_ASSET_SERVICE_DUE (owner and assets.manage staff) and GYM_PAYSLIP_READY (the staff member), in-app and push. v30: M24 trial visits (9 Nov 2026): GYM_VISIT_BOOKED and GYM_GUESTS_TODAY (owner and attendance.mark staff, in-app and push), GYM_VISIT_CANCELLED_BY_GUEST (the gym, in-app), GYM_VISIT_CONFIRMED (the guest, in-app, push and email), GYM_VISIT_REMINDER (the guest, in-app and push) and GYM_VISIT_CANCELLED (the guest, when the gym cancels; in-app, push and email). v31: M24 prompt 3b, the SMS add-on: SMS templates (at most 3 segments, the gym name cut at 30 and the short pay link) for GYM_RENEWAL_DUE, GYM_MEMBERSHIP_ENDS_TODAY, GYM_FEE_OVERDUE, GYM_FEE_RECEIPT and GYM_PAY_LINK, sent only with the gym owner's billingRef; GYM_SMS_BALANCE_LOW and GYM_SMS_DEPLETED to the owner, in-app and by email.; v33 the M24 §25 WhatsApp owner alerts GYM_WHATSAPP_BALANCE_LOW, GYM_WHATSAPP_DEPLETED and GYM_WHATSAPP_DISCONNECTED (21 Nov 2026)",
   "templates": [
     {
       "code": "AUDIT_CRITICAL",
@@ -13908,6 +13908,156 @@
       "locale": "bn",
       "subject": "ক্রীড়াঘর: SMS ব্যালেন্স শেষ",
       "body": "SMS ব্যালেন্স শেষ। রিমাইন্ডার এখন শুধু অ্যাপ ও ইমেইলে যাবে।\n\nSMS কিনুন: {{link}}",
+      "variables": [
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_WHATSAPP_BALANCE_LOW",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "WhatsApp units are low",
+      "body": "Only {{balance}} WhatsApp units left. Buy a bundle to keep WhatsApp messages going.",
+      "variables": [
+        {
+          "name": "balance",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "GYM_WHATSAPP_BALANCE_LOW",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Kriraghor: WhatsApp units are low",
+      "body": "Only {{balance}} WhatsApp units left. Buy a bundle to keep WhatsApp messages going.\n\nBuy units: {{link}}",
+      "variables": [
+        {
+          "name": "balance",
+          "type": "number"
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_WHATSAPP_BALANCE_LOW",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "WhatsApp ইউনিট কমে গেছে",
+      "body": "মাত্র {{balance}} WhatsApp ইউনিট বাকি। WhatsApp মেসেজ চালু রাখতে একটি বান্ডেল কিনুন।",
+      "variables": [
+        {
+          "name": "balance",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "code": "GYM_WHATSAPP_BALANCE_LOW",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "ক্রীড়াঘর: WhatsApp ইউনিট কমে গেছে",
+      "body": "মাত্র {{balance}} WhatsApp ইউনিট বাকি। WhatsApp মেসেজ চালু রাখতে একটি বান্ডেল কিনুন।\n\nইউনিট কিনুন: {{link}}",
+      "variables": [
+        {
+          "name": "balance",
+          "type": "number"
+        },
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_WHATSAPP_DEPLETED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "WhatsApp units have run out",
+      "body": "WhatsApp messages have stopped. Buy a bundle to start them again.",
+      "variables": []
+    },
+    {
+      "code": "GYM_WHATSAPP_DEPLETED",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Kriraghor: WhatsApp units have run out",
+      "body": "WhatsApp messages have stopped. Buy a bundle to start them again.\n\nBuy units: {{link}}",
+      "variables": [
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_WHATSAPP_DEPLETED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "WhatsApp ইউনিট শেষ",
+      "body": "WhatsApp মেসেজ বন্ধ হয়ে গেছে। আবার চালু করতে একটি বান্ডেল কিনুন।",
+      "variables": []
+    },
+    {
+      "code": "GYM_WHATSAPP_DEPLETED",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "ক্রীড়াঘর: WhatsApp ইউনিট শেষ",
+      "body": "WhatsApp মেসেজ বন্ধ হয়ে গেছে। আবার চালু করতে একটি বান্ডেল কিনুন।\n\nইউনিট কিনুন: {{link}}",
+      "variables": [
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_WHATSAPP_DISCONNECTED",
+      "channel": "in_app",
+      "locale": "en",
+      "subject": "Your WhatsApp number was disconnected",
+      "body": "Your gym's WhatsApp Business number is no longer connected, so no WhatsApp messages go out. Connect it again on the WhatsApp page.",
+      "variables": []
+    },
+    {
+      "code": "GYM_WHATSAPP_DISCONNECTED",
+      "channel": "email",
+      "locale": "en",
+      "subject": "Kriraghor: your WhatsApp number was disconnected",
+      "body": "Your gym's WhatsApp Business number is no longer connected, so no WhatsApp messages go out. Connect it again on the WhatsApp page.\n\n{{link}}",
+      "variables": [
+        {
+          "name": "link",
+          "type": "text",
+          "maxLen": 300
+        }
+      ]
+    },
+    {
+      "code": "GYM_WHATSAPP_DISCONNECTED",
+      "channel": "in_app",
+      "locale": "bn",
+      "subject": "আপনার WhatsApp নম্বর বিচ্ছিন্ন হয়েছে",
+      "body": "আপনার জিমের WhatsApp Business নম্বর আর যুক্ত নেই, তাই কোনো WhatsApp মেসেজ যাচ্ছে না। WhatsApp পাতায় আবার যুক্ত করুন।",
+      "variables": []
+    },
+    {
+      "code": "GYM_WHATSAPP_DISCONNECTED",
+      "channel": "email",
+      "locale": "bn",
+      "subject": "ক্রীড়াঘর: আপনার WhatsApp নম্বর বিচ্ছিন্ন হয়েছে",
+      "body": "আপনার জিমের WhatsApp Business নম্বর আর যুক্ত নেই, তাই কোনো WhatsApp মেসেজ যাচ্ছে না। WhatsApp পাতায় আবার যুক্ত করুন।\n\n{{link}}",
       "variables": [
         {
           "name": "link",

@@ -563,6 +563,10 @@ const EVENTS = {
   'gym_sms.low_reached': { module: 'M24', version: 1, schema: z.object({ ownerId: uuid, balance: z.number().int() }) },
   'gym_sms.depleted': { module: 'M24', version: 1, schema: z.object({ ownerId: uuid, balance: z.number().int() }) },
   'gym_sms.purchased': { module: 'M24', version: 1, schema: z.object({ ownerId: uuid, invoiceId: uuid, units: z.number().int().positive() }) },
+  // M24 §25 WhatsApp: the owner's units, a connected number lost.
+  'gym_whatsapp.low_reached': { module: 'M24', version: 1, schema: z.object({ ownerId: uuid, balance: z.number().int() }) },
+  'gym_whatsapp.depleted': { module: 'M24', version: 1, schema: z.object({ ownerId: uuid, balance: z.number().int() }) },
+  'gym_whatsapp.disconnected': { module: 'M24', version: 1, schema: z.object({ ownerId: uuid, senderId: uuid, reason: z.string() }) },
   'gym_visits.listed': { module: 'M24', version: 1, schema: z.object({ gymId: uuid, ownerId: uuid, date: z.string(), count: z.number().int().positive(), firstAt: z.string() }) },
   // M27 round 3: staff, payroll, equipment
   'gym_staff_time.recorded': { module: 'M27', version: 1, schema: z.object({ gymId: uuid, staffId: uuid, kind: z.enum(['in', 'out']), method: z.enum(['desk', 'entrance_qr', 'auto']) }) },

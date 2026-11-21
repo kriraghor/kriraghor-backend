@@ -7,7 +7,7 @@
  * membership, or take money off what the member owes. gym-ops never writes gym-manage tables.
  */
 const { Op, QueryTypes } = require("sequelize");
-const { sequelize, GymMember, GymMembership, GymDue } = require("../../models");
+const { sequelize, GymMember, GymMembership, GymDue, GymFeePayment } = require("../../models");
 const rules = require("./gym-manage.rules");
 const c = require("./gym-manage.common");
 
@@ -326,6 +326,23 @@ async function reachOf(gymId, memberIds) {
 }
 
 /** A member by the linked account (M27 member-side classes and points): { id, gymId, memberCode, status } or null. */
+/**
+ * M24 §25 (gym-whatsapp): a member's phone in the gym's record, decrypted, the default WhatsApp number of
+ * their consent. Only for the member themselves or the desk recording their answer; never shown to staff.
+ */
+async function memberPhone(gymId, memberId, { transaction } = {}) {
+  const m = await GymMember.findOne({ where: { id: memberId, gymId }, attributes: ['id', 'status', 'phoneEnc'], transaction });
+  if (!m || m.status === "removed" || !m.phoneEnc) return null;
+  return c.dec(m.phoneEnc);
+}
+
+/** M24 §25 (gym-whatsapp): a counter or online fee payment of this gym, for sending its receipt; null otherwise. */
+async function feePayment(gymId, feePaymentId) {
+  const p = await GymFeePayment.findOne({ where: { id: feePaymentId, gymId }, attributes: ['id', 'memberId', 'amountPoisha', 'method', 'receiptNo'] });
+  if (!p || !p.receiptNo || p.method === "opening" || Number(p.amountPoisha) <= 0) return null;
+  return { id: p.id, memberId: p.memberId, amountPoisha: Number(p.amountPoisha), receiptNo: p.receiptNo };
+}
+
 async function memberOfUser(memberId, userId) {
   const m = await GymMember.findOne({ where: { id: memberId, userId } });
   if (!m || m.status === "removed") return null;
@@ -385,6 +402,8 @@ module.exports = {
   segmentMemberIds,
   reachOf,
   memberOfUser,
+  memberPhone,
+  feePayment,
   hasRunningMembership,
   checkInDates,
 };

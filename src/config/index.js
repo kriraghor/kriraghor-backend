@@ -59,6 +59,18 @@ const schema = z.object({
   NID_HMAC_SECRET: z.string().min(16),
 
   SMS_DRIVER: z.enum(['console', 'memory']).default('console'),
+  // M24 §25 WhatsApp for gyms (built off: gym_whatsapp.api_enabled). memory: tests; console: prints; cloud:
+  // Meta's WhatsApp Cloud API with the app below (Kriraghor's Meta app; values from the cluster's secrets).
+  WHATSAPP_DRIVER: z.enum(['console', 'memory', 'cloud']).default('console'),
+  META_APP_ID: z.string().optional(),
+  META_APP_SECRET: z.string().optional(),
+  // The embedded sign-up configuration id (Facebook Login for Business), public: the gym panel needs it.
+  META_ES_CONFIG_ID: z.string().optional(),
+  // Kriraghor's credit line shared with each gym's WhatsApp Business account (Kriraghor pays Meta, 21 Nov 2026).
+  META_CREDIT_LINE_ID: z.string().optional(),
+  META_GRAPH_VERSION: z.string().regex(/^v\d+\.\d+$/).default('v23.0'),
+  META_GRAPH_URL: z.string().default('https://graph.facebook.com'),
+  WHATSAPP_WEBHOOK_VERIFY_TOKEN: z.string().optional(),
   PASSWORD_BREACH_CHECK: bool.default(false),
 
   // M08 push to the mobile app: `log` prints one line per message (local), `expo` sends through the Expo push API.
@@ -187,6 +199,15 @@ module.exports = {
     dataKey: Buffer.from(env.DATA_ENCRYPTION_KEY, 'base64'),
   },
   sms: { driver: env.SMS_DRIVER },
+  whatsapp: {
+    driver: env.NODE_ENV === 'test' ? 'memory' : env.WHATSAPP_DRIVER,
+    appId: env.META_APP_ID ?? null,
+    appSecret: env.META_APP_SECRET ?? null,
+    configId: env.META_ES_CONFIG_ID ?? null,
+    creditLineId: env.META_CREDIT_LINE_ID ?? null,
+    graphUrl: `${env.META_GRAPH_URL.replace(/\/+$/, '')}/${env.META_GRAPH_VERSION}`,
+    verifyToken: env.WHATSAPP_WEBHOOK_VERIFY_TOKEN ?? null,
+  },
   push: {
     driver: env.NODE_ENV === 'test' ? 'memory' : env.PUSH_DRIVER,
     expoAccessToken: env.EXPO_ACCESS_TOKEN,

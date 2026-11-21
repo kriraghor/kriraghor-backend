@@ -25,7 +25,7 @@ const DAY_MS = 86400000;
 
 const TIERS = Object.freeze(['free', 'basic', 'standard', 'pro']);
 // M27 round 1 adds expenses (with the cash drawer), lockers, pos (counter shop and stock) and pnl (profit and loss).
-const FEATURES = Object.freeze(['attendance', 'reminders', 'online_fees', 'reports', 'trainers', 'plans', 'multi_gym', 'expenses', 'lockers', 'pos', 'pnl', 'classes', 'points', 'notices', 'leads', 'staff_attendance', 'equipment', 'payroll', 'visits', 'progress', 'desk_mode']);
+const FEATURES = Object.freeze(['attendance', 'reminders', 'online_fees', 'reports', 'trainers', 'plans', 'multi_gym', 'expenses', 'lockers', 'pos', 'pnl', 'classes', 'points', 'notices', 'leads', 'staff_attendance', 'equipment', 'payroll', 'visits', 'progress', 'desk_mode', 'whatsapp']);
 const METHODS = Object.freeze(['cash', 'owner_bkash', 'owner_nagad', 'card_counter', 'other']);
 const LEFT_REASONS = Object.freeze(['price', 'moved', 'injury', 'other_gym', 'schedule', 'unknown', 'other']);
 const SHORT_CODE = /^[A-Z]{2,6}$/;
@@ -641,6 +641,25 @@ function bundleInvoiceLines({ bundles, size, price, vat }) {
   return { lines, subtotal: amount, vat: vatPoisha, total: amount + vatPoisha, units: bundles * size };
 }
 
+/** M24 §25: a WhatsApp units bundle invoice (the SMS bundle's lines with the WhatsApp line). */
+function whatsappBundleLines({ bundles, size, price, vat }) {
+  const calc = bundleInvoiceLines({ bundles, size, price, vat });
+  calc.lines[0] = { ...calc.lines[0], kind: 'whatsapp_bundle', descriptionEn: `WhatsApp bundle: ${bundles} × ${size} units`, descriptionBn: `WhatsApp বান্ডেল: ${bundles} × ${size} ইউনিট` };
+  return calc;
+}
+
+/**
+ * M24 §25: why a WhatsApp message cannot hold its units now, or null: off (the platform), tier (below the
+ * plan of the whatsapp feature), restricted (an overdue invoice), addon (WhatsApp not switched on), balance.
+ */
+function whatsappBlock({ enabled, featureOk, restricted, addonStatus, balance, units }) {
+  if (!enabled) return 'off';
+  if (!featureOk) return 'tier';
+  if (restricted) return 'restricted';
+  if (addonStatus !== 'active') return 'addon';
+  return balance >= units ? null : 'balance';
+}
+
 // ---------------------------------------------------------------- dunning (M24-FR-86, §8.6, §8.7)
 
 /** The due date (Dhaka) of an invoice issued on `issuedOn`, and the instant it turns overdue (the next day starts). */
@@ -1139,6 +1158,8 @@ module.exports = {
   visitNoShow,
   smsBlock,
   bundleInvoiceLines,
+  whatsappBundleLines,
+  whatsappBlock,
   smsSettleUnits,
   smsCrossing,
   smsAllowanceLeft,

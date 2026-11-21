@@ -178,6 +178,7 @@ const GymPage = GymCard.extend({
   advanceDays: z.number().int(),
   today: date,
   joinRequestsOpen: z.boolean().meta({ description: 'M24: the gym takes join requests (live, managed on gym.kriraghor.com, switched on); show Join this gym' }),
+  whatsapp: nullable(z.string().regex(/^\+8801[3-9]\d{8}$/)).meta({ description: 'M24-FR-158: the WhatsApp chat number (the branch’s own, else the owner’s, E.164), or null; open wa.me with it' }),
 }).meta({ id: 'GymPage' });
 const OwnerGym = z
   .object({

@@ -5,6 +5,11 @@ process.env.NODE_ENV = 'test';
 process.env.SMS_DRIVER = 'memory';
 process.env.PASSWORD_BREACH_CHECK = 'false';
 process.env.EMAIL_DRIVER = 'memory';
+// M24 §25: Meta's app values for the WhatsApp webhook signature and check (test values only; the driver is memory).
+process.env.META_APP_ID = '1234567890';
+process.env.META_APP_SECRET = 'test-meta-app-secret';
+process.env.META_ES_CONFIG_ID = '9876543210';
+process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN = 'test-verify-token';
 process.env.GOOGLE_CLIENT_IDS = 'test-client-id.apps.googleusercontent.com';
 process.env.CSRF_SECRET = process.env.CSRF_SECRET || 'test-csrf-secret-that-is-at-least-32-chars';
 process.env.CORS_ORIGINS = 'http://localhost:3000,http://localhost:3001,http://*.kriraghor.localhost';

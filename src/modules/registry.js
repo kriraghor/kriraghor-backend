@@ -41,6 +41,8 @@ function registerAll() {
   // M24: a linked member's pass admission is a check-in; verified phones pick up their gym invites.
   require('./gym-manage').consumers.registerGymManageConsumers();
   require('./gym-ops').consumers.registerGymOpsConsumers();
+  // M24 §25: the automatic WhatsApp messages follow the receipt, reminder and payment link events.
+  require('./gym-whatsapp').consumers.registerGymWhatsappConsumers();
   // M17 ratings: pros (M11), shops (M12) and gyms (M20) keep their rating columns from review.aggregate_updated.
   require('./hire/hire.reviews').registerHireReviewConsumers();
   require('./market/market.reviews').registerMarketReviewConsumers();

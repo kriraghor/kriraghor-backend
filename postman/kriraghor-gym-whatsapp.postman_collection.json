@@ -1,0 +1,1502 @@
+{
+  "info": {
+    "name": "Kriraghor API: M24 · WhatsApp",
+    "description": "M24 §25 (tester feedback item 5; product owner 19 and 21 Nov 2026; ADR-012). Step 1 works today: the owner’s WhatsApp number for every branch, a branch’s own number, the gym page button, and members’ consents (receipts and reminders; news and offers).\n\nStep 2 is built and switched off (gym_whatsapp.api_enabled); this run switches it on against the memory driver: each gym’s own WhatsApp Business number, Kriraghor’s templates, units resold by Kriraghor, Meta’s webhook.\n\nUnattended: `node postman/run-m24-whatsapp.js`. Rebuild this file with: node postman/build-collection-m24-whatsapp.js",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000/api/v1"
+    },
+    {
+      "key": "ownerToken",
+      "value": ""
+    },
+    {
+      "key": "deskToken",
+      "value": ""
+    },
+    {
+      "key": "aminToken",
+      "value": ""
+    },
+    {
+      "key": "gymId",
+      "value": ""
+    },
+    {
+      "key": "slug",
+      "value": ""
+    },
+    {
+      "key": "aminMember",
+      "value": ""
+    },
+    {
+      "key": "bithiMember",
+      "value": ""
+    },
+    {
+      "key": "appSecret",
+      "value": ""
+    },
+    {
+      "key": "k1",
+      "value": ""
+    },
+    {
+      "key": "k2",
+      "value": ""
+    },
+    {
+      "key": "k3",
+      "value": ""
+    },
+    {
+      "key": "k4",
+      "value": ""
+    },
+    {
+      "key": "senderId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Chat numbers and the gym page (M24-FR-157, FR-158)",
+      "item": [
+        {
+          "name": "A number that is not a Bangladesh mobile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 VALIDATION_FAILED', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('VALIDATION_FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"number\": \"01212345678\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/whatsapp/number",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "whatsapp",
+                "number"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The owner’s number for every branch",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"stored as E.164 and used by the branch\", () => { pm.expect(j.number === '+8801712345678' && j.gyms[0].source === 'owner' && j.gyms[0].shown === '+8801712345678').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"number\": \"01712345678\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/whatsapp/number",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "whatsapp",
+                "number"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The gym page shows it",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"whatsapp\", () => { pm.expect(j.whatsapp === '+8801712345678').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/gym/gyms/{{slug}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "gym",
+                "gyms",
+                "{{slug}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The branch’s own number wins",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"own\", () => { pm.expect(j.source === 'own' && j.shown === '+8801812345678' && j.ownerNumber === '+8801712345678').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"number\": \"01812345678\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/whatsapp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "whatsapp"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The gym page shows the branch’s number",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"whatsapp\", () => { pm.expect(j.whatsapp === '+8801812345678').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/gym/gyms/{{slug}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "gym",
+                "gyms",
+                "{{slug}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff may not change it",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 PERMISSION_REQUIRED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('PERMISSION_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"showOnPage\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/whatsapp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "whatsapp"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. A member’s WhatsApp consents (M24-FR-159, FR-160)",
+      "item": [
+        {
+          "name": "The desk records Amin’s answer (his phone, both)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"desk, last 4 only\", () => { pm.expect(j.source === 'desk' && j.service && j.news && /^\\d{4}$/.test(j.numberLast4) && !/01\\d{9}/.test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"service\": true,\n  \"news\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/members/{{aminMember}}/whatsapp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "members",
+                "{{aminMember}}",
+                "whatsapp"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Amin reads his own",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"his number and the gym\", () => { pm.expect(/^\\+8801\\d{9}$/.test(j.number) && j.gymName.length > 0 && j.currentVersion === 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{aminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/gym-whatsapp/{{aminMember}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gym-whatsapp",
+                "{{aminMember}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Amin keeps receipts, stops news (and back on)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"member\", () => { pm.expect(j.service === true && j.news === true).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{aminToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"number\": null,\n  \"service\": true,\n  \"news\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/me/gym-whatsapp/{{aminMember}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gym-whatsapp",
+                "{{aminMember}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Somebody else’s membership is not found",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 404', () => {",
+                  "  pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{aminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/gym-whatsapp/{{bithiMember}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "gym-whatsapp",
+                "{{bithiMember}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Units and connecting a number (M24-FR-161 to FR-163, FR-166)",
+      "item": [
+        {
+          "name": "Switch WhatsApp on (the month’s allowance)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"on with 20 units\", () => { pm.expect(j.status === 'active' && j.balance === 20).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/billing/whatsapp-addon",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "billing",
+                "whatsapp-addon"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Connect without an Idempotency-Key",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 400', () => {",
+                  "  pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"code-123\",\n  \"wabaId\": \"1110001\",\n  \"phoneNumberId\": \"2220002\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/whatsapp/senders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "whatsapp",
+                "senders"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Connect the number from the embedded sign-up",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "if (ok && j) { const v = get(j, '0.id'); if (v !== undefined && v !== null && v !== '') pm.collectionVariables.set('senderId', v); }",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"16 templates pending, no token\", () => { pm.expect(j.length === 1 && j[0].templates.pending === 16 && !/token/i.test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{k1}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"code-123\",\n  \"wabaId\": \"1110001\",\n  \"phoneNumberId\": \"2220002\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/whatsapp/senders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "whatsapp",
+                "senders"
+              ]
+            }
+          }
+        },
+        {
+          "name": "The branch sends from it",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"sender\", () => { pm.expect(j.senderId === pm.variables.get('senderId') && j.sender.status === 'connected').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/whatsapp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "whatsapp"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Meta’s webhook (M24-FR-169)",
+      "item": [
+        {
+          "name": "Meta’s check with the right token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"the challenge\", () => { pm.expect(pm.response.text() === '42').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=test-verify-token&hub.challenge=42",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "webhooks",
+                "whatsapp"
+              ],
+              "query": [
+                {
+                  "key": "hub.mode",
+                  "value": "subscribe"
+                },
+                {
+                  "key": "hub.verify_token",
+                  "value": "test-verify-token"
+                },
+                {
+                  "key": "hub.challenge",
+                  "value": "42"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Meta’s check with a wrong token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=wrong&hub.challenge=42",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "webhooks",
+                "whatsapp"
+              ],
+              "query": [
+                {
+                  "key": "hub.mode",
+                  "value": "subscribe"
+                },
+                {
+                  "key": "hub.verify_token",
+                  "value": "wrong"
+                },
+                {
+                  "key": "hub.challenge",
+                  "value": "42"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "A wrong signature",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const raw = pm.variables.replaceIn(pm.request.body.raw);",
+                  "const secret = 'wrong-secret';",
+                  "pm.request.headers.upsert({ key: 'X-Hub-Signature-256', value: 'sha256=' + CryptoJS.HmacSHA256(raw, secret).toString() });"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 401 WEBHOOK_SIGNATURE_INVALID', () => {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(j && j.code).to.eql('WEBHOOK_SIGNATURE_INVALID');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"object\": \"whatsapp_business_account\",\n  \"entry\": [\n    {\n      \"id\": \"1110001\",\n      \"changes\": [\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_receipt\",\n            \"message_template_language\": \"en\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_receipt\",\n            \"message_template_language\": \"bn\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_renewal_due\",\n            \"message_template_language\": \"en\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_renewal_due\",\n            \"message_template_language\": \"bn\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_ends_today\",\n            \"message_template_language\": \"en\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_ends_today\",\n            \"message_template_language\": \"bn\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_overdue\",\n            \"message_template_language\": \"en\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_overdue\",\n            \"message_template_language\": \"bn\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_pay_link\",\n            \"message_template_language\": \"en\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_pay_link\",\n            \"message_template_language\": \"bn\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_update\",\n            \"message_template_language\": \"en\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_update\",\n            \"message_template_language\": \"bn\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_notice\",\n            \"message_template_language\": \"en\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_notice\",\n            \"message_template_language\": \"bn\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_greeting\",\n            \"message_template_language\": \"en\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_greeting\",\n            \"message_template_language\": \"bn\"\n          }\n        }\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhooks/whatsapp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "webhooks",
+                "whatsapp"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Meta approves the 16 templates",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const raw = pm.variables.replaceIn(pm.request.body.raw);",
+                  "const secret = pm.variables.get('appSecret');",
+                  "pm.request.headers.upsert({ key: 'X-Hub-Signature-256', value: 'sha256=' + CryptoJS.HmacSHA256(raw, secret).toString() });"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"16 changes\", () => { pm.expect(j.handled === 16).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"object\": \"whatsapp_business_account\",\n  \"entry\": [\n    {\n      \"id\": \"1110001\",\n      \"changes\": [\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_receipt\",\n            \"message_template_language\": \"en\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_receipt\",\n            \"message_template_language\": \"bn\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_renewal_due\",\n            \"message_template_language\": \"en\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_renewal_due\",\n            \"message_template_language\": \"bn\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_ends_today\",\n            \"message_template_language\": \"en\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_ends_today\",\n            \"message_template_language\": \"bn\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_overdue\",\n            \"message_template_language\": \"en\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_overdue\",\n            \"message_template_language\": \"bn\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_pay_link\",\n            \"message_template_language\": \"en\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_pay_link\",\n            \"message_template_language\": \"bn\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_update\",\n            \"message_template_language\": \"en\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_update\",\n            \"message_template_language\": \"bn\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_notice\",\n            \"message_template_language\": \"en\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_notice\",\n            \"message_template_language\": \"bn\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_greeting\",\n            \"message_template_language\": \"en\"\n          }\n        },\n        {\n          \"field\": \"message_template_status_update\",\n          \"value\": {\n            \"event\": \"APPROVED\",\n            \"message_template_name\": \"kg_greeting\",\n            \"message_template_language\": \"bn\"\n          }\n        }\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhooks/whatsapp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "webhooks",
+                "whatsapp"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Sending (M24-FR-164 to FR-168, FR-170)",
+      "item": [
+        {
+          "name": "Estimate a notice to active members",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Amin only; 4 units of 20\", () => { pm.expect(j.members === 2 && j.reachable === 1 && j.no_consent === 1 && j.unitsNeeded === 4 && j.balance === 20).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kind\": \"notice\",\n  \"segment\": {\n    \"kind\": \"active\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/whatsapp/estimate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "whatsapp",
+                "estimate"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Staff without whatsapp.send",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 403 PERMISSION_REQUIRED', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(j && j.code).to.eql('PERMISSION_REQUIRED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{deskToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kind\": \"notice\",\n  \"segment\": {\n    \"kind\": \"active\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/whatsapp/estimate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "whatsapp",
+                "estimate"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send the notice",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 201', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"queued to Amin, 4 units held\", () => { pm.expect(j.kind === 'notice' && j.targetCount === 2 && j.queuedCount === 1 && j.unitsHeld === 4).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{k2}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kind\": \"notice\",\n  \"segment\": {\n    \"kind\": \"active\"\n  },\n  \"title\": \"New Zumba class\",\n  \"message\": \"From Monday at 7 pm.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/whatsapp/sends",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "whatsapp",
+                "sends"
+              ]
+            }
+          }
+        },
+        {
+          "name": "History",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"one send, one left today\", () => { pm.expect(j.items.length === 1 && j.bulkLeft === 1).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/whatsapp/sends",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "whatsapp",
+                "sends"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Amin’s messages",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"the notice text, no number\", () => { pm.expect(j.items[0].text.includes('New Zumba class') && !/\\+880/.test(pm.response.text())).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/whatsapp/messages?memberId={{aminMember}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "whatsapp",
+                "messages"
+              ],
+              "query": [
+                {
+                  "key": "memberId",
+                  "value": "{{aminMember}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "A single update to Bithi, who agreed to nothing",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 GYM_WHATSAPP_BLOCKED', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('GYM_WHATSAPP_BLOCKED');",
+                  "});",
+                  "pm.test(\"no consent\", () => { pm.expect(j.reason === 'no_consent').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{k3}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kind\": \"single\",\n  \"memberId\": \"{{bithiMember}}\",\n  \"message\": \"Hi\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/whatsapp/sends",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "whatsapp",
+                "sends"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Receipts go on WhatsApp automatically",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"kinds\", () => { pm.expect(j.autoKinds.join() === 'receipt,overdue').to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"autoKinds\": [\n    \"receipt\",\n    \"overdue\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/whatsapp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "whatsapp"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Disconnecting (M24-FR-161)",
+      "item": [
+        {
+          "name": "Disconnect the number",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"none left\", () => { pm.expect(j.length === 0).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/whatsapp/senders/{{senderId}}/disconnect",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "whatsapp",
+                "senders",
+                "{{senderId}}",
+                "disconnect"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sending now needs a number",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 GYM_WHATSAPP_NO_SENDER', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('GYM_WHATSAPP_NO_SENDER');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{k4}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kind\": \"notice\",\n  \"segment\": {\n    \"kind\": \"active\"\n  },\n  \"title\": \"Again\",\n  \"message\": \"Again\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/manage/gyms/{{gymId}}/whatsapp/sends",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "gyms",
+                "{{gymId}}",
+                "whatsapp",
+                "sends"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Twice is refused",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 409 GYM_WHATSAPP_SENDER_STATE', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(j && j.code).to.eql('GYM_WHATSAPP_SENDER_STATE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/manage/whatsapp/senders/{{senderId}}/disconnect",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manage",
+                "whatsapp",
+                "senders",
+                "{{senderId}}",
+                "disconnect"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

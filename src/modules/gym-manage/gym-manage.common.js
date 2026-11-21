@@ -75,6 +75,9 @@ const ERRORS = {
   GYM_SMS_ADDON_UNAVAILABLE: [409, 'The SMS add-on is not available on this plan right now'],
   GYM_SMS_ADDON_OFF: [409, 'Switch the SMS add-on on first'],
   GYM_SMS_BALANCE_SHORT: [409, 'That would take the SMS balance below 0'],
+  // M24 §25: WhatsApp units.
+  GYM_WHATSAPP_UNAVAILABLE: [409, 'WhatsApp messages are not available on this plan right now'],
+  GYM_WHATSAPP_OFF: [409, 'Switch WhatsApp messages on first'],
   // M24 §19: a member renews by themselves.
   GYM_SELF_RENEW_OFF: [409, 'This gym does not take renewals in the app right now. Ask at the front desk'],
   GYM_RENEWAL_EXISTS: [409, 'A renewal is already waiting for this membership'],

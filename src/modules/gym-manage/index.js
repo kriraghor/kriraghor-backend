@@ -7,6 +7,7 @@
  *
  *   owners     M20 creates the owner's subscription row with their first gym (M24-FR-09, FR-81)
  *   facts      M08 template facts (a member's code and link state, receipt and pay links; never a name or phone)
+ *   whatsappUnits  gym-whatsapp: hold and settle the owner's WhatsApp units (M24 §25)
  *   notices    M08: who receives a member notice (the owner's plan, the kind switched on, linked or by email)
  *   fees       M20 pass purchase: fees.gym_pct as it applies to a gym, overrides included (M24-FR-95)
  *   reads      M19 the gym owner's to-dos; M20's business adapter: a gym's staff to-dos
@@ -15,7 +16,8 @@
  *   desk       the auth middleware's desk-mode guard and the realtime server's desk room (M24 §21)
  *   ops        M27 gym-ops: access to one gym, today's date, receipt numbers and VAT, a member, the money
  *              collected for profit and loss (round 1); notice segments and reach, reward writes
- *              (extend, waive), member by account, check-in dates (round 2)
+ *              (extend, waive), member by account, check-in dates (round 2); a member's phone for
+ *              gym-whatsapp (M24 §25)
  */
 const lazy = (file, names, values = []) => {
   const out = Object.fromEntries(names.map((n) => [n, (...args) => require(file)[n](...args)]));
@@ -42,6 +44,8 @@ module.exports = {
   // M20-FR-17: how many booked trial visits a holiday or special hours would cancel (the owner's preview in gym).
   visits: lazy('./guests.service', ['specialDayHits']),
   consumers: lazy('./gym-manage.consumers', ['registerGymManageConsumers']),
+  // M24 §25 (gym-whatsapp): the owner's WhatsApp units, held per message and settled on delivery.
+  whatsappUnits: lazy('./whatsapp-units.service', ['planIn', 'reserveIn', 'settleIn', 'view', 'unitsFor']),
   // M24 §21 desk mode (ADR-010): the request guard after a customer token, and Socket.IO's desk room.
   desk: lazy('./desk.service', ['guard', 'deskGymOf']),
   ops: Object.freeze({
@@ -65,6 +69,9 @@ module.exports = {
     segmentMemberIds: (...args) => require('./ops.service').segmentMemberIds(...args),
     reachOf: (...args) => require('./ops.service').reachOf(...args),
     memberOfUser: (...args) => require('./ops.service').memberOfUser(...args),
+    // M24 §25 (gym-whatsapp): a member's phone, the default WhatsApp number of their consent.
+    memberPhone: (...args) => require('./ops.service').memberPhone(...args),
+    feePayment: (...args) => require('./ops.service').feePayment(...args),
     hasRunningMembership: (...args) => require('./ops.service').hasRunningMembership(...args),
     checkInDates: (...args) => require('./ops.service').checkInDates(...args),
     // round 3

@@ -503,6 +503,37 @@ const JOBS = [
     run: async () => gymManage.smsDaily(),
   },
   {
+    // M24 §25: the month's WhatsApp allowance left expires and the new month's is granted.
+    name: 'gym-manage.whatsapp-allowance',
+    queue: QUEUES.GYM,
+    pattern: '15 0 1 * *',
+    tz: 'Asia/Dhaka',
+    run: async () => gymManage.whatsappAllowance(),
+  },
+  {
+    // M24 §25: WhatsApp bundles past their date expire; unpaid bundle invoices past their days are voided.
+    name: 'gym-manage.whatsapp-daily',
+    queue: QUEUES.GYM,
+    pattern: '25 0 * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => gymManage.whatsappDaily(),
+  },
+  {
+    // M24 §25: queued WhatsApp messages whose time has come go out, at most gym_whatsapp.send_per_minute per number.
+    name: 'gym-whatsapp.send',
+    queue: QUEUES.GYM,
+    every: 60000,
+    run: async () => require('../modules/gym-whatsapp/gym-whatsapp.jobs').send(),
+  },
+  {
+    // M24 §25: holds of messages not delivered within a day go back; pending templates are checked with Meta.
+    name: 'gym-whatsapp.daily',
+    queue: QUEUES.GYM,
+    pattern: '35 0 * * *',
+    tz: 'Asia/Dhaka',
+    run: async () => require('../modules/gym-whatsapp/gym-whatsapp.jobs').daily(),
+  },
+  {
     // Fee overrides past valid_to → ended (M24-FR-94).
     name: 'gym-manage.overrides-end',
     queue: QUEUES.GYM,

@@ -67,7 +67,7 @@ const SNAPSHOT_KEYS = [
 // ---------------------------------------------------------------- views
 
 /** Lines in the order the invoice reads (the plan, its adjustments, referrals, add-ons, VAT). */
-const LINE_ORDER = ['tier', 'proration', 'founding_free', 'founding_discount', 'referral', 'sms_addon', 'sms_bundle', 'adjustment', 'vat'];
+const LINE_ORDER = ['tier', 'proration', 'founding_free', 'founding_discount', 'referral', 'sms_addon', 'sms_bundle', 'whatsapp_bundle', 'adjustment', 'vat'];
 const byLineOrder = (a, b) => LINE_ORDER.indexOf(a.kind) - LINE_ORDER.indexOf(b.kind) || b.amountPoisha - a.amountPoisha;
 const lineView = (l) => ({ id: l.id, kind: l.kind, descriptionEn: l.descriptionEn, descriptionBn: l.descriptionBn, quantity: l.quantity, unitPoisha: l.unitPoisha, amountPoisha: l.amountPoisha });
 
@@ -326,6 +326,8 @@ async function onCaptured({ payment, transaction }) {
   await c.publish(transaction, 'gym_invoice.paid', 'gym_subscription_invoice', inv.id, invoicePayload(inv));
   // Prompt 3b (M24-FR-98): a bundle's units arrive with the payment.
   if (inv.kind === 'sms_bundle') await require('./sms.service').onBundlePaid(transaction, inv);
+  // M24 §25: WhatsApp units arrive with the payment.
+  if (inv.kind === 'whatsapp_bundle') await require('./whatsapp-units.service').onBundlePaid(transaction, inv);
   const sub = await GymOwnerSubscription.findByPk(inv.subscriptionId, { transaction, lock: transaction.LOCK.UPDATE });
   await syncSubscriptionIn(transaction, sub, { now });
   return 'accept';

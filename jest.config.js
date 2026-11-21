@@ -61,6 +61,8 @@ module.exports = {
     './src/modules/gym-manage/gym-manage.rules.js': FULL,
     // M27 gym operations: drawer, sale totals, stock alerts, lockers, profit and loss, VAT.
     './src/modules/gym-ops/gym-ops.rules.js': FULL,
+    // M24 §25 WhatsApp (chat numbers, consents; the units and send rules in step 2).
+    './src/modules/gym-whatsapp/gym-whatsapp.rules.js': FULL,
     // M22 fees, prize fund, contracts, invoices, subdomains and contrast.
     './src/modules/organiser-saas/saas.rules.js': FULL,
     // M23 event phase, stage links, the qualifying cut, core players, alerts and polls.

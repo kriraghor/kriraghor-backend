@@ -94,3 +94,23 @@ describe('the short pay-link code for an SMS', () => {
     expect(r.looksLikeShortCode(undefined)).toBe(false);
   });
 });
+
+// M24 §25: the WhatsApp units (the same shape as the SMS add-on, without a monthly fee).
+describe('M24 §25 whatsappBlock: may this message hold its units?', () => {
+  const ok = { enabled: true, featureOk: true, restricted: false, addonStatus: 'active', balance: 4, units: 4 };
+  test('yes', () => expect(r.whatsappBlock(ok)).toBeNull());
+  test('off', () => expect(r.whatsappBlock({ ...ok, enabled: false })).toBe('off'));
+  test('below the plan', () => expect(r.whatsappBlock({ ...ok, featureOk: false })).toBe('tier'));
+  test('restricted', () => expect(r.whatsappBlock({ ...ok, restricted: true })).toBe('restricted'));
+  test('not switched on', () => expect(r.whatsappBlock({ ...ok, addonStatus: 'paused' })).toBe('addon'));
+  test('short', () => expect(r.whatsappBlock({ ...ok, balance: 3 })).toBe('balance'));
+});
+
+describe('M24 §25 whatsappBundleLines', () => {
+  test('the WhatsApp line, VAT as for SMS bundles', () => {
+    const calc = r.whatsappBundleLines({ bundles: 2, size: 500, price: 50000, vat: { enabled: true, pct: 15 } });
+    expect(calc).toMatchObject({ subtotal: 100000, vat: 15000, total: 115000, units: 1000 });
+    expect(calc.lines[0]).toMatchObject({ kind: 'whatsapp_bundle', quantity: 2, descriptionEn: 'WhatsApp bundle: 2 × 500 units' });
+    expect(calc.lines[1].kind).toBe('vat');
+  });
+});

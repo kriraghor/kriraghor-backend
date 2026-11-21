@@ -147,6 +147,9 @@ const visitsDaily = (now = new Date()) => require('./guests.service').daily(now)
 // Prompt 3b, the SMS add-on (§6.7): the monthly allowance; expiring bundles, stale holds, unpaid bundle invoices.
 const smsAllowance = (now = new Date()) => require('./sms.service').allowance(now);
 const smsDaily = (now = new Date()) => require('./sms.service').daily(now);
+// M24 §25: the WhatsApp allowance (the 1st) and bundle expiry with unpaid bundle invoices (daily).
+const whatsappAllowance = (now = new Date()) => require('./whatsapp-units.service').allowance(now);
+const whatsappDaily = (now = new Date()) => require('./whatsapp-units.service').daily(now);
 const monthlyReport = (now = new Date()) => require('./reminders.service').monthlyReport(now);
 const activeCount = (now = new Date()) => require('./invoices.service').activeCount(now);
 const invoiceCycle = (now = new Date()) => require('./invoices.service').cycle(now);
@@ -156,4 +159,4 @@ const onlineFeeRelease = (now = new Date()) => require('./links-pay.service').re
 const overridesEnd = (now = new Date()) => require('./fees.service').overridesEnd(now);
 const reconcile = () => require('./invariants').reconcile();
 
-module.exports = { daily, duesOverdue, requestsExpire, importHousekeeping, reminders, morningSummary, visitsDaily, smsAllowance, smsDaily, monthlyReport, activeCount, invoiceCycle, invoiceDunning, linksExpire, onlineFeeRelease, overridesEnd, reconcile };
+module.exports = { daily, duesOverdue, requestsExpire, importHousekeeping, reminders, morningSummary, visitsDaily, smsAllowance, smsDaily, whatsappAllowance, whatsappDaily, monthlyReport, activeCount, invoiceCycle, invoiceDunning, linksExpire, onlineFeeRelease, overridesEnd, reconcile };
