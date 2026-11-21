@@ -15,7 +15,8 @@
  *   desk       the auth middleware's desk-mode guard and the realtime server's desk room (M24 §21)
  *   ops        M27 gym-ops: access to one gym, today's date, receipt numbers and VAT, a member, the money
  *              collected for profit and loss (round 1); notice segments and reach, reward writes
- *              (extend, waive), member by account, check-in dates (round 2)
+ *              (extend, waive), member by account, check-in dates (round 2); a member's phone for
+ *              gym-whatsapp (M24 §25)
  */
 const lazy = (file, names, values = []) => {
   const out = Object.fromEntries(names.map((n) => [n, (...args) => require(file)[n](...args)]));
@@ -65,6 +66,8 @@ module.exports = {
     segmentMemberIds: (...args) => require('./ops.service').segmentMemberIds(...args),
     reachOf: (...args) => require('./ops.service').reachOf(...args),
     memberOfUser: (...args) => require('./ops.service').memberOfUser(...args),
+    // M24 §25 (gym-whatsapp): a member's phone, the default WhatsApp number of their consent.
+    memberPhone: (...args) => require('./ops.service').memberPhone(...args),
     hasRunningMembership: (...args) => require('./ops.service').hasRunningMembership(...args),
     checkInDates: (...args) => require('./ops.service').checkInDates(...args),
     // round 3

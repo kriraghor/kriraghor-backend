@@ -17,7 +17,7 @@ const GROUPS = {
   booking: ['grounds', 'bookings'],
   marketplace: ['market', 'orders'],
   hiring: ['hire'],
-  gym: ['gym', 'gym-manage', 'gym-ops'],
+  gym: ['gym', 'gym-manage', 'gym-ops', 'gym-whatsapp'],
   esports: ['esports', 'esports-events', 'organisations', 'organiser-saas'],
   tournament: ['teams', 'tournaments', 'scoring', 'tournament-posts'],
 };
@@ -53,6 +53,8 @@ const OWNERS = {
   'organiser-saas': ['OrganiserContract', 'OrganiserInvoice', 'OrganiserInvoiceLine', 'OrganiserPrizeFund', 'OrganisationBranding'],
   'esports-events': ['EsportsEvent', 'EsportsEventStage', 'EsportsEventQualification', 'EsportsEventStream', 'EsportsEventSponsor', 'EsportsEventPoll', 'EsportsEventPollOption', 'EsportsEventPollVote', 'EsportsEventFollow', 'EsportsEventFeedItem', 'EsportsEventAlert'],
   'esports': ['EsportsGameProfile', 'EsportsUidBan', 'EsportsSquad', 'EsportsSquadMember', 'EsportsTournament', 'EsportsPrizePlace', 'EsportsStage', 'EsportsMatch', 'EsportsRegistration', 'EsportsRegistrationPlayer', 'EsportsCheckin', 'EsportsRoomCredential', 'EsportsCredentialView', 'EsportsResult', 'EsportsResultPlayer', 'EsportsResultEvidence', 'EsportsResultDispute', 'EsportsDisqualification', 'EsportsStanding', 'EsportsPrizeAward', 'EsportsPrizeShare', 'EsportsStream', 'EsportsRankingEntry', 'EsportsRanking'],
+  // M24 §25 WhatsApp (21 Nov 2026): chat numbers and members' WhatsApp consents.
+  'gym-whatsapp': ['GymWhatsappOwner', 'GymWhatsappGym', 'GymWhatsappConsent'],
   // M27 gym operations (round 1): expenses, the cash drawer, the counter shop and lockers.
   'gym-ops': ['GymExpenseCategory', 'GymExpense', 'GymCashSession', 'GymProduct', 'GymStockMove', 'GymSale', 'GymSaleLine', 'GymLocker', 'GymLockerRental', 'GymClass', 'GymClassSchedule', 'GymClassSession', 'GymClassBooking', 'GymReward', 'GymPointEntry', 'GymMemberReferral', 'GymNotice', 'GymLead', 'GymStaffShift', 'GymStaffTime', 'GymStaffPay', 'GymPayrollRun', 'GymPayrollLine', 'GymAsset', 'GymAssetLog'],
   'tournament-posts': ['TournamentPost', 'TournamentPostPhoto', 'TournamentPostComment', 'TournamentPostThread', 'TournamentPostMessage'],

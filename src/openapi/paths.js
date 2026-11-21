@@ -28,6 +28,7 @@ const gmS = require('../modules/gym-manage/gym-manage.schemas');
 const goS = require('../modules/gym-ops/gym-ops.schemas');
 const go2 = require('../modules/gym-ops/gym-ops-round2.schemas');
 const go3 = require('../modules/gym-ops/gym-ops-round3.schemas');
+const gwS = require('../modules/gym-whatsapp/gym-whatsapp.schemas');
 const orgS = require('../modules/organisations/organisations.schemas');
 const saS = require('../modules/organiser-saas/saas.schemas');
 const evS = require('../modules/esports-events/events.schemas');
@@ -1401,6 +1402,19 @@ function register(registry) {
     request: body(gmS.meCheckinBody),
     responses: { 201: json(gmS.EntranceCheckin, 'Counted'), 200: json(gmS.EntranceScan, 'Already checked in today, or checked out by a second scan after gym_manage.min_visit_minutes (M27-FR-41)'), ...errors({ ...COMMON_AUTH, 403: ['PHONE_REQUIRED', 'GYM_NOT_A_MEMBER', 'GYM_TIER_REQUIRED'], 409: ['GYM_ENTRY_BLOCKED', 'GYM_MEMBER_STATE'], 422: ['VALIDATION_FAILED', 'GYM_CHECKIN_TOKEN_INVALID'] }) } });
 
+
+  // ------------------------------------------------------------------ M24 §25 WhatsApp (step 1: chat numbers and members' consents)
+  const gwG = { params: gwS.gymParam };
+  const gwM = { params: gwS.memberParam };
+  const GW = { ...GM, 423: ['GYM_SUSPENDED'] };
+  p({ method: 'get', path: '/manage/whatsapp', tags: gmTag, summary: 'The owner’s WhatsApp number for every branch and each branch’s own number and gym page button (owner, gate run_gym) (M24-FR-157)', security: bearer, responses: { 200: json(gwS.OwnerWhatsapp), ...errors(GM) } });
+  p({ method: 'put', path: '/manage/whatsapp/number', tags: gmTag, summary: 'Set or remove the owner’s WhatsApp number, used by every branch without its own (owner; a Bangladesh mobile) (M24-FR-157)', security: bearer, request: body(gwS.ownerNumberBody), responses: { 200: json(gwS.OwnerWhatsapp), ...errors(GM) } });
+  gp('get', '/whatsapp', 'One branch’s WhatsApp number, the owner’s number it falls back to, and whether the gym page shows the button (owner) (M24-FR-157, FR-158)', { request: gwG, responses: { 200: json(gwS.GymWhatsapp), ...errors(GW) } });
+  gp('patch', '/whatsapp', 'Set the branch’s own WhatsApp number (null: use the owner’s) or switch the gym page button (owner) (M24-FR-157, FR-158)', { request: { ...gwG, ...body(gwS.gymPatch) }, responses: { 200: json(gwS.GymWhatsapp), ...errors(GW) } });
+  gp('get', '/members/{memberId}/whatsapp', 'A member’s WhatsApp consents: receipts and reminders, news and offers, the last 4 digits of the number (members.view) (M24-FR-159)', { request: gwM, responses: { 200: json(gwS.MemberConsent), ...errors(GW) } });
+  gp('put', '/members/{memberId}/whatsapp', 'Record the member’s WhatsApp number (null: their phone) and consents as agreed at the desk (members.edit); each change is kept (M24-FR-159, FR-160)', { request: { ...gwM, ...body(gwS.consentBody) }, responses: { 200: json(gwS.MemberConsent), ...errors(GW) } });
+  p({ method: 'get', path: '/me/gym-whatsapp/{memberId}', tags: gmTag, summary: 'My WhatsApp number at a gym and what I agreed to receive (a linked member) (M24-FR-159)', security: bearer, request: { params: gwS.myMemberParam }, responses: { 200: json(gwS.MyConsent), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'] }) } });
+  p({ method: 'put', path: '/me/gym-whatsapp/{memberId}', tags: gmTag, summary: 'Give my WhatsApp number (null: my phone in the gym’s record) and choose receipts and reminders, news and offers (a linked member) (M24-FR-159, FR-160)', security: bearer, request: { params: gwS.myMemberParam, ...body(gwS.consentBody) }, responses: { 200: json(gwS.MyConsent), ...errors({ ...COMMON_AUTH, 404: ['NOT_FOUND'], 423: ['GYM_SUSPENDED'], ...VALIDATION }) } });
 
   // ------------------------------------------------------------------ M27 gym operations, round 1 (expenses, drawer, P&L, shop, lockers)
   const goG = { params: goS.gymParam };

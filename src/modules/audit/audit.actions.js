@@ -474,6 +474,10 @@ const ACTIONS = {
   // M24 prompt 3b, the SMS add-on.
   'gym_sms_addon.started': A('M24', 'notice', 'Switched the SMS add-on on', 'SMS অ্যাড-অন চালু করা'),
   'gym_sms_addon.ended': A('M24', 'notice', 'Switched the SMS add-on off', 'SMS অ্যাড-অন বন্ধ করা'),
+  // M24 §25 WhatsApp (step 1): chat numbers and a member's consents (no number is written to the trail).
+  'gym_whatsapp.owner_number_set': A('M24', 'info', 'Changed the owner’s WhatsApp number for every branch', 'সব শাখার জন্য মালিকের WhatsApp নম্বর বদলানো'),
+  'gym_whatsapp.gym_number_set': A('M24', 'info', 'Changed a gym’s WhatsApp number or button', 'জিমের WhatsApp নম্বর বা বোতাম বদলানো'),
+  'gym_whatsapp.consent_recorded': A('M24', 'info', 'Recorded a member’s WhatsApp consent ({meta.source})', 'সদস্যের WhatsApp সম্মতি লেখা ({meta.source})'),
   'gym_sms.adjusted': A('M24', 'critical', 'Changed a gym owner’s SMS balance by {meta.units}', 'জিম মালিকের SMS ব্যালেন্স {meta.units} বদলানো'),
   'gym_subscription.founding_set': A('M24', 'critical', 'Set founding partner {after.foundingPartner} for a gym owner', 'জিম মালিকের ফাউন্ডিং পার্টনার {after.foundingPartner}'),
   'gym_invoice.voided': A('M24', 'critical', 'Voided gym invoice {entityCode}', 'জিম চালান {entityCode} বাতিল'),
