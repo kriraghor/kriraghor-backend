@@ -338,7 +338,7 @@ describe('the ledger guards itself (FR-11, FR-12, FR-19)', () => {
     const clerk = await staffWith(['view_payouts']);
     const ok = await api().get(`${P}/admin/ledger/invariants`).set(h.bearer(clerk)).expect(200);
     expect(ok.body.ok).toBe(true);
-    expect(ok.body.checks.map((c) => c.name)).toEqual(['trial_balance', 'no_orphan_entries', 'escrow_matches_holds', 'holds_match_ledger', 'no_negative', 'payout_clearing_matches', 'gym_dues_paid_match', 'gym_dues_status_match', 'gym_fee_released_has_release', 'gym_sms_balance_not_negative']); // M07, then M24 (§7.2)
+    expect(ok.body.checks.map((c) => c.name)).toEqual(['trial_balance', 'no_orphan_entries', 'escrow_matches_holds', 'holds_match_ledger', 'no_negative', 'payout_clearing_matches', 'gym_dues_paid_match', 'gym_dues_status_match', 'gym_fee_released_has_release', 'gym_sms_balance_not_negative', 'gym_whatsapp_balance_not_negative']); // M07, then M24 (§7.2, §25)
 
     await models.sequelize.query('UPDATE escrow_holds SET held_poisha = 2500 WHERE id = ?', { replacements: [hold.id] });
     await h.setSettingForTest('payments.clearing_alert_days', 1);

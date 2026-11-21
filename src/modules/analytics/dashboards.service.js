@@ -20,17 +20,18 @@ const select = (sql, replacements) => sequelize.query(sql, { replacements, type:
 const dayStr = (rows) => rows.map((r) => ({ ...r, day: typeof r.day === 'string' ? r.day : new Date(r.day).toISOString().slice(0, 10) }));
 
 function frame(period, now = new Date()) {
-  if (!rules.isPeriod(period)) throw new AppError(422, 'PERIOD_INVALID', 'Choose 7 weeks, a quarter or a year', { meta: { allowed: Object.keys(rules.PERIODS) } });
+  if (!rules.isPeriod(period)) throw new AppError(422, 'PERIOD_INVALID', 'Choose 30 days, 7 weeks, a quarter or a year', { meta: { allowed: Object.keys(rules.PERIODS) } });
   const today = rules.dhakaDate(now);
   const list = rules.buckets(period, today, settings.get('analytics.week_start'));
   const last = rules.lastYear(period, list);
-  return { period, today, list, last, window: rules.comparable(list, today), from: last[0].from, to: list[list.length - 1].to };
+  // cur: what a tile's headline and the "this period" charts cover (the last bucket; the whole period for 30d).
+  return { period, today, list, last, cur: rules.headline(list), window: rules.comparable(list, today), from: last[0].from, to: list[list.length - 1].to };
 }
 
 /** A tile: the current bucket, the delta over the same elapsed part of the previous one, the sparkline. */
 function tile(rows, f, field, { kind = 'amount', note = null } = {}) {
   const spark = rules.bucketize(rows, f.list, [field]).map((b) => b[field]);
-  const value = spark[spark.length - 1];
+  const value = rules.sumWindow(rows, f.cur, field);
   return { value, delta: rules.delta(rules.sumWindow(rows, f.window.current, field), rules.sumWindow(rows, f.window.previous, field), kind), spark, note };
 }
 
@@ -39,7 +40,7 @@ function rateTile(rows, f, num, den) {
   const sums = rules.bucketize(rows, f.list, [num, den]);
   const rate = (w) => rules.occupancy(rules.sumWindow(rows, w, num), rules.sumWindow(rows, w, den));
   const spark = sums.map((b) => rules.occupancy(b[num], b[den]));
-  return { value: spark[spark.length - 1], delta: rules.delta(rate(f.window.current), rate(f.window.previous), 'rate'), spark };
+  return { value: rate(f.cur), delta: rules.delta(rate(f.window.current), rate(f.window.previous), 'rate'), spark };
 }
 
 const meta = async (f, keys, locale) => ({ period: f.period, buckets: f.list.map((b) => ({ key: b.key, from: b.from, to: b.to })), asOf: (await facts.asOf())?.toISOString() ?? null, definitions: definitionsFor(keys, locale) });
@@ -58,7 +59,7 @@ async function ownerDashboard(principal, { period = '7w', groundId = null, local
     `SELECT booker_key, COUNT(*)::int AS n FROM kpi_fact_booking WHERE owner_id = :owner AND status IN ('confirmed', 'checked_in', 'completed', 'no_show') AND start_at >= :since AND start_at < :now ${ground} GROUP BY booker_key`,
     { ...q, since: new Date(now.getTime() - settings.get('analytics.repeat_customer_days') * DAY), now }
   );
-  const cur = f.list[f.list.length - 1];
+  const cur = f.cur;
   const inCur = (r) => r.day >= cur.from && r.day < cur.to;
   const split = days.filter(inCur).reduce((a, r) => ({ app: a.app + r.app, walkIn: a.walkIn + r.walk_in, series: a.series + r.series }), { app: 0, walkIn: 0, series: 0 });
   const tiles = {
@@ -129,7 +130,7 @@ async function platformOverview(principal, { period = 'yr', locale = 'en' }, now
   const f = frame(period, now);
   const raw = dayStr(await select("SELECT vertical, day, online_gmv_poisha AS online, venue_poisha AS venue, fee_poisha AS fee, bookings, entries, prizes_poisha AS prizes FROM kpi_mv_platform_day WHERE vertical <> 'test' AND day >= :from AND day < :to", f));
   const rows = raw.map((r) => ({ ...r, online: Number(r.online), venue: Number(r.venue), fee: Number(r.fee), prizes: Number(r.prizes), gtv: rules.gtv({ online: Number(r.online), venue: Number(r.venue) }) }));
-  const cur = f.list[f.list.length - 1];
+  const cur = f.cur;
   const inCur = (r) => r.day >= cur.from && r.day < cur.to;
   const sumCur = (field) => rows.filter(inCur).reduce((n, r) => n + r[field], 0);
   const [people, queue] = await Promise.all([require('../users').directory.counts(), require('../moderation').moderation.stats(principal)]);
@@ -189,13 +190,13 @@ const byDay = (rows, cur, field) => rules.daysOf(cur).map((day) => ({ day, value
 /** A money average tile (average order): value, delta over the comparable windows, sparkline per bucket. */
 function averageTile(rows, f, total, count) {
   const avg = (w) => rules.average(rules.sumWindow(rows, w, total), rules.sumWindow(rows, w, count));
-  return { value: avg(f.list[f.list.length - 1]), delta: rules.delta(avg(f.window.current), avg(f.window.previous)), spark: rules.bucketize(rows, f.list, [total, count]).map((b) => rules.average(b[total], b[count])) };
+  return { value: avg(f.cur), delta: rules.delta(avg(f.window.current), avg(f.window.previous)), spark: rules.bucketize(rows, f.list, [total, count]).map((b) => rules.average(b[total], b[count])) };
 }
 
 /** A share tile (unused passes): value, points delta, sparkline per bucket. */
 function shareTile(rows, f, part, whole) {
   const sh = (w) => rules.share(rules.sumWindow(rows, w, part), rules.sumWindow(rows, w, whole));
-  return { value: sh(f.list[f.list.length - 1]), delta: rules.delta(sh(f.window.current), sh(f.window.previous), 'rate'), spark: rules.bucketize(rows, f.list, [part, whole]).map((b) => rules.share(b[part], b[whole])) };
+  return { value: sh(f.cur), delta: rules.delta(sh(f.window.current), sh(f.window.previous), 'rate'), spark: rules.bucketize(rows, f.list, [part, whole]).map((b) => rules.share(b[part], b[whole])) };
 }
 
 const COUNTED_SQL = `status IN (${[...rules.SHOP_COUNTED].map((s) => `'${s}'`).join(', ')})`;
@@ -216,7 +217,7 @@ async function categoryNames(ids, locale) {
 async function shopDashboard(principal, { period = '7w', locale = 'en' }, now = new Date()) {
   requireRole(principal, 'shop_owner', 'shop owners');
   const f = frame(period, now);
-  const cur = f.list[f.list.length - 1];
+  const cur = f.cur;
   const q = { me: principal.id, from: f.from, to: f.to };
   const days = num(dayStr(await select('SELECT day, SUM(orders)::int AS orders, SUM(units)::int AS units, SUM(sales_poisha)::bigint AS sales FROM kpi_mv_shop_day WHERE seller_id = :me AND day >= :from AND day < :to GROUP BY day', q)), ['sales']);
   const buyers = await select(`SELECT buyer_id, COUNT(*)::int AS n FROM kpi_fact_sub_order WHERE seller_id = :me AND ${COUNTED_SQL} AND placed_at >= :since AND placed_at < :now GROUP BY buyer_id`, {
@@ -263,7 +264,7 @@ async function shopDashboard(principal, { period = '7w', locale = 'en' }, now = 
 async function gymDashboard(principal, { period = '7w', locale = 'en' }, now = new Date()) {
   requireRole(principal, 'gym_owner', 'gym owners');
   const f = frame(period, now);
-  const cur = f.list[f.list.length - 1];
+  const cur = f.cur;
   const days = num(
     dayStr(
       await select(

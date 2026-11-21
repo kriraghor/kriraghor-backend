@@ -90,6 +90,19 @@ describe('M19 dashboards from real events (v3 money)', () => {
     expect(d.tiles.occupancy.value).toBeGreaterThan(0);
     expect(d.definitions.revenue).toMatch(/before the Kriraghor fee/);
 
+    // 30 days (dashboards round 2): one bucket a day; the tiles and the by-day bars cover the whole 30 days.
+    const d30 = (await api().get(`${P}/me/dashboard?role=ground_owner&period=30d`).set(h.bearer(o)).expect(200)).body;
+    expect(d30.period).toBe('30d');
+    expect(d30.buckets).toHaveLength(30);
+    const today30 = d30.buckets[29].from;
+    expect(d30.tiles.revenue.value).toBe(b2Day <= today30 ? 250000 : 200000);
+    expect(d30.tiles.revenue.spark).toHaveLength(30);
+    expect(d30.tiles.revenue.spark.reduce((n, x) => n + x, 0)).toBe(d30.tiles.revenue.value);
+    expect(d30.charts.bookingsByDay).toHaveLength(30);
+    expect(d30.charts.bookingsByDay.reduce((n, x) => n + x.value, 0)).toBe(d30.tiles.bookings.value);
+    expect(d30.charts.revenueByGround.reduce((n, x) => n + x.value, 0)).toBe(d30.tiles.revenue.value);
+    expect(d30.charts.weeklyRevenue.points).toHaveLength(30);
+
     const me = (await api().get(`${P}/me/dashboard?period=7w`).set(h.bearer(m)).expect(200)).body;
     expect(me.tiles.spent.value).toBe(100000); // two ৳500 advances paid online
     expect(me.charts.whereItWent).toEqual([{ vertical: 'grounds', value: 100000 }]);

@@ -25,7 +25,8 @@ const addMonths = (month, n) => {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + n, 1)).toISOString().slice(0, 10);
 };
 
-const PERIODS = { '7w': { unit: 'week', count: 7 }, qtr: { unit: 'week', count: 13 }, yr: { unit: 'month', count: 12 } };
+// 30d (20 Nov 2026, dashboards round 2): 30 Dhaka days, today the last (partial) one.
+const PERIODS = { '30d': { unit: 'day', count: 30 }, '7w': { unit: 'week', count: 7 }, qtr: { unit: 'week', count: 13 }, yr: { unit: 'month', count: 12 } };
 const isPeriod = (p) => Object.hasOwn(PERIODS, p);
 
 /** FR-02: the buckets of a period, oldest first; the last one holds today. Each is [from, to). */
@@ -33,7 +34,10 @@ function buckets(period, today, start = 'mon') {
   const { unit, count } = PERIODS[period];
   const out = [];
   for (let i = count - 1; i >= 0; i -= 1) {
-    if (unit === 'week') {
+    if (unit === 'day') {
+      const from = addDays(today, -i);
+      out.push({ key: from, from, to: addDays(from, 1) });
+    } else if (unit === 'week') {
       const from = addDays(weekStart(today, start), -7 * i);
       out.push({ key: from, from, to: addDays(from, 7) });
     } else {
@@ -44,9 +48,9 @@ function buckets(period, today, start = 'mon') {
   return out;
 }
 
-/** FR-05: the same buckets a year earlier (52 weeks, or 12 months). */
+/** FR-05: the same buckets a year earlier (52 weeks, so days keep their weekday; or 12 months). */
 function lastYear(period, list) {
-  const shift = PERIODS[period].unit === 'week' ? (b) => addDays(b, -364) : (b) => addMonths(b, -12);
+  const shift = PERIODS[period].unit === 'month' ? (b) => addMonths(b, -12) : (b) => addDays(b, -364);
   return list.map((b) => ({ key: b.key, from: shift(b.from), to: shift(b.to) }));
 }
 
@@ -56,9 +60,24 @@ function lastYear(period, list) {
  */
 function comparable(list, today) {
   const cur = list[list.length - 1];
+  // Day buckets (30d): one day against the day before is noise; the whole period (to today) is compared
+  // with the same number of days just before it.
+  if (daysBetween(cur.from, cur.to) === 1) {
+    const span = daysBetween(list[0].from, cur.to);
+    return { current: { from: list[0].from, to: cur.to }, previous: { from: addDays(list[0].from, -span), to: list[0].from } };
+  }
   const prev = list[list.length - 2];
   const elapsed = Math.min(daysBetween(cur.from, today) + 1, daysBetween(cur.from, cur.to));
   return { current: { from: cur.from, to: addDays(cur.from, elapsed) }, previous: { from: prev.from, to: addDays(prev.from, Math.min(elapsed, daysBetween(prev.from, prev.to))) } };
+}
+
+/**
+ * The window a tile's headline and the "this period" charts cover: the last bucket (this week, this month),
+ * or with day buckets (30d) the whole period.
+ */
+function headline(list) {
+  const cur = list[list.length - 1];
+  return daysBetween(cur.from, cur.to) === 1 ? { from: list[0].from, to: cur.to } : { from: cur.from, to: cur.to };
 }
 
 /** FR-04: percent for amounts and counts, points for rates; null when there is nothing to compare. */
@@ -184,6 +203,7 @@ module.exports = {
   buckets,
   lastYear,
   comparable,
+  headline,
   delta,
   bucketize,
   sumWindow,
