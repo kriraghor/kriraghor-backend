@@ -8,10 +8,10 @@
  *  - Opening hours are windows per weekday (0 = Sunday), some marked women-only; a window may close
  *    at 24:00 but never runs past midnight.
  *  - Passes: gyms sell subscriptions only (product owner, 2 Nov 2026). A pass runs its package's days
- *    from a start date up to gym.pass_advance_days ahead. Redemption is once per Dhaka day, while the
- *    gym is open; passes refund in full until their first use (Q110).
- *  - Day passes sold before 2 Nov 2026 still run out their dates: `admission`, `cancelPlan` and
- *    `expiresAt` keep their day rules until those have drained (kind `day` stays readable on history).
+ *    from a start date up to gym.pass_advance_days ahead. Redemption is once per Dhaka day, at any
+ *    hour (M20 §24); passes refund in full until their first use (Q110).
+ *  - Day passes: the last one sold before 2 Nov 2026 ran out on 9 Nov, and the day rules in
+ *    `admission`, `cancelPlan` and `expiresAt` went with it (M20 §23). Old rows keep kind `day`.
  *  - QR token `v1.<passId>.<nonce>.<sig>` signed with a keyed hash the caller passes in; a 6-character
  *    backup code in Crockford base32 (no I, L, O, U).
  *  - Trainer subscriptions run in periods of gym.subscription_days; renewal opens

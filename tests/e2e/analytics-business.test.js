@@ -125,12 +125,15 @@ describe('M19 gym owner (§6.3 gym, Round B2)', () => {
     await b.admit(owner, gym, month);
     await settle();
 
-    expect(await models.KpiFactGymPass.findByPk(day.id)).toMatchObject({ status: 'redeemed', kind: 'day', pricePoisha: 40000, admissions: 1, ownerId: owner.user.id });
+    // M20 §23 (day-pass cleanup, 9 Nov 2026): an admission no longer uses a day pass up. Like every
+    // pass it stays active through its last day (rules.admission), and the sweep expires it after that.
+    expect(await models.KpiFactGymPass.findByPk(day.id)).toMatchObject({ status: 'active', kind: 'day', pricePoisha: 40000, admissions: 1, ownerId: owner.user.id, firstRedeemedAt: expect.any(Date) });
     expect(await models.KpiFactGymAdmission.count({ where: { ownerId: owner.user.id } })).toBe(2);
-    // The unused day pass ends without a visit (the gym's closing-time expiry, simulated here).
-    await models.GymPass.update({ status: 'expired', closedAt: new Date() }, { where: { id: unused.id } });
-    await facts.refreshGymPass(unused.id);
+    // Both day passes end today, one used and one never: the expiry after their last day, simulated here.
+    await models.GymPass.update({ status: 'expired', closedAt: new Date() }, { where: { id: [day.id, unused.id] } });
+    for (const id of [day.id, unused.id]) await facts.refreshGymPass(id);
     await facts.refreshViews();
+    expect((await models.KpiFactGymPass.findByPk(day.id)).status).toBe('expired');
 
     const d = (await dash(owner, 'role=gym_owner&period=7w').expect(200)).body;
     expect(d.role).toBe('gym_owner');
