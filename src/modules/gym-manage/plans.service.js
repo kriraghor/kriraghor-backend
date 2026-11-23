@@ -85,7 +85,7 @@ async function adherenceOf(assignmentIds, today) {
 /** The plan page: the plan, its current content, every version, and the active assignments the caller can see with adherence. */
 async function detailOf(a, p, extra = {}) {
   const versions = await GymPlanVersion.findAll({ where: { planId: p.id }, order: [['version', 'DESC']] });
-  const names = await directory.displayNames(versions.map((v) => v.createdBy));
+  const names = await directory.publicNames(versions.map((v) => v.createdBy));
   const active = await GymPlanAssignment.findAll({ where: { planId: p.id, status: 'active' }, order: [['createdAt', 'ASC']], limit: 500 });
   const ms = new Map((await GymMember.findAll({ where: { id: active.map((x) => x.memberId) } })).map((m) => [m.id, m]));
   const visible = active.filter((x) => ms.get(x.memberId) && seesMember(a, ms.get(x.memberId)));

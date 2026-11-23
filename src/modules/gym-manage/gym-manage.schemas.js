@@ -231,7 +231,7 @@ const MemberListItem = MemberSummary.extend({
   current: nullable(Current),
   flags: z.object({ due: z.boolean(), overdue: z.boolean() }),
   lastCheckInOn: nullable(date),
-  trainer: nullable(z.object({ businessMemberId: id, displayName: nullable(z.string()) })).meta({ description: 'The assigned trainer (M24-FR-21)' }),
+  trainer: nullable(z.object({ businessMemberId: id, displayName: nullable(z.string()), avatarUrl: nullable(z.string()) })).meta({ description: 'The assigned trainer with their account photo (M24-FR-21, FR-174)' }),
   outstandingPoisha: money(poisha),
 }).meta({ id: 'GymMemberListItem' });
 const MemberList = z.object({ items: z.array(MemberListItem), nextCursor: nullable(z.string()) }).meta({ id: 'GymMemberList' });
@@ -326,7 +326,7 @@ const MemberProfile = z
       version: z.number().int(),
       createdAt: dateTime,
       notesCount: z.number().int(),
-      trainer: nullable(z.object({ businessMemberId: id, displayName: nullable(z.string()) })).meta({ description: 'The assigned trainer (M24-FR-21)' }),
+      trainer: nullable(z.object({ businessMemberId: id, displayName: nullable(z.string()), avatarUrl: nullable(z.string()) })).meta({ description: 'The assigned trainer with their account photo (M24-FR-21, FR-174)' }),
     }),
     link: z.object({ linked: z.boolean(), linkedAt: nullable(dateTime), unlinkedAt: nullable(dateTime), pendingInvite: nullable(z.object({ id, expiresAt: dateTime, accountKnown: z.boolean() })) }),
     memberships: z.array(Membership),
@@ -847,7 +847,7 @@ const AllGymsReport = z
     passSales: z.object({ available: z.boolean(), dashboard: z.string().meta({ description: 'M19’s gym dashboard (pass sales), for an active gym_owner role' }) }),
   })
   .meta({ id: 'GymAllReports' });
-const InvoiceLine = z.object({ id, kind: z.enum(['tier', 'proration', 'founding_free', 'founding_discount', 'referral', 'sms_addon', 'sms_bundle', 'whatsapp_bundle', 'vat', 'adjustment']), descriptionEn: z.string(), descriptionBn: z.string(), quantity: z.number().int(), unitPoisha: poisha, amountPoisha: poisha.meta({ description: 'Negative for discounts' }) });
+const InvoiceLine = z.object({ id, kind: z.enum(['tier', 'proration', 'founding_free', 'founding_discount', 'referral', 'sms_addon', 'sms_bundle', 'whatsapp_bundle', 'suspension_pause', 'vat', 'adjustment']), descriptionEn: z.string(), descriptionBn: z.string(), quantity: z.number().int(), unitPoisha: poisha, amountPoisha: poisha.meta({ description: 'Negative for discounts' }) });
 const Invoice = z
   .object({
     id,
@@ -1100,6 +1100,7 @@ const MyMembership = z
     memberships: z.array(Membership),
     dues: z.array(Due),
     receipts: z.array(MyReceiptItem),
+    trainer: nullable(z.object({ displayName: nullable(z.string()), avatarUrl: nullable(z.string()) })).meta({ description: 'M24-FR-174: the trainer the gym assigned to me, with their photo' }),
   })
   .meta({ id: 'MyGymMembership' });
 const MyReceipts = z.object({ items: z.array(MyReceiptItem) }).meta({ id: 'MyGymReceipts' });
@@ -1224,6 +1225,7 @@ const Trainers = z
       z.object({
         businessMemberId: id,
         displayName: nullable(z.string()),
+        avatarUrl: nullable(z.string()).meta({ description: 'Their account photo (23 Nov 2026), or null' }),
         permissions: z.array(z.enum(['members.trainer', 'plans.manage'])).meta({ description: 'Which of the two trainer permissions they hold' }),
         assignedMembers: z.number().int(),
       })
@@ -1247,7 +1249,7 @@ const PlanSummary = z
   })
   .meta({ id: 'GymPlan' });
 const PlanList = z.object({ items: z.array(PlanSummary) }).meta({ id: 'GymPlanList' });
-const PlanVersion = z.object({ id, version: z.number().int(), content: PlanContent, createdAt: dateTime, createdBy: z.object({ id, displayName: nullable(z.string()) }) }).meta({ id: 'GymPlanVersion' });
+const PlanVersion = z.object({ id, version: z.number().int(), content: PlanContent, createdAt: dateTime, createdBy: z.object({ id, displayName: nullable(z.string()), avatarUrl: nullable(z.string()) }) }).meta({ id: 'GymPlanVersion' });
 const Assignment = z
   .object({
     id,

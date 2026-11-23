@@ -67,7 +67,7 @@ const SNAPSHOT_KEYS = [
 // ---------------------------------------------------------------- views
 
 /** Lines in the order the invoice reads (the plan, its adjustments, referrals, add-ons, VAT). */
-const LINE_ORDER = ['tier', 'proration', 'founding_free', 'founding_discount', 'referral', 'sms_addon', 'sms_bundle', 'whatsapp_bundle', 'adjustment', 'vat'];
+const LINE_ORDER = ['tier', 'proration', 'founding_free', 'founding_discount', 'referral', 'sms_addon', 'sms_bundle', 'whatsapp_bundle', 'suspension_pause', 'adjustment', 'vat'];
 const byLineOrder = (a, b) => LINE_ORDER.indexOf(a.kind) - LINE_ORDER.indexOf(b.kind) || b.amountPoisha - a.amountPoisha;
 const lineView = (l) => ({ id: l.id, kind: l.kind, descriptionEn: l.descriptionEn, descriptionBn: l.descriptionBn, quantity: l.quantity, unitPoisha: l.unitPoisha, amountPoisha: l.amountPoisha });
 
@@ -113,10 +113,10 @@ async function activeCount(now = new Date()) {
     const near = limit !== null && limit > 0 && n.active * 100 >= limit * t.noticePct;
     await sequelize.transaction(async (transaction) => {
       await sequelize.query(
-        `INSERT INTO gym_active_member_counts (owner_id, local_date, active_count, gyms_count, chosen_tier, created_at, updated_at)
-         VALUES (:ownerId, :day, :active, :gyms, :tier, NOW(), NOW())
-         ON CONFLICT (owner_id, local_date) DO UPDATE SET active_count = EXCLUDED.active_count, gyms_count = EXCLUDED.gyms_count, chosen_tier = EXCLUDED.chosen_tier, updated_at = NOW()`,
-        { replacements: { ownerId: sub.ownerId, day, active: n.active, gyms: n.gymsWithMembers, tier: sub.chosenTier }, type: QueryTypes.INSERT, transaction }
+        `INSERT INTO gym_active_member_counts (owner_id, local_date, active_count, gyms_count, chosen_tier, frozen, created_at, updated_at)
+         VALUES (:ownerId, :day, :active, :gyms, :tier, :frozen, NOW(), NOW())
+         ON CONFLICT (owner_id, local_date) DO UPDATE SET active_count = EXCLUDED.active_count, gyms_count = EXCLUDED.gyms_count, chosen_tier = EXCLUDED.chosen_tier, frozen = EXCLUDED.frozen, updated_at = NOW()`,
+        { replacements: { ownerId: sub.ownerId, day, active: n.active, gyms: n.gymsWithMembers, tier: sub.chosenTier, frozen: Boolean(n.frozen) }, type: QueryTypes.INSERT, transaction }
       );
       const notice = near ? await c.claimReminder(transaction, { ownerId: sub.ownerId, kind: 'tier_notice', subjectType: 'owner', subjectId: sub.ownerId, offsetKey: rules.monthOf(day), channels: ['in_app', 'email'] }) : false;
       await c.publish(transaction, 'gym_active_members.counted', 'gym_owner_subscription', sub.id, { ownerId: sub.ownerId, localDate: day, count: n.active, gymsCount: n.gymsWithMembers, tierLimit: limit, chosenTier: sub.chosenTier, notice });
@@ -126,16 +126,18 @@ async function activeCount(now = new Date()) {
   return { counted, day };
 }
 
-/** The month's peak of active members (and of gyms with members) from the daily counts, live when none. */
+/**
+ * The month's peak of active members (and of gyms with members) from the daily counts, live when none; and
+ * the days every gym of the owner was suspended (M24-FR-172).
+ */
 async function peakOf(ownerId, { start, end }, transaction) {
-  const [row] = await sequelize.query('SELECT MAX(active_count)::int AS peak, MAX(gyms_count)::int AS gyms, COUNT(*)::int AS days FROM gym_active_member_counts WHERE owner_id = :ownerId AND local_date BETWEEN :start AND :end', {
-    replacements: { ownerId, start, end },
-    type: QueryTypes.SELECT,
-    transaction,
-  });
-  if (row.days > 0) return { peak: row.peak, gymsWithMembers: row.gyms };
+  const [row] = await sequelize.query(
+    'SELECT MAX(active_count)::int AS peak, MAX(gyms_count)::int AS gyms, COUNT(*)::int AS days, COUNT(*) FILTER (WHERE frozen)::int AS frozen FROM gym_active_member_counts WHERE owner_id = :ownerId AND local_date BETWEEN :start AND :end',
+    { replacements: { ownerId, start, end }, type: QueryTypes.SELECT, transaction }
+  );
+  if (row.days > 0) return { peak: row.peak, gymsWithMembers: row.gyms, frozenDays: row.frozen };
   const live = await billing.activeCount(ownerId, end);
-  return { peak: live.active, gymsWithMembers: live.gymsWithMembers };
+  return { peak: live.active, gymsWithMembers: live.gymsWithMembers, frozenDays: 0 };
 }
 
 // ---------------------------------------------------------------- the monthly cycle (FR-84)
@@ -147,7 +149,7 @@ async function issueMonthlyIn(transaction, sub, period, now) {
   if (existing) return null;
   const t = c.tierCfg();
   const s = c.saasCfg();
-  const { peak, gymsWithMembers } = await peakOf(sub.ownerId, period, transaction);
+  const { peak, gymsWithMembers, frozenDays } = await peakOf(sub.ownerId, period, transaction);
   const fit = rules.ownerFitTier({ peak, gymsWithMembers, cfg: t });
   // The highest tier chosen during the period: month_max_tier while it is that month's; an older month means no change since.
   const monthMax = sub.monthOf === period.start ? sub.monthMaxTier : sub.monthOf < period.start ? sub.chosenTier : rules.higherTier(sub.chosenTier, sub.monthMaxTier);
@@ -170,6 +172,7 @@ async function issueMonthlyIn(transaction, sub, period, now) {
     referrals: referrals.map((r) => ({ id: r.id, amount: r.amountPoisha })),
     smsAddon: addon ? { price: require('./sms.service').cfg().addonPrice } : null,
     vat: { enabled: s.vatEnabled, pct: s.vatPct },
+    pausedDays: frozenDays,
   });
   if (calc.total <= 0) return null;
   const due = rules.invoiceDue({ issuedOn: c.today(now), dueDays: s.invoiceDueDays });
@@ -231,7 +234,8 @@ async function cycle(now = new Date()) {
 async function syncSubscriptionIn(transaction, sub, { now = new Date(), actor = null } = {}) {
   // Bundle invoices (prompt 3b) never make a subscription past due: unpaid, they are voided instead.
   const invoices = await GymSubscriptionInvoice.findAll({ where: { subscriptionId: sub.id, status: OPEN, kind: 'monthly' }, order: [['dueAt', 'ASC']], transaction });
-  const next = rules.subscriptionStatus({ status: sub.status, invoices, now, graceDays: c.saasCfg().graceDays });
+  // M24-FR-173: while every gym of the owner is suspended, dunning never makes it worse.
+  const next = rules.subscriptionStatus({ status: sub.status, invoices, now, graceDays: c.saasCfg().graceDays, frozen: await billing.frozenNow(sub.ownerId) });
   if (next === sub.status) return sub.status;
   const first = invoices.find((i) => i.status === 'overdue') ?? null;
   const payload = { subscriptionId: sub.id, ownerId: sub.ownerId, invoiceId: first?.id ?? null, number: first?.number ?? null };

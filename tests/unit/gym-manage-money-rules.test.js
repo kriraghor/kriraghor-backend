@@ -144,6 +144,29 @@ describe('dunning (M24-FR-86, §8.6, §8.7)', () => {
     expect(r.subscriptionStatus({ status: 'active', invoices: [{ status: 'overdue', dueAt }], now, graceDays: 30 })).toBe('past_due');
     expect(r.subscriptionStatus({ status: 'restricted', invoices: [{ status: 'issued', dueAt }], now, graceDays: 7 })).toBe('active');
   });
+  it('M24-FR-173: while every gym is suspended the status never gets worse; paying still clears it', () => {
+    const now = new Date('2026-12-20T00:00:00Z');
+    expect(r.subscriptionStatus({ status: 'active', invoices: [{ status: 'overdue', dueAt }], now, graceDays: 7, frozen: true })).toBe('active');
+    expect(r.subscriptionStatus({ status: 'past_due', invoices: [{ status: 'overdue', dueAt }], now, graceDays: 7, frozen: true })).toBe('past_due');
+    expect(r.subscriptionStatus({ status: 'restricted', invoices: [], now, graceDays: 7, frozen: true })).toBe('active');
+  });
+
+  it('M24-FR-172: days with every gym suspended are credited on the plan', () => {
+    expect(r.pauseCredit({ planNet: 150000, pausedDays: 10, monthDays: 30 })).toBe(50000);
+    expect(r.pauseCredit({ planNet: 150000, pausedDays: 31, monthDays: 30 })).toBe(150000);
+    expect(r.pauseCredit({ planNet: 0, pausedDays: 10, monthDays: 30 })).toBe(0);
+    expect(r.pauseCredit({ planNet: 150000, pausedDays: 0, monthDays: 30 })).toBe(0);
+    const base = { periodStart: '2026-11-01', periodEnd: '2026-11-30', prices: { basic: 79900, standard: 150000, pro: 300000 }, startedOn: '2026-01-01', founding: null, vat: { enabled: false } };
+    const half = r.invoiceLines({ ...base, tier: 'standard', pausedDays: 15 });
+    expect(half.lines.map((l) => [l.kind, l.amountPoisha])).toEqual([['tier', 150000], ['suspension_pause', -75000]]);
+    expect(half.lines[1].descriptionEn).toBe('Paused while suspended: 15 of 30 days');
+    expect(half.total).toBe(75000);
+    // A whole month frozen bills nothing (the cycle issues no invoice at 0); referrals are still owed.
+    expect(r.invoiceLines({ ...base, tier: 'standard', pausedDays: 30 }).total).toBe(0);
+    expect(r.invoiceLines({ ...base, tier: 'standard', pausedDays: 30, referrals: [{ amount: 20000 }] }).total).toBe(20000);
+    // The free plan has nothing to pause.
+    expect(r.invoiceLines({ ...base, tier: 'free', pausedDays: 30 }).lines).toEqual([]);
+  });
 });
 
 describe('reminder schedule (§6.9, M24-FR-55, FR-56)', () => {

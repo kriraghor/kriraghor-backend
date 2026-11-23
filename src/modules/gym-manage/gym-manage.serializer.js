@@ -171,7 +171,8 @@ const planView = (p, { activeAssignments = 0 } = {}) => ({
   updatedAt: c.iso(p.updatedAt),
 });
 
-const versionView = (v, names = new Map()) => ({ id: v.id, version: v.version, content: v.content, createdAt: c.iso(v.createdAt), createdBy: { id: v.createdBy, displayName: names.get(v.createdBy) ?? null } });
+// names: user id → { displayName, avatarUrl } (directory.publicNames); the author's photo since 23 Nov 2026.
+const versionView = (v, names = new Map()) => ({ id: v.id, version: v.version, content: v.content, createdAt: c.iso(v.createdAt), createdBy: { id: v.createdBy, displayName: names.get(v.createdBy)?.displayName ?? null, avatarUrl: names.get(v.createdBy)?.avatarUrl ?? null } });
 
 /** An assignment with its plan's title and the version it shows. */
 const assignmentView = (a, { plan, version }) => ({

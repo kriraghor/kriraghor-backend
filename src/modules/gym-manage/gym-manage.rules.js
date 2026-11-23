@@ -596,7 +596,7 @@ const TIER_LABELS = { free: ['Free', 'ফ্রি'], basic: ['Basic', 'বে�
  *   total       = max(0, subtotal) + vat; 0 → no invoice
  * Lines carry kind, EN and BN descriptions, quantity, unit and amount (discounts negative).
  */
-function invoiceLines({ periodStart, periodEnd, tier, prices, startedOn, founding, referrals = [], smsAddon = null, vat }) {
+function invoiceLines({ periodStart, periodEnd, tier, prices, startedOn, founding, referrals = [], smsAddon = null, vat, pausedDays = 0 }) {
   const lines = [];
   const price = tier === 'free' ? 0 : prices[tier];
   let base = 0;
@@ -618,6 +618,12 @@ function invoiceLines({ periodStart, periodEnd, tier, prices, startedOn, foundin
         lines.push({ kind: 'founding_discount', descriptionEn: `Founding partner discount ${founding.discountPct}%`, descriptionBn: `ফাউন্ডিং পার্টনার ছাড় ${founding.discountPct}%`, quantity: 1, unitPoisha: -off, amountPoisha: -off });
       }
     }
+    // M24-FR-172 (product owner, 23 Nov 2026): days when every gym of the owner was suspended are not billed.
+    const credit = pauseCredit({ planNet: lines.reduce((s, l) => s + l.amountPoisha, 0), pausedDays, monthDays: daysInMonth(periodStart) });
+    if (credit > 0) {
+      const days = Math.min(pausedDays, daysInMonth(periodStart));
+      lines.push({ kind: 'suspension_pause', descriptionEn: `Paused while suspended: ${days} of ${daysInMonth(periodStart)} days`, descriptionBn: `স্থগিত থাকায় বিরতি: ${daysInMonth(periodStart)} দিনের ${days} দিন`, quantity: 1, unitPoisha: -credit, amountPoisha: -credit });
+    }
   }
   const byAmount = new Map();
   for (const r of referrals) byAmount.set(r.amount, (byAmount.get(r.amount) ?? 0) + 1);
@@ -630,6 +636,15 @@ function invoiceLines({ periodStart, periodEnd, tier, prices, startedOn, foundin
   const vatPoisha = vat?.enabled ? Math.round((subtotal * vat.pct) / 100) : 0;
   if (vatPoisha > 0) lines.push({ kind: 'vat', descriptionEn: `VAT ${vat.pct}%`, descriptionBn: `ভ্যাট ${vat.pct}%`, quantity: 1, unitPoisha: vatPoisha, amountPoisha: vatPoisha });
   return { lines, subtotal, vat: vatPoisha, total: subtotal + vatPoisha };
+}
+
+/**
+ * M24-FR-172: the plan charge given back for the days the owner's gyms were all suspended: the plan's net
+ * amount (after proration and founding lines) × paused days ÷ days in the month, never more than the plan.
+ */
+function pauseCredit({ planNet, pausedDays, monthDays }) {
+  if (planNet <= 0 || pausedDays <= 0) return 0;
+  return mulDivRound(planNet, Math.min(pausedDays, monthDays), monthDays);
 }
 
 /** An SMS bundle invoice (M24-FR-98): one line of bundles × price, and VAT when enabled. */
@@ -686,11 +701,17 @@ function invoiceReminderKey({ dueAt, today }) {
  * The subscription status after dunning (§8.6): restricted when an overdue invoice is past its grace,
  * past_due when any invoice is overdue, active otherwise (closed stays closed).
  */
-function subscriptionStatus({ status, invoices, now, graceDays }) {
+const STATUS_RANK = Object.freeze({ active: 0, past_due: 1, restricted: 2 });
+
+/**
+ * The subscription's status from its invoices (FR-86). M24-FR-173 (23 Nov 2026): while every gym of the owner
+ * is suspended (`frozen`) the status never gets worse; paying still clears it.
+ */
+function subscriptionStatus({ status, invoices, now, graceDays, frozen = false }) {
   if (status === 'closed') return 'closed';
   const overdue = invoices.filter((i) => i.status === 'overdue');
-  if (overdue.some((i) => pastGrace({ dueAt: i.dueAt, graceDays, now }))) return 'restricted';
-  return overdue.length ? 'past_due' : 'active';
+  const next = overdue.some((i) => pastGrace({ dueAt: i.dueAt, graceDays, now })) ? 'restricted' : overdue.length ? 'past_due' : 'active';
+  return frozen && STATUS_RANK[next] > STATUS_RANK[status] ? status : next;
 }
 
 // ---------------------------------------------------------------- §6.9 reminder schedule
@@ -1215,6 +1236,7 @@ module.exports = {
   foundingMonthIndex,
   foundingWindow,
   invoiceLines,
+  pauseCredit,
   invoiceDue,
   restrictOn,
   pastGrace,
