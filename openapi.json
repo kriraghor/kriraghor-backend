@@ -13888,6 +13888,7 @@
           "period": {
             "type": "string",
             "enum": [
+              "30d",
               "7w",
               "qtr",
               "yr"
@@ -14124,6 +14125,7 @@
           "period": {
             "type": "string",
             "enum": [
+              "30d",
               "7w",
               "qtr",
               "yr"
@@ -14341,6 +14343,7 @@
           "period": {
             "type": "string",
             "enum": [
+              "30d",
               "7w",
               "qtr",
               "yr"
@@ -14548,6 +14551,7 @@
           "period": {
             "type": "string",
             "enum": [
+              "30d",
               "7w",
               "qtr",
               "yr"
@@ -14719,6 +14723,7 @@
           "period": {
             "type": "string",
             "enum": [
+              "30d",
               "7w",
               "qtr",
               "yr"
@@ -14980,6 +14985,7 @@
           "period": {
             "type": "string",
             "enum": [
+              "30d",
               "7w",
               "qtr",
               "yr"
@@ -79640,6 +79646,7 @@
             "schema": {
               "type": "string",
               "enum": [
+                "30d",
                 "7w",
                 "qtr",
                 "yr"
@@ -79863,6 +79870,7 @@
             "schema": {
               "type": "string",
               "enum": [
+                "30d",
                 "7w",
                 "qtr",
                 "yr"
@@ -80018,6 +80026,7 @@
             "schema": {
               "type": "string",
               "enum": [
+                "30d",
                 "7w",
                 "qtr",
                 "yr"
@@ -80113,6 +80122,7 @@
             "schema": {
               "type": "string",
               "enum": [
+                "30d",
                 "7w",
                 "qtr",
                 "yr"

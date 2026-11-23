@@ -6,7 +6,8 @@
  */
 const { z } = require('zod');
 
-const period = z.enum(['7w', 'qtr', 'yr']);
+// 30d: 30 Dhaka days (dashboards round 2); the tiles cover the whole 30 days against the 30 before.
+const period = z.enum(['30d', '7w', 'qtr', 'yr']);
 const locale = z.enum(['en', 'bn']).default('en');
 const day = z.string();
 

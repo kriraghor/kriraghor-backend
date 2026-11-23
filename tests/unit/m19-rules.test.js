@@ -36,6 +36,24 @@ describe('M19 Dhaka calendar and periods', () => {
     expect(A.lastYear('yr', A.buckets('yr', '2026-10-21'))[11]).toMatchObject({ from: '2025-10-01', to: '2025-11-01' });
   });
 
+  it('30 days: one bucket a day, today last; a year back keeps the weekday (dashboards round 2)', () => {
+    expect(A.isPeriod('30d')).toBe(true);
+    const d = A.buckets('30d', '2026-11-21');
+    expect(d).toHaveLength(30);
+    expect(d[29]).toEqual({ key: '2026-11-21', from: '2026-11-21', to: '2026-11-22' });
+    expect(d[0]).toEqual({ key: '2026-10-23', from: '2026-10-23', to: '2026-10-24' });
+    expect(A.lastYear('30d', d)[29]).toEqual({ key: '2026-11-21', from: '2025-11-22', to: '2025-11-23' });
+  });
+
+  it('30 days compare the whole period with the 30 days before; the headline is the whole period', () => {
+    const d = A.buckets('30d', '2026-11-21');
+    expect(A.comparable(d, '2026-11-21')).toEqual({ current: { from: '2026-10-23', to: '2026-11-22' }, previous: { from: '2026-09-23', to: '2026-10-23' } });
+    expect(A.headline(d)).toEqual({ from: '2026-10-23', to: '2026-11-22' });
+    // Weeks and months: the headline is the last bucket.
+    expect(A.headline(A.buckets('7w', '2026-10-21'))).toEqual({ from: '2026-10-19', to: '2026-10-26' });
+    expect(A.headline(A.buckets('yr', '2026-10-21'))).toEqual({ from: '2026-10-01', to: '2026-11-01' });
+  });
+
   it('compares the same elapsed part of the previous bucket (FR-04)', () => {
     // Wednesday: Mon–Wed this week against Mon–Wed last week.
     expect(A.comparable(A.buckets('7w', '2026-10-21'), '2026-10-21')).toEqual({ current: { from: '2026-10-19', to: '2026-10-22' }, previous: { from: '2026-10-12', to: '2026-10-15' } });
