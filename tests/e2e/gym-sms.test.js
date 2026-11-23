@@ -199,7 +199,8 @@ describe('M24 SMS add-on', () => {
     expect(await sms.balanceOf(owner.user.id)).toBe(210);
 
     // The 1st: this month's allowance left (10, used first: nothing used) expires; the new month is granted.
-    const first = new Date(`${gm.inDays(40).slice(0, 7)}-01T00:30:00+06:00`);
+    // The 1st of next month (40 days ahead skipped a month after the 21st).
+    const first = new Date(`${require('../../src/modules/gym-manage/gym-manage.rules').addMonths(gm.today().slice(0, 7) + '-01', 1)}T00:30:00+06:00`);
     const run = await sms.allowance(first);
     expect(run).toEqual({ expired: 10, granted: 10 });
     expect(await sms.allowance(first)).toEqual({ expired: 0, granted: 0 });

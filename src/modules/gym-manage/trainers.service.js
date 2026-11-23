@@ -32,7 +32,7 @@ async function list(principal, gymId) {
     { replacements: { gymId }, type: QueryTypes.SELECT }
   );
   const n = new Map(counts.map((r) => [r.id, r.n]));
-  return { items: rows.map((r) => ({ businessMemberId: r.businessMemberId, displayName: r.displayName, permissions: r.permissions, assignedMembers: n.get(r.businessMemberId) ?? 0 })) };
+  return { items: rows.map((r) => ({ businessMemberId: r.businessMemberId, displayName: r.displayName, avatarUrl: r.avatarUrl, permissions: r.permissions, assignedMembers: n.get(r.businessMemberId) ?? 0 })) };
 }
 
 /** PUT /manage/gyms/:gymId/members/:memberId/trainer { businessMemberId | null } (members.edit; M24-FR-21). */

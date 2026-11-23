@@ -586,6 +586,8 @@ GymActiveMemberCount.init(
     activeCount: req(DataTypes.INTEGER),
     gymsCount: req(DataTypes.INTEGER),
     chosenTier: enumOf(TIERS),
+    // M24-FR-172 (23 Nov 2026): every gym of the owner was suspended that day (not billed).
+    frozen: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   },
   { sequelize, modelName: 'GymActiveMemberCount', tableName: 'gym_active_member_counts' }
 );
@@ -623,7 +625,7 @@ GymSubscriptionInvoiceLine.init(
   {
     id,
     invoiceId: req(DataTypes.UUID),
-    kind: enumOf(['tier', 'proration', 'founding_free', 'founding_discount', 'referral', 'sms_addon', 'sms_bundle', 'whatsapp_bundle', 'vat', 'adjustment']),
+    kind: enumOf(['tier', 'proration', 'founding_free', 'founding_discount', 'referral', 'sms_addon', 'sms_bundle', 'whatsapp_bundle', 'suspension_pause', 'vat', 'adjustment']),
     descriptionEn: req(DataTypes.STRING(200)),
     descriptionBn: req(DataTypes.STRING(200)),
     quantity: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },

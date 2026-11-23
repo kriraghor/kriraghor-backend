@@ -301,12 +301,13 @@ const TRAINER_PERMISSIONS = Object.freeze(['members.trainer', 'plans.manage']);
 
 /**
  * The gym's trainers: active staff holding members.trainer or plans.manage (M01 staffWith), with their
- * display names → [{ businessMemberId, memberId, displayName, permissions }].
+ * display names and account photos (product owner, 23 Nov 2026: trainers get photos; M24-FR-174)
+ * → [{ businessMemberId, memberId, displayName, avatarUrl, permissions }].
  */
 async function trainersOf(gymId) {
   const rows = await staffFacade.staffWith('gym', gymId, TRAINER_PERMISSIONS);
-  const names = await directory.displayNames(rows.map((r) => r.memberId));
-  return rows.map((r) => ({ ...r, displayName: names.get(r.memberId) ?? null }));
+  const people = await directory.publicNames(rows.map((r) => r.memberId));
+  return rows.map((r) => ({ ...r, displayName: people.get(r.memberId)?.displayName ?? null, avatarUrl: people.get(r.memberId)?.avatarUrl ?? null }));
 }
 
 /** Assert a further permission inside a route (e.g. a discount needs fees.adjust, M24-FR-26). */

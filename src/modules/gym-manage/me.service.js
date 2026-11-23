@@ -87,7 +87,15 @@ async function detail(principal, memberId) {
       return { ...v, payments: v.payments.map((x) => ({ ...x, note: null, providerCharge: null })) };
     }),
     receipts: payments.filter((p) => p.amountPoisha > 0).map((p) => receiptItem(p, reversedOn)),
+    // M24-FR-174 (23 Nov 2026): the trainer the gym assigned, with their photo (a removed trainer shows nothing).
+    trainer: await myTrainer(m),
   };
+}
+
+async function myTrainer(m) {
+  if (!m.trainerBusinessMemberId) return null;
+  const t = (await c.trainersOf(m.gymId)).find((x) => x.businessMemberId === m.trainerBusinessMemberId);
+  return t ? { displayName: t.displayName, avatarUrl: t.avatarUrl } : null;
 }
 
 const receiptItem = (p, reversedOn, gym = undefined, memberCode = undefined) => ({

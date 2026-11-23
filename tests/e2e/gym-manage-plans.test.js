@@ -228,7 +228,7 @@ describe('trainers (M24-FR-21, FR-23) and their consumers', () => {
     expect((await gm.manage(cashier, gym.id).put(`/members/${a.id}/trainer`, { businessMemberId: coachBm }).expect(403)).body.permission).toBe('members.edit');
     const prof = (await desk.put(`/members/${a.id}/trainer`, { businessMemberId: coachBm }).expect(200)).body;
     conforms(s.MemberProfile, prof);
-    expect(prof.member.trainer).toEqual({ businessMemberId: coachBm, displayName: 'Coach Sabbir' });
+    expect(prof.member.trainer).toEqual({ businessMemberId: coachBm, displayName: 'Coach Sabbir', avatarUrl: null }); // no account photo (M24-FR-174)
     expect(prof.can).toMatchObject({ assignTrainer: true, plans: true });
     // Same again changes nothing (no second event).
     await desk.put(`/members/${a.id}/trainer`, { businessMemberId: coachBm }).expect(200);

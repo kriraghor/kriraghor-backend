@@ -29153,13 +29153,20 @@
                   "string",
                   "null"
                 ]
+              },
+              "avatarUrl": {
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "required": [
               "businessMemberId",
-              "displayName"
+              "displayName",
+              "avatarUrl"
             ],
-            "description": "The assigned trainer (M24-FR-21)"
+            "description": "The assigned trainer with their account photo (M24-FR-21, FR-174)"
           },
           "outstandingPoisha": {
             "type": "integer",
@@ -29929,13 +29936,20 @@
                       "string",
                       "null"
                     ]
+                  },
+                  "avatarUrl": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
                   }
                 },
                 "required": [
                   "businessMemberId",
-                  "displayName"
+                  "displayName",
+                  "avatarUrl"
                 ],
-                "description": "The assigned trainer (M24-FR-21)"
+                "description": "The assigned trainer with their account photo (M24-FR-21, FR-174)"
               }
             },
             "required": [
@@ -32466,6 +32480,7 @@
                     "sms_addon",
                     "sms_bundle",
                     "whatsapp_bundle",
+                    "suspension_pause",
                     "vat",
                     "adjustment"
                   ]
@@ -33201,13 +33216,39 @@
                 "reversedOn"
               ]
             }
+          },
+          "trainer": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "displayName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "avatarUrl": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "displayName",
+              "avatarUrl"
+            ],
+            "description": "M24-FR-174: the trainer the gym assigned to me, with their photo"
           }
         },
         "required": [
           "member",
           "memberships",
           "dues",
-          "receipts"
+          "receipts",
+          "trainer"
         ]
       },
       "GymBmi": {
@@ -36726,6 +36767,7 @@
                           "sms_addon",
                           "sms_bundle",
                           "whatsapp_bundle",
+                          "suspension_pause",
                           "vat",
                           "adjustment"
                         ]
@@ -36902,6 +36944,13 @@
                     "null"
                   ]
                 },
+                "avatarUrl": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Their account photo (23 Nov 2026), or null"
+                },
                 "permissions": {
                   "type": "array",
                   "items": {
@@ -36920,6 +36969,7 @@
               "required": [
                 "businessMemberId",
                 "displayName",
+                "avatarUrl",
                 "permissions",
                 "assignedMembers"
               ]
@@ -37738,11 +37788,18 @@
                   "string",
                   "null"
                 ]
+              },
+              "avatarUrl": {
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "required": [
               "id",
-              "displayName"
+              "displayName",
+              "avatarUrl"
             ]
           }
         },
@@ -40042,6 +40099,12 @@
                     "null"
                   ]
                 },
+                "avatarUrl": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
                 "owner": {
                   "type": "boolean"
                 }
@@ -40049,6 +40112,7 @@
               "required": [
                 "userId",
                 "displayName",
+                "avatarUrl",
                 "owner"
               ]
             }
@@ -40103,11 +40167,18 @@
                   "string",
                   "null"
                 ]
+              },
+              "avatarUrl": {
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "required": [
               "id",
-              "displayName"
+              "displayName",
+              "avatarUrl"
             ]
           },
           "capacity": {
@@ -40224,11 +40295,18 @@
                   "string",
                   "null"
                 ]
+              },
+              "avatarUrl": {
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "required": [
               "id",
-              "displayName"
+              "displayName",
+              "avatarUrl"
             ]
           },
           "localDate": {
@@ -40322,11 +40400,18 @@
                   "string",
                   "null"
                 ]
+              },
+              "avatarUrl": {
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "required": [
               "id",
-              "displayName"
+              "displayName",
+              "avatarUrl"
             ]
           },
           "localDate": {
@@ -41262,11 +41347,18 @@
                         "string",
                         "null"
                       ]
+                    },
+                    "avatarUrl": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     }
                   },
                   "required": [
                     "id",
-                    "displayName"
+                    "displayName",
+                    "avatarUrl"
                   ]
                 },
                 "localDate": {
@@ -41584,11 +41676,18 @@
                         "string",
                         "null"
                       ]
+                    },
+                    "avatarUrl": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     }
                   },
                   "required": [
                     "id",
-                    "displayName"
+                    "displayName",
+                    "avatarUrl"
                   ]
                 },
                 "localDate": {

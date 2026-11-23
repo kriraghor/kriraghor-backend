@@ -30,16 +30,18 @@ const LIVE = ['booked', 'waitlisted', 'attended', 'no_show'];
 
 // ---------------------------------------------------------------- views
 
+/** Trainers by user id → { displayName, avatarUrl } (their account photo, 23 Nov 2026). */
 async function trainerNames(ids) {
-  return directory.displayNames([...new Set(ids.filter(Boolean))]);
+  return directory.publicNames([...new Set(ids.filter(Boolean))]);
 }
+const trainerOf = (userId, names) => (userId ? { id: userId, displayName: names.get(userId)?.displayName ?? null, avatarUrl: names.get(userId)?.avatarUrl ?? null } : null);
 
 function classView(k, slots, names) {
   return {
     id: k.id,
     name: k.name,
     description: k.description ?? null,
-    trainer: k.trainerUserId ? { id: k.trainerUserId, displayName: names.get(k.trainerUserId) ?? null } : null,
+    trainer: trainerOf(k.trainerUserId, names),
     capacity: k.capacity,
     minutes: k.minutes,
     room: k.room ?? null,
@@ -77,7 +79,7 @@ function sessionView(s, k, counts, names) {
     classId: s.classId,
     name: k?.name ?? '',
     room: k?.room ?? null,
-    trainer: s.trainerUserId ? { id: s.trainerUserId, displayName: names.get(s.trainerUserId) ?? null } : null,
+    trainer: trainerOf(s.trainerUserId, names),
     localDate: s.localDate,
     startsAt: c.iso(s.startsAt),
     endsAt: c.iso(s.endsAt),
@@ -138,7 +140,7 @@ async function trainers(principal, gymId) {
   const staff = await staffFacade.staffWith('gym', gymId, TRAINER_PERMS);
   const ids = [a.gym.ownerId, ...staff.map((x) => x.memberId)];
   const names = await trainerNames(ids);
-  return { items: [...new Set(ids)].map((userId) => ({ userId, displayName: names.get(userId) ?? null, owner: userId === a.gym.ownerId })) };
+  return { items: [...new Set(ids)].map((userId) => ({ userId, displayName: names.get(userId)?.displayName ?? null, avatarUrl: names.get(userId)?.avatarUrl ?? null, owner: userId === a.gym.ownerId })) };
 }
 
 /** GET …/classes (classes.manage or attendance.mark): the classes with their weekly slots. */

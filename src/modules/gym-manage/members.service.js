@@ -169,8 +169,8 @@ function listItem(r, { today, money, trainers }) {
 }
 
 /** The assigned trainer as lists and profiles show it (a stale id, e.g. staff removed, still shows without a name). */
-const trainerRef = (businessMemberId, trainers) => (businessMemberId ? { businessMemberId, displayName: trainers.get(businessMemberId) ?? null } : null);
-const trainerNames = async (gymId) => new Map((await c.trainersOf(gymId)).map((x) => [x.businessMemberId, x.displayName]));
+const trainerRef = (businessMemberId, trainers) => (businessMemberId ? { businessMemberId, displayName: trainers.get(businessMemberId)?.displayName ?? null, avatarUrl: trainers.get(businessMemberId)?.avatarUrl ?? null } : null);
+const trainerNames = async (gymId) => new Map((await c.trainersOf(gymId)).map((x) => [x.businessMemberId, { displayName: x.displayName, avatarUrl: x.avatarUrl }]));
 
 /** GET /manage/gyms/:gymId/members?status&due&overdue&expiring&frozen&notSeen&packageId&linked&trainerId&q&cursor&limit. */
 async function list(principal, gymId, query = {}) {

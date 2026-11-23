@@ -14,6 +14,8 @@ const nullable = (t) => t.nullable();
 const text = (min, max) => z.string().trim().min(min).max(max);
 const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'HH:MM, 24-hour, Dhaka time');
 const person = z.object({ id, displayName: nullable(z.string()) });
+/** A class trainer, with their account photo (23 Nov 2026). */
+const trainerPerson = person.extend({ avatarUrl: nullable(z.string()) });
 const memberRef = z.object({ id, memberCode: z.string(), displayName: z.string() });
 
 // ---------------- params and queries
@@ -103,7 +105,7 @@ const ClassView = z
     id,
     name: z.string(),
     description: nullable(z.string()),
-    trainer: nullable(person),
+    trainer: nullable(trainerPerson),
     capacity: z.number().int(),
     minutes: z.number().int(),
     room: nullable(z.string()),
@@ -112,14 +114,14 @@ const ClassView = z
   })
   .meta({ id: 'GymClass' });
 const Classes = z.object({ items: z.array(ClassView) }).meta({ id: 'GymClasses' });
-const ClassTrainers = z.object({ items: z.array(z.object({ userId: id, displayName: nullable(z.string()), owner: z.boolean() })) }).meta({ id: 'GymClassTrainers' });
+const ClassTrainers = z.object({ items: z.array(z.object({ userId: id, displayName: nullable(z.string()), avatarUrl: nullable(z.string()), owner: z.boolean() })) }).meta({ id: 'GymClassTrainers' });
 const SessionView = z
   .object({
     id,
     classId: id,
     name: z.string(),
     room: nullable(z.string()),
-    trainer: nullable(person),
+    trainer: nullable(trainerPerson),
     localDate: date,
     startsAt: dateTime,
     endsAt: dateTime,
@@ -143,7 +145,7 @@ const MyTimetable = z
   .meta({ id: 'MyGymTimetable' });
 const MyBookings = z.object({ items: z.array(Booking.extend({ session: SessionView.optional() })) }).meta({ id: 'MyGymBookings' });
 const PublicTimetable = z
-  .object({ gymId: id, enquiries: z.boolean().meta({ description: 'The gym takes enquiries from its page (plan feature leads)' }), items: z.array(z.object({ id, name: z.string(), room: nullable(z.string()), trainer: nullable(person), localDate: date, startsAt: dateTime, endsAt: dateTime, capacity: z.number().int(), spaces: z.number().int() })) })
+  .object({ gymId: id, enquiries: z.boolean().meta({ description: 'The gym takes enquiries from its page (plan feature leads)' }), items: z.array(z.object({ id, name: z.string(), room: nullable(z.string()), trainer: nullable(trainerPerson), localDate: date, startsAt: dateTime, endsAt: dateTime, capacity: z.number().int(), spaces: z.number().int() })) })
   .meta({ id: 'GymPublicTimetable' });
 const Reward = z.object({ id, title: z.string(), points: z.number().int(), kind: z.enum(['days', 'discount']), value: z.number().int(), status: z.enum(['active', 'retired']) }).meta({ id: 'GymReward' });
 const Rewards = z.object({ items: z.array(Reward) }).meta({ id: 'GymRewards' });

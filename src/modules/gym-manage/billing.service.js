@@ -47,20 +47,32 @@ async function pricing() {
 /**
  * Active members of an owner on a Dhaka day (§6.6, FR-83): non-removed members of all their gyms with a
  * counted check-in or a positive, non-reversed payment dated in (day − active_window_days, day].
+ * M24-FR-171 (23 Nov 2026): members of a gym suspended when counted are left out; `frozen` when every gym
+ * of the owner is suspended (those days are not billed, FR-172).
  */
 async function activeCount(ownerId, day) {
   const since = rules.addDays(day, -c.cfg().activeWindowDays);
+  const gyms = await gymFacade.ofOwner(ownerId);
+  const suspended = gyms.filter((g) => g.status === 'suspended').map((g) => g.id);
+  const frozen = gyms.length > 0 && suspended.length === gyms.length;
+  const skip = suspended.length ? 'AND m.gym_id NOT IN (:suspended)' : '';
   const [row] = await sequelize.query(
     `SELECT COUNT(*)::int AS active
        FROM gym_members m
-      WHERE m.owner_id = :ownerId AND m.status <> 'removed' AND (
+      WHERE m.owner_id = :ownerId AND m.status <> 'removed' ${skip} AND (
         EXISTS (SELECT 1 FROM gym_attendance a WHERE a.member_id = m.id AND a.counted AND a.local_date > :since AND a.local_date <= :day)
         OR EXISTS (SELECT 1 FROM gym_fee_payments p WHERE p.member_id = m.id AND p.amount_poisha > 0 AND p.paid_on > :since AND p.paid_on <= :day
                      AND NOT EXISTS (SELECT 1 FROM gym_fee_payments r WHERE r.reverses_id = p.id)))`,
-    { replacements: { ownerId, since, day }, type: QueryTypes.SELECT }
+    { replacements: { ownerId, since, day, suspended }, type: QueryTypes.SELECT }
   );
-  const [{ withMembers }] = await sequelize.query("SELECT COUNT(DISTINCT gym_id)::int AS \"withMembers\" FROM gym_members WHERE owner_id = :ownerId AND status <> 'removed'", { replacements: { ownerId }, type: QueryTypes.SELECT });
-  return { active: row.active, gymsWithMembers: withMembers };
+  const [{ withMembers }] = await sequelize.query(`SELECT COUNT(DISTINCT gym_id)::int AS "withMembers" FROM gym_members m WHERE owner_id = :ownerId AND status <> 'removed' ${skip}`, { replacements: { ownerId, suspended }, type: QueryTypes.SELECT });
+  return { active: row.active, gymsWithMembers: withMembers, frozen };
+}
+
+/** M24-FR-173: is every gym of this owner suspended right now (dunning holds)? */
+async function frozenNow(ownerId) {
+  const gyms = await gymFacade.ofOwner(ownerId);
+  return gyms.length > 0 && gyms.every((g) => g.status === 'suspended');
 }
 
 /** The caller must own at least one gym (gate run_gym is checked by the route). */
@@ -132,4 +144,4 @@ async function setTier(principal, { tier }, req) {
   return billingView(principal, gyms);
 }
 
-module.exports = { tiers, pricing, activeCount, get, setTier };
+module.exports = { tiers, pricing, activeCount, frozenNow, get, setTier };
