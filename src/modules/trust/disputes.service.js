@@ -18,6 +18,7 @@
 const { Op, UniqueConstraintError } = require('sequelize');
 const { E } = require('../../common/errors');
 const { nextCode } = require('../../common/sequences');
+const { queueItem } = require('../../common/actions');
 const { sequelize, Dispute, DisputeEvidence } = require('../../models');
 const settings = require('../settings').settings;
 const audit = require('../audit').audit;
@@ -601,6 +602,30 @@ async function statsFor(userId, since) {
   return { decided: rows.length, lost };
 }
 
+/**
+ * M19 "Needs your action" for staff (FR-29): cases to decide in the sources this person may see
+ * (`disputes_to_review`, high once a staff time limit has passed) and, for masters, the escalated
+ * inbox (`disputes_escalated`, high once a master time limit has passed). Counts only.
+ */
+async function pendingActions(principal, now = new Date()) {
+  const visible = targets.visibleTo(principal, authz.hasPermission);
+  if (!visible.length) return [];
+  const [row] = await sequelize.query(
+    `SELECT COUNT(*) FILTER (WHERE status = 'under_review')::int AS review,
+            COUNT(*) FILTER (WHERE status = 'under_review' AND sla_due_at <= :now)::int AS "reviewLate",
+            MIN(sla_due_at) FILTER (WHERE status = 'under_review') AS "reviewDue",
+            COUNT(*) FILTER (WHERE status = 'escalated')::int AS escalated,
+            COUNT(*) FILTER (WHERE status = 'escalated' AND master_due_at <= :now)::int AS "escalatedLate",
+            MIN(master_due_at) FILTER (WHERE status = 'escalated') AS "escalatedDue"
+       FROM disputes WHERE source_type IN (:visible) AND status IN ('under_review', 'escalated')`,
+    { replacements: { now, visible }, type: sequelize.QueryTypes.SELECT }
+  );
+  return [
+    ...queueItem({ key: 'disputes_to_review', count: row.review, overdue: row.reviewLate, dueAt: row.reviewDue, href: '/admin/disputes' }),
+    ...(principal.isMaster ? queueItem({ key: 'disputes_escalated', count: row.escalated, overdue: row.escalatedLate, dueAt: row.escalatedDue, href: '/admin/disputes?view=escalated' }) : []),
+  ];
+}
+
 /** M18 and the reviews: is a case open about this source? */
 const activeFor = async (sourceType, sourceId, { transaction } = {}) => (await Dispute.count({ where: { sourceType, sourceId, status: rules.ACTIVE }, transaction })) > 0;
 
@@ -631,5 +656,6 @@ module.exports = {
   facts,
   activeFor,
   statsFor,
+  pendingActions,
   partyOf,
 };

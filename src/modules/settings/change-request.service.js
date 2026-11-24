@@ -19,6 +19,7 @@
 const { Op } = require('sequelize');
 const config = require('../../config');
 const logger = require('../../common/logger');
+const { queueItem } = require('../../common/actions');
 const { AppError, E } = require('../../common/errors');
 const { sequelize, PlatformSetting, SettingsHistory, SettingsChangeRequest } = require('../../models');
 const directory = () => require('../users').directory;
@@ -312,4 +313,14 @@ async function getOne(id) {
   return withNames(row);
 }
 
-module.exports = { create, approve, reject, withdraw, applyDue, list, getOne, sameValue, APPLY_JOB };
+/**
+ * M19 "Needs your action" for masters (FR-29): four-eyes changes another master proposed, waiting for
+ * this master's approval or rejection (`settings_to_approve`).
+ */
+async function pendingActions(principal) {
+  if (!principal.isMaster) return [];
+  const count = await SettingsChangeRequest.count({ where: { status: 'proposed', proposedBy: { [Op.ne]: principal.id } } });
+  return queueItem({ key: 'settings_to_approve', count, href: '/admin/fees' });
+}
+
+module.exports = { create, approve, reject, withdraw, applyDue, list, getOne, sameValue, pendingActions, APPLY_JOB };

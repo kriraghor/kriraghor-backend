@@ -13,6 +13,6 @@ const lazy = (file, names, values = []) => {
 };
 
 module.exports = {
-  changeRequest: lazy('./change-request.service', ['create', 'getOne']),
+  changeRequest: lazy('./change-request.service', ['create', 'getOne', 'pendingActions']),
   settings: lazy('./settings.service', ['get', 'snapshot', 'definition']),
 };

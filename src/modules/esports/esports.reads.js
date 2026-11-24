@@ -4,9 +4,12 @@
  * M21 read-only views for other modules (M23 big events). Other modules never query M21's tables;
  * they call these. No status filtering: callers decide what is public.
  */
+const { Op } = require('sequelize');
 const models = require('../../models');
+const { queueItem } = require('../../common/actions');
+const authz = require('../auth').authz;
 
-const { EsportsTournament, EsportsRegistration, EsportsRegistrationPlayer, EsportsStage, EsportsStanding, EsportsSquad, EsportsGameProfile, EsportsStream } = models;
+const { EsportsTournament, EsportsMatch, EsportsRegistration, EsportsRegistrationPlayer, EsportsStage, EsportsStanding, EsportsSquad, EsportsGameProfile, EsportsStream } = models;
 
 const money = (poisha) => ({ amount: poisha, currency: 'BDT' });
 
@@ -99,4 +102,22 @@ async function hasAnyVerifiedProfile(userId, { transaction } = {}) {
   return (await EsportsGameProfile.count({ where: { userId, status: 'verified' }, transaction })) > 0;
 }
 
-module.exports = { hasAnyVerifiedProfile, streamsOf, tournamentSummary, entryIdentity, standingsWithEntries, entryLabels, squadFacts, hasVerifiedProfile };
+/**
+ * M19 "Needs your action" for staff (FR-29): matches that have started and still have no results
+ * (`results_to_enter`, staff with enter_results or manage_esports) and tournaments submitted for
+ * review (`tournaments_to_review`, manage_esports).
+ */
+async function pendingActions(principal, now = new Date()) {
+  const canManage = authz.hasPermission(principal, 'manage_esports');
+  const canEnter = canManage || authz.hasPermission(principal, 'enter_results');
+  const [matches, review] = await Promise.all([
+    canEnter ? EsportsMatch.count({ where: { status: ['room_revealed', 'live'], startsAt: { [Op.lte]: now } } }) : 0,
+    canManage ? EsportsTournament.count({ where: { status: 'review' } }) : 0,
+  ]);
+  return [
+    ...queueItem({ key: 'results_to_enter', count: matches, href: '/admin/esports' }),
+    ...queueItem({ key: 'tournaments_to_review', count: review, href: '/admin/esports' }),
+  ];
+}
+
+module.exports = { pendingActions, hasAnyVerifiedProfile, streamsOf, tournamentSummary, entryIdentity, standingsWithEntries, entryLabels, squadFacts, hasVerifiedProfile };

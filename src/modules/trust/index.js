@@ -13,8 +13,8 @@ const lazy = (file, names, values = []) => {
 };
 
 module.exports = {
-  reports: lazy('./reports.service', ['upheldAgainst']),
-  disputes: lazy('./disputes.service', ['decideForSource', 'facts', 'open', 'openFromSource', 'statsFor']),
+  reports: lazy('./reports.service', ['pendingActions', 'upheldAgainst']),
+  disputes: lazy('./disputes.service', ['decideForSource', 'facts', 'open', 'openFromSource', 'pendingActions', 'statsFor']),
   reviews: lazy('./reviews.service', ['facts', 'ratingOf']),
   targetsPort: lazy('./targets.port', ['register']),
   reviewSources: lazy('./review-sources.port', ['register']),

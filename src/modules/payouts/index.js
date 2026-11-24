@@ -16,6 +16,6 @@ module.exports = {
   holds: lazy('./holds.service', ['activeFor', 'lift', 'place']),
   payoutAccounts: lazy('./payout-accounts.service', ['activeFor', 'addedSince', 'facts', 'sharedWith']),
   rules: lazy('./payouts.rules', ['csv']),
-  payouts: lazy('./payouts.service', ['facts']),
+  payouts: lazy('./payouts.service', ['facts', 'pendingActions']),
   withdrawals: lazy('./withdrawals.service', ['available']),
 };
