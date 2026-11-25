@@ -84,6 +84,10 @@
     {
       "key": "shopSales",
       "value": ""
+    },
+    {
+      "key": "reviewerToken",
+      "value": ""
     }
   ],
   "item": [
@@ -2251,6 +2255,232 @@
                   "key": "role",
                   "value": "organiser"
                 }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Staff review figures (M19 §6.4, FR-32, FR-33)",
+      "item": [
+        {
+          "name": "Runner: a documents reviewer approves a trade licence and rejects a TIN",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"saves reviewerToken\", () => { pm.expect((pm.collectionVariables.set('reviewerToken', j.reviewerToken), true)).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/reviews",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "reviews"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Your reviews (me)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"two reviewed today\", () => { pm.expect(j.scope === \"me\" && j.tiles.reviewedToday.value === 2).to.eql(true); });",
+                  "pm.test(\"half approved\", () => { pm.expect(j.tiles.approvalRate.value === 0.5).to.eql(true); });",
+                  "pm.test(\"a median time\", () => { pm.expect(typeof j.tiles.medianMinutes.value === \"number\").to.eql(true); });",
+                  "pm.test(\"why we said no: unreadable\", () => { pm.expect(j.whyNo.length === 1 && j.whyNo[0].code === 'unreadable' && j.whyNo[0].count === 1 && j.whyNo[0].label.length > 0).to.eql(true); });",
+                  "pm.test(\"my two latest decisions, newest first\", () => { pm.expect(j.recent.length === 2 && j.recent[0].decision === 'rejected' && j.recent[1].decision === 'approved').to.eql(true); });",
+                  "pm.test(\"30 days, today counted\", () => { pm.expect(j.window.days === 30 && j.perDay.length === 30 && j.perDay[29].approved + j.perDay[29].rejected >= 2).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/analytics/reviews?scope=me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "analytics",
+                "reviews"
+              ],
+              "query": [
+                {
+                  "key": "scope",
+                  "value": "me"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Team figures in Bangla (master: every kind)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"the team, no latest list\", () => { pm.expect(j.scope === \"team\" && j.recent.length === 0).to.eql(true); });",
+                  "pm.test(\"every decision today, the listings too\", () => { pm.expect(j.tiles.reviewedToday.value >= 2).to.eql(true); });",
+                  "pm.test(\"definitions in Bangla\", () => { pm.expect(/[ঀ-৿]/.test(j.definitions.median_decision)).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/analytics/reviews?scope=team&locale=bn",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "analytics",
+                "reviews"
+              ],
+              "query": [
+                {
+                  "key": "scope",
+                  "value": "team"
+                },
+                {
+                  "key": "locale",
+                  "value": "bn"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "A bad scope (expect 422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 422 VALIDATION_FAILED', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(j && j.code).to.eql('VALIDATION_FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/analytics/reviews?scope=everyone",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "analytics",
+                "reviews"
+              ],
+              "query": [
+                {
+                  "key": "scope",
+                  "value": "everyone"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "As a member (expect 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 401', () => {",
+                  "  pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{memberToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/analytics/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "analytics",
+                "reviews"
               ]
             }
           }

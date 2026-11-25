@@ -25,6 +25,7 @@ const EXPORTS = ['owner_bookings', 'owner_revenue', 'member_payments', 'shop_ord
 const exportQuery = z.object({ dataset: z.enum(EXPORTS), period: period.default('7w') });
 const platformQuery = z.object({ period: period.default('yr'), locale });
 const platformExportQuery = z.object({ dataset: z.enum(['platform_daily']), period: period.default('yr') });
+const reviewsQuery = z.object({ scope: z.enum(['me', 'team']).default('me').meta({ description: "me: your own decisions; team: everyone's decisions in the kinds you may review (no one is named)" }), locale });
 const kpiParam = z.object({ key: z.string().max(40) });
 const kpiQuery = z.object({ locale });
 
@@ -124,6 +125,26 @@ const Actions = z
     total: z.number(),
   })
   .meta({ id: 'PendingActions' });
+const Decision = z.enum(['approved', 'changes_requested', 'rejected']);
+const ReviewFigures = z
+  .object({
+    scope: z.enum(['me', 'team']),
+    window: z.object({ days: z.number(), from: day, to: day }).meta({ description: 'The Dhaka days counted (analytics.review_window_days), today the last' }),
+    tiles: z.object({
+      waiting: z.object({ value: z.number(), delta: z.null(), note: z.object({ overdue: z.number() }) }).meta({ description: 'Live queue in the kinds you may review (not scoped)' }),
+      reviewedToday: z.object({ value: z.number(), delta: z.number().nullable(), note: z.object({ lastWeek: z.number() }) }).meta({ description: 'Since Dhaka midnight; delta in percent against the same weekday last week up to the same time' }),
+      medianMinutes: z.object({ value: z.number().nullable(), delta: z.number().nullable() }).meta({ description: 'Median minutes from submission to decision in the window; delta in percent against the window before (lower is better)' }),
+      approvalRate: z.object({ value: z.number().nullable(), delta: z.number().nullable() }).meta({ description: 'Approved of all decisions in the window (a fraction); delta in points against the window before' }),
+    }),
+    perDay: z.array(z.object({ day, approved: z.number(), changesRequested: z.number(), rejected: z.number() })),
+    whyNo: z.array(z.object({ code: z.string(), label: z.string(), count: z.number() })).meta({ description: 'Reasons given for changes asked and rejections in the window, most first' }),
+    recent: z
+      .array(z.object({ submissionId: z.uuid(), kind: z.string(), decision: Decision, reasonCode: z.string().nullable(), reason: z.string().nullable(), decidedAt: z.string() }))
+      .meta({ description: 'scope me only: your latest decisions (analytics.recent_decisions)' }),
+    asOf: z.string(),
+    definitions: z.record(z.string(), z.string()),
+  })
+  .meta({ id: 'ReviewFigures' });
 const KpiDefinition = z.object({ key: z.string(), text: z.string() }).meta({ id: 'KpiDefinition' });
 
 module.exports = {
@@ -132,6 +153,7 @@ module.exports = {
   exportQuery,
   platformQuery,
   platformExportQuery,
+  reviewsQuery,
   kpiParam,
   kpiQuery,
   OwnerDashboard,
@@ -141,5 +163,6 @@ module.exports = {
   GymDashboard,
   OrganiserDashboard,
   Actions,
+  ReviewFigures,
   KpiDefinition,
 };

@@ -25,6 +25,9 @@ const SUB_ORDER = [
 ];
 // M20: a pass is sold, used at the front desk (an admission), expires or is cancelled.
 const GYM_PASS = ['gym_pass.paid', 'gym_pass.redeemed', 'gym_pass.expired', 'gym_pass.cancelled'];
+// M05 (M19-FR-32): each decision is a review fact; the payload carries its times (older events without
+// them are left to the backfill).
+const REVIEW = { 'submission.approved': 'approved', 'submission.changes_requested': 'changes_requested', 'submission.rejected': 'rejected' };
 const DAY = 24 * 60 * 60 * 1000;
 const MAX_CLOSURE_DAYS = 31;
 
@@ -59,6 +62,16 @@ function registerAnalyticsConsumers() {
   // Round B2 (§6.3): shops and gyms.
   on(SUB_ORDER, 'sub-order', (e, { transaction }) => facts.refreshSubOrder(e.payload.subOrderId, { transaction }));
   on(GYM_PASS, 'gym-pass', (e, { transaction }) => facts.refreshGymPass(e.payload.passId, { transaction }));
+  // M19-FR-32: moderation decisions.
+  for (const [name, decision] of Object.entries(REVIEW)) {
+    onEvent(name, 'analytics.review', (e, { transaction }) =>
+      once(e, 'analytics.review', transaction, async () => {
+        const p = e.payload;
+        if (!p.decidedAt || !p.submittedAt || !p.decidedBy) return 'skipped';
+        return facts.recordReview({ submissionId: p.submissionId, kind: p.kind, decision, reasonCode: p.reasonCode, decidedBy: p.decidedBy, submittedAt: p.submittedAt, decidedAt: p.decidedAt }, { transaction });
+      })
+    );
+  }
 }
 
-module.exports = { registerAnalyticsConsumers, BOOKING, SUB_ORDER, GYM_PASS };
+module.exports = { registerAnalyticsConsumers, BOOKING, SUB_ORDER, GYM_PASS, REVIEW };

@@ -41,6 +41,8 @@ const DHAKA_MS = 6 * 3600000;
 const startOfDhakaDay = (now) => new Date(Math.floor((now.getTime() + DHAKA_MS) / 86400000) * 86400000 - DHAKA_MS);
 
 const eventBase = (s) => ({ submissionId: s.id, kind: s.kind, subjectId: s.subjectId, version: s.version, submittedBy: s.submittedBy });
+// The decision's times ride on the decision events, so M19's review facts never read back (M19-FR-32): a reopen later clears them on the row.
+const decisionTimes = (s) => ({ submittedAt: new Date(s.submittedAt).toISOString(), decidedAt: new Date(s.decidedAt).toISOString() });
 
 async function activeClaim(submissionId, { transaction, lock = false } = {}) {
   return ReviewClaim.findOne({ where: { submissionId, releasedAt: null }, transaction, ...(lock ? { lock: transaction.LOCK.UPDATE } : {}) });
@@ -404,7 +406,7 @@ async function decide(principal, id, { decision, reasonCode, reasonText, overrid
       name: EVENT_FOR[status],
       aggregateType: 'submission',
       aggregateId: s.id,
-      payload: { ...eventBase(s), decidedBy: principal.id, ...(decision === 'approve' ? { overridden } : { reasonCode }) },
+      payload: { ...eventBase(s), ...decisionTimes(s), decidedBy: principal.id, ...(decision === 'approve' ? { overridden } : { reasonCode }) },
       actor: principal,
       req,
     });
@@ -479,7 +481,7 @@ async function watchApplies(now = new Date()) {
     await sequelize.transaction(async (transaction) => {
       if (s.applyAttempts < max) {
         await s.update({ applyAttempts: s.applyAttempts + 1 }, { transaction });
-        await events.publish(transaction, { name: 'submission.approved', aggregateType: 'submission', aggregateId: s.id, payload: { ...eventBase(s), decidedBy: s.decidedBy, overridden: Boolean(s.checkOverrideBy) } });
+        await events.publish(transaction, { name: 'submission.approved', aggregateType: 'submission', aggregateId: s.id, payload: { ...eventBase(s), ...decisionTimes(s), decidedBy: s.decidedBy, overridden: Boolean(s.checkOverrideBy) } });
         resent += 1;
       } else {
         await s.update({ applyAttempts: s.applyAttempts + 1 }, { transaction });

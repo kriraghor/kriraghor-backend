@@ -70,7 +70,18 @@ Setup: `npm run release` also applies `20261110000001-create-business-kpis` (onl
 | 6.3 | **Needs your action (organiser admin / staff)** | Admins: `registrations_waiting` (1) and `registrations_unpaid` (1), linking to `/vendor/tournaments/{orgId}`; staff: the unpaid holds only |
 | 6.4 | Exports everywhere 🤖 | Every Round B2 export (and M14's registrations CSV) is capped by `analytics.export_sync_max_rows` (`422 EXPORT_TOO_LARGE`), counted against `analytics.exports_per_hour` (`429 EXPORT_LIMIT`) and audited |
 
+## Staff review figures (§6.4, FR-32, FR-33; 25 Nov 2026)
+
+| # | Request (folder 7) | Expect |
+|---|---|---|
+| 7a.1 | **Runner: a documents reviewer approves a trade licence and rejects a TIN** | Two decisions through the real desk; each becomes a `kpi_fact_review` row from the M05 event |
+| 7a.2 | **Your reviews (me)** | Reviewed today 2, approval rate 0.5, a median time, why we said no: `unreadable` (1) with its label, the two latest decisions newest first, 30 days of `perDay` |
+| 7a.3 | **Team figures in Bangla (master)** | `scope` team, no latest list, every kind counted (the listings approved in folder 4 too), definitions in Bangla |
+| 7a.4 | **A bad scope**, **As a member** | `422 VALIDATION_FAILED`; `401` |
+| 7a.5 | Kinds, reopen, backfill 🤖 | A documents-only reviewer never counts listings; a reopen keeps the earlier fact; event replays and the backfill never count twice; staff without review permissions get `403 PERMISSION_REQUIRED` (`tests/e2e/analytics-reviews.test.js`) |
+
 ## 7. Apps
 - [ ] vendor.kriraghor.com: the home shows the owner's tiles, "Needs your action" and the period switch; `/vendor/analytics` shows the four charts and the CSV buttons.
 - [ ] kriraghor.com `/me`: the member's tiles, where it went, and "Needs your action".
 - [ ] admin.kriraghor.com home (round 3, FR-30): the platform tiles with the period in the URL for masters and `view_analytics` staff, then one card per staff queue (urgent first, "Urgent" in words), then the charts with Table views and the day table CSV; staff without analytics see their queues and desks only; the staff screen offers the `view_analytics` permission.
+- [ ] admin.kriraghor.com home (FR-33): reviewers and masters see "Your reviews" under "Needs your action": four tiles, Me or Team in the URL (`?reviews=`), decisions per day, why we said no, and (Me) the latest decisions opening the moderation desk.

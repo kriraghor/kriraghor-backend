@@ -5,7 +5,8 @@
  *   meRouter     /me/dashboard     the member's, ground owner's, shop owner's, gym owner's and sports
  *                                  organiser's dashboards (?role=, organiser with ?orgId=), actions and CSV
  *   kpiRouter    /kpis             what each tile counts (public)
- *   adminRouter  /admin/analytics  the platform overview and its CSV (master or view_analytics), staff actions
+ *   adminRouter  /admin/analytics  the platform overview and its CSV (master or view_analytics), staff actions,
+ *                                  the review figures (masters and reviewers, M19-FR-33)
  */
 const { Router } = require('express');
 const { validate } = require('../../common/validate');
@@ -15,6 +16,7 @@ const { authenticate, authenticateAdmin, requireStaff } = require('../../middlew
 const dashboards = require('./dashboards.service');
 const actions = require('./actions.registry');
 const exportsSvc = require('./exports.service');
+const reviews = require('./reviews.service');
 const { definition } = require('./kpis');
 const s = require('./analytics.schemas');
 
@@ -53,10 +55,16 @@ kpiRouter.get('/:key/definition', validate(s.kpiParam, 'params'), validate(s.kpi
 const canAnalyse = (req, _res, next) =>
   req.user.isMaster || req.user.permissions.has(PERMISSIONS.VIEW_ANALYTICS) ? next() : next(E.forbidden('PERMISSION_REQUIRED', 'You need view analytics', undefined, { permission: PERMISSIONS.VIEW_ANALYTICS }));
 
+// M19-FR-33: the review figures are for masters and staff who review (M05: approve_documents or approve_listings).
+const canReview = (req, _res, next) =>
+  req.user.isMaster || req.user.permissions.has(PERMISSIONS.APPROVE_DOCUMENTS) || req.user.permissions.has(PERMISSIONS.APPROVE_LISTINGS)
+    ? next()
+    : next(E.forbidden('PERMISSION_REQUIRED', 'Only staff who review submissions see these figures'));
 const adminRouter = Router();
 adminRouter.use(authenticateAdmin, requireStaff);
 adminRouter.get('/overview', canAnalyse, validate(s.platformQuery, 'query'), async (req, res) => res.json(await dashboards.platformOverview(req.user, req.validQuery)));
 adminRouter.get('/export', canAnalyse, validate(s.platformExportQuery, 'query'), async (req, res) => sendCsv(res, await exportsSvc.exportCsv(req.user, req.validQuery, 'platform', req)));
 adminRouter.get('/actions', async (req, res) => res.json(await actions.list(req.user, 'staff')));
+adminRouter.get('/reviews', canReview, validate(s.reviewsQuery, 'query'), async (req, res) => res.json(await reviews.reviewFigures(req.user, req.validQuery)));
 
 module.exports = { meRouter, kpiRouter, adminRouter };

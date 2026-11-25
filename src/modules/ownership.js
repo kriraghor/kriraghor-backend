@@ -31,7 +31,7 @@ const OWNERS = {
   'business-members': ['BusinessMember'],
   'settings': ['PlatformSetting', 'SettingsHistory', 'SettingsChangeRequest'],
   'catalog': ['Sport', 'Division', 'District', 'Area', 'Facility', 'Surface', 'SportRuleSchema', 'Exercise', 'ItemCategory', 'ItemType', 'ItemTypeField', 'HireCategory', 'HireRole', 'EsportsGame', 'EsportsMode', 'EsportsMap', 'EsportsPointsPreset'],
-  'analytics': ['KpiFactBooking', 'KpiFactCourtDay', 'KpiFactPayment', 'KpiFactLedgerTxn', 'KpiFactEsportsEntry', 'KpiFactEsportsTournament', 'KpiProcessedEvent', 'KpiDrift', 'KpiFactSubOrder', 'KpiFactOrderLine', 'KpiFactGymPass', 'KpiFactGymAdmission'],
+  'analytics': ['KpiFactBooking', 'KpiFactCourtDay', 'KpiFactPayment', 'KpiFactLedgerTxn', 'KpiFactEsportsEntry', 'KpiFactEsportsTournament', 'KpiProcessedEvent', 'KpiDrift', 'KpiFactSubOrder', 'KpiFactOrderLine', 'KpiFactGymPass', 'KpiFactGymAdmission', 'KpiFactReview'],
   'audit': ['AuditLog', 'AuditChain', 'AuditExport'],
   'events': ['OutboxEvent', 'ConsumedEvent'],
   'notifications': ['Notification', 'NotificationPref', 'MessageTemplate', 'NotificationDelivery', 'NotificationExternalDelivery', 'SmsLog', 'PushSubscription', 'PushReceipt'],

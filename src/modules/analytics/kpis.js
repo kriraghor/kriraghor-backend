@@ -71,6 +71,31 @@ const KPIS = {
     bn: 'এই সময়ে দেওয়া এন্ট্রি ফি, এসক্রো থেকে। নোটে আপনার সব ইভেন্টের জন্য ক্রীড়াঘরে রাখা, আপনাকে ছাড়া ও ফেরত দেওয়া টাকা।',
   },
   matches_played: { en: 'Matches with a result, of all matches not cancelled.', bn: 'ফল হওয়া ম্যাচ, বাতিল নয় এমন সব ম্যাচের মধ্যে।' },
+  // M19 §6.4 staff review figures (M19-FR-33).
+  review_waiting: {
+    en: 'Submissions waiting for a decision in the kinds you may review, right now. The note counts those already past the review time limit.',
+    bn: 'আপনি যে ধরন পর্যালোচনা করতে পারেন, তাতে এখন সিদ্ধান্তের অপেক্ষায় থাকা জমা। নোটে পর্যালোচনার সময়সীমা পেরোনোগুলো গোনা হয়।',
+  },
+  reviewed_today: {
+    en: 'Decisions made today (Dhaka time): approved, changes asked or rejected. Compared with the same weekday last week, up to the same time of day.',
+    bn: 'আজ (ঢাকার সময়) নেওয়া সিদ্ধান্ত: অনুমোদন, পরিবর্তন চাওয়া বা প্রত্যাখ্যান। গত সপ্তাহের একই বারের একই সময় পর্যন্ত তুলনা।',
+  },
+  median_decision: {
+    en: 'The middle time from submission to decision for decisions in the period: half were quicker, half slower. Compared with the same number of days before; lower is better.',
+    bn: 'এই সময়ের সিদ্ধান্তে জমা থেকে সিদ্ধান্ত পর্যন্ত মাঝামাঝি সময়: অর্ধেক দ্রুত, অর্ধেক ধীর। আগের সমান দিনের সঙ্গে তুলনা; কম হলে ভালো।',
+  },
+  approval_rate: {
+    en: 'Approved of all decisions in the period (approved, changes asked, rejected). The change is in points against the same number of days before.',
+    bn: 'এই সময়ের সব সিদ্ধান্তের (অনুমোদন, পরিবর্তন চাওয়া, প্রত্যাখ্যান) মধ্যে অনুমোদন। পরিবর্তন আগের সমান দিনের তুলনায় পয়েন্টে।',
+  },
+  decisions_per_day: {
+    en: 'Decisions on each Dhaka day of the period, split into approved, changes asked and rejected.',
+    bn: 'এই সময়ের প্রতিটি দিনের (ঢাকা) সিদ্ধান্ত, অনুমোদন, পরিবর্তন চাওয়া ও প্রত্যাখ্যানে ভাগ করা।',
+  },
+  why_no: {
+    en: 'The reasons given when changes were asked or a submission was rejected in the period, most used first.',
+    bn: 'এই সময়ে পরিবর্তন চাওয়া বা প্রত্যাখ্যানের সময় দেওয়া কারণ, বেশি ব্যবহৃতগুলো আগে।',
+  },
 };
 
 const definitionsFor = (keys, locale = 'en') => Object.fromEntries(keys.map((k) => [k, KPIS[k][locale === 'bn' ? 'bn' : 'en']]));

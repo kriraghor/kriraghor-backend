@@ -62,6 +62,8 @@ const subOrderEvent = z.object({ subOrderId: uuid, code: z.string().max(24), ord
 const docEvent = z.object({ documentId: uuid, userId: uuid, docType: z.string().max(30), role: z.string().max(32).optional() });
 const payoutEvent = z.object({ payoutId: uuid, code: z.string(), payeeId: uuid, amount: poisha });
 const subEvent = z.object({ submissionId: uuid, kind: z.string().max(30), subjectId: uuid, version: z.number().int(), submittedBy: uuid });
+// M19-FR-32 (25 Nov 2026): a decision carries its times so M19's review facts never read back (optional: older events lack them).
+const decided = { submittedAt: iso.optional(), decidedAt: iso.optional() };
 const esReg = z.object({ registrationId: uuid, tournamentId: uuid, registrantUserId: uuid });
 const esMatch = z.object({ matchId: uuid, tournamentId: uuid });
 const esProfile = z.object({ profileId: uuid, userId: uuid, gameId: uuid });
@@ -198,9 +200,9 @@ const EVENTS = {
 
   // ---------------- M05 Moderation (ids, kinds and codes only: the payload stays in the submission) ----------------
   'submission.created': { module: 'M05', version: 1, schema: subEvent.extend({ isEdit: z.boolean(), mode: z.enum(['pre', 'post']), slaDueAt: iso }) },
-  'submission.approved': { module: 'M05', version: 1, schema: subEvent.extend({ decidedBy: uuid, overridden: z.boolean() }) },
-  'submission.changes_requested': { module: 'M05', version: 1, schema: subEvent.extend({ decidedBy: uuid, reasonCode: z.string().max(40) }) },
-  'submission.rejected': { module: 'M05', version: 1, schema: subEvent.extend({ decidedBy: uuid, reasonCode: z.string().max(40) }) },
+  'submission.approved': { module: 'M05', version: 1, schema: subEvent.extend({ decidedBy: uuid, overridden: z.boolean(), ...decided }) },
+  'submission.changes_requested': { module: 'M05', version: 1, schema: subEvent.extend({ decidedBy: uuid, reasonCode: z.string().max(40), ...decided }) },
+  'submission.rejected': { module: 'M05', version: 1, schema: subEvent.extend({ decidedBy: uuid, reasonCode: z.string().max(40), ...decided }) },
   'submission.withdrawn': { module: 'M05', version: 1, schema: subEvent.extend({ byOwner: z.boolean(), superseded: z.boolean(), claimedBy: uuid.nullable() }) },
   'submission.sla_breached': { module: 'M05', version: 1, schema: subEvent.extend({ overdueMinutes: z.number().int(), claimedBy: uuid.nullable() }) },
   'submission.apply_failed': { module: 'M05', version: 1, schema: subEvent.extend({ attempts: z.number().int() }) },

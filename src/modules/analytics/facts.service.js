@@ -8,6 +8,7 @@
  * analytics.reconcile_days through the same services (FactsExporter), repairs differences and logs
  * them in kpi_drift; materialised views refresh CONCURRENTLY under an advisory lock.
  */
+const { randomUUID } = require('node:crypto');
 const { Op } = require('sequelize');
 const logger = require('../../common/logger');
 const config = require('../../config');
@@ -46,6 +47,9 @@ const VIEWS = ['kpi_mv_owner_day', 'kpi_mv_owner_occupancy_day', 'kpi_mv_owner_h
  * row; later runs look back reconcile_days as usual. Backfilled rows are not drift.
  */
 const BACKFILL = { eventId: '00000000-0000-4000-8000-0000000000b2', consumer: 'analytics.backfill.round-b2' };
+/** M19-FR-32 backfill marker: the review facts start empty; the first reconcile loads every decision on record once. */
+const REVIEW_BACKFILL = { eventId: '00000000-0000-4000-8000-0000000000f2', consumer: 'analytics.backfill.reviews' };
+const REVIEW_PAGE = 500;
 
 // ---------------------------------------------------------------- bookings
 
@@ -310,6 +314,7 @@ async function reconcile(now = new Date()) {
   }
   // Round B2: shop and gym facts (the first run after the migration backfills every record once).
   const backfilled = (await isBackfilled()) ? null : await backfillBusiness(now);
+  const reviews = (await isReviewBackfilled()) ? null : await backfillReviews();
   for (const f of await ordersReads().exportSubOrderKpiFacts({ since, until: now })) {
     const have = await KpiFactSubOrder.findByPk(f.subOrderId);
     const lines = await KpiFactOrderLine.count({ where: { subOrderId: f.subOrderId } });
@@ -340,7 +345,7 @@ async function reconcile(now = new Date()) {
   });
   if (found.length) logger.warn({ drift: found.length }, 'analytics reconcile repaired facts');
   await refreshViewsAndStamp();
-  return { checkedSince: since.toISOString(), repaired: found.length, ...(backfilled ? { backfilled } : {}) };
+  return { checkedSince: since.toISOString(), repaired: found.length, ...(backfilled ? { backfilled } : {}), ...(reviews ? { reviewsBackfilled: reviews.reviews } : {}) };
 }
 
 const isBackfilled = async () => Boolean(await KpiProcessedEvent.findOne({ where: BACKFILL }));
@@ -357,6 +362,56 @@ async function backfillBusiness(now = new Date()) {
   await KpiProcessedEvent.findOrCreate({ where: BACKFILL, defaults: { processedAt: new Date() } });
   logger.info(out, 'analytics backfilled shop and gym facts');
   return out;
+}
+
+// ---------------------------------------------------------------- moderation decisions (M19-FR-32)
+
+/**
+ * One moderation decision as a fact. A decision is (submission, decided time): replays, the apply
+ * watchdog's re-sent approvals and the backfill hit the unique pair and change nothing. Returns true
+ * when a row was added.
+ */
+async function recordReview(f, { transaction } = {}) {
+  const [, count] = await sequelize.query(
+    `INSERT INTO kpi_fact_review (id, submission_id, kind, decision, reason_code, decided_by, submitted_at, decided_at, created_at)
+     VALUES (:id, :submissionId, :kind, :decision, :reasonCode, :decidedBy, :submittedAt, :decidedAt, now())
+     ON CONFLICT (submission_id, decided_at) DO NOTHING`,
+    {
+      replacements: {
+        id: randomUUID(),
+        submissionId: f.submissionId,
+        kind: f.kind,
+        decision: f.decision,
+        reasonCode: f.decision === 'approved' ? null : (f.reasonCode ?? null),
+        decidedBy: f.decidedBy,
+        submittedAt: new Date(f.submittedAt),
+        decidedAt: new Date(f.decidedAt),
+      },
+      transaction,
+    }
+  );
+  return count > 0;
+}
+
+const isReviewBackfilled = async () => Boolean(await KpiProcessedEvent.findOne({ where: REVIEW_BACKFILL }));
+
+/**
+ * M19-FR-32 one-off backfill (the first reconcile after the migration, or by hand): every decision M05
+ * still has on record, read through its facade a page at a time. A decision a master reopened before
+ * this round is no longer on the submission and cannot be recovered.
+ */
+async function backfillReviews() {
+  let after = null;
+  let added = 0;
+  for (;;) {
+    const page = await require('../moderation').reads.decisions({ after, limit: REVIEW_PAGE });
+    for (const f of page) if (await recordReview(f)) added += 1;
+    if (page.length < REVIEW_PAGE) break;
+    after = page[page.length - 1].cursor;
+  }
+  await KpiProcessedEvent.findOrCreate({ where: REVIEW_BACKFILL, defaults: { processedAt: new Date() } });
+  logger.info({ reviews: added }, 'analytics backfilled review facts');
+  return { reviews: added };
 }
 
 /** Nightly: rebuild court-day occupancy for the last 2 and next 14 days of every court with facts. */
@@ -383,6 +438,8 @@ module.exports = {
   refreshSubOrder,
   refreshGymPass,
   backfillBusiness,
+  recordReview,
+  backfillReviews,
   refreshViews: refreshViewsAndStamp,
   asOf,
   reconcile,

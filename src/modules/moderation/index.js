@@ -15,4 +15,5 @@ const lazy = (file, names, values = []) => {
 module.exports = {
   adapters: lazy('./moderation.adapters', ['get', 'register']),
   moderation: lazy('./moderation.service', ['getById', 'stats', 'submit', 'withdrawSubject']),
+  reads: lazy('./moderation.reads', ['reviewKinds', 'reasonLabels', 'decisions']),
 };

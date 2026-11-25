@@ -812,6 +812,8 @@ function register(registry) {
   p({ method: 'get', path: '/admin/analytics/export', tags: ['analytics'], summary: 'CSV of the platform day table (master or view_analytics)', security: adminBearer,
     request: { query: anS.platformExportQuery }, responses: { 200: csv, ...errors({ ...ADMIN_AUTH, 404: ['DATASET_UNKNOWN'], 422: ['VALIDATION_FAILED', 'EXPORT_TOO_LARGE'], 429: ['EXPORT_LIMIT'] }) } });
   p({ method: 'get', path: '/admin/analytics/actions', tags: ['analytics'], summary: 'Needs your action for staff (the review queue)', security: adminBearer, responses: { 200: json(anS.Actions), ...errors(ADMIN_AUTH) } });
+  p({ method: 'get', path: '/admin/analytics/reviews', tags: ['analytics'], summary: 'Review figures for masters and reviewers (M19-FR-33): the queue, reviewed today, median decision time, approval rate, decisions per day, why we said no, your recent decisions', security: adminBearer,
+    request: { query: anS.reviewsQuery }, responses: { 200: json(anS.ReviewFigures), ...errors({ ...ADMIN_AUTH, ...VALIDATION }) } });
   // ------------------------------------------------------------------ M17 disputes, reports and reviews
   const dCode = { params: trS.codeParam };
   const dEv = { params: trS.evidenceParam };

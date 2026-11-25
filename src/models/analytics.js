@@ -232,6 +232,23 @@ KpiFactGymAdmission.init(
   opts('kpi_fact_gym_admission', 'KpiFactGymAdmission')
 );
 
+/** M19-FR-32: one row per moderation decision (migration 20261204000001). */
+class KpiFactReview extends Model {}
+KpiFactReview.init(
+  {
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: DataTypes.UUIDV4 },
+    submissionId: req(DataTypes.UUID),
+    kind: req(DataTypes.STRING(30)),
+    decision: req(DataTypes.STRING(20)),
+    reasonCode: { type: DataTypes.STRING(40), allowNull: true },
+    decidedBy: req(DataTypes.UUID),
+    submittedAt: req(DataTypes.DATE(3)),
+    decidedAt: req(DataTypes.DATE(3)),
+    createdAt: { type: DataTypes.DATE(3), allowNull: false, defaultValue: DataTypes.NOW },
+  },
+  opts('kpi_fact_review', 'KpiFactReview')
+);
+
 module.exports = {
   KpiFactBooking,
   KpiFactCourtDay,
@@ -245,4 +262,5 @@ module.exports = {
   KpiFactOrderLine,
   KpiFactGymPass,
   KpiFactGymAdmission,
+  KpiFactReview,
 };

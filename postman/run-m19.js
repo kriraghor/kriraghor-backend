@@ -130,6 +130,23 @@ async function main() {
       await models.SettingsChangeRequest.create({ changes: [{ key: 'fees.hire_pct', value: 9 }], reason: 'Postman M19', effectiveAt: new Date(), needsFourEyes: true, proposedBy: other.user.id });
       return {};
     },
+    // M19-FR-32/33: a documents reviewer approves a trade licence and rejects a TIN (unreadable) through the real desk.
+    reviews: async () => {
+      const reviewer = await mf.staffWith(a, ['approve_documents']);
+      const m = await h.signupUser({ name: 'Sadia Karim' });
+      await h.verifyMember(m.user.id);
+      await mf.refresh(m);
+      await h.api().post(`${h.P}/me/roles`).set(h.bearer(m)).send({ role: 'shop_owner' }).expect(201);
+      await mf.refresh(m);
+      const licence = (await mf.sendDoc(m, 'trade_license', { number: 'TL-PM19-2026', holderName: 'Sadia Karim', expiresOn: mf.future(300) })).body;
+      const tin = (await mf.sendDoc(m, 'tin', { number: '100000009919' })).body;
+      await h.drainEvents();
+      const subjectOf = async (documentId) => (await models.Submission.findOne({ where: { kind: 'document', payload: { documentId } } })).subjectId;
+      await mf.review(reviewer, 'document', await subjectOf(licence.id), 'approve');
+      await mf.review(reviewer, 'document', await subjectOf(tin.id), 'reject', { reasonCode: 'unreadable' });
+      await h.drainEvents();
+      return { reviewerToken: reviewer.accessToken };
+    },
     // Round B2: lose one shop fact; or empty every shop and gym fact and the backfill marker (as on the
     // day of the migration) and let the reconcile backfill them once.
     'forget-sub-order': async (q) => ({ deleted: await models.KpiFactSubOrder.destroy({ where: { subOrderId: q.get('subOrderId') } }) }),
@@ -146,7 +163,10 @@ async function main() {
     if (rq.method !== 'POST' || !step) return reply(404, { error: 'unknown step' });
     return serial(() => step(u.searchParams)).then(
       (body) => reply(200, { ok: true, ...body }),
-      (err) => reply(500, { error: err.message })
+      (err) => {
+        console.error(`runner step ${u.pathname} failed:`, err.message);
+        return reply(500, { error: err.message });
+      }
     );
   });
   const controlPort = await freePort();

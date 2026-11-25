@@ -30,6 +30,7 @@ const shop = as('shopOwnerToken');
 const gym = as('gymOwnerToken');
 const org = as('orgOwnerToken');
 const orgStaff = as('orgStaffToken');
+const reviewer = as('reviewerToken');
 // Postman strips the byte-order mark from the body; jest checks it (tests/e2e/analytics-business.test.js).
 const isCsv = ['a CSV download', "pm.response.headers.get('Content-Type').includes('text/csv') && pm.response.headers.get('Content-Disposition').includes('.csv')"];
 const noPersonal = ['no buyer or holder data (names, phones, address, ids)', "!/Tanvir Hasan|Nadia Islam|Fahim Rahman|Rina Begum|01711000111|Road 5|[0-9a-f]{8}-[0-9a-f]{4}-/i.test(pm.response.text())"];
@@ -66,7 +67,7 @@ const collection = {
     ].join('\n\n'),
     schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json',
   },
-  variable: ['baseUrl', 'controlUrl', 'adminAccessToken', 'ownerToken', 'memberToken', 'groundId', 'courtId', 's1', 's2', 'b1', 'b1Payment', 'b2', 'b2Payment', 'shopOwnerToken', 'gymOwnerToken', 'orgOwnerToken', 'orgStaffToken', 'orgId', 'subOrderId', 'shopSales'].map((key) => ({
+  variable: ['baseUrl', 'controlUrl', 'adminAccessToken', 'ownerToken', 'memberToken', 'groundId', 'courtId', 's1', 's2', 'b1', 'b1Payment', 'b2', 'b2Payment', 'shopOwnerToken', 'gymOwnerToken', 'orgOwnerToken', 'orgStaffToken', 'orgId', 'subOrderId', 'shopSales', 'reviewerToken'].map((key) => ({
     key,
     value: key === 'baseUrl' ? 'http://localhost:4000/api/v1' : '',
   })),
@@ -211,6 +212,33 @@ const collection = {
           checks: [['waiting and unpaid', "j.items.some((x) => x.key === 'registrations_waiting' && x.count === 1) && j.items.some((x) => x.key === 'registrations_unpaid' && x.count === 1)"]],
         }),
         orgStaff('Needs your action (organiser staff: no approvals)', 'GET', '/me/dashboard/actions?role=organiser', { expect: { status: 200 }, checks: [['unpaid only', "j.items.length === 1 && j.items[0].key === 'registrations_unpaid'"]] }),
+      ],
+    },
+    {
+      name: '7. Staff review figures (M19 §6.4, FR-32, FR-33)',
+      item: [
+        control('a documents reviewer approves a trade licence and rejects a TIN', 'reviews', { checks: [setVar('reviewerToken', 'j.reviewerToken')] }),
+        reviewer('Your reviews (me)', 'GET', '/admin/analytics/reviews?scope=me', {
+          expect: { status: 200 },
+          checks: [
+            ['two reviewed today', 'j.scope === "me" && j.tiles.reviewedToday.value === 2'],
+            ['half approved', 'j.tiles.approvalRate.value === 0.5'],
+            ['a median time', 'typeof j.tiles.medianMinutes.value === "number"'],
+            ['why we said no: unreadable', "j.whyNo.length === 1 && j.whyNo[0].code === 'unreadable' && j.whyNo[0].count === 1 && j.whyNo[0].label.length > 0"],
+            ['my two latest decisions, newest first', "j.recent.length === 2 && j.recent[0].decision === 'rejected' && j.recent[1].decision === 'approved'"],
+            ['30 days, today counted', 'j.window.days === 30 && j.perDay.length === 30 && j.perDay[29].approved + j.perDay[29].rejected >= 2'],
+          ],
+        }),
+        req('Team figures in Bangla (master: every kind)', 'GET', '/admin/analytics/reviews?scope=team&locale=bn', {
+          expect: { status: 200 },
+          checks: [
+            ['the team, no latest list', 'j.scope === "team" && j.recent.length === 0'],
+            ['every decision today, the listings too', 'j.tiles.reviewedToday.value >= 2'],
+            ['definitions in Bangla', '/[ঀ-৿]/.test(j.definitions.median_decision)'],
+          ],
+        }),
+        req('A bad scope (expect 422)', 'GET', '/admin/analytics/reviews?scope=everyone', { expect: { status: 422, code: 'VALIDATION_FAILED' } }),
+        member('As a member (expect 401)', 'GET', '/admin/analytics/reviews', { expect: { status: 401 } }),
       ],
     },
   ],
