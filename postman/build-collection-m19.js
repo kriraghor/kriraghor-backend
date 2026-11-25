@@ -122,7 +122,16 @@ const collection = {
       name: '3. Actions, exports, reconcile',
       item: [
         owner('Needs your action (owner)', 'GET', '/me/dashboard/actions?role=ground_owner', { expect: { status: 200 }, checks: [['a list', 'Array.isArray(j.items)']] }),
-        req('Needs your action (staff)', 'GET', '/admin/analytics/actions', { expect: { status: 200 }, checks: [['a list', 'Array.isArray(j.items)']] }),
+        control('fill three staff queues (FR-29)', 'queues'),
+        req('Needs your action (staff, FR-29)', 'GET', '/admin/analytics/actions', {
+          expect: { status: 200 },
+          checks: [
+            ['a failed payout, urgent', "j.items.some((i) => i.key === 'payouts_failed' && i.count === 1 && i.severity === 'high' && i.href === '/admin/finance?tab=payouts&status=failed')"],
+            ['a reported venue', "j.items.some((i) => i.key === 'reports_open' && i.count === 1 && i.href === '/admin/reports')"],
+            ["the other master's fee change", "j.items.some((i) => i.key === 'settings_to_approve' && i.count === 1 && i.href === '/admin/fees')"],
+            ['every queue, no cap', 'j.total === j.items.length'],
+          ],
+        }),
         owner('CSV of my bookings', 'GET', '/me/dashboard/export?dataset=owner_bookings&period=7w', {
           expect: { status: 200 },
           checks: [['a CSV with the booking', "pm.response.headers.get('Content-Type').includes('text/csv') && pm.response.text().includes('2000.00')"]],

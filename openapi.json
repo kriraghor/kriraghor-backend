@@ -14784,7 +14784,8 @@
               "type": "object",
               "properties": {
                 "key": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "What the item is about. Staff (GET /admin/analytics/actions, FR-29): review_queue, risk_flags, disputes_to_review, disputes_escalated, reports_open, reports_escalated, payouts_to_approve, payouts_failed, results_to_enter, tournaments_to_review, settings_to_approve"
                 },
                 "count": {
                   "type": "number"

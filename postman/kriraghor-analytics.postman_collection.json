@@ -882,7 +882,39 @@
           }
         },
         {
-          "name": "Needs your action (staff)",
+          "name": "Runner: fill three staff queues (FR-29)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j = null; try { j = pm.response.json(); } catch (e) {}",
+                  "const get = (o, p) => p.split('.').filter(Boolean).reduce((a, k) => (a == null ? undefined : a[k]), o);",
+                  "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+                  "pm.test('status 200', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{controlUrl}}/queues",
+              "host": [
+                "{{controlUrl}}"
+              ],
+              "path": [
+                "queues"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Needs your action (staff, FR-29)",
           "event": [
             {
               "listen": "test",
@@ -895,7 +927,10 @@
                   "pm.test('status 200', () => {",
                   "  pm.response.to.have.status(200);",
                   "});",
-                  "pm.test(\"a list\", () => { pm.expect(Array.isArray(j.items)).to.eql(true); });"
+                  "pm.test(\"a failed payout, urgent\", () => { pm.expect(j.items.some((i) => i.key === 'payouts_failed' && i.count === 1 && i.severity === 'high' && i.href === '/admin/finance?tab=payouts&status=failed')).to.eql(true); });",
+                  "pm.test(\"a reported venue\", () => { pm.expect(j.items.some((i) => i.key === 'reports_open' && i.count === 1 && i.href === '/admin/reports')).to.eql(true); });",
+                  "pm.test(\"the other master's fee change\", () => { pm.expect(j.items.some((i) => i.key === 'settings_to_approve' && i.count === 1 && i.href === '/admin/fees')).to.eql(true); });",
+                  "pm.test(\"every queue, no cap\", () => { pm.expect(j.total === j.items.length).to.eql(true); });"
                 ]
               }
             }

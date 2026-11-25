@@ -17,7 +17,7 @@ module.exports = {
   common: lazy('./esports.common', ['registerEntryPolicy', 'registerOrganiser']),
   disputes: lazy('./esports.disputes', ['register']),
   facts: lazy('./esports.facts', ['allEntrants', 'confirmedPlayers', 'entryFact', 'entryPeople', 'matchPlayers', 'riskFacts', 'squadName', 'title', 'tournament', 'tournamentFact']),
-  reads: lazy('./esports.reads', ['entryLabels', 'hasAnyVerifiedProfile', 'hasVerifiedProfile', 'squadFacts', 'standingsWithEntries', 'streamsOf', 'tournamentSummary']),
+  reads: lazy('./esports.reads', ['entryLabels', 'pendingActions', 'hasAnyVerifiedProfile', 'hasVerifiedProfile', 'squadFacts', 'standingsWithEntries', 'streamsOf', 'tournamentSummary']),
   schemas: lazy('./esports.schemas', [], ['cancelBody', 'resultRow', 'resultsBody', 'roomBody', 'rotateBody', 'tournamentBody', 'tournamentPatch']),
   prizes: lazy('./prizes.service', ['finalise', 'preview']),
   registrations: lazy('./registrations.service', ['board']),

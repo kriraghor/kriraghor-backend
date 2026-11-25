@@ -39,6 +39,7 @@ Step 1 is the shared engine (facts from events, day-grained views, the nightly r
 | # | Do | Expect |
 |---|---|---|
 | 3.1 | **Needs your action** | Owner: check-ins due within the hour, balances unrecorded or due, grounds with changes requested, drafts. Member: holds to pay, NID to verify. Staff: the review queue. Each provider has 800 ms; a slow one is skipped 🤖 |
+| 3.1a | **Runner: fill three staff queues**, **Needs your action (staff, FR-29)** | The master gets one item per queue: `payouts_failed` (1, high, `/admin/finance?tab=payouts&status=failed`), `reports_open` (1, `/admin/reports`) and `settings_to_approve` (1, the other master's change, `/admin/fees`); every queue is listed (`total` = the items). Who sees which queue is covered by `tests/e2e/analytics-staff-actions.test.js` 🤖 |
 | 3.2 | **CSV of my bookings**, **Owner CSV as a member**, **Platform CSV** | UTF-8 with a BOM, taka with two decimals, +06:00 times, no names or phones; scoped like the screen; audited (`analytics.exported`); `analytics.exports_per_hour` per person (`429 EXPORT_LIMIT`) 🤖 |
 
 ## Round B2: numbers and reports for businesses (§6.3)
@@ -72,4 +73,4 @@ Setup: `npm run release` also applies `20261110000001-create-business-kpis` (onl
 ## 7. Apps
 - [ ] vendor.kriraghor.com: the home shows the owner's tiles, "Needs your action" and the period switch; `/vendor/analytics` shows the four charts and the CSV buttons.
 - [ ] kriraghor.com `/me`: the member's tiles, where it went, and "Needs your action".
-- [ ] admin.kriraghor.com home: the platform overview for masters and `view_analytics` staff; the staff screen offers the `view_analytics` permission.
+- [ ] admin.kriraghor.com home (round 3, FR-30): the platform tiles with the period in the URL for masters and `view_analytics` staff, then one card per staff queue (urgent first, "Urgent" in words), then the charts with Table views and the day table CSV; staff without analytics see their queues and desks only; the staff screen offers the `view_analytics` permission.

@@ -36,6 +36,8 @@ const PROVIDERS = {
   // Round B3: a business's staff, per workplace and by their permissions (check-ins and balances at a
   // venue; orders to accept or ship and stock at a shop). Counts only, never money.
   business_staff: [(p) => require('../business-members').members.pendingActions(p)],
+  // Staff and masters (FR-29, dashboards round 3): one item per queue, shown only to those whose
+  // permissions open that desk. Each owning module counts its own tables.
   staff: [
     async (p) => {
       const s = await require('../moderation').moderation.stats(p);
@@ -48,12 +50,23 @@ const PROVIDERS = {
       const n = c.critical + c.high + c.medium + c.info;
       return n ? [{ key: 'risk_flags', count: n, severity: c.critical || c.high ? 'high' : 'normal', dueAt: null, href: '/admin/risk' }] : [];
     },
+    // M17: disputes to decide (by source permission) and the masters' escalated inbox.
+    (p) => require('../trust').disputes.pendingActions(p),
+    // M17: reported subjects (resolve_reports) and those escalated to masters.
+    (p) => require('../trust').reports.pendingActions(p),
+    // M07: payouts waiting for this master's second approval, and failed payouts.
+    (p) => require('../payouts').payouts.pendingActions(p),
+    // M21: matches waiting for results and tournaments submitted for review.
+    (p) => require('../esports').reads.pendingActions(p),
+    // M03: four-eyes changes another master proposed.
+    (p) => require('../settings').changeRequest.pendingActions(p),
   ],
 };
 
 const withTimeout = (promise) => Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('provider timed out')), TIMEOUT_MS))]);
 
-async function list(principal, role, { limit = 6 } = {}) {
+/** Business roles see the 6 most urgent; staff see every queue (one item each, FR-29). */
+async function list(principal, role, { limit = role === 'staff' ? Number.POSITIVE_INFINITY : 6 } = {}) {
   const providers = PROVIDERS[role] ?? [];
   const results = await Promise.allSettled(providers.map((fn) => withTimeout(fn(principal))));
   const items = [];

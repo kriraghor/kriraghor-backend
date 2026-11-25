@@ -13,6 +13,8 @@
  *   POST /forget?bookingId=     delete one booking fact (the nightly reconcile must restore it)
  *   POST /reconcile             run the nightly reconcile now
  *   POST /forget-sub-order?subOrderId=   delete one shop fact (Round B2)
+ *   POST /queues                FR-29 (round 3): a failed payout, a reported venue and a fee change
+ *                               another master proposed, for the staff "Needs your action"
  *   POST /backfill              empty the shop and gym facts and the backfill marker, then reconcile
  *   POST /businesses            Round B2: make a live shop with four orders (one rejected), a live gym
  *                               with three passes (two admitted) and a sports organisation with a busy
@@ -120,6 +122,14 @@ async function main() {
     forget: async (q) => ({ deleted: await models.KpiFactBooking.destroy({ where: { bookingId: q.get('bookingId') } }) }),
     reconcile: async () => facts.reconcile(),
     businesses: async () => businesses(),
+    // FR-29 (dashboards round 3): one row in three staff queues the master works.
+    queues: async () => {
+      const other = await h.createSecondMaster();
+      await models.Payout.create({ code: 'PM19Q1', payeeId: owner.user.id, amountPoisha: 100000, grossPoisha: 100000, status: 'failed', rulesSnapshot: {} });
+      await models.Report.create({ code: 'RM19Q1', subjectType: 'ground', subjectId: ground.id, reporterId: member.user.id, reasonCode: 'wrong_info', eligible: true });
+      await models.SettingsChangeRequest.create({ changes: [{ key: 'fees.hire_pct', value: 9 }], reason: 'Postman M19', effectiveAt: new Date(), needsFourEyes: true, proposedBy: other.user.id });
+      return {};
+    },
     // Round B2: lose one shop fact; or empty every shop and gym fact and the backfill marker (as on the
     // day of the migration) and let the reconcile backfill them once.
     'forget-sub-order': async (q) => ({ deleted: await models.KpiFactSubOrder.destroy({ where: { subOrderId: q.get('subOrderId') } }) }),

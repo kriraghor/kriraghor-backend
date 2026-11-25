@@ -14,6 +14,7 @@
 const { Op, UniqueConstraintError } = require('sequelize');
 const { E } = require('../../common/errors');
 const { nextCode } = require('../../common/sequences');
+const { queueItem } = require('../../common/actions');
 const { sequelize, Report } = require('../../models');
 const settings = require('../settings').settings;
 const audit = require('../audit').audit;
@@ -244,10 +245,34 @@ async function dismiss(actor, code, { note }, req) {
 }
 
 /** M18 reports_upheld: distinct subjects owned by this user whose reports were upheld since `since`. */
+/**
+ * M19 "Needs your action" for staff (FR-29): reported subjects waiting for a decision (`reports_open`,
+ * staff with resolve_reports; high once the oldest report of a subject is past reports.sla_hours) and,
+ * for masters, the subjects escalated to them (`reports_escalated`, always high). Counts subjects, as
+ * the desk does, not single reports.
+ */
+async function pendingActions(principal, now = new Date()) {
+  if (!authz.hasPermission(principal, 'resolve_reports')) return [];
+  const sla = settings.get('reports.sla_hours') * 3600 * 1000;
+  const rows = await sequelize.query(
+    `SELECT status, COUNT(*)::int AS subjects, COUNT(*) FILTER (WHERE oldest <= :late)::int AS late, MIN(oldest) AS oldest
+       FROM (SELECT status, MIN(created_at) AS oldest FROM reports WHERE status IN ('open', 'escalated') GROUP BY status, subject_type, subject_id) s
+      GROUP BY status`,
+    { replacements: { late: new Date(now.getTime() - sla) }, type: sequelize.QueryTypes.SELECT }
+  );
+  const of = (status) => rows.find((r) => r.status === status) ?? { subjects: 0, late: 0, oldest: null };
+  const open = of('open');
+  const escalated = of('escalated');
+  return [
+    ...queueItem({ key: 'reports_open', count: open.subjects, overdue: open.late, dueAt: open.oldest ? new Date(new Date(open.oldest).getTime() + sla) : null, href: '/admin/reports' }),
+    ...(principal.isMaster ? queueItem({ key: 'reports_escalated', count: escalated.subjects, urgent: true, href: '/admin/reports?status=escalated' }) : []),
+  ];
+}
+
 const UPHELD = ['content_removed', 'owner_warned', 'user_suspended'];
 async function upheldAgainst(userId, since) {
   const rows = await Report.findAll({ where: { subjectOwnerId: userId, status: 'resolved', resolutionAction: UPHELD, resolvedAt: { [Op.gte]: since } }, attributes: ['subjectType', 'subjectId'] });
   return new Set(rows.map((r) => `${r.subjectType}:${r.subjectId}`)).size;
 }
 
-module.exports = { upheldAgainst, file, listMine, adminList, adminSubject, resolve, escalate, dismiss, SUBJECTS };
+module.exports = { upheldAgainst, pendingActions, file, listMine, adminList, adminSubject, resolve, escalate, dismiss, SUBJECTS };

@@ -21,6 +21,8 @@ const { AppError, E } = require('../../common/errors');
 const { nextCode } = require('../../common/sequences');
 const { taka } = require('../../common/csv');
 const logger = require('../../common/logger');
+const { queueItem } = require('../../common/actions');
+const authz = require('../auth').authz;
 const { sequelize, Payout, PayoutItem, PayoutBatch, PayoutApproval, PayoutReveal, PayoutAccount } = require('../../models');
 const audit = require('../audit').audit;
 const events = require('../events').events;
@@ -706,6 +708,31 @@ async function facts(id) {
   return { code: p.code, amount: p.amountPoisha, masked: account ? rules.maskAccount(account.type, account.accountNoLast4) : null, providerRef: p.providerRef ?? null, kind: p.kind };
 }
 
+/**
+ * M19 "Needs your action" for staff (FR-29): payouts above the four-eyes threshold that this master
+ * can still approve (not their own, not one they approved already: `payouts_to_approve`), and failed
+ * payouts to retry or cancel (`payouts_failed`, always high) for staff who see payouts.
+ */
+async function pendingActions(principal) {
+  const canSee = ['view_payouts', 'release_payouts'].some((p) => authz.hasPermission(principal, p));
+  const [approve, failed] = await Promise.all([
+    principal.isMaster
+      ? Payout.count({
+          where: {
+            status: 'needs_approval',
+            payeeId: { [Op.ne]: principal.id },
+            id: { [Op.notIn]: sequelize.literal(`(SELECT payout_id FROM payout_approvals WHERE approver_id = ${sequelize.escape(principal.id)})`) },
+          },
+        })
+      : 0,
+    canSee ? Payout.count({ where: { status: 'failed' } }) : 0,
+  ]);
+  return [
+    ...queueItem({ key: 'payouts_to_approve', count: approve, href: '/admin/finance?tab=payouts&status=needs_approval' }),
+    ...queueItem({ key: 'payouts_failed', count: failed, urgent: true, href: '/admin/finance?tab=payouts&status=failed' }),
+  ];
+}
+
 // M06 FR-19 invariant: money in payout_clearing = the payouts being sent right now.
 invariants.register('payout_clearing_matches', async () => {
   const inFlight = Number((await Payout.sum('amountPoisha', { where: { status: 'processing' } })) ?? 0);
@@ -714,6 +741,7 @@ invariants.register('payout_clearing_matches', async () => {
 });
 
 module.exports = {
+  pendingActions,
   buildBatch,
   runDue,
   runNow,

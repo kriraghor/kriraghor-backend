@@ -109,7 +109,10 @@ const Actions = z
   .object({
     items: z.array(
       z.object({
-        key: z.string(),
+        key: z.string().meta({
+          description:
+            'What the item is about. Staff (GET /admin/analytics/actions, FR-29): review_queue, risk_flags, disputes_to_review, disputes_escalated, reports_open, reports_escalated, payouts_to_approve, payouts_failed, results_to_enter, tournaments_to_review, settings_to_approve',
+        }),
         count: z.number(),
         severity: z.enum(['high', 'normal', 'low']),
         dueAt: z.string().nullable(),
